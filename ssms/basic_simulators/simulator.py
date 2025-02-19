@@ -1,20 +1,20 @@
-from ssms.config.config import model_config, boundary_config, drift_config
+"""
+Define the basic simulator function, the workhorse of the package.
+
+In addition some utility functions are provided that help with preprocessing the output
+of the simulator function.
+"""
+
+from copy import deepcopy
+from threading import Lock
+from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
-from copy import deepcopy
-import warnings
 from numpy.random import default_rng
-from threading import Lock
 
-"""
-This module defines the basic simulator function which is the main
-workshorse of the package.
-In addition some utility functions are provided that help
-with preprocessing the output of the simulator function.
-"""
-
-from typing import Dict, Any
 from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
+from ssms.config.config import boundary_config, drift_config, model_config
 
 DEFAULT_SIM_PARAMS: Dict[str, Any] = {
     "max_t": 20.0,
@@ -31,16 +31,15 @@ _rng_lock = Lock()
 
 
 def _get_unique_seed() -> int:
-    """
-    Generate a unique seed for the random number generator.
-    """
+    """Generate a unique seed for the random number generator."""
     with _rng_lock:
         return _global_rng.integers(0, 2**32 - 1)
 
 
 def _make_valid_dict(dict_in: dict) -> dict:
-    """Turn all values in dictionary into numpy arrays and make sure,
-    that all thetas are either scalars or vectors of the same length
+    """Turn all values in dictionary into numpy arrays.
+
+    Also ensure that all thetas are either scalars or vectors of the same length
 
     Arguments:
     ----------
@@ -48,12 +47,11 @@ def _make_valid_dict(dict_in: dict) -> dict:
             Dictionary of parameters, potentially with different length / types per
             parameter (key)
 
-    Returns:
-    --------
+    Returns
+    -------
         dict_in: dict
             Aligned to same size np.float32 np.arrays for every parameter
     """
-
     collect_lengths: list[int] = []
     for key, value in dict_in.items():
         # Turn all values into numpy arrays
@@ -95,27 +93,30 @@ def _make_valid_dict(dict_in: dict) -> dict:
 def _theta_dict_to_array(
     theta: dict = {}, model_param_list: list[str] | None = None
 ) -> np.ndarray:
-    """Converts theta dictionary to numpy array for use with simulator function.
+    """Convert theta dictionary to numpy array for use with simulator function.
 
     This function takes a dictionary of model parameters and a list of parameter names,
-    and converts them into a 2D numpy array where each row represents a set of parameters
-    and each column represents a specific parameter.
+    and converts them into a 2D numpy array where each row represents a set of
+    parameters and each column represents a specific parameter.
 
     Args:
-        theta (dict): A dictionary containing model parameters. Default is an empty dict.
-        model_param_list (list[str] | None): A list of parameter names in the desired order.
-            If None, a ValueError will be raised.
+        theta (dict): A dict containing model parameters. Default is an empty dict.
+        model_param_list (list[str] | None): List of parameter names in the desired
+        order. If None, a ValueError will be raised.
 
-    Returns:
+    Returns
+    -------
         np.ndarray: A 2D numpy array of model parameters, with shape (n_sets, n_params),
-            where n_sets is the number of parameter sets and n_params is the number of parameters.
+            where n_sets is the number of parameter sets and n_params is the number of
+            parameters.
 
-    Raises:
+    Raises
+    ------
         ValueError: If model_param_list is None.
 
     Example:
-        >>> theta = {'a': [1, 2], 'b': [3, 4], 'c': [5, 6]}
-        >>> model_param_list = ['a', 'b', 'c']
+        >>> theta = {"a": [1, 2], "b": [3, 4], "c": [5, 6]}
+        >>> model_param_list = ["a", "b", "c"]
         >>> _theta_dict_to_array(theta, model_param_list)
         array([[1., 3., 5.],
                [2., 4., 6.]], dtype=float32)
@@ -132,7 +133,7 @@ def _theta_array_to_dict(
     theta: np.ndarray | None = None, model_param_list: list[str] | None = None
 ) -> dict:
     """
-    Converts theta array to dictionary for use with simulator function.
+    Convert theta array to dictionary for use with simulator function.
 
     This function takes a numpy array of parameter values and a list of parameter names,
     and converts them into a dictionary where keys are parameter names and values are
@@ -144,17 +145,19 @@ def _theta_array_to_dict(
         model_param_list (list[str] | None): A list of parameter names.
             If None, a ValueError will be raised.
 
-    Returns:
-        dict: A dictionary where keys are parameter names and values are the corresponding
+    Returns
+    -------
+        dict: A dict where keys are parameter names and values are the corresponding
             parameter values from the input theta array.
 
-    Raises:
+    Raises
+    ------
         ValueError: If model_param_list is None, theta is None, or if the dimensions
             of theta do not match the length of model_param_list.
 
     Example:
         >>> theta = np.array([[1, 2, 3], [4, 5, 6]])
-        >>> model_param_list = ['a', 'b', 'c']
+        >>> model_param_list = ["a", "b", "c"]
         >>> _theta_array_to_dict(theta, model_param_list)
         {'a': array([1, 4]), 'b': array([2, 5]), 'c': array([3, 6])}
     """
@@ -191,10 +194,12 @@ def _preprocess_theta_generic(
         theta (list | np.ndarray | dict | pd.DataFrame): The input theta in
             various possible formats.
 
-    Returns:
+    Returns
+    -------
         np.ndarray | dict: The preprocessed theta in a consistent format.
 
-    Raises:
+    Raises
+    ------
         ValueError: If theta is not supplied as a list, numpy array, dictionary,
             or pandas DataFrame.
     """
@@ -209,7 +214,7 @@ def _preprocess_theta_generic(
         theta = {k: np.array(v).astype(np.float32) for k, v in theta.items()}
     else:
         raise ValueError(
-            "theta is not supplied as list, numpy array, dictionary, or pandas DataFrame!"
+            "theta is not supplied as list, numpy array, dict, or pandas DataFrame"
         )
     return theta
 
@@ -228,8 +233,9 @@ def _preprocess_theta_deadline(
         deadline (bool): Whether the model is a deadline model
         config (dict): The model configuration
 
-    Returns:
-        tuple[int, dict]: The number of trials and the preprocessed theta in dictionary format
+    Returns
+    -------
+        tuple[int, dict]: The number of trials and the preprocessed theta in dict format
     """
     if not isinstance(theta, dict):
         theta = _theta_array_to_dict(theta, config["params"])
@@ -251,14 +257,19 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
     the appropriate boundary function and multiplicative flag from the boundary_config.
 
     Args:
-        config (dict): A dictionary containing model configuration, including the boundary name.
-        theta (dict): A dictionary of parameter values, potentially including boundary-related parameters.
+        config (dict): A dictionary containing model configuration, including the
+        boundary name.
+        theta (dict): A dictionary of parameter values, potentially including
+        boundary-related parameters.
 
-    Returns:
+    Returns
+    -------
         dict: A dictionary containing:
             - boundary_params (dict): Extracted boundary-related parameters.
-            - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
-            - boundary_multiplicative (bool): Flag indicating if the boundary is multiplicative.
+            - boundary_fun (callable): The boundary function corresponding to the
+            specified boundary name.
+            - boundary_multiplicative (bool): Flag indicating if the boundary is
+            multiplicative.
 
     """
     boundary_name = config["boundary_name"]
@@ -287,12 +298,16 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
     the appropriate drift function from the drift_config.
 
     Args:
-        config (dict): A dictionary containing model configuration, including the drift name.
-        theta (dict): A dictionary of parameter values, potentially including drift-related parameters.
+        config (dict): A dictionary containing model configuration, including the drift
+        name.
+        theta (dict): A dictionary of parameter values, potentially including
+        drift-related parameters.
 
-    Returns:
+    Returns
+    -------
         dict: A dictionary containing:
-            - drift_fun (callable): The drift function corresponding to the specified drift name.
+            - drift_fun (callable): The drift function corresponding to the specified
+            drift name.
             - drift_params (dict): Extracted drift-related parameters.
             If no drift name is specified in config, returns an empty dictionary.
     """
@@ -316,7 +331,7 @@ def bin_simulator_output_pointwise(
     bin_dt: float = 0.04,
     nbins: int = 0,
 ) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
-    """Turns RT part of simulator output into bin-identifier by trial
+    """Turn RT part of simulator output into bin-identifier by trial.
 
     Arguments
     ---------
@@ -368,7 +383,7 @@ def bin_simulator_output(
     max_t: float = -1,
     freq_cnt: bool = False,
 ) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
-    """Turns RT part of simulator output into bin-identifier by trial
+    """Turn RT part of simulator output into bin-identifier by trial.
 
     Arguments
     ---------
@@ -393,7 +408,6 @@ def bin_simulator_output(
         A histogram of counts or proportions.
 
     """
-
     if out is None:
         raise ValueError("out is not supplied")
 
@@ -434,8 +448,9 @@ def bin_arbitrary_fptd(
     choice_codes: list[float] = [-1.0, 1.0],
     max_t: float = 10.0,
 ) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
-    """Takes in simulator output and returns a histogram of bin counts
-    Arguments
+    """Take in simulator output and returns a histogram of bin counts.
+
+    Arguments.
     ---------
         out: np.ndarray
             Output of the 'simulator' function
@@ -457,7 +472,6 @@ def bin_arbitrary_fptd(
     -------
         2d array (nbins, nchoices): A histogram of bin counts
     """
-
     if out is None:
         raise ValueError("out is not supplied")
 
@@ -492,7 +506,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
         model (str): The name of the SSM model.
         theta (dict): A dictionary containing the model parameters.
 
-    Raises:
+    Raises
+    ------
         ValueError: If any of the parameter validations fail.
     """
 
@@ -504,8 +519,9 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             drifts (np.ndarray): Array of drift rates.
             num_actions (int): Number of actions.
 
-        Raises:
-            ValueError: If the number of drift rates doesn't match the number of actions.
+        Raises
+        ------
+            ValueError: If number of drift rates doesn't match the number of actions.
         """
         drifts = np.array(drifts)
         if drifts.shape[1] != num_actions:
@@ -518,7 +534,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
         Args:
             drifts (np.ndarray): Array of drift rates.
 
-        Raises:
+        Raises
+        ------
             ValueError: If the drift rates don't sum to 1 for any trial.
         """
         v_sum = np.sum(drifts, axis=1)
@@ -533,7 +550,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             z (np.ndarray): Array of starting points.
             a (np.ndarray): Array of thresholds.
 
-        Raises:
+        Raises
+        ------
             ValueError: If z >= a for any trial.
         """
         if np.any(z >= a):
@@ -567,6 +585,20 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
 def make_noise_vec(
     sigma_noise: float | np.ndarray, n_trials: int, n_particles: int
 ) -> np.ndarray:
+    """
+    Generate a noise vector for a given number of trials and particles.
+
+    Parameters
+    ----------
+    sigma_noise (float | np.ndarray): The standard deviation of the noise. Can be a
+    single float value or an array of floats.
+    n_trials (int): The number of trials.
+    n_particles (int): The number of particles.
+
+    Returns
+    -------
+    np.ndarray: A 2D numpy array of noise values, with shape (n_trials, n_particles).
+    """
     if n_particles == 1 or n_particles is None:
         shape_tuple = n_trials
     else:
@@ -600,7 +632,7 @@ def simulator(
     return_option: str = "full",
     random_state: int | None = None,
 ) -> dict:
-    """Basic data simulator for the models included in HDDM.
+    """Simulate basic data for the models included in HDDM.
 
     Arguments
     ---------
@@ -623,14 +655,15 @@ def simulator(
             Number of bins to use (in case the simulator output is
             supposed to come out as a count histogram)
         bin_pointwise: bool <default=False>
-            Wheter or not to bin the output data pointwise.
+            Whether or not to bin the output data pointwise.
             If true the 'RT' part of the data is now specifies the
             'bin-number' of a given trial instead of the 'RT' directly.
             You need to specify bin_dim as some number for this to work.
         sigma_noise: float | None <default=None>
-            Standard deviation of noise in the diffusion process. If None, defaults to 1.0 for most models
-            and 0.1 for LBA models. If no_noise is True, sigma_noise will be set to 0.0.
-            If 'sd' or 's' is passed via theta dictionary, sigma_noise must be None.
+            Standard deviation of noise in the diffusion process. If None, defaults to
+            1.0 for most models and 0.1 for LBA models. If no_noise is True, sigma_noise
+            will be set to 0.0. If 'sd' or 's' is passed via theta dictionary,
+            sigma_noise must be None.
         smooth_unif: bool <default=True>
             Whether to add uniform random noise to RTs to smooth the distributions.
         return_option: str <default='full'>
@@ -674,7 +707,7 @@ def simulator(
     n_trials, theta = _preprocess_theta_deadline(theta, deadline, model_config_local)
 
     # Initialize dictionary that collects
-    # simulator inputs that are commong across simulator functions
+    # simulator inputs that are common across simulator functions
     sim_param_dict = deepcopy(DEFAULT_SIM_PARAMS)
 
     # Update all values of sim_param_dict that are defined in locals()
@@ -689,7 +722,8 @@ def simulator(
     if "sd" in theta or "s" in theta:
         if sigma_noise is not None:
             raise ValueError(
-                "sigma_noise parameter should be None if 'sd' or 's' is passed via theta dictionary"
+                "sigma_noise parameter should be None if 'sd' or 's' is passed via"
+                " theta dictionary"
             )
         elif no_noise:
             sigma_noise = 0.0

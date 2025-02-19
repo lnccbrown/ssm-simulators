@@ -1,16 +1,15 @@
-from ssms.basic_simulators.simulator import simulator
-import numpy as np
+"""Define a data generator class for SNPE."""
+
+import os
 import pickle
 import uuid
-import os
-from multiprocessing import Pool
-from ssms.dataset_generators.lan_mlp import data_generator
 from functools import partial
+from multiprocessing import Pool
 
-"""
-    This module defines a data generator class for SNPE.
+import numpy as np
 
-"""
+from ssms.basic_simulators.simulator import simulator
+from ssms.dataset_generators.lan_mlp import data_generator
 
 
 class data_generator_snpe(data_generator):
@@ -40,6 +39,34 @@ class data_generator_snpe(data_generator):
         super().__init__(generator_config=generator_config, model_config=model_config)
 
     def generate_data_training_uniform(self, save=False):
+        """
+        Generate training data using uniform distribution for parameter sets.
+
+        This method generates training data by simulating data for a specified number of
+        parameter sets. The simulations are run in parallel using multiprocessing. The
+        generated data can be optionally saved to a file.
+
+        Args:
+            save (bool): If True, the generated data will be saved to a file. If False,
+                 the data will be returned.
+
+        Returns
+        -------
+            dict or str: If save is False, returns a dictionary containing the generated
+                 data. If save is True, returns a string indicating that the
+                 dataset is completed.
+
+        Raises
+        ------
+            OSError: If there is an issue creating the output directory or writing the
+            file.
+
+        Notes
+        -----
+            - The method uses the configuration specified in `self.generator_config` and
+              `self.model_config`.
+            - The data is saved in a pickle file with a unique name if `save` is True.
+        """
         seeds = np.random.choice(
             400000000, size=self.generator_config["n_parameter_sets"]
         )
@@ -67,8 +94,7 @@ class data_generator_snpe(data_generator):
                 data = {
                     **data,
                     **{
-                        i
-                        + cum_i: {
+                        i + cum_i: {
                             "data": data_tmp[i]["features"],
                             "labels": data_tmp[i]["labels"],
                         }

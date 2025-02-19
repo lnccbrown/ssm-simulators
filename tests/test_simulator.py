@@ -93,7 +93,6 @@ def test_simulator_runs(sim_input_data):
 
             # Go over different number of samples
             if subkey == "theta_dict_uneven":
-
                 for n_samples in [1, 10]:
                     raised_value_error = 0
 
