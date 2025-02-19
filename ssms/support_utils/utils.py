@@ -25,7 +25,7 @@ sample_parameters_from_constraints(param_dict: Dict[str, Tuple[Any, Any]],
                                    sample_size: int)
                                    -> Dict[str, np.ndarray]
     Sample parameters uniformly within specified bounds, respecting any dependencies.
-"""
+"""  # noqa: D404
 
 from collections import defaultdict
 from typing import Any, Dict, List, Set, Tuple
