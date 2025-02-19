@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
+
 import numpy as np
 
 
@@ -20,10 +21,10 @@ class AbstractThetaProcessor(ABC):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns:
+        Returns
+        -------
             Dict[str, Any]: Processed theta parameters.
         """
-        pass
 
 
 class SimpleThetaProcessor(AbstractThetaProcessor):
@@ -45,7 +46,8 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns:
+        Returns
+        -------
             Dict[str, Any]: Processed theta parameters.
         """
         model = model_config["name"]
