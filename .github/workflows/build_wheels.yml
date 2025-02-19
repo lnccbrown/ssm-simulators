@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.0
+        uses: pypa/cibuildwheel@v2.22.0
         env:
           CIBW_BUILD: cp310-* cp311-* cp312-*
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
