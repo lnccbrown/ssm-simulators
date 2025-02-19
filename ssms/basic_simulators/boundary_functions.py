@@ -1,3 +1,5 @@
+"""Define a collection of boundary functions for the simulators in the package."""
+
 # External
 from typing import Callable
 
@@ -5,10 +7,6 @@ import numpy as np
 from scipy.stats import gamma
 
 # Collection of boundary functions
-
-"""
-Module defines a collection of boundary functions for the simulators in the package.
-"""
 
 
 # Constant: (multiplicative)
@@ -53,7 +51,8 @@ def generalized_logistic(
         t (float or np.ndarray, optional): Time point(s). Defaults to 1.
         B (float, optional): Growth rate. Defaults to 2.0.
         M (float, optional): Time of maximum growth. Defaults to 3.0.
-        v (float, optional): Affects near which asymptote maximum growth occurs. Defaults to 0.5.
+        v (float, optional): Affects near which asymptote maximum growth occurs.
+        Defaults to 0.5.
 
     Returns
     -------
