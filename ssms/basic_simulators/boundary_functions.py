@@ -1,7 +1,8 @@
 # External
-from scipy.stats import gamma
-import numpy as np
 from typing import Callable
+
+import numpy as np
+from scipy.stats import gamma
 
 # Collection of boundary functions
 
@@ -12,7 +13,7 @@ Module defines a collection of boundary functions for the simulators in the pack
 
 # Constant: (multiplicative)
 def constant(t: float | np.ndarray = 0) -> float | np.ndarray:
-    """constant boundary function
+    """Constant boundary function.
 
     Arguments
     ---------
@@ -27,7 +28,7 @@ def constant(t: float | np.ndarray = 0) -> float | np.ndarray:
 
 # Angle (additive)
 def angle(t: float | np.ndarray = 1, theta: float = 1) -> np.ndarray:
-    """angle boundary function
+    """Angle boundary function.
 
     Arguments
     ---------
@@ -45,7 +46,7 @@ def angle(t: float | np.ndarray = 1, theta: float = 1) -> np.ndarray:
 def generalized_logistic(
     t: float | np.ndarray = 1, B: float = 2.0, M: float = 3.0, v: float = 0.5
 ) -> np.ndarray:
-    """generalized logistic bound
+    """Generalized logistic bound.
 
     Arguments
     ---------
@@ -65,7 +66,7 @@ def generalized_logistic(
 def weibull_cdf(
     t: float | np.ndarray = 1, alpha: float = 1, beta: float = 1
 ) -> np.ndarray:
-    """boundary based on weibull survival function.
+    """Boundary based on weibull survival function.
 
     Arguments
     ---------
@@ -87,7 +88,7 @@ def conflict_gamma(
     alpha_gamma: float = 1.01,
     scale_gamma: float = 0.3,
 ) -> np.ndarray:
-    """conflict bound that allows initial divergence then collapse
+    """Conflict bound that allows initial divergence then collapse.
 
     Arguments
     ---------
@@ -102,7 +103,6 @@ def conflict_gamma(
         alpha_gamma: float
             alpha parameter for a gamma in scale shape parameterization. Defaults to
     """
-
     return (
         scale * gamma.pdf(t, a=alpha_gamma, loc=0, scale=scale_gamma)
         + np.multiply(t, (-np.sin(theta) / np.cos(theta))),
