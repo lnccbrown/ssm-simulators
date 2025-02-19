@@ -1,39 +1,40 @@
-from ssms.basic_simulators import boundary_functions as bf
-from ssms.basic_simulators import drift_functions as df
+"""Configuration dictionary for simulators.
+
+Variables:
+---------
+model_config: dict
+    Dictionary containing all the information about the models
+
+kde_simulation_filters: dict
+    Dictionary containing the filters for the KDE simulations
+
+data_generator_config: dict
+    Dictionary containing information for data generator settings.
+    Supposed to serve as a starting point and example, which the user then
+    modifies to their needs.
+"""
+
 import functools
-import scipy.stats as sps
+
 import cssm
 import numpy as np
+import scipy.stats as sps  # type: ignore
 
-"""
-    Configuration dictionary for simulators
-
-    Variables:
-    ---------
-    model_config: dict
-        Dictionary containing all the information about the models
-
-    kde_simulation_filters: dict
-        Dictionary containing the filters for the KDE simulations
-
-    data_generator_config: dict
-        Dictionary containing information for data generator settings.
-        Supposed to serve as a starting point and example, which the user then
-        modifies to their needs.
-"""
+from ssms.basic_simulators import boundary_functions as bf
+from ssms.basic_simulators import drift_functions as df
 
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
     """
-    Convert boundary configuration to function parameters
+    Convert boundary configuration to function parameters.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     boundary_config: dict
         Dictionary containing the boundary configuration
 
-    Returns:
-    --------
+    Returns
+    -------
     dict
         Dictionary with adjusted key names so that they match function parameters names
         directly.
@@ -594,7 +595,8 @@ model_config = {
         "simulator": cssm.lba_vanilla,
     },
     "lba_3_vs_constraint": {
-        "name": "lba_3_vs_constraint",  # this is essentially conventional analytical LBA with constraints on vs (sum of all v = 1)
+        # conventional analytical LBA with constraints on vs (sum of all v = 1)
+        "name": "lba_3_vs_constraint",
         "params": ["v0", "v1", "v2", "a", "z"],
         "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.1], [1.0, 1.0, 1.0, 1.1, 0.50]],
         "boundary_name": "constant",
@@ -607,7 +609,8 @@ model_config = {
         "simulator": cssm.lba_vanilla,
     },
     "lba_angle_3_vs_constraint": {
-        "name": "lba_angle_3_vs_constraint",  # this is essentially conventional analytical LBA with angle with constraints on vs (sum of all v = 1)
+        # conventional analytical LBA with angle with constraints on vs (sum of all v = 1)
+        "name": "lba_angle_3_vs_constraint",
         "params": ["v0", "v1", "v2", "a", "z", "theta"],
         "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [1.0, 1.0, 1.0, 1.1, 0.5, 1.3]],
         "boundary_name": "constant",
@@ -620,7 +623,8 @@ model_config = {
         "simulator": cssm.lba_angle,
     },
     "lba_angle_3": {
-        "name": "lba_angle_3",  # this is essentially conventional analytical LBA with angle without any constraints on vs
+        # conventional analytical LBA with angle without any constraints on vs
+        "name": "lba_angle_3",
         "params": ["v0", "v1", "v2", "a", "z", "theta"],
         "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [6.0, 6.0, 6.0, 1.1, 0.5, 1.3]],
         "boundary_name": "constant",
@@ -657,7 +661,8 @@ model_config = {
         "simulator": cssm.rlwm_lba_pw_v1,
     },
     "dev_rlwm_lba_race_v1": {
-        "name": "dev_rlwm_lba_race_v1",  # RLWM_Race_LBA_3 without ndt; sum of all v_RL = 1 and sum of all v_WM = 1
+        # RLWM_Race_LBA_3 without ndt; sum of all v_RL = 1 and sum of all v_WM = 1
+        "name": "dev_rlwm_lba_race_v1",
         "params": [
             "v_RL_0",
             "v_RL_1",
@@ -682,7 +687,8 @@ model_config = {
         "simulator": cssm.rlwm_lba_race,
     },
     "dev_rlwm_lba_race_v2": {
-        "name": "dev_rlwm_lba_race_v2",  # RLWM_Race_LBA_3 without ndt; no constraints on the sum of v_RL and v_WM.
+        # RLWM_Race_LBA_3 without ndt; no constraints on the sum of v_RL and v_WM.
+        "name": "dev_rlwm_lba_race_v2",
         "params": [
             "v_RL_0",
             "v_RL_1",
