@@ -1,6 +1,4 @@
-# from distutils.core import setup
-# from xml.etree.ElementInclude import include
-import numpy
+import numpy  # noqa: D100
 from setuptools import Extension, setup
 
 try:
