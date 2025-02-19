@@ -112,7 +112,7 @@ def conflict_gamma(
 BoundaryFunction = Callable[..., np.ndarray]
 
 constant: BoundaryFunction = constant  # noqa: PLW0127
-angle: BoundaryFunction = angle # noqa: PLW0127
-generalized_logistic: BoundaryFunction = generalized_logistic # noqa: PLW0127
-weibull_cdf: BoundaryFunction = weibull_cdf # noqa: PLW0127
-conflict_gamma: BoundaryFunction = conflict_gamma # noqa: PLW0127
+angle: BoundaryFunction = angle  # noqa: PLW0127
+generalized_logistic: BoundaryFunction = generalized_logistic  # noqa: PLW0127
+weibull_cdf: BoundaryFunction = weibull_cdf  # noqa: PLW0127
+conflict_gamma: BoundaryFunction = conflict_gamma  # noqa: PLW0127
