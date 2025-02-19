@@ -1,12 +1,10 @@
+"""Define a collection of drift functions for the simulators in the package."""
+
 # External
 from typing import Callable
 
 import numpy as np
 from scipy.stats import norm
-
-"""
-This module defines a collection of drift functions for the simulators in the package.
-"""
 
 
 def constant(t: np.ndarray = np.arange(0, 20, 0.1)) -> np.ndarray:
@@ -232,8 +230,8 @@ def attend_drift_simple(
 # Type alias for drift functions
 DriftFunction = Callable[..., np.ndarray]
 
-attend_drift: DriftFunction = attend_drift
-constant: DriftFunction = constant
-gamma_drift: DriftFunction = gamma_drift
-ds_support_analytic: DriftFunction = ds_support_analytic
-ds_conflict_drift: DriftFunction = ds_conflict_drift
+attend_drift: DriftFunction = attend_drift  # noqa: PLW0127
+constant: DriftFunction = constant  # noqa: PLW0127
+gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
+ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
+ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127

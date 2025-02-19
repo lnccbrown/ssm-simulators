@@ -40,7 +40,7 @@ def parse_bounds(bounds: Tuple[Any, Any]) -> Set[str]:
     Parameters
     ----------
         bounds (Tuple[Any, Any]): A tuple containing the lower and upper bounds,
-                                  which can be numeric or strings indicating dependencies.
+                                  numeric or strings, indicating dependencies.
 
     Returns
     -------
@@ -118,7 +118,7 @@ def topological_sort_util(
     Raises
     ------
         ValueError: If a circular dependency is detected.
-    """
+    """  # noqa: D401
     if node in temp_marks:
         raise ValueError(f"Circular dependency detected involving '{node}'.")
     if node not in visited:
@@ -188,7 +188,7 @@ def sample_parameters_from_constraints(
         # print('sampling :', param)
         bounds = param_dict.get(param)
         if bounds is None:
-            # If the parameter wasn't in param_dict (could be a dependency only), skip it.
+            # Skip if the parameter wasn't in param_dict (could be a dependency only)
             continue
         lower, upper = bounds
 

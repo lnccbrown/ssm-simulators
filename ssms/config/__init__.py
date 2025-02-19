@@ -1,5 +1,4 @@
-# from .config import *
-from .config import (
+from .config import (  # noqa: D104
     boundary_config,
     boundary_config_to_function_params,
     data_generator_config,
@@ -7,7 +6,6 @@ from .config import (
     kde_simulation_filters,
     model_config,
 )
-from .kde_constants import KDE_NO_DISPLACE_T
 
 __all__ = [
     "model_config",

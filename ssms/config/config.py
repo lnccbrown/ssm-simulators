@@ -609,7 +609,7 @@ model_config = {
         "simulator": cssm.lba_vanilla,
     },
     "lba_angle_3_vs_constraint": {
-        # conventional analytical LBA with angle with constraints on vs (sum of all v = 1)
+        # conventional analytical LBA with angle with constraints on vs (sum of all v=1)
         "name": "lba_angle_3_vs_constraint",
         "params": ["v0", "v1", "v2", "a", "z", "theta"],
         "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [1.0, 1.0, 1.0, 1.1, 0.5, 1.3]],

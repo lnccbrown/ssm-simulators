@@ -1,5 +1,4 @@
-# import importlib.metadata
-from . import basic_simulators, config, dataset_generators, support_utils
+from . import basic_simulators, config, dataset_generators, support_utils  # noqa: D104
 
 __version__ = "0.9.0"  # importlib.metadata.version(__package__ or __name__)
 
