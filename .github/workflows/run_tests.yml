@@ -31,8 +31,11 @@ jobs:
       - name: Install package
         run: uv sync --all-groups
 
-      - name: Check styling
-        run: uv run black . --check
+      - name: Check formatting
+        run: uv run ruff format --check src ssms tests
+
+      - name: Linting
+        run: uv run ruff check src ssms tests
 
       - name: Run pytest
         run: uv run pytest -n=auto --cov=. --cov-report=xml --cov-report=term-missing --exitfirst --capture=no -v tests/

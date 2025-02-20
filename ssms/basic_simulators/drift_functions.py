@@ -1,20 +1,20 @@
+"""Define a collection of drift functions for the simulators in the package."""
+
 # External
-import numpy as np
-from scipy.stats import norm
 from typing import Callable
 
-"""
-This module defines a collection of drift functions for the simulators in the package.
-"""
+import numpy as np
+from scipy.stats import norm
 
 
 def constant(t: np.ndarray = np.arange(0, 20, 0.1)) -> np.ndarray:
-    """constant drift function
+    """Constant drift function.
 
     Arguments
     ---------
         t: np.ndarray, optional
-            Timepoints at which to evaluate the drift. Defaults to np.arange(0, 20, 0.1).
+            Timepoints at which to evaluate the drift. Defaults to
+            np.arange(0, 20, 0.1).
 
     Returns
     -------
@@ -29,7 +29,7 @@ def gamma_drift(
     scale: float = 0.01,
     c: float = 1.5,
 ) -> np.ndarray:
-    """Drift function that follows a scaled gamma distribution
+    """Drift function that follows a scaled gamma distribution.
 
     Arguments
     ---------
@@ -51,7 +51,6 @@ def gamma_drift(
         np.ndarray
             The gamma drift evaluated at the supplied timepoints t.
     """
-
     num_ = np.power(t, shape - 1) * np.exp(np.divide(-t, scale))
     div_ = (
         np.power(shape - 1, shape - 1)
@@ -67,7 +66,9 @@ def ds_support_analytic(
     fix_point: float = 1,
     slope: float = 2,
 ) -> np.ndarray:
-    """Solution to differential equation of the form:
+    """Solve DE.
+
+    DE is of the form:
        x' = slope*(fix_point - x),
        with initial condition init_p.
        The solution takes the form:
@@ -88,7 +89,6 @@ def ds_support_analytic(
     np.ndarray
          The gamma drift evaluated at the supplied timepoints t.
     """
-
     return (init_p - fix_point) * np.exp(-(slope * t)) + fix_point
 
 
@@ -105,6 +105,7 @@ def ds_conflict_drift(
     """This drift is inspired by a conflict task which
        involves a target and a distractor stimuli both presented
        simultaneously.
+
        Two drift timecourses are linearly combined weighted
        by the coherence in the respective target and distractor stimuli.
        Each timecourse follows a dynamical system as described
@@ -133,8 +134,7 @@ def ds_conflict_drift(
     ------
     np.ndarray
          The full drift timecourse evaluated at the supplied timepoints t.
-    """
-
+    """  # noqa: D205, D401, D404
     w_t = ds_support_analytic(t=t, init_p=tinit, fix_point=tfixedp, slope=tslope)
 
     w_d = ds_support_analytic(t=t, init_p=dinit, fix_point=0, slope=dslope)
@@ -152,7 +152,7 @@ def attend_drift(
     r: float = 0.5,
     sda: float = 2,
 ) -> np.ndarray:
-    """Drift function for shrinking spotlight model, which involves a time varying
+    """Shrink spotlight model, which involves a time varying
     function dependent on a linearly decreasing standard deviation of attention.
 
     Arguments
@@ -174,8 +174,7 @@ def attend_drift(
     ------
     np.ndarray
         Drift evaluated at timepoints t
-    """
-
+    """  # noqa: D205
     new_sda = np.maximum(sda - r * t, 0.001)
 
     a_outer = norm.sf(1.5, loc=0, scale=new_sda)
@@ -216,8 +215,7 @@ def attend_drift_simple(
     ------
     np.ndarray
         Drift evaluated at timepoints t
-    """
-
+    """  # noqa: D205
     new_sda = np.maximum(sda - r * t, 0.001)
     a_outer = 1.0 - norm.cdf(
         0.5, loc=0, scale=new_sda
@@ -232,8 +230,8 @@ def attend_drift_simple(
 # Type alias for drift functions
 DriftFunction = Callable[..., np.ndarray]
 
-attend_drift: DriftFunction = attend_drift
-constant: DriftFunction = constant
-gamma_drift: DriftFunction = gamma_drift
-ds_support_analytic: DriftFunction = ds_support_analytic
-ds_conflict_drift: DriftFunction = ds_conflict_drift
+attend_drift: DriftFunction = attend_drift  # noqa: PLW0127
+constant: DriftFunction = constant  # noqa: PLW0127
+gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
+ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
+ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127

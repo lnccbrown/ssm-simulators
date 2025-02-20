@@ -1,41 +1,42 @@
-from ssms.basic_simulators.simulator import simulator  # , bin_simulator_output
-from ssms.support_utils import kde_class
-import numpy as np
-import warnings
-from copy import deepcopy
+"""Define a data generator class for use with LANs.
+
+The class defined below can be used to generate training data
+compatible with the expectations of LANs.
+"""
+
+import os
 import pickle
 import uuid
-import os
-from scipy.stats import mode
-from pathos.multiprocessing import ProcessingPool as Pool
-import psutil
-
+import warnings
+from copy import deepcopy
 from functools import partial
 
-from ssms.support_utils.utils import sample_parameters_from_constraints
-from ssms.basic_simulators.simulator import _theta_dict_to_array
+import numpy as np
+import psutil
+from pathos.multiprocessing import ProcessingPool as Pool
+from scipy.stats import mode
+
+from ssms.basic_simulators.simulator import (
+    _theta_dict_to_array,
+    simulator,  # , bin_simulator_output
+)
 from ssms.config import KDE_NO_DISPLACE_T
-
-
-"""
-    This module defines a data generator class for use with LANs. 
-    The class defined below can be used to generate training data 
-    compatible with the expectations of LANs.
-"""
+from ssms.support_utils import kde_class
+from ssms.support_utils.utils import sample_parameters_from_constraints
 
 
 class data_generator:
-    """The data_generator() class is used to generate training data
-      for various likelihood approximators.
+    """Generate training data for various likelihood approximators.
 
     Attributes
     ----------
         generator_config: dict
-            Configuation dictionary for the data generator.
+            Configuration dictionary for the data generator.
             (For an example load ssms.config.data_generator_config['lan'])
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
+
     Methods
     -------
         generate_data_training_uniform(save=False, verbose=True, cpn_only=False)
@@ -52,7 +53,7 @@ class data_generator:
         _cpn_get_processed_data_for_theta(random_seed_tuple)
             Helper function for generating training data for CPNs.
         _get_rejected_parameter_setups(random_seed_tuple)
-            Helper function that collectes parameters sets which were rejected
+            Helper function that collects parameters sets which were rejected
             by the filter used in the _filter_simulations() method.
         _make_save_file_name(unique_tag=None)
             Helper function for generating save file names.
@@ -122,7 +123,9 @@ class data_generator:
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
             ):
                 warnings.warn(
-                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. Overriding setting to False"
+                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. "
+                    "Overriding setting to False",
+                    stacklevel=2,
                 )
                 self.generator_config["kde_displace_t"] = False
 
@@ -193,7 +196,7 @@ class data_generator:
     def get_simulations(
         self, theta: dict | None = None, random_seed: int | None = None
     ):
-        """Generates simulations for a given parameter set."""
+        """Generate simulations for a given parameter set."""
         out = self.simulator(
             theta=theta,
             model=self.model_config["name"],
@@ -205,8 +208,7 @@ class data_generator:
         self,
         simulations: dict | None = None,
     ):
-        """Filters simulations according to the criteria
-        specified in the generator_config."""
+        """Filter simulations per the criteria specified in the generator_config."""
         if simulations is None:
             raise ValueError("No simulations provided")
 
@@ -258,7 +260,7 @@ class data_generator:
     def _make_kde_data(
         self, simulations: dict | None = None, theta: dict | None = None
     ):
-        """Generates KDE data from simulations.
+        """Generate KDE data from simulations.
 
         Arguments
         ---------
@@ -357,7 +359,7 @@ class data_generator:
 
     def parameter_transform_for_data_gen(self, theta: dict):
         """
-        Function to impose constraints on the parameters for data generation.
+        Impose constraints on the parameters for data generation.
 
         Arguments
         ---------
@@ -369,7 +371,6 @@ class data_generator:
             theta: dict
                 Dictionary containing the transformed parameters.
         """
-
         # print(theta)
 
         if self.model_config["name"] in ["lba_angle_3"]:
@@ -539,7 +540,7 @@ class data_generator:
     def generate_data_training_uniform(
         self, save: bool = False, verbose: bool = True, cpn_only: bool = False
     ):
-        """Generates training data for LANs.
+        """Generate training data for LANs.
 
         Arguments
         ---------
@@ -686,185 +687,6 @@ class data_generator:
         else:
             return data
 
-    # def _nested_get_processed_data(self, random_seed):
-    #     np.random.seed(random_seed)
-    #     theta = np.float32(
-    #         np.random.uniform(
-    #             low=self.model_config["param_bounds"][0],
-    #             high=self.model_config["param_bounds"][1],
-    #         )
-    #     )
-
-    #     n_components_to_exclude = np.random.choice(
-    #         self.model_config["components"]["n_components"] + 1
-    #     )
-    #     components_to_exclude = np.random.choice(
-    #         self.model_config["components"]["n_components"],
-    #         size=n_components_to_exclude,
-    #         replace=False,
-    #     )
-
-    #     label_tmp = np.array(
-    #         [1 for i in range(self.model_config["components"]["n_components"])]
-    #     )
-
-    #     for component_tmp in components_to_exclude:
-    #         # Get component name
-    #         component_name = self.model_config["components"]["names"][component_tmp]
-    #         # Get index number in list of all model parameters
-    #         component_idx_in_full_params = self.model_config["params"].index(
-    #             component_name
-    #         )
-    #         # Set parameter to the 'off_value' that corresponds to a model
-    #         # without this particular model component
-    #         theta[component_idx_in_full_params] = self.model_config["components"][
-    #             "off_values"
-    #         ][component_tmp]
-    #         # Adjust label
-    #         label_tmp = (
-    #             label_tmp - self.model_config["components"]["labels"][component_tmp]
-    #         )
-
-    #     # Should allow for binned and unbinned version of this
-    #     simulations = self.get_simulations(theta=theta)
-
-    #     if self.generator_config["nbins"] > 0:
-    #         return {
-    #             "data": np.expand_dims(simulations["data"], axis=0),
-    #             "label_parameters": theta,
-    #             "label_components": label_tmp,
-    #             "metadata": simulations["metadata"],
-    #         }
-    #     else:
-    #         if self.generator_config["separate_response_channels"]:
-    #             choice_data = np.zeros(
-    #                 (simulations["rts"].shape, self.model.config["nchoices"])
-    #             )
-
-    #             r_cnt = 0
-    #             for response in simulations["metadata"]["possible_choices"]:
-    #                 choice_data[:, r_cnt] = (simulations["choices"] == response).astype(
-    #                     int
-    #                 )
-    #                 r_cnt += 1
-    #             return {
-    #                 "data": np.column_stack([simulations["rts"], choice_data]),
-    #                 "label_parameters": theta,
-    #                 "label_components": label_tmp,
-    #                 "metadata": simulations["metadata"],
-    #             }
-
-    #         else:
-    #             return {
-    #                 "data": np.column_stack(
-    #                     [simulations["rts"], simulations["choices"]]
-    #                 ),
-    #                 "label_parameters": theta,
-    #                 "label_components": label_tmp,
-    #                 "metadata": simulations["metadata"],
-    #             }
-
-    # def generate_data_nested(self, save):
-    #     seeds = np.random.choice(
-    #         400000000, size=self.generator_config["n_parameter_sets"]
-    #     )
-
-    #     # Inits
-    #     subrun_n = (
-    #         self.generator_config["n_parameter_sets"]
-    #         // self.generator_config["n_subruns"]
-    #     )
-
-    #     data_list = []
-    #     for i in range(self.generator_config["n_subruns"]):
-    #         print(
-    #             "simulation round: ", i + 1, " of", self.generator_config["n_subruns"]
-    #         )
-    #         with Pool(processes=self.generator_config["n_cpus"]) as pool:
-    #             data_tmp = pool.map(
-    #                 self._nested_get_processed_data,
-    #                 [j for j in seeds[(i * subrun_n) : ((i + 1) * subrun_n)]],
-    #             )
-
-    #             data_tmp_dict = {}
-    #             data_tmp_dict["data"] = np.float32(
-    #                 np.concatenate([x["data"] for x in data_tmp])
-    #             )
-    #             data_tmp_dict["label_components"] = np.float32(
-    #                 np.concatenate(
-    #                     [
-    #                         np.expand_dims(x["label_components"], axis=0)
-    #                         for x in data_tmp
-    #                     ]
-    #                 )
-    #             )
-    #             data_tmp_dict["label_parameters"] = np.float32(
-    #                 np.concatenate(
-    #                     [
-    #                         np.expand_dims(x["label_parameters"], axis=0)
-    #                         for x in data_tmp
-    #                     ]
-    #                 )
-    #             )
-    #             data_list.append(data_tmp_dict)
-
-    #     data = {}
-
-    #     data["data"] = np.float32(np.concatenate([x["data"] for x in data_list]))
-    #     data["label_components"] = np.float32(
-    #         np.concatenate([x["label_components"] for x in data_list])
-    #     )
-    #     data["label_parameters"] = np.float32(
-    #         np.concatenate([x["label_parameters"] for x in data_list])
-    #     )
-    #     data["generator_config"] = self.generator_config
-    #     data["model_config"] = self.model_config
-
-    #     if save:
-    #         full_file_name = self._make_save_file_name(
-    #             unique_tag="nested_training_data_"
-    #         )
-    #         print("Writing to file: ", full_file_name)
-
-    #         pickle.dump(
-    #             data,
-    #             open(full_file_name, "wb"),
-    #             protocol=self.generator_config["pickleprotocol"],
-    #         )
-    #         return "Dataset completed"
-
-    #     else:
-    #         return data
-
-    # def generate_data_ratio_estimator(self, save):
-    #     seeds = np.random.choice(400000000, size=self.generator_config["n_subdatasets"])
-    #     print("Starting simulations")
-
-    #     with Pool(processes=self.generator_config["n_cpus"]) as pool:
-    #         data_tmp = pool.map(self._ratio_estimator_get_processed_data, list(seeds))
-
-    #     data = {}
-    #     data["data"] = np.float32(np.concatenate([x["data"] for x in data_tmp]))
-    #     data["labels"] = np.float32(np.concatenate([x["labels"] for x in data_tmp]))
-    #     data["generator_config"] = self.generator_config
-    #     data["model_config"] = self.model_config
-
-    #     if save:
-    #         full_file_name = self._make_save_file_name(
-    #             unique_tag="ratio_training_data_"
-    #         )
-    #         print("Writing to file: ", full_file_name)
-
-    #         pickle.dump(
-    #             data,
-    #             open(full_file_name, "wb"),
-    #             protocol=self.generator_config["pickleprotocol"],
-    #         )
-    #         return "Dataset completed"
-
-    #     else:
-    #         return data
-
     def _training_defective_simulations_get_preprocessed(self, seed):
         np.random.seed(seed)
         rejected_thetas = []
@@ -900,54 +722,6 @@ class data_generator:
                 pass
         return rejected_thetas
 
-    # def _ratio_estimator_get_processed_data(self, random_seed):
-    #     np.random.seed(random_seed)
-    #     theta_real = np.float32(
-    #         np.random.uniform(
-    #             low=self.model_config["param_bounds"][0],
-    #             high=self.model_config["param_bounds"][1],
-    #             size=(
-    #                 self.generator_config["n_trials_per_dataset"],
-    #                 len(self.model_config["param_bounds"][0]),
-    #             ),
-    #         )
-    #     )
-
-    #     # Should allow for binned and unbinned version of this
-    #     simulations = self.get_simulations(theta=theta_real)
-    #     print("simulations finished!")
-
-    #     # Generate some new thetas
-    #     theta_fake = np.float32(
-    #         np.random.uniform(
-    #             low=self.model_config["param_bounds"][0],
-    #             high=self.model_config["param_bounds"][1],
-    #             size=(
-    #                 self.generator_config["n_trials_per_dataset"] // 2,
-    #                 len(self.model_config["param_bounds"][0]),
-    #             ),
-    #         )
-    #     )
-
-    #     # Attach new thetas to existing simulations (negative examples)
-    #     indices_fake = np.random.choice(
-    #         [0, 1], size=self.generator_config["n_trials_per_dataset"] // 2
-    #     )
-    #     theta_real[indices_fake, :] = theta_fake
-
-    #     if self.generator_config["nbins"] > 0:
-    #         return (
-    #             "Error: Generating data for ratio estimators "
-    #             + "works only for unbinned data at this point"
-    #         )
-    #     else:
-    #         return {
-    #             "data": np.column_stack(
-    #                 [simulations["rts"], simulations["choices"], theta_real]
-    #             ),
-    #             "labels": np.logical_not(indices_fake).astype(int),
-    #         }
-
     def _make_save_file_name(self, unique_tag: str = ""):
         binned = str(0)
         if self.generator_config["nbins"] > 0:
@@ -978,7 +752,7 @@ class data_generator:
         return full_file_name
 
     def generate_rejected_parameterizations(self, save: bool = False):
-        """Generates parameterizations that are rejected by the filter.
+        """Generate parameterizations that are rejected by the filter.
 
         Arguments
         ---------

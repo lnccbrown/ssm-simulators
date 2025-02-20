@@ -1,12 +1,27 @@
+"""Define the `AbstractThetaProcessor` and its concrete implementation.
+
+`SimpleThetaProcessor` for processing theta parameters based on model configurations.
+
+Classes:
+    - AbstractThetaProcessor: An abstract base class that defines the interface for
+      processing theta parameters.
+    - SimpleThetaProcessor: A concrete implementation of `AbstractThetaProcessor` that
+      processes theta parameters based on various model configurations.
+
+The `SimpleThetaProcessor` class includes methods to handle different models such as
+single particle models, multi-particle models, LBA-based models, and various choice
+models. It modifies the theta parameters according to the specified model configuration
+and number of trials.
+"""
+
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
+
 import numpy as np
 
 
 class AbstractThetaProcessor(ABC):
-    """
-    Abstract base class for theta processors.
-    """
+    """Abstract base class for theta processors."""
 
     @abstractmethod
     def process_theta(
@@ -20,15 +35,15 @@ class AbstractThetaProcessor(ABC):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns:
+        Returns
+        -------
             Dict[str, Any]: Processed theta parameters.
         """
-        pass
 
 
 class SimpleThetaProcessor(AbstractThetaProcessor):
-    """
-    A simple implementation of the AbstractThetaProcessor.
+    """Simple implementation of the AbstractThetaProcessor.
+
     This class collects functions (for now very simple) that build the bridge between
     the model_config level specification of the model and the theta parameters that are
     used in the simulator.
@@ -45,7 +60,8 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns:
+        Returns
+        -------
             Dict[str, Any]: Processed theta parameters.
         """
         model = model_config["name"]
