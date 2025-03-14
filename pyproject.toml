@@ -13,7 +13,7 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "numpy >= 1.17.0, <2.0.0",
+    "numpy >=2.2.3",
     "cython >= 0.29.23",
     "scipy >= 1.6.3",
     "pandas >= 1.0.0",
