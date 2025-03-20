@@ -1,7 +1,7 @@
 # SSMS (Sequential Sampling Model Simulators)
 Python Package which collects simulators for Sequential Sampling Models.
 
-Find the package documentation [here](https://alexanderfengler.github.io/ssm-simulators/).
+Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators/).
 
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
 ![PyPI_dl](https://img.shields.io/pypi/dm/ssm-simulators)
