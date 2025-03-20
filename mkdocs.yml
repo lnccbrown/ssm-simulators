@@ -1,6 +1,7 @@
 site_name: SSMS (Sequential Sampling Model Simulators)
 repo_name: lnccbrown/ssm-simulators
 repo_url: https://github.com/lnccbrown/ssm-simulators
+site_url: https://lnccbrown.github.io/ssm-simulators
 edit_uri: edit/main/docs
 
 nav:
