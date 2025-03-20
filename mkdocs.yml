@@ -1,6 +1,6 @@
 site_name: SSMS (Sequential Sampling Model Simulators)
-repo_name: AlexanderFengler/ssm-simulators
-repo_url: htps://github.com/AlexanderFengler/ssm-simulators
+repo_name: lnccbrown/ssm-simulators
+repo_url: https://github.com/lnccbrown/ssm-simulators
 edit_uri: edit/main/docs
 
 nav:
@@ -82,7 +82,7 @@ theme:
         name: Switch to automatic mode
 
 extra:
-  homepage: "https://AlexanderFengler.github.io/ssm-simulators/"
+  homepage: "https://lnccbrown.github.io/ssm-simulators/"
 
 markdown_extensions:
   - admonition
