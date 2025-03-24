@@ -785,15 +785,11 @@ class DataGenerator:
             full_file_name = (
                 training_data_folder
                 / f"rejected_parameterizations_{self.generator_config['file_id']}"
-            ).with_suffix(".pickle")
+            ).with_suffix(".npy")
 
             print("Writing to file: ", full_file_name)
 
-            pickle.dump(
-                np.float32(rejected_parameterization_list),
-                full_file_name.open("wb"),
-                protocol=self.generator_config["pickleprotocol"],
-            )
+            np.save(np.float32(rejected_parameterization_list), full_file_name)
 
         print("Dataset completed")
         return rejected_parameterization_list
