@@ -893,54 +893,6 @@ class data_generator:  # noqa: N801
                 pass
         return rejected_thetas
 
-    # def _ratio_estimator_get_processed_data(self, random_seed):
-    #     np.random.seed(random_seed)
-    #     theta_real = np.float32(
-    #         np.random.uniform(
-    #             low=self.model_config["param_bounds"][0],
-    #             high=self.model_config["param_bounds"][1],
-    #             size=(
-    #                 self.generator_config["n_trials_per_dataset"],
-    #                 len(self.model_config["param_bounds"][0]),
-    #             ),
-    #         )
-    #     )
-
-    #     # Should allow for binned and unbinned version of this
-    #     simulations = self.get_simulations(theta=theta_real)
-    #     print("simulations finished!")
-
-    #     # Generate some new thetas
-    #     theta_fake = np.float32(
-    #         np.random.uniform(
-    #             low=self.model_config["param_bounds"][0],
-    #             high=self.model_config["param_bounds"][1],
-    #             size=(
-    #                 self.generator_config["n_trials_per_dataset"] // 2,
-    #                 len(self.model_config["param_bounds"][0]),
-    #             ),
-    #         )
-    #     )
-
-    #     # Attach new thetas to existing simulations (negative examples)
-    #     indices_fake = np.random.choice(
-    #         [0, 1], size=self.generator_config["n_trials_per_dataset"] // 2
-    #     )
-    #     theta_real[indices_fake, :] = theta_fake
-
-    #     if self.generator_config["nbins"] > 0:
-    #         return (
-    #             "Error: Generating data for ratio estimators "
-    #             + "works only for unbinned data at this point"
-    #         )
-    #     else:
-    #         return {
-    #             "data": np.column_stack(
-    #                 [simulations["rts"], simulations["choices"], theta_real]
-    #             ),
-    #             "labels": np.logical_not(indices_fake).astype(int),
-    #         }
-
     def _make_save_file_name(self, unique_tag: str = ""):
         binned = str(0)
         if self.generator_config["nbins"] > 0:
