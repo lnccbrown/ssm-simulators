@@ -717,8 +717,7 @@ class DataGenerator:
                 accepted_thetas.append(theta)
                 stats_acc.append(stats)
                 acc_cnt += 1
-            else:
-                pass
+
         return rejected_thetas
 
     def _make_save_file_name(self, unique_tag: str = ""):
