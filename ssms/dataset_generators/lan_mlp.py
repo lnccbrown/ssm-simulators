@@ -667,8 +667,7 @@ class DataGenerator:
         data["model_config"] = self.model_config
 
         if save:
-            if not Path(self.generator_config["output_folder"]).exists():
-                Path(self.generator_config["output_folder"]).mkdir(parents=True)
+            Path(self.generator_config["output_folder"]).mkdir(parents=True, exist_ok=True)
 
             full_file_name = (
                 self.generator_config["output_folder"]
