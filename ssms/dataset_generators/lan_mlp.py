@@ -604,18 +604,11 @@ class DataGenerator:
                     self.generator_config["n_subruns"],
                 )
             if self.generator_config["n_cpus"] > 1:
-                if cpn_only:
-                    with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
-                        out_list += pool.map(
-                            self._cpn_get_processed_data_for_theta,
-                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
-                        )
-                else:
-                    with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
-                        out_list += pool.map(
-                            self._mlp_get_processed_data_for_theta,
-                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
-                        )
+                with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
+                    out_list += pool.map(
+                        func,
+                        list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
+                    )
             else:
                 print("No Multiprocessing, since only one cpu requested!")
                 if cpn_only:
