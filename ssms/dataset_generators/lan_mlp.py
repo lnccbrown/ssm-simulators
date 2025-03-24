@@ -613,52 +613,49 @@ class DataGenerator:
                 logger.info("No Multiprocessing, since only one cpu requested!")
                 for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
                     out_list.append(func(k))
-        data = {}
 
-        # Choice probabilities and theta are always needed
-        data["cpn_data"] = np.concatenate(
-            [out_list[k]["cpn_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_labels"] = np.concatenate(
-            [out_list[k]["cpn_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_no_omission_data"] = np.concatenate(
-            [out_list[k]["cpn_no_omission_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_no_omission_labels"] = np.concatenate(
-            [out_list[k]["cpn_no_omission_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["opn_data"] = np.concatenate(
-            [out_list[k]["opn_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["opn_labels"] = np.concatenate(
-            [out_list[k]["opn_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["gonogo_data"] = np.concatenate(
-            [out_list[k]["gonogo_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["gonogo_labels"] = np.concatenate(
-            [out_list[k]["gonogo_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["thetas"] = np.concatenate(
-            [out_list[k]["theta"] for k in range(len(out_list))]
-        ).astype(np.float32)
+        keys = [
+            "cpn_data",
+            "cpn_labels",
+            "cpn_no_omission_data",
+            "cpn_no_omission_labels",
+            "opn_data",
+            "opn_labels",
+            "gonogo_data",
+            "gonogo_labels",
+            "theta",
+        ]
+
+        data = {
+            key: np.concatenate(
+                [out_list[k][key] for k in range(len(out_list))]
+            ).astype(np.float32)
+            for key in keys
+        }
 
         # Only if not cpn_only, do we need the rest of the data
         # (which is not computed if cpn_only is selected)
         if not cpn_only:
-            data["lan_data"] = np.concatenate(
-                [out_list[k]["lan_data"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["lan_labels"] = np.concatenate(
-                [out_list[k]["lan_labels"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["binned_128"] = np.concatenate(
-                [out_list[k]["binned_128"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["binned_256"] = np.concatenate(
-                [out_list[k]["binned_256"] for k in range(len(out_list))]
-            ).astype(np.float32)
+            additional_keys = ["lan_data", "lan_labels", "binned_128", "binned_256"]
+            update_with = {
+                key: np.concatenate(
+                    [out_list[k][key] for k in range(len(out_list))]
+                ).astype(np.float32)
+                for key in additional_keys
+            }
+            data.update(update_with)
+
+        # Only if not cpn_only, do we need the rest of the data
+        # (which is not computed if cpn_only is selected)
+        if not cpn_only:
+            additional_keys = ["lan_data", "lan_labels", "binned_128", "binned_256"]
+            update_with = {
+                key: np.concatenate(
+                    [out_list[k][key] for k in range(len(out_list))]
+                ).astype(np.float32)
+                for key in additional_keys
+            }
+            data.update(update_with)
 
         # Add metadata to training_data
         data["generator_config"] = self.generator_config
