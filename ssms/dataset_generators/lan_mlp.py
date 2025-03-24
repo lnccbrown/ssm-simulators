@@ -572,12 +572,10 @@ class DataGenerator:
             data: dict
                 Dictionary containing the generated data.
         """
-        seeds_1 = np.random.choice(
-            400000000, size=self.generator_config["n_parameter_sets"]
-        )
-        seeds_2 = np.random.choice(
-            400000000, size=self.generator_config["n_parameter_sets"]
-        )
+        seeds_1, seeds_2 = [
+            _generate_random_seeds(size=self.generator_config["n_parameter_sets"])
+            for _ in range(2)
+        ]
         seed_args = [(seeds_1[i], seeds_2[i]) for i in range(seeds_1.shape[0])]
 
         # Inits
@@ -769,8 +767,8 @@ class DataGenerator:
             rejected_parameterization_list: np.array
                 Array containing the rejected parameterizations.
         """
-        seeds = np.random.choice(
-            400000000, size=self.generator_config["n_paramseter_sets_rejected"]
+        seeds = _generate_random_seeds(
+            size=self.generator_config["n_paramseter_sets_rejected"]
         )
 
         # Get Simulations
