@@ -794,8 +794,6 @@ class DataGenerator:
                 full_file_name.open("wb"),
                 protocol=self.generator_config["pickleprotocol"],
             )
-            print("Dataset completed")
-            return rejected_parameterization_list
-        else:
-            print("Dataset completed")
-            return rejected_parameterization_list
+
+        print("Dataset completed")
+        return rejected_parameterization_list
