@@ -721,9 +721,7 @@ class DataGenerator:
         return rejected_thetas
 
     def _make_save_file_name(self, unique_tag: str = ""):
-        binned = str(0)
-        if self.generator_config["nbins"] > 0:
-            binned = str(1)
+        binned = "1" if self.generator_config["nbins"] > 0 else "0"
 
         training_data_folder = (
             self.generator_config["output_folder"]
