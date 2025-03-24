@@ -598,10 +598,9 @@ class DataGenerator:
 
         for i in range(self.generator_config["n_subruns"]):
             if verbose:
-                print(
-                    "simulation round:",
+                logger.info(
+                    "simulation round: %d of %d",
                     i + 1,
-                    " of",
                     self.generator_config["n_subruns"],
                 )
             if self.generator_config["n_cpus"] > 1:
