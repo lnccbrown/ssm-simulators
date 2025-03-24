@@ -667,15 +667,12 @@ class DataGenerator:
         data["model_config"] = self.model_config
 
         if save:
-            Path(self.generator_config["output_folder"]).mkdir(parents=True, exist_ok=True)
+            output_folder = Path(self.generator_config["output_folder"])
+            output_folder.mkdir(parents=True, exist_ok=True)
 
             full_file_name = (
-                self.generator_config["output_folder"]
-                + "/"
-                + "training_data_"
-                + uuid.uuid1().hex
-                + ".pickle"
-            )  # self.model_config['name'] + '_' + \
+                output_folder / f"training_data_{uuid.uuid1().hex}"
+            ).with_suffix(".pickle")
 
             print("Writing to file: ", full_file_name)
 
