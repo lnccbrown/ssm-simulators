@@ -4,6 +4,7 @@ The class defined below can be used to generate training data
 compatible with the expectations of LANs.
 """
 
+import logging
 import pickle
 import uuid
 import warnings
@@ -24,6 +25,8 @@ from ssms.config import KDE_NO_DISPLACE_T
 from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def _generate_random_seeds(*, a=400000000, size):
     """
