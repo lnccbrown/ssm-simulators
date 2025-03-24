@@ -25,6 +25,20 @@ from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
 
 
+def _generate_random_seeds(*, a=400000000, size):
+    """
+    Generate an array of random seeds.
+
+    Parameters:
+    a (int, optional): The upper limit for the random seed values. Default is 400000000.
+    size (int): The number of random seeds to generate.
+
+    Returns:
+    numpy.ndarray: An array of random seeds.
+    """
+    return np.random.choice(a, size=size)
+
+
 class DataGenerator:
     """The DataGenerator() class is used to generate training data
       for various likelihood approximators.
