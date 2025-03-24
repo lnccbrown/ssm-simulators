@@ -723,7 +723,7 @@ class DataGenerator:
     def _make_save_file_name(self, unique_tag: str = ""):
         binned = "1" if self.generator_config["nbins"] > 0 else "0"
 
-        training_data_folder = (
+        training_data_folder = Path(
             self.generator_config["output_folder"]
             + unique_tag
             + binned
