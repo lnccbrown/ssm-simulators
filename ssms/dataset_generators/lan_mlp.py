@@ -28,6 +28,7 @@ from ssms.support_utils.utils import sample_parameters_from_constraints
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def _generate_random_seeds(*, a=400000000, size):
     """
     Generate an array of random seeds.
