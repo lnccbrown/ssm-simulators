@@ -611,12 +611,8 @@ class DataGenerator:
                     )
             else:
                 logger.info("No Multiprocessing, since only one cpu requested!")
-                if cpn_only:
-                    for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
-                        out_list.append(self._cpn_get_processed_data_for_theta(k))
-                else:
-                    for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
-                        out_list.append(self._mlp_get_processed_data_for_theta(k))
+                for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
+                    out_list.append(func(k))
         data = {}
 
         # Choice probabilities and theta are always needed
