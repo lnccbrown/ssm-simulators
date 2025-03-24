@@ -737,13 +737,8 @@ class DataGenerator:
 
         full_file_name = (
             training_data_folder
-            + "/"
-            + "training_data_"
-            + self.model_config["name"]
-            + "_"
-            + uuid.uuid1().hex
-            + ".pickle"
-        )
+            / f"training_data_{self.model_config['name']}_{uuid.uuid1().hex}"
+        ).with_suffix(".pickle")
         return full_file_name
 
     def generate_rejected_parameterizations(self, save: bool = False):
