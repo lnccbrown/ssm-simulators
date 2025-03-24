@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from ssms.basic_simulators.simulator import simulator
-from ssms.dataset_generators.lan_mlp import data_generator
+from ssms.dataset_generators.lan_mlp import DataGenerator
 
 """
     This module defines a data generator class for SNPE.
@@ -15,8 +15,7 @@ from ssms.dataset_generators.lan_mlp import data_generator
 """
 
 
-# TODO: #78 Class name `data_generator_snpe` should use CapWords convention  # noqa: FIX002
-class data_generator_snpe(data_generator):  # noqa: N801
+class DataGeneratorSNPE(DataGenerator):
     """
 
     Class for generating data for SNPE.

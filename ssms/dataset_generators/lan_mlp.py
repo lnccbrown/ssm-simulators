@@ -25,9 +25,8 @@ from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
 
 
-# TODO: #77 rew Class name `data_generator` should use CapWords convention  # noqa: FIX002
-class data_generator:  # noqa: N801
-    """The data_generator() class is used to generate training data
+class DataGenerator:
+    """The DataGenerator() class is used to generate training data
       for various likelihood approximators.
 
     Attributes
@@ -66,7 +65,7 @@ class data_generator:  # noqa: N801
 
     Returns
     -------
-        data_generator object
+        DataGenerator object
     """
 
     def __init__(
@@ -90,7 +89,7 @@ class data_generator:  # noqa: N801
 
         Returns
         -------
-        data_generator object
+        DataGenerator object
         """
         # INIT -----------------------------------------
         if generator_config is None:
