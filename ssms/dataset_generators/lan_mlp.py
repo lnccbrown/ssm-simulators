@@ -768,32 +768,30 @@ class DataGenerator:
         )
 
         if save:
-            training_data_folder = (
+            training_data_folder = Path(
                 self.generator_config["method_folder"]
                 + "training_data_binned_"
-                + str(int(self.generator_config["binned"]))
+                + str(
+                    int(self.generator_config["binned"])
+                )  # intermediate int casting might not be needed. CP
                 + "_nbins_"
                 + str(self.generator_config["nbins"])
                 + "_n_"
                 + str(self.generator_config["n_samples"])
             )
 
-            if not Path(training_data_folder).exists():
-                Path(training_data_folder).mkdir(parents=True)
+            training_data_folder.mkdir(parents=True, exist_ok=True)
 
             full_file_name = (
                 training_data_folder
-                + "/"
-                + "rejected_parameterizations_"
-                + self.generator_config["file_id"]
-                + ".pickle"
-            )
+                / f"rejected_parameterizations_{self.generator_config['file_id']}"
+            ).with_suffix(".pickle")
 
             print("Writing to file: ", full_file_name)
 
             pickle.dump(
                 np.float32(rejected_parameterization_list),
-                Path(full_file_name).open("wb"),
+                full_file_name.open("wb"),
                 protocol=self.generator_config["pickleprotocol"],
             )
             print("Dataset completed")
