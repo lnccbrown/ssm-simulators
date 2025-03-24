@@ -732,8 +732,8 @@ class DataGenerator:
             + "_n_"
             + str(self.generator_config["n_samples"])
         )
-        if not Path(training_data_folder).exists():
-            Path(training_data_folder).mkdir(parents=True, exist_ok=True)
+
+        training_data_folder.mkdir(parents=True, exist_ok=True)
 
         full_file_name = (
             training_data_folder
