@@ -589,6 +589,13 @@ class DataGenerator:
 
         # Get Simulations
         out_list = []
+        # Select the function to use based on cpn_only
+        func = (
+            self._cpn_get_processed_data_for_theta
+            if cpn_only
+            else self._mlp_get_processed_data_for_theta
+        )
+
         for i in range(self.generator_config["n_subruns"]):
             if verbose:
                 print(
