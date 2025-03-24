@@ -610,7 +610,7 @@ class DataGenerator:
                         list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
                     )
             else:
-                print("No Multiprocessing, since only one cpu requested!")
+                logger.info("No Multiprocessing, since only one cpu requested!")
                 if cpn_only:
                     for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
                         out_list.append(self._cpn_get_processed_data_for_theta(k))
