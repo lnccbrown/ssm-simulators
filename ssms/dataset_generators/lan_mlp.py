@@ -678,7 +678,7 @@ class DataGenerator:
 
             pickle.dump(
                 data,
-                Path(full_file_name).open("wb"),
+                full_file_name.open("wb"),
                 protocol=self.generator_config["pickleprotocol"],
             )
             return "Dataset completed"
