@@ -43,7 +43,7 @@ def _generate_random_seeds(*, a=400000000, size):
 
 
 class DataGenerator:
-    """The DataGenerator() class is used to generate training data
+    """The DataGenerator class is used to generate training data
       for various likelihood approximators.
 
     Attributes
