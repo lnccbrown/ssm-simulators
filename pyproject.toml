@@ -41,6 +41,7 @@ dev = [
     "pre-commit",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
+    "ipykernel>=6.29.5",
 ]
 
 [project.urls]
