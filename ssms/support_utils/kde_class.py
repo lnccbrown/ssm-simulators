@@ -83,6 +83,8 @@ class LogKDE:
             auto_bandwidth=auto_bandwidth, bandwidth_type=bandwidth_type
         )
         self.bandwidths: list[float | str] = []
+        self.auto_bandwidth: bool = auto_bandwidth
+        self.bandwidth_type: str = bandwidth_type
 
     def compute_bandwidths(
         self,
@@ -491,7 +493,7 @@ def bandwidth_silverman(
             if std_proc == "restrict":
                 std = std_cutoff
             if std_proc == "kill":
-                std = 0
+                std = 0.0
     else:
         # AF-Comment: This is a bit of a weakness (can be arbitrarily incorrect)
         std = std_n_1
