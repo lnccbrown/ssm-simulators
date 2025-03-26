@@ -96,7 +96,6 @@ class DataGenerator:
         ---------
         self: DataGenerator
             The instance of the DataGenerator class.
-
         generator_config: dict
             Configuration dictionary for the data generator.
             (For an example load ssms.config.data_generator_config['lan'])
@@ -118,63 +117,63 @@ class DataGenerator:
             raise ValueError("No generator_config specified")
         elif model_config is None:
             raise ValueError("No model_config specified")
-        else:
-            self.generator_config = deepcopy(generator_config)
-            self.model_config = deepcopy(model_config)
 
-            # Account for deadline if in model name
-            if "deadline" in self.generator_config["model"]:
-                self.model_config["params"].append("deadline")
-                if isinstance(self.model_config["param_bounds"], list):
-                    self.model_config["param_bounds"][0].append(0.001)
-                    self.model_config["param_bounds"][1].append(10)
-                    self.model_config["default_params"].append(10)
-                    self.model_config["name"] += "_deadline"
-                    self.model_config["n_params"] += 1
-                elif isinstance(self.model_config["param_bounds"], dict):
-                    self.model_config["param_bounds"]["deadline"] = (0.001, 10)
-                    self.model_config["default_params"].append(10)
-                    self.model_config["name"] += "_deadline"
-                    self.model_config["n_params"] += 1
+        self.generator_config = deepcopy(generator_config)
+        self.model_config = deepcopy(model_config)
 
-            if "kde_displace_t" not in self.generator_config:
-                self.generator_config["kde_displace_t"] = False
-
-            if (
-                self.generator_config["kde_displace_t"] is True
-                and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
-            ):
-                warnings.warn(
-                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. Overriding setting to False",
-                    stacklevel=2,
-                )
-                self.generator_config["kde_displace_t"] = False
-
-            # Define constrained parameter space as dictionary
-            # and add to internal model config
-            # AF-COMMENT: This will eventually be replaced so that
-            # configs always have dictionary format for parameter
-            # bounds
-            # print(self.model_config)
-            # print(type(self.model_config))
+        # Account for deadline if in model name
+        if "deadline" in self.generator_config["model"]:
+            self.model_config["params"].append("deadline")
             if isinstance(self.model_config["param_bounds"], list):
-                bounds_tmp = self.model_config["param_bounds"]
-                names_tmp = self.model_config["params"]
-                self.model_config["constrained_param_space"] = {
-                    names_tmp[i]: (bounds_tmp[0][i], bounds_tmp[1][i])
-                    for i in range(len(names_tmp))
-                }
+                self.model_config["param_bounds"][0].append(0.001)
+                self.model_config["param_bounds"][1].append(10)
+                self.model_config["default_params"].append(10)
+                self.model_config["name"] += "_deadline"
+                self.model_config["n_params"] += 1
             elif isinstance(self.model_config["param_bounds"], dict):
-                self.model_config["constrained_param_space"] = self.model_config[
-                    "param_bounds"
-                ]
-            else:
-                raise ValueError("param_bounds must be a list or a dictionary")
+                self.model_config["param_bounds"]["deadline"] = (0.001, 10)
+                self.model_config["default_params"].append(10)
+                self.model_config["name"] += "_deadline"
+                self.model_config["n_params"] += 1
 
-            # print(self.model_config)
+        if "kde_displace_t" not in self.generator_config:
+            self.generator_config["kde_displace_t"] = False
 
-            self._build_simulator()
-            self._get_ncpus()
+        if (
+            self.generator_config["kde_displace_t"] is True
+            and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
+        ):
+            warnings.warn(
+                f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. Overriding setting to False",
+                stacklevel=2,
+            )
+            self.generator_config["kde_displace_t"] = False
+
+        # Define constrained parameter space as dictionary
+        # and add to internal model config
+        # AF-COMMENT: This will eventually be replaced so that
+        # configs always have dictionary format for parameter
+        # bounds
+        # print(self.model_config)
+        # print(type(self.model_config))
+        if isinstance(self.model_config["param_bounds"], list):
+            bounds_tmp = self.model_config["param_bounds"]
+            names_tmp = self.model_config["params"]
+            self.model_config["constrained_param_space"] = {
+                names_tmp[i]: (bounds_tmp[0][i], bounds_tmp[1][i])
+                for i in range(len(names_tmp))
+            }
+        elif isinstance(self.model_config["param_bounds"], dict):
+            self.model_config["constrained_param_space"] = self.model_config[
+                "param_bounds"
+            ]
+        else:
+            raise ValueError("param_bounds must be a list or a dictionary")
+
+        # print(self.model_config)
+
+        self._build_simulator()
+        self._get_ncpus()
 
         # Make output folder if not already present
         folder_str_split = self.generator_config["output_folder"].split()
