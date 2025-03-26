@@ -91,8 +91,12 @@ class DataGenerator:
     ):
         """Initialize data generator class.
 
+
         Arguments
         ---------
+        self: DataGenerator
+            The instance of the DataGenerator class.
+
         generator_config: dict
             Configuration dictionary for the data generator.
             (For an example load ssms.config.data_generator_config['lan'])
