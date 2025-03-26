@@ -56,7 +56,7 @@ def test_bandwidth_silverman_with_std_proc(std_proc, expected):
 def test_logkde_compute_bandwidths(sample_ddm_data):
     """Test compute_bandwidths method."""
     kde = LogKDE(simulator_data=sample_ddm_data)
-    bandwidths = kde.compute_bandwidths(return_result=True)
+    bandwidths = kde.compute_bandwidths()
     assert isinstance(bandwidths, list)
     assert len(bandwidths) == 2  # For two choices (-1, 1)
 

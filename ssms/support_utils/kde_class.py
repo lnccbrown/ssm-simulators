@@ -3,8 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 from sklearn.neighbors import KernelDensity
-
-# from ssms.basic_simulators import simulator
+from collections.abc import Iterable
 
 
 """
@@ -70,27 +69,26 @@ class LogKDE:
             AssertionError: If displace_t is True but metadata contains multiple t values.
         """
         self.simulator_info = simulator_data["metadata"]
-        self.displace_t: bool = True
-        if displace_t:
-            if np.unique(simulator_data["metadata"]["t"]).shape[0] != 1:
+        self.displace_t: bool = displace_t
+
+        if self.displace_t:
+            t_vals = np.unique(simulator_data["metadata"]["t"])
+            if t_vals.shape[0] != 1:
                 raise ValueError("Multiple t values in simulator data. Can't shift.")
-            self.displace_t_val: float = np.unique(simulator_data["metadata"]["t"])[0]
-        else:
-            self.displace_t = False
+            self.displace_t_val: float = t_vals[0]
 
         self._attach_data_from_simulator(simulator_data)
         self._generate_base_kdes(
             auto_bandwidth=auto_bandwidth, bandwidth_type=bandwidth_type
         )
-        self.bandwidths: list[float | str] = []
+
         self.auto_bandwidth: bool = auto_bandwidth
         self.bandwidth_type: str = bandwidth_type
 
     def compute_bandwidths(
         self,
         bandwidth_type: str = "silverman",
-        return_result: bool = False,
-    ) -> list[float | str] | None:
+    ) -> list[float | str]:
         """
         Computes bandwidths for each choice from rt data.
 
@@ -108,23 +106,23 @@ class LogKDE:
         """
 
         # For now allows only silverman rule
-        self.bandwidths = []
         if bandwidth_type == "silverman":
-            for i in range(0, len(self.data["choices"]), 1):
-                if len(self.data["log_rts"][i]) == 0:
-                    self.bandwidths.append("no_base_data")
-                else:
-                    bandwidth_tmp = bandwidth_silverman(
-                        sample=(self.data["log_rts"][i])
-                    )
-                    if bandwidth_tmp > 0:
-                        self.bandwidths.append(bandwidth_tmp)
-                    else:
-                        self.bandwidths.append("no_base_data")
-        if return_result:
-            return self.bandwidths
+            bandwidths_ = [
+                self._compute_bandwidth_for_choice(log_rts)
+                for log_rts in self.data["log_rts"]
+            ]
         else:
-            return None
+            raise ValueError(f"Bandwidth type {bandwidth_type} not supported yet")
+        return bandwidths_
+
+    def _compute_bandwidth_for_choice(self, log_rts):
+        if len(log_rts) == 0:
+            return "no_base_data"
+        else:
+            bw_tmp = bandwidth_silverman(sample=log_rts)
+            if bw_tmp > 0:
+                return bw_tmp
+            return "no_base_data"
 
     def _generate_base_kdes(
         self, auto_bandwidth: bool = True, bandwidth_type: str = "silverman"
@@ -145,19 +143,19 @@ class LogKDE:
         """
         # Compute bandwidth parameters
         if auto_bandwidth:
-            self.compute_bandwidths(bandwidth_type=bandwidth_type)
+            self.bandwidths = self.compute_bandwidths(bandwidth_type=bandwidth_type)
 
         # Generate the kdes
-        self.base_kdes: list = []
-        for i in range(0, len(self.data["choices"]), 1):
-            if self.bandwidths[i] == "no_base_data":
-                self.base_kdes.append("no_base_data")
-            else:
-                self.base_kdes.append(
-                    KernelDensity(kernel="gaussian", bandwidth=self.bandwidths[i]).fit(
-                        np.log(self.data["rts"][i])
-                    )
+        self.base_kdes = [
+            (
+                "no_base_data"
+                if self.bandwidths[i] == "no_base_data"
+                else KernelDensity(kernel="gaussian", bandwidth=self.bandwidths[i]).fit(
+                    np.log(self.data["rts"][i])
                 )
+            )
+            for i in range(len(self.data["choices"]))
+        ]
 
     def kde_eval(
         self,
@@ -193,15 +191,19 @@ class LogKDE:
         # Initializations
         data_internal = deepcopy(data)
 
-        if "log_rts" in data.keys() and ("rts" not in data.keys()):
-            data_internal["rts"] = np.exp(
-                np.expand_dims(data["log_rts"][data["log_rts"] != filter_rts], axis=1)
-            )
-        elif "rts" in data.keys() and ("log_rts" not in data.keys()):
-            data_internal["rts"] = np.expand_dims(
-                data["rts"][data["rts"] != filter_rts], axis=1
-            )
-        elif ("log_rts" not in data.keys()) and ("rts" not in data.keys()):
+        if "log_rts" in data and ("rts" not in data):
+            log_rts = data["log_rts"]
+            mask = log_rts != filter_rts
+            log_rts_filtered = log_rts[mask]
+            log_rts_expanded = np.expand_dims(log_rts_filtered, axis=1)
+            data_internal["rts"] = np.exp(log_rts_expanded)
+        elif "rts" in data and ("log_rts" not in data):
+            rts = data["rts"]
+            mask = rts != filter_rts
+            rts_filtered = rts[mask]
+            rts_expanded = np.expand_dims(rts_filtered, axis=1)
+            data_internal["rts"] = rts_expanded
+        elif ("log_rts" not in data) and ("rts" not in data):
             raise ValueError(
                 "data dictionary must contain either rts or log_rts as keys!"
             )
@@ -210,7 +212,7 @@ class LogKDE:
             data["choices"][data["rts"] != filter_rts], axis=1
         )
 
-        if not data_internal["rts"].shape == data_internal["choices"].shape:
+        if data_internal["rts"].shape != data_internal["choices"].shape:
             raise ValueError(
                 "rts and choices need to have matching shapes in data dictionary!"
             )
@@ -256,7 +258,7 @@ class LogKDE:
         # in the following
         log_rts = np.log(np.maximum(displaced_rts, eps))
 
-        log_kde_eval = np.zeros(data["choices"].shape)  # np.log(data['rts'])
+        log_kde_eval = np.zeros(data["choices"].shape)
         choices = np.unique(data["choices"])
 
         # Main loop
@@ -266,14 +268,12 @@ class LogKDE:
             if self.base_kdes[self.data["choices"].index(c)] == "no_base_data":
                 # Evaluate likelihood for "choices" for which we have no base data
                 # log(1 / n_trials_simulator) + log(1 / max_t)
-                log_kde_eval[choice_idx_tmp] = np.log(
-                    1 / self.data["n_trials"]
-                ) + np.log(1 / self.simulator_info["max_t"])
+                log_kde_eval[choice_idx_tmp] = -np.log(
+                    self.data["n_trials"] * self.simulator_info["max_t"]
+                )
             else:
                 # Evaluate likelihood for "choices" for which we have base data
                 log_kde_eval_out_tmp = log_rts[choice_idx_tmp]
-                print("BEFORE")
-                print(log_kde_eval_out_tmp)
                 # Evaluate likelihood explicitly where displaced_rts > 0
                 rt_pos_idx = displaced_rts[choice_idx_tmp] > 0
                 log_kde_eval_out_tmp[rt_pos_idx] = (
@@ -306,7 +306,7 @@ class LogKDE:
         self,
         n_samples: int = 2000,
         use_empirical_choice_p: bool = True,
-        alternate_choice_p: np.ndarray | float = 0,
+        alternate_choice_p: np.ndarray | float = 0.0,
     ) -> dict[str, np.ndarray | dict]:
         """
         Samples from a given kde.
@@ -335,15 +335,25 @@ class LogKDE:
 
         rts = np.zeros((n_samples, 1))
         choices = np.zeros((n_samples, 1))
+        if isinstance(alternate_choice_p, float):
+            alternate_choice_p = [alternate_choice_p]
 
-        n_by_choice: list[int] = []
-        for i in range(0, len(self.data["choices"]), 1):
-            if use_empirical_choice_p is True:
-                n_by_choice.append(
-                    round(n_samples * self.data["choice_proportions"][i])
-                )
-            else:
-                n_by_choice.append(round(n_samples * alternate_choice_p[i]))
+        if (
+            not len(alternate_choice_p) == len(self.data["choices"])
+            and not use_empirical_choice_p
+        ):
+            raise ValueError(
+                "alternate_choice_p must be of the same length as the number of choices"
+            )
+
+        n_by_choice = [
+            (
+                round(n_samples * self.data["choice_proportions"][i])
+                if use_empirical_choice_p
+                else round(n_samples * alternate_choice_p[i])
+            )
+            for i in range(len(self.data["choices"]))
+        ]
 
         # Catch a potential dimension error if we ended up rounding up twice
         if sum(n_by_choice) > n_samples:
@@ -372,7 +382,7 @@ class LogKDE:
                 )
                 cnt_low = cnt_high
 
-        if self.displace_t is True:
+        if self.displace_t:
             rts = rts + self.displace_t_val
 
         return {
@@ -399,6 +409,7 @@ class LogKDE:
             Value to filter rts by, default is -999. -999 is the number returned by the
             simulators if we breach max_t or deadline.
         """
+
         simulator_data = deepcopy(simulator_data)
         choices = np.unique(simulator_data["metadata"]["possible_choices"])
         n = len(simulator_data["choices"])
@@ -455,7 +466,7 @@ class LogKDE:
 
 # Support functions (accessible from outside the main class defined in script)
 def bandwidth_silverman(
-    sample: np.ndarray | list[float] | tuple[float] = (0, 0, 0),
+    sample: Iterable[float] = (0, 0, 0),
     std_cutoff: float = 1e-3,
     std_proc: str = "restrict",  # options 'kill', 'restrict'
     std_n_1: float = 10.0,  # HERE WE CAN ALLOW FOR SOMETHING MORE INTELLIGENT
@@ -484,18 +495,18 @@ def bandwidth_silverman(
     # Compute number of samples
     sample_ = np.array(sample)
     n = len(sample_)
+    if n == 0:
+        raise ValueError("Sample is empty")
 
     # Deal with very small stds and n = 1 case
     if n > 1:
-        # Compute std of sample
         std = np.std(sample_)
+        # If std is too small,
+        # either kill it of restrict to std_cutoff
         if std < std_cutoff:
-            if std_proc == "restrict":
-                std = std_cutoff
-            if std_proc == "kill":
-                std = 0.0
+            std = std_cutoff if std_proc == "restrict" else 0.0
     else:
         # AF-Comment: This is a bit of a weakness (can be arbitrarily incorrect)
         std = std_n_1
 
-    return np.power((4 / 3), 1 / 5) * std * np.power(n, (-1 / 5))
+    return np.power((4 / (3 * n)), 1 / 5) * std
