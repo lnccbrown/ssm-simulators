@@ -82,7 +82,7 @@ def test_data_generator():
 
     # Now let's define our corresponding `model_config`.
     model_config = ssms.config.model_config["angle"]
-    my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
+    my_dataset_generator = ssms.dataset_generators.lan_mlp.DataGenerator(
         generator_config=generator_config, model_config=model_config
     )
     training_data = my_dataset_generator.generate_data_training_uniform(save=False)
@@ -95,7 +95,7 @@ def test_data_generator():
         "opn_labels",
         "gonogo_data",
         "gonogo_labels",
-        "thetas",
+        "theta",
         "lan_data",
         "lan_labels",
         "binned_128",
