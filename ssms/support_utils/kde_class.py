@@ -273,20 +273,18 @@ class LogKDE:
                 )
             else:
                 # Evaluate likelihood for "choices" for which we have base data
-                log_kde_eval_out_tmp = log_rts[choice_idx_tmp]
+                log_kde_eval_out_tmp = np.zeros_like(log_rts[choice_idx_tmp])
                 # Evaluate likelihood explicitly where displaced_rts > 0
                 rt_pos_idx = displaced_rts[choice_idx_tmp] > 0
+                valid_log_rts_for_choice = log_rts[choice_idx_tmp][rt_pos_idx]
                 log_kde_eval_out_tmp[rt_pos_idx] = (
                     np.log(
                         self.data["choice_proportions"][self.data["choices"].index(c)]
                     )
                     + self.base_kdes[self.data["choices"].index(c)].score_samples(
-                        np.expand_dims(
-                            log_rts[choice_idx_tmp][rt_pos_idx],
-                            1,
-                        )
+                        np.expand_dims(valid_log_rts_for_choice, 1)
                     )
-                    - log_rts[choice_idx_tmp][rt_pos_idx]
+                    - valid_log_rts_for_choice
                 )
 
                 # Apply lower bounds where displaced_rts <= 0 and where original evaluation
