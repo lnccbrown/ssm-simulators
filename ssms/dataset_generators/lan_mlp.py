@@ -172,8 +172,6 @@ class DataGenerator:
         else:
             raise ValueError("param_bounds must be a list or a dictionary")
 
-        # print(self.model_config)
-
         self._build_simulator()
         self._get_ncpus()
 
