@@ -180,7 +180,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["z"] = np.expand_dims(theta["z"], axis=1)
             theta["theta"] = np.expand_dims(theta["theta"], axis=1)
             theta["t"] = np.zeros(n_trials).astype(np.float32)
-        
+
         if model in ["dev_lba_angle_3_v2"]:
             theta["v"] = np.column_stack([theta["v0"], theta["v1"], theta["v2"]])
             # theta["a"] = np.expand_dims(theta["a"], axis=1)
