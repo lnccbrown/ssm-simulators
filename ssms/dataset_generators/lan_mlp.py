@@ -444,9 +444,9 @@ class DataGenerator:
 
     def _mlp_get_processed_data_for_theta(self, random_seed_tuple: tuple | list):
         np.random.seed(random_seed_tuple[0])
-        keep = 0
+
         # Keep simulating until we are happy with data
-        while not keep:
+        while True:
             theta_dict = sample_parameters_from_constraints(
                 self.model_config["constrained_param_space"], 1
             )
@@ -459,7 +459,9 @@ class DataGenerator:
                 theta=deepcopy(theta_dict), random_seed=random_seed_tuple[1]
             )
             # Check if simulations pass filter
-            keep, stats = self._filter_simulations(simulations)
+            keep, _ = self._filter_simulations(simulations)
+            if keep:
+                break
 
         # Now that we are happy with data
         # construct KDEs
