@@ -1,10 +1,9 @@
 # KDE GENERATORS
+from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
 from sklearn.neighbors import KernelDensity
-from collections.abc import Iterable
-
 
 """
     This module contains a class for generating kdes from data.
