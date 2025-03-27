@@ -195,7 +195,7 @@ class DataGenerator:
         """Get the number cpus to use for parallelization."""
         # Get number of cpus
         if self.generator_config["n_cpus"] == "all":
-            n_cpus = psutil.cpu_count(logical=False) or 1 # in case of None, set to 1
+            n_cpus = psutil.cpu_count(logical=False) or 1  # in case of None, set to 1
             print("n_cpus used: ", n_cpus)
         else:
             n_cpus = self.generator_config["n_cpus"]
