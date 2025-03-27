@@ -197,20 +197,20 @@ class LogKDE:
             log_rts_filtered = log_rts[mask]
             log_rts_expanded = np.expand_dims(log_rts_filtered, axis=1)
             data_internal["rts"] = np.exp(log_rts_expanded)
-        elif "rts" in data and ("log_rts" not in data):
+        elif "rts" in data:
             rts = data["rts"]
             mask = rts != filter_rts
             rts_filtered = rts[mask]
             rts_expanded = np.expand_dims(rts_filtered, axis=1)
             data_internal["rts"] = rts_expanded
-        elif ("log_rts" not in data) and ("rts" not in data):
+        else:
             raise ValueError(
                 "data dictionary must contain either rts or log_rts as keys!"
             )
 
-        data_internal["choices"] = np.expand_dims(
-            data["choices"][data["rts"] != filter_rts], axis=1
-        )
+        choices_filtered = data["choices"][mask]
+        choices_expanded = np.expand_dims(choices_filtered, axis=1)
+        data_internal["choices"] = choices_expanded
 
         if data_internal["rts"].shape != data_internal["choices"].shape:
             raise ValueError(
