@@ -295,10 +295,9 @@ class LogKDE:
 
                 log_kde_eval[choice_idx_tmp] = log_kde_eval_out_tmp
 
-        if log_eval is True:
+        if log_eval:
             return np.squeeze(log_kde_eval)
-        else:
-            return np.squeeze(np.exp(log_kde_eval))
+        return np.squeeze(np.exp(log_kde_eval))
 
     def kde_sample(
         self,
