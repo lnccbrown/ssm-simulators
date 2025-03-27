@@ -305,20 +305,15 @@ class DataGenerator:
         n_kde = int(n * p[0])
         n_unif_up = int(n * p[1])
         n_unif_down = int(n * p[2])
+        n_times_sum_kde_unifup_unifdown = n_kde + n_unif_up + n_unif_down
 
+        out_ncols = 3 + len(theta)
         if self.generator_config["separate_response_channels"]:
-            out = np.zeros(
-                (
-                    n_kde + n_unif_up + n_unif_down,
-                    2 + self.model_config["nchoices"] + len(theta.items()),
-                )
-            )
-        else:
-            out = np.zeros((n_kde + n_unif_up + n_unif_down, 3 + len(theta.items())))
-
-        out[:, : len(theta.items())] = np.tile(
+            out_ncols += self.model_config["nchoices"] - 1
+        out = np.zeros((n_times_sum_kde_unifup_unifdown, out_ncols))
+        out[:, : len(theta)] = np.tile(
             np.stack([theta[key_] for key_ in self.model_config["params"]], axis=1),
-            (n_kde + n_unif_up + n_unif_down, 1),
+            (n_times_sum_kde_unifup_unifdown, 1),
         )
 
         tmp_kde = kde_class.LogKDE(
