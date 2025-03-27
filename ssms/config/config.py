@@ -635,6 +635,18 @@ model_config = {
         "n_particles": 3,
         "simulator": cssm.lba_angle,
     },
+    "dev_lba_angle_3_v2": {
+        "name": "dev_lba_angle_3_v2",  # this is essentially conventional analytical LBA with angle without any constraints on vs
+        "params": ["v0", "v1", "v2", "a", "z", "theta"],
+        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [6.0, 6.0, 6.0, 3.0, 0.9, 1.3]],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
+        "n_params": 6,
+        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
+        "nchoices": 3,
+        "n_particles": 3,
+        "simulator": cssm.dev_lba_angle_v2,
+    },
     "dev_rlwm_lba_pw_v1": {
         "name": "dev_rlwm_lba_pw_v1",
         "params": [

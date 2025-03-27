@@ -4058,6 +4058,110 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
                                                          }}
 
 
+# Simulate (rt, choice) tuples from: Collapsing bound angle LBA Model -----------------------------
+def dev_lba_angle_v2(np.ndarray[float, ndim = 2] v, 
+        np.ndarray[float, ndim = 1] a, 
+        np.ndarray[float, ndim = 1] z,  
+        np.ndarray[float, ndim = 1] theta,
+        np.ndarray[float, ndim = 1] deadline,
+        np.ndarray[float, ndim = 2] sd, # noise sigma
+        np.ndarray[float, ndim = 1] t, # non-decision time
+        int nact = 3,
+        int n_samples = 2000,
+        int n_trials = 1,
+        float max_t = 20,
+        **kwargs
+        ):
+    """
+    Simulate reaction times and choices from a Linear Ballistic Accumulator (LBA) model with collapsing bounds.
+
+    Parameters:
+    -----------
+    v : np.ndarray[float, ndim=2]
+        Drift rate for each accumulator.
+    a : np.ndarray[float, ndim=1]
+        Starting point of the decision boundary.
+    z : np.ndarray[float, ndim=1]
+        Starting point distribution.
+    theta : np.ndarray[float, ndim=1]
+        Angle parameter for the collapsing bound.
+    deadline : np.ndarray[float, ndim=1]
+        Maximum allowed decision time.
+    sd : np.ndarray[float, ndim=1]
+        Standard deviation of the drift rate distribution.
+    t : np.ndarray[float, ndim=1]
+        Non-decision time.
+    nact : int, optional
+        Number of accumulators (default is 3).
+    n_samples : int, optional
+        Number of samples to generate (default is 2000).
+    n_trials : int, optional
+        Number of trials to simulate (default is 1).
+    max_t : float, optional
+        Maximum time to simulate (default is 20).
+
+    Returns:
+    --------
+    dict
+        A dictionary containing:
+        - 'rts': simulated reaction times
+        - 'choices': simulated choices
+        - 'metadata': additional information about the simulation
+    """
+
+    # Param views
+    cdef float[:, :] v_view = v
+    cdef float[:] a_view = a
+    cdef float[:] z_view = z
+    cdef float[:] theta_view = theta
+    cdef float[:] t_view = t
+
+    cdef float[:] deadline_view = deadline
+    cdef float[:, :] sd_view = sd
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
+    cdef float[:, :, :] rts_view = rts
+    
+    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
+    cdef int[:, :, :] choices_view = choices
+    
+    cdef Py_ssize_t n, k, i
+
+    for k in range(n_trials):
+        for n in range(n_samples):
+            zs = np.random.uniform(0, z_view[k] * a_view[k], nact)
+            
+            vs = np.abs(np.random.normal(v_view[k], sd_view[k])) # np.abs() to avoid negative vs
+            x_t = ([a_view[k]]*nact - zs)/(vs + np.tan(theta_view[k]))
+        
+            choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
+            rts_view[n, k, 0] = np.min(x_t) + t_view[k] # store reaction time for sample n
+
+            # If the rt exceeds the deadline, set rt to -999
+            if rts_view[n, k, 0] >= deadline_view[k]:
+                rts_view[n, k, 0] = -999
+
+            # if np.min(x_t) <= 0:
+            #     print("\n ssms sim error: ", a[k], zs, vs, np.tan(theta[k]))
+    
+    v_dict = {}  
+    for i in range(nact):
+        v_dict['v_' + str(i)] = v[:, i]
+
+    return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
+                                                         'a': a,
+                                                         'z': z,
+                                                         'theta': theta,
+                                                         'deadline': deadline,
+                                                         'sd': sd,
+                                                         't': t,
+                                                         'n_samples': n_samples,
+                                                         'simulator' : 'lba_angle',
+                                                         'possible_choices': list(np.arange(0, nact, 1)),
+                                                         'max_t': max_t,
+                                                         }}
+
+
 # Simulate (rt, choice) tuples from LBA piece-wise model  -----------------------------
 def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] v_RL, 
         np.ndarray[float, ndim = 2] v_WM,

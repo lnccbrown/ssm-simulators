@@ -547,6 +547,7 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
         "lba_3_vs_constraint",
         "lba_angle_3_vs_constraint",
         "lba_angle_3",
+        "dev_lba_angle_3_v2",
         "dev_rlwm_lba_race_v1",
         "dev_rlwm_lba_race_v2",
         "dev_rlwm_lba_pw_v1",
