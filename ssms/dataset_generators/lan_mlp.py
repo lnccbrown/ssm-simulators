@@ -139,9 +139,11 @@ class DataGenerator:
         if "kde_displace_t" not in self.generator_config:
             self.generator_config["kde_displace_t"] = False
 
-        if (
-            self.generator_config["kde_displace_t"] is True
-            and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
+        if all(
+            [
+                self.generator_config["kde_displace_t"],
+                self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T,
+            ],
         ):
             warnings.warn(
                 f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. Overriding setting to False",
