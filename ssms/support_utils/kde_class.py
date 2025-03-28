@@ -140,7 +140,7 @@ class LogKDE:
         """
         # Compute bandwidth parameters
         if auto_bandwidth:
-            self.compute_bandwidths(type=bandwidth_type)
+            self.compute_bandwidths(bandwidth_type=bandwidth_type)
 
         # Generate the kdes
         self.base_kdes = []

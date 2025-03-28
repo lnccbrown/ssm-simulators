@@ -4,6 +4,7 @@ The class defined below can be used to generate training data
 compatible with the expectations of LANs.
 """
 
+import logging
 import pickle
 import uuid
 import warnings
@@ -23,6 +24,8 @@ from ssms.basic_simulators.simulator import (
 from ssms.config import KDE_NO_DISPLACE_T
 from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
+
+logger = logging.getLogger(__name__)
 
 
 # TODO: #77 rew Class name `data_generator` should use CapWords convention  # noqa: FIX002
@@ -120,7 +123,7 @@ class data_generator:  # noqa: N801
                 self.generator_config["kde_displace_t"] = False
 
             if (
-                self.generator_config["kde_displace_t"] is True
+                self.generator_config["kde_displace_t"]
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
             ):
                 warnings.warn(
@@ -674,10 +677,9 @@ class data_generator:  # noqa: N801
                 Path(full_file_name).open("wb"),
                 protocol=self.generator_config["pickleprotocol"],
             )
-            return "Dataset completed"
+            logger.info("Dataset completed")
 
-        else:
-            return data
+        return data
 
     # def _nested_get_processed_data(self, random_seed):
     #     np.random.seed(random_seed)
