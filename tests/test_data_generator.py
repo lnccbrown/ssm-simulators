@@ -104,16 +104,5 @@ def test_data_generator():
         "model_config",
     ]
 
-    del model_config["simulator"]
-    del model_config["boundary"]
-    assert model_config == {
-        "name": "angle",
-        "params": ["v", "a", "z", "t", "theta"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 0.001, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]],
-        "boundary_name": "angle",
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.001, 0.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-    }
+    expected_model_config = ssms.config.model_config["angle"]
+    assert model_config == expected_model_config
