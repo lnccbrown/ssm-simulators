@@ -124,7 +124,10 @@ class LogKDE:
             return "no_base_data"
 
     def _generate_base_kdes(
-        self, auto_bandwidth: bool = True, bandwidth_type: str = "silverman"
+        self,
+        auto_bandwidth: bool = True,
+        bandwidth_type: str = "silverman",
+        kernel: str = "gaussian",
     ) -> None:
         """
         Generates kdes from rt data. We apply gaussian kernels to the log of the rts.
@@ -144,14 +147,38 @@ class LogKDE:
         if auto_bandwidth:
             self.bandwidths = self.compute_bandwidths(bandwidth_type=bandwidth_type)
 
+        def __generate_kde(
+            bandwidth: str | float, rts: np.ndarray, kernel: str = "gaussian"
+        ) -> str | KernelDensity:
+            """Generate a kernel density estimator for the given data.
+
+            Arguments:
+            ----------
+            bandwidth: str | float
+                The bandwidth to use for the KDE. Can be "no_base_data" or a float.
+            rts: np.ndarray
+                Array of response times to fit the KDE to.
+            kernel: str
+                The kernel to use for the KDE, default is "gaussian".
+
+            Returns:
+            --------
+            str | KernelDensity
+                Either "no_base_data" string or a fitted KernelDensity object.
+            """
+            if bandwidth == "no_base_data":
+                return "no_base_data"
+            else:
+                return KernelDensity(kernel=kernel, bandwidth=bandwidth).fit(
+                    np.log(rts)
+                )
+
         # Generate the kdes
         self.base_kdes = [
-            (
-                "no_base_data"
-                if self.bandwidths[i] == "no_base_data"
-                else KernelDensity(kernel="gaussian", bandwidth=self.bandwidths[i]).fit(
-                    np.log(self.data["rts"][i])
-                )
+            __generate_kde(
+                bandwidth=self.bandwidths[i],
+                rts=self.data["rts"][i],
+                kernel=kernel,
             )
             for i in range(len(self.data["choices"]))
         ]
@@ -334,9 +361,11 @@ class LogKDE:
         if isinstance(alternate_choice_p, float):
             alternate_choice_p = [alternate_choice_p]
 
-        if (
-            not len(alternate_choice_p) == len(self.data["choices"])
-            and not use_empirical_choice_p
+        if not any(
+            [
+                len(alternate_choice_p) == len(self.data["choices"]),
+                use_empirical_choice_p,
+            ]
         ):
             raise ValueError(
                 "alternate_choice_p must be of the same length as the number of choices"
