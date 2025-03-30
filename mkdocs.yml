@@ -8,11 +8,14 @@ nav:
       - Overview: index.md
   - Basic Tutorial:
       - Installation: basic_tutorial/basic_tutorial.ipynb
+  - Tutorials:
+      - KDE Class: tutorials/kde_class.ipynb
   - API:
       - ssms: api/ssms.md
       - basic simulators: api/basic_simulators.md
       - config: api/config.md
       - data generators: api/dataset_generators.md
+      - support utils: api/support_utils.md
 
 plugins:
   - search
