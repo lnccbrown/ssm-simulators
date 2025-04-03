@@ -184,7 +184,6 @@ class data_generator:  # noqa: N801
             simulator,
             n_samples=self.generator_config["n_samples"],
             max_t=self.generator_config["max_t"],
-            bin_dim=0,
             delta_t=self.generator_config["delta_t"],
             smooth_unif=self.generator_config["smooth_unif"],
         )

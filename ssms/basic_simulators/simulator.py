@@ -314,8 +314,6 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
 
 # TODO: Make useful as independent utility,
 # this is dropped from basic simulator call now
-
-
 def bin_simulator_output_pointwise(
     out: tuple[np.ndarray, np.ndarray] = (np.array([0]), np.array([0])),
     bin_dt: float = 0.04,
