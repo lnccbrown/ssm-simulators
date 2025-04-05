@@ -1,11 +1,9 @@
 # KDE GENERATORS
+from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
 from sklearn.neighbors import KernelDensity
-
-# from ssms.basic_simulators import simulator
-
 
 """
     This module contains a class for generating kdes from data.
@@ -30,13 +28,13 @@ class LogKDE:
     -------
         compute_bandwidths(type='silverman')
             Computes bandwidths for each choice from rt data.
-        generate_base_kdes(auto_bandwidth=True, bandwidth_type='silverman')
+        _generate_base_kdes(auto_bandwidth=True, bandwidth_type='silverman')
             Generates kdes from rt data.
         kde_eval(data=([], []), log_eval=True)
             Evaluates kde log likelihood at chosen points.
         kde_sample(n_samples=2000, use_empirical_choice_p=True, alternate_choice_p=0)
             Samples from a given kde.
-        attach_data_from_simulator(simulator_data={'rts':[0, 2, 4], 'choices':[-1, 1, -1], 'metadata':{}}))
+        _attach_data_from_simulator(simulator_data={'rts':[0, 2, 4], 'choices':[-1, 1, -1], 'metadata':{}}))
             Helper function to transform ddm simulator output
             to dataset suitable for the kde function class.
 
@@ -70,68 +68,75 @@ class LogKDE:
             AssertionError: If displace_t is True but metadata contains multiple t values.
         """
         self.simulator_info = simulator_data["metadata"]
+        self.displace_t: bool = displace_t
 
-        if displace_t:
-            # TODO: #84 Replace with exception  # noqa: FIX002
-            assert np.unique(simulator_data["metadata"]["t"]).shape[0] == 1, (  # noqa: S101
-                "Multiple t values in simulator data. Can't shift."
-            )
-            self.displace_t_val = np.unique(simulator_data["metadata"]["t"])[0]
-            self.displace_t = True
-        else:
-            self.displace_t = False
+        if self.displace_t:
+            t_vals = np.unique(simulator_data["metadata"]["t"])
+            if t_vals.shape[0] != 1:
+                raise ValueError("Multiple t values in simulator data. Can't shift.")
+            self.displace_t_val: float = t_vals[0]
 
-        self.attach_data_from_simulator(simulator_data)
-        self.generate_base_kdes(
+        self._attach_data_from_simulator(simulator_data)
+        self._generate_base_kdes(
             auto_bandwidth=auto_bandwidth, bandwidth_type=bandwidth_type
         )
 
-    # Function to compute bandwidth parameters given data-set
-    # (At this point using Silverman rule)
-    def compute_bandwidths(self, bandwidth_type="silverman"):
+        self.auto_bandwidth: bool = auto_bandwidth
+        self.bandwidth_type: str = bandwidth_type
+
+    def compute_bandwidths(
+        self,
+        bandwidth_type: str = "silverman",
+    ) -> list[float | str]:
         """
         Computes bandwidths for each choice from rt data.
 
         Arguments:
         ----------
-        type: string
+        bandwidth_type: str
             Type of bandwidth to use, default is 'silverman' which follows silverman rule.
+        return_result: bool
+            Whether to return the result. Defaults to False.
 
         Returns:
         --------
-        bandwidths: list
-            List of bandwidths for each choice.
+        bandwidths: list[float] | None
+            List of bandwidths for each choice if return_result is True, otherwise None.
         """
 
         # For now allows only silverman rule
-        self.bandwidths = []
         if bandwidth_type == "silverman":
-            for i in range(0, len(self.data["choices"]), 1):
-                if len(self.data["log_rts"][i]) == 0:
-                    self.bandwidths.append("no_base_data")
-                else:
-                    bandwidth_tmp = bandwidth_silverman(
-                        sample=(self.data["log_rts"][i])
-                    )
-                    if bandwidth_tmp > 0:
-                        self.bandwidths.append(bandwidth_tmp)
-                    else:
-                        self.bandwidths.append("no_base_data")
+            bandwidths_ = [
+                self._compute_bandwidth_for_choice(log_rts)
+                for log_rts in self.data["log_rts"]
+            ]
+        else:
+            raise ValueError(f"Bandwidth type {bandwidth_type} not supported yet")
+        return bandwidths_
 
-    # Function to generate basic kdes
-    # I call the function generate_base_kdes because
-    # in the final evaluation computations
-    # we adjust the input and output of the kdes
-    # appropriately (we do not use them directly)
-    def generate_base_kdes(self, auto_bandwidth=True, bandwidth_type="silverman"):
+    def _compute_bandwidth_for_choice(self, log_rts):
+        if len(log_rts) == 0:
+            return "no_base_data"
+        else:
+            bw_tmp = bandwidth_silverman(sample=log_rts)
+            if bw_tmp > 0:
+                return bw_tmp
+            return "no_base_data"
+
+    def _generate_base_kdes(
+        self,
+        auto_bandwidth: bool = True,
+        bandwidth_type: str = "silverman",
+        kernel: str = "gaussian",
+    ) -> None:
         """
         Generates kdes from rt data. We apply gaussian kernels to the log of the rts.
 
         Arguments:
         ----------
-        auto_bandwidth: boolean
+        auto_bandwidth: bool
             Whether to compute bandwidths automatically, default is True.
-        bandwidth_type: string
+        bandwidth_type: str
             Type of bandwidth to use, default is 'silverman' which follows silverman rule.
         Returns:
         --------
@@ -140,23 +145,52 @@ class LogKDE:
         """
         # Compute bandwidth parameters
         if auto_bandwidth:
-            self.compute_bandwidths(type=bandwidth_type)
+            self.bandwidths = self.compute_bandwidths(bandwidth_type=bandwidth_type)
 
-        # Generate the kdes
-        self.base_kdes = []
-        for i in range(0, len(self.data["choices"]), 1):
-            if self.bandwidths[i] == "no_base_data":
-                self.base_kdes.append("no_base_data")
+        def __generate_kde(
+            bandwidth: str | float, rts: np.ndarray, kernel: str = "gaussian"
+        ) -> str | KernelDensity:
+            """Generate a kernel density estimator for the given data.
+
+            Arguments:
+            ----------
+            bandwidth: str | float
+                The bandwidth to use for the KDE. Can be "no_base_data" or a float.
+            rts: np.ndarray
+                Array of response times to fit the KDE to.
+            kernel: str
+                The kernel to use for the KDE, default is "gaussian".
+
+            Returns:
+            --------
+            str | KernelDensity
+                Either "no_base_data" string or a fitted KernelDensity object.
+            """
+            if bandwidth == "no_base_data":
+                return "no_base_data"
             else:
-                self.base_kdes.append(
-                    KernelDensity(kernel="gaussian", bandwidth=self.bandwidths[i]).fit(
-                        np.log(self.data["rts"][i])
-                    )
+                return KernelDensity(kernel=kernel, bandwidth=bandwidth).fit(
+                    np.log(rts)
                 )
 
-    # Function to evaluate the kde log likelihood at chosen points
-    # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B006, FIX002
-    def kde_eval(self, data={}, log_eval=True, lb=-66.774, eps=10e-5, filter_rts=-999):  # noqa: B006
+        # Generate the kdes
+        self.base_kdes = [
+            __generate_kde(
+                bandwidth=self.bandwidths[i],
+                rts=self.data["rts"][i],
+                kernel=kernel,
+            )
+            for i in range(len(self.data["choices"]))
+        ]
+
+    def kde_eval(
+        self,
+        data: dict,
+        log_eval: bool = True,
+        lb: float = -66.774,
+        eps: float = 10e-5,
+        filter_rts: float = -999,
+    ) -> np.ndarray:
         """
         Evaluates kde log likelihood at chosen points.
 
@@ -183,193 +217,120 @@ class LogKDE:
         # Initializations
         data_internal = deepcopy(data)
 
-        if "log_rts" in data.keys() and ("rts" not in data.keys()):
-            data_internal["log_rts"] = np.expand_dims(
-                data["log_rts"][data["log_rts"] != filter_rts], axis=1
-            )
-            data_internal["choices"] = np.expand_dims(
-                data["choices"][data["log_rts"] != filter_rts], axis=1
-            )
-            assert data["log_rts"].shape == data["choices"].shape, (  # noqa: S101
-                "rts and choices need to have matching shapes in data dictionary!"
-            )  # TODO: #84 Replace with exception  # noqa: FIX002
-            return self._kde_eval_log_rt(
-                data=data_internal, log_eval=log_eval, lb=lb, eps=eps
-            )
-        elif "rts" in data.keys() and ("log_rts" not in data.keys()):
-            data_internal["rts"] = np.expand_dims(
-                data["rts"][data["rts"] != filter_rts], axis=1
-            )
-            data_internal["choices"] = np.expand_dims(
-                data["choices"][data["rts"] != filter_rts], axis=1
-            )
-            assert data_internal["rts"].shape == data_internal["choices"].shape, (  # noqa: S101
-                "rts and choices need to have matching shapes in data dictionary!"
-            )  # TODO: #84 Replace with exception  # noqa: FIX002
-            return self._kde_eval_(
-                data=data_internal, log_eval=log_eval, lb=lb, eps=eps
-            )
-        elif ("log_rts" in data.keys()) and ("rts" in data.keys()):
-            data_internal["rts"] = np.expand_dims(
-                data["rts"][data["rts"] != filter_rts], axis=1
-            )
-            data_internal["choices"] = np.expand_dims(
-                data["choices"][data["rts"] != filter_rts], axis=1
-            )
-            assert data_internal["rts"].shape == data_internal["choices"].shape, (  # noqa: S101
-                "rts and choices need to have matching shapes in data dictionary!"
-            )  # TODO: #84 Replace with exception  # noqa: FIX002
-            return self._kde_eval_(
-                data=data_internal, log_eval=log_eval, lb=lb, eps=eps
-            )
+        if "log_rts" in data and ("rts" not in data):
+            log_rts = data["log_rts"]
+            mask = log_rts != filter_rts
+            log_rts_filtered = log_rts[mask]
+            log_rts_expanded = np.expand_dims(log_rts_filtered, axis=1)
+            data_internal["rts"] = np.exp(log_rts_expanded)
+        elif "rts" in data:
+            rts = data["rts"]
+            mask = rts != filter_rts
+            rts_filtered = rts[mask]
+            rts_expanded = np.expand_dims(rts_filtered, axis=1)
+            data_internal["rts"] = rts_expanded
         else:
             raise ValueError(
                 "data dictionary must contain either rts or log_rts as keys!"
             )
 
-    # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B006, FIX002
-    def _kde_eval_(
+        choices_filtered = data["choices"][mask]
+        choices_expanded = np.expand_dims(choices_filtered, axis=1)
+        data_internal["choices"] = choices_expanded
+
+        if data_internal["rts"].shape != data_internal["choices"].shape:
+            raise ValueError(
+                "rts and choices need to have matching shapes in data dictionary!"
+            )
+
+        return self.__kde_eval_(data=data_internal, log_eval=log_eval, lb=lb, eps=eps)
+
+    def __kde_eval_(
         self,
-        data={},  # noqa: B006
-        log_eval=True,
-        lb=-66.774,
-        eps=10e-5,
-    ):  # kde
+        data: dict,  # noqa: B006
+        log_eval: bool = True,
+        lb: float = -66.774,
+        eps: float = 10e-5,
+    ) -> np.ndarray:  # kde
         """
         Evaluates kde log likelihood at chosen points.
 
         Arguments:
         ----------
-        data: tuple
-            Tuple of (rts, choices) to evaluate the kde at.
-        log_eval: boolean
+        data: dict
+            Dictionary with keys 'rts', and 'choices' to evaluate the kde at.
+        log_eval: bool
             Whether to return log likelihood or likelihood, default is True.
+        lb: float
+            Lower bound for log likelihoods, default is -66.774.
+        eps: float
+            Epsilon value to use for lower bounds on rts, default is 10e-5.
 
         Returns:
         --------
-        log_kde_eval: array
-            Array of log likelihoods for each (rt, choice) pair.
+        np.ndarray
+            Array of log likelihoods for each (rt, choice) pair if log_eval is True,
+            otherwise array of likelihoods.
         """
 
         # Initializations
         if self.displace_t is True:
             displaced_rts = data["rts"] - self.displace_t_val
-            log_rts = np.log(np.maximum(displaced_rts, eps))
         else:
             displaced_rts = data["rts"]
-            log_rts = np.log(data["rts"])
 
-        log_kde_eval = np.zeros(data["choices"].shape)  # np.log(data['rts'])
+        # The line below is to avoid log(0) and to ensure that the log_rts are always defined
+        # however wherever displaced_rts <= 0, we will not evaluate the log_rts directly
+        # in the following
+        log_rts = np.log(np.maximum(displaced_rts, eps))
+
+        log_kde_eval = np.zeros(data["choices"].shape)
         choices = np.unique(data["choices"])
 
         # Main loop
         for c in choices:
-            # Get data indices where choice == c
             choice_idx_tmp = np.where(data["choices"] == c)
 
-            # Main step: Evaluate likelihood for rts corresponding
-            # to choice == c
             if self.base_kdes[self.data["choices"].index(c)] == "no_base_data":
-                log_kde_eval[choice_idx_tmp] = np.log(
-                    1 / self.data["n_trials"]
-                ) + np.log(
-                    1 / self.simulator_info["max_t"]
-                )  # -66.77497 # the number corresponds to log(1e-29)
-                # --> should rather be log(1 / n) + log(1 / 20)
+                # Evaluate likelihood for "choices" for which we have no base data
+                # log(1 / n_trials_simulator) + log(1 / max_t)
+                log_kde_eval[choice_idx_tmp] = -np.log(
+                    self.data["n_trials"] * self.simulator_info["max_t"]
+                )
             else:
-                log_kde_eval_out_tmp = log_rts[choice_idx_tmp]
-                log_kde_eval_out_tmp[displaced_rts[choice_idx_tmp] <= 0] = lb
-                log_kde_eval_out_tmp[displaced_rts[choice_idx_tmp] > 0] = (
+                # Evaluate likelihood for "choices" for which we have base data
+                log_kde_eval_out_tmp = np.zeros_like(log_rts[choice_idx_tmp])
+                # Evaluate likelihood explicitly where displaced_rts > 0
+                rt_pos_idx = displaced_rts[choice_idx_tmp] > 0
+                valid_log_rts_for_choice = log_rts[choice_idx_tmp][rt_pos_idx]
+                log_kde_eval_out_tmp[rt_pos_idx] = (
                     np.log(
                         self.data["choice_proportions"][self.data["choices"].index(c)]
                     )
                     + self.base_kdes[self.data["choices"].index(c)].score_samples(
-                        np.expand_dims(
-                            log_rts[choice_idx_tmp][displaced_rts[choice_idx_tmp] > 0],
-                            1,
-                        )
+                        np.expand_dims(valid_log_rts_for_choice, 1)
                     )
-                    - log_rts[choice_idx_tmp][displaced_rts[choice_idx_tmp] > 0]
+                    - valid_log_rts_for_choice
                 )
+
+                # Apply lower bounds where displaced_rts <= 0 and where original evaluation
+                # of likelihood was below the lower bound lb
+                log_kde_eval_out_tmp[
+                    (log_kde_eval_out_tmp <= lb) | (displaced_rts[choice_idx_tmp] <= 0)
+                ] = lb
+
                 log_kde_eval[choice_idx_tmp] = log_kde_eval_out_tmp
 
-        if log_eval is True:
+        if log_eval:
             return np.squeeze(log_kde_eval)
-        else:
-            return np.squeeze(np.exp(log_kde_eval))
-
-    # Function to evaluate the kde log likelihood at chosen points
-    def _kde_eval_log_rt(
-        self,
-        data={},  # noqa: B006
-        log_eval=True,
-        lb=-66.774,
-        eps=10e-5,
-    ):  # kde # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B006, FIX002
-        """
-        Evaluates kde log likelihood at chosen points.
-
-        Arguments:
-        ----------
-        data: tuple
-            Tuple of (rts, choices) to evaluate the kde at.
-        log_eval: boolean
-            Whether to return log likelihood or likelihood, default is True.
-
-        Returns:
-        --------
-        log_kde_eval: array
-            Array of log likelihoods for each (rt, choice) pair.
-        """
-
-        if self.displace_t is True:
-            displaced_rts = np.exp(data["log_rts"]) - self.displace_t_val
-            log_rts = np.log(np.maximum(displaced_rts, eps))
-        else:
-            displaced_rts = np.exp(data["log_rts"])
-            log_rts = np.log(np.maximum(np.exp(data["log_rts"], eps)))
-
-        log_kde_eval = np.zeros(data["choices"].shape)  # np.log(data['rts'])
-        choices = np.unique(data["choices"])
-
-        # Main loop
-        for c in choices:
-            # Get data indices where choice == c
-            choice_idx_tmp = np.where(data["choices"] == c)
-
-            # Main step: Evaluate likelihood for rts corresponding
-            # to choice == c
-            if self.base_kdes[self.data["choices"].index(c)] == "no_base_data":
-                # AF-TODO: Check if it make sense to apply the np.log(1 / max_t)
-                # here, since if we operate on log rts, log rts are not uniform
-                # on the interval [log(~0), log(max_t)]
-                log_kde_eval[choice_idx_tmp] = np.log(
-                    1 / self.data["n_trials"]
-                ) + np.log(
-                    1 / self.simulator_info["max_t"]
-                )  # -66.77497 # the number corresponds to log(1e-29)
-                # --> should rather be log(1 / n) + log(1 / 20)
-            else:
-                log_kde_eval_out_tmp = log_rts[choice_idx_tmp]
-                log_kde_eval_out_tmp[displaced_rts[choice_idx_tmp] <= 0] = lb
-
-                log_kde_eval_out_tmp[displaced_rts[choice_idx_tmp] > 0] = np.log(
-                    self.data["choice_proportions"][self.data["choices"].index(c)]
-                ) + self.base_kdes[self.data["choices"].index(c)].score_samples(
-                    np.expand_dims(
-                        log_rts[choice_idx_tmp][displaced_rts[choice_idx_tmp] > 0], 1
-                    )
-                )
-                log_kde_eval[choice_idx_tmp] = log_kde_eval_out_tmp
-
-        if log_eval is True:
-            return np.squeeze(log_kde_eval)
-        else:
-            return np.squeeze(np.exp(log_kde_eval))
+        return np.squeeze(np.exp(log_kde_eval))
 
     def kde_sample(
-        self, n_samples=2000, use_empirical_choice_p=True, alternate_choice_p=0
-    ):
+        self,
+        n_samples: int = 2000,
+        use_empirical_choice_p: bool = True,
+        alternate_choice_p: np.ndarray | float = 0.0,
+    ) -> dict[str, np.ndarray | dict]:
         """
         Samples from a given kde.
 
@@ -377,32 +338,47 @@ class LogKDE:
         ----------
         n_samples: int
             Number of samples to draw.
-        use_empirical_choice_p: boolean
+        use_empirical_choice_p: bool
             Whether to use empirical choice proportions, default is True. (Note 'empirical' here,
             refers to the originally attached datasets that served as the basis to generate the choice-wise
             kdes)
-        alternate_choice_p: array
+        alternate_choice_p: np.ndarray | float
             Array of choice proportions to use, default is 0. (Note 'alternate' here refers to 'alternative'
             to the 'empirical' choice proportions)
 
+        Returns:
+        --------
+        dict[str, np.ndarray | dict]
+            Dictionary containing:
+            - 'rts': np.ndarray - Response times
+            - 'log_rts': np.ndarray - Log of response times
+            - 'choices': np.ndarray - Choices made
+            - 'metadata': dict - Simulator information
         """
-
-        # sorting the which list in ascending order
-        # this implies that we return the kde_samples array so that the
-        # indices reflect 'choice-labels' as provided in 'which' in ascending order
-        # kde_samples = []
 
         rts = np.zeros((n_samples, 1))
         choices = np.zeros((n_samples, 1))
+        if isinstance(alternate_choice_p, float):
+            alternate_choice_p = [alternate_choice_p]
 
-        n_by_choice = []
-        for i in range(0, len(self.data["choices"]), 1):
-            if use_empirical_choice_p is True:
-                n_by_choice.append(
-                    round(n_samples * self.data["choice_proportions"][i])
-                )
-            else:
-                n_by_choice.append(round(n_samples * alternate_choice_p[i]))
+        if not any(
+            [
+                len(alternate_choice_p) == len(self.data["choices"]),
+                use_empirical_choice_p,
+            ]
+        ):
+            raise ValueError(
+                "alternate_choice_p must be of the same length as the number of choices"
+            )
+
+        n_by_choice = [
+            (
+                round(n_samples * self.data["choice_proportions"][i])
+                if use_empirical_choice_p
+                else round(n_samples * alternate_choice_p[i])
+            )
+            for i in range(len(self.data["choices"]))
+        ]
 
         # Catch a potential dimension error if we ended up rounding up twice
         if sum(n_by_choice) > n_samples:
@@ -431,8 +407,9 @@ class LogKDE:
                 )
                 cnt_low = cnt_high
 
-        if self.displace_t is True:
+        if self.displace_t:
             rts = rts + self.displace_t_val
+
         return {
             "rts": rts,
             "log_rts": np.log(rts),
@@ -442,7 +419,7 @@ class LogKDE:
 
     # Helper function to transform ddm simulator output to dataset suitable for
     # the kde function class
-    def attach_data_from_simulator(
+    def _attach_data_from_simulator(
         self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=-999
     ):
         """
@@ -457,6 +434,7 @@ class LogKDE:
             Value to filter rts by, default is -999. -999 is the number returned by the
             simulators if we breach max_t or deadline.
         """
+
         simulator_data = deepcopy(simulator_data)
         choices = np.unique(simulator_data["metadata"]["possible_choices"])
         n = len(simulator_data["choices"])
@@ -513,297 +491,47 @@ class LogKDE:
 
 # Support functions (accessible from outside the main class defined in script)
 def bandwidth_silverman(
-    sample=[  # noqa: B006
-        0,
-        0,
-        0,
-    ],  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B006, B008, FIX002
-    std_cutoff=1e-3,
-    std_proc="restrict",  # options 'kill', 'restrict'
-    std_n_1=10,  # HERE WE CAN ALLOW FOR SOMETHING MORE INTELLIGENT
-):
+    sample: Iterable[float] = (0, 0, 0),
+    std_cutoff: float = 1e-3,
+    std_proc: str = "restrict",  # options 'kill', 'restrict'
+    std_n_1: float = 10.0,  # HERE WE CAN ALLOW FOR SOMETHING MORE INTELLIGENT
+) -> np.float64:
     """
     Computes silverman bandwidth for an array of samples (rts in our context, but general).
 
     Arguments:
     ----------
-    sample: array
+    sample: np.ndarray
         Array of samples to compute bandwidth for.
     std_cutoff: float
         Cutoff for std, default is 1e-3.
         (If sample-std is smaller than this, we either kill it or restrict it to this value)
-    std_proc: string
+    std_proc: str
         How to deal with small stds, default is 'restrict'. (Options: 'kill', 'restrict')
     std_n_1: float
-        Value to use if n = 1, default is 10. (Not clear if the default is sensible here)
+        Value to use if n = 1, default is 10.0. (Not clear if the default is sensible here)
 
     Returns:
     --------
-    bandwidth: float
+    float
         Silverman bandwidth for the given sample. This is applied as the bandwidth parameter
         when generating gaussian-based kdes in the LogKDE class.
     """
     # Compute number of samples
-    n = len(sample)
+    sample_ = np.array(sample)
+    n = len(sample_)
+    if n == 0:
+        raise ValueError("Sample is empty")
 
     # Deal with very small stds and n = 1 case
     if n > 1:
-        # Compute std of sample
-        std = np.std(sample)
+        std = np.std(sample_)
+        # If std is too small,
+        # either kill it of restrict to std_cutoff
         if std < std_cutoff:
-            if std_proc == "restrict":
-                std = std_cutoff
-            if std_proc == "kill":
-                std = 0
+            std = std_cutoff if std_proc == "restrict" else 0.0
     else:
         # AF-Comment: This is a bit of a weakness (can be arbitrarily incorrect)
         std = std_n_1
 
-    return np.power((4 / 3), 1 / 5) * std * np.power(n, (-1 / 5))
-
-
-# # Generate class for log_kdes
-# class LogKDE:
-#     """
-#     Class for generating kdes from (rt, choice) data. Works for any number of choices.
-
-#     Attributes
-#     ----------
-#         simulator_data: dict, default<None
-#             Dictionary of the type {'rts':[], 'choices':[], 'metadata':{}}.
-#             Follows the format of simulator returns in this package.
-#         bandwidth_type: string
-#             type of bandwidth to use, default is 'silverman'
-#         auto_bandwidth: boolean
-#             whether to compute bandwidths automatically, default is True
-
-#     Methods
-#     -------
-#         compute_bandwidths(type='silverman')
-#             Computes bandwidths for each choice from rt data.
-#         generate_base_kdes(auto_bandwidth=True, bandwidth_type='silverman')
-#             Generates kdes from rt data.
-#         kde_eval(data=([], []), log_eval=True)
-#             Evaluates kde log likelihood at chosen points.
-#         kde_sample(n_samples=2000, use_empirical_choice_p=True, alternate_choice_p=0)
-#             Samples from a given kde.
-#         attach_data_from_simulator(simulator_data={'rts':[0, 2, 4], 'choices':[-1, 1, -1], 'metadata':{}}))
-#             Helper function to transform ddm simulator output
-#             to dataset suitable for the kde function class.
-
-#     Returns:
-#         _type_: _description_
-#     """
-
-#     # Initialize the class
-#     def __init__(
-#         self,
-#         simulator_data,  # as returned by simulator function
-#         bandwidth_type="silverman",
-#         auto_bandwidth=True,
-#     ):
-#         self.attach_data_from_simulator(simulator_data)
-#         self.generate_base_kdes(auto_bandwidth=auto_bandwidth, bandwidth_type=bandwidth_type)
-#         self.simulator_info = simulator_data["metadata"]
-
-#     # Function to compute bandwidth parameters given data-set
-#     # (At this point using Silverman rule)
-#     def compute_bandwidths(self, type="silverman"):
-#         """
-#         Computes bandwidths for each choice from rt data.
-
-#         Arguments:
-#         ----------
-#         type: string
-#             Type of bandwidth to use, default is 'silverman' which follows silverman rule.
-
-#         Returns:
-#         --------
-#         bandwidths: list
-#             List of bandwidths for each choice.
-#         """
-
-#         # For now allows only silverman rule
-#         self.bandwidths = []
-#         if type == "silverman":
-#             for i in range(0, len(self.data["choices"]), 1):
-#                 if len(self.data["rts"][i]) == 0:
-#                     self.bandwidths.append("no_base_data")
-#                 else:
-#                     bandwidth_tmp = bandwidth_silverman(sample=np.log(self.data["rts"][i]))
-#                     if bandwidth_tmp > 0:
-#                         self.bandwidths.append(bandwidth_tmp)
-#                     else:
-#                         self.bandwidths.append("no_base_data")
-
-#     # Function to generate basic kdes
-#     # I call the function generate_base_kdes because
-#     # in the final evaluation computations
-#     # we adjust the input and output of the kdes
-#     # appropriately (we do not use them directly)
-#     def generate_base_kdes(self, auto_bandwidth=True, bandwidth_type="silverman"):
-#         """
-#         Generates kdes from rt data. We apply gaussian kernels to the log of the rts.
-
-#         Arguments:
-#         ----------
-#         auto_bandwidth: boolean
-#             Whether to compute bandwidths automatically, default is True.
-#         bandwidth_type: string
-#             Type of bandwidth to use, default is 'silverman' which follows silverman rule.
-
-#         Returns:
-#         --------
-#         base_kdes: list
-#             List of kdes for each choice. (These get attached to the base_kdes attribute of the class, not returned)
-#         """
-#         # Compute bandwidth parameters
-#         if auto_bandwidth:
-#             self.compute_bandwidths(type=bandwidth_type)
-
-#         # Generate the kdes
-#         self.base_kdes = []
-#         for i in range(0, len(self.data["choices"]), 1):
-#             if self.bandwidths[i] == "no_base_data":
-#                 self.base_kdes.append("no_base_data")
-#             else:
-#                 self.base_kdes.append(
-#                     KernelDensity(kernel="gaussian", bandwidth=self.bandwidths[i]).fit(np.log(self.data["rts"][i]))
-#                 )
-
-#     # Function to evaluate the kde log likelihood at chosen points
-#     def kde_eval(self, data=([], []), log_eval=True):  # kde
-#         """
-#         Evaluates kde log likelihood at chosen points.
-
-#         Arguments:
-#         ----------
-#         data: tuple
-#             Tuple of (rts, choices) to evaluate the kde at.
-#         log_eval: boolean
-#             Whether to return log likelihood or likelihood, default is True.
-
-#         Returns:
-#         --------
-#         log_kde_eval: array
-#             Array of log likelihoods for each (rt, choice) pair.
-#         """
-#         # Initializations
-#         log_rts = np.log(data[0])
-#         log_kde_eval = np.log(data[0])
-#         choices = np.unique(data[1])
-
-#         # Main loop
-#         for c in choices:
-#             # Get data indices where choice == c
-#             choice_idx_tmp = np.where(data[1] == c)
-
-#             # Main step: Evaluate likelihood for rts corresponding
-#             # to choice == c
-#             if self.base_kdes[self.data["choices"].index(c)] == "no_base_data":
-#                 log_kde_eval[choice_idx_tmp] = np.log(1 / self.data["n_trials"]) + np.log(
-#                     1 / self.simulator_info["max_t"]
-#                 )  # -66.77497 # the number corresponds to log(1e-29)
-#                 # --> should rather be log(1 / n) + log(1 / 20)
-#             else:
-#                 log_kde_eval[choice_idx_tmp] = (
-#                     np.log(self.data["choice_proportions"][self.data["choices"].index(c)])
-#                     + self.base_kdes[self.data["choices"].index(c)].score_samples(
-#                         np.expand_dims(log_rts[choice_idx_tmp], 1)
-#                     )
-#                     - log_rts[choice_idx_tmp]
-#                 )
-
-#         if log_eval is True:
-#             return log_kde_eval
-#         else:
-#             return np.exp(log_kde_eval)
-
-#     def kde_sample(self, n_samples=2000, use_empirical_choice_p=True, alternate_choice_p=0):
-#         """
-#         Samples from a given kde.
-
-#         Arguments:
-#         ----------
-#         n_samples: int
-#             Number of samples to draw.
-#         use_empirical_choice_p: boolean
-#             Whether to use empirical choice proportions, default is True. (Note 'empirical' here,
-#             refers to the originally attached datasets that served as the basis to generate the choice-wise
-#             kdes)
-#         alternate_choice_p: array
-#             Array of choice proportions to use, default is 0. (Note 'alternate' here refers to 'alternative'
-#             to the 'empirical' choice proportions)
-
-#         """
-
-#         # sorting the which list in ascending order
-#         # this implies that we return the kde_samples array so that the
-#         # indices reflect 'choice-labels' as provided in 'which' in ascending order
-#         # kde_samples = []
-
-#         rts = np.zeros((n_samples, 1))
-#         choices = np.zeros((n_samples, 1))
-
-#         n_by_choice = []
-#         for i in range(0, len(self.data["choices"]), 1):
-#             if use_empirical_choice_p is True:
-#                 n_by_choice.append(round(n_samples * self.data["choice_proportions"][i]))
-#             else:
-#                 n_by_choice.append(round(n_samples * alternate_choice_p[i]))
-
-#         # Catch a potential dimension error if we ended up rounding up twice
-#         if sum(n_by_choice) > n_samples:
-#             n_by_choice[np.argmax(n_by_choice)] -= 1
-#         elif sum(n_by_choice) < n_samples:
-#             n_by_choice[np.argmax(n_by_choice)] += 1
-#             choices[n_samples - 1, 0] = np.random.choice(self.data["choices"])
-
-#         # Get samples
-#         cnt_low = 0
-#         for i in range(0, len(self.data["choices"]), 1):
-#             if n_by_choice[i] > 0:
-#                 cnt_high = cnt_low + n_by_choice[i]
-
-#                 if self.base_kdes[i] != "no_base_data":
-#                     rts[cnt_low:cnt_high] = np.exp(self.base_kdes[i].sample(n_samples=n_by_choice[i]))
-#                 else:
-#                     rts[cnt_low:cnt_high, 0] = np.random.uniform(
-#                         low=0, high=self.simulator_info["max_t"], size=n_by_choice[i]
-#                     )
-
-#                 choices[cnt_low:cnt_high, 0] = np.repeat(self.data["choices"][i], n_by_choice[i])
-#                 cnt_low = cnt_high
-
-#         return (rts, choices, self.simulator_info)
-
-#     # Helper function to transform ddm simulator output to dataset suitable for
-#     # the kde function class
-#     def attach_data_from_simulator(self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=-999):
-#         """
-#         Helper function to transform ddm simulator output to dataset suitable for
-#         the kde function class.
-
-#         Arguments:
-#         ----------
-#         simulator_data: tuple
-#             Tuple of (rts, choices, simulator_info) as returned by simulator function.
-#         filter_rts: float
-#             Value to filter rts by, default is -999. -999 is the number returned by the
-#             simulators if we breach max_t or deadline.
-#         """
-
-#         choices = np.unique(simulator_data["metadata"]["possible_choices"])
-#         n = len(simulator_data["rts"])
-#         self.data = {"rts": [], "choices": [], "choice_proportions": []}
-
-#         # Loop through the choices made to get proportions and separated out rts
-#         for c in choices:
-#             rts_tmp = simulator_data["rts"][simulator_data["choices"] == c]
-#             prop_tmp = len(rts_tmp) / n
-
-#             self.data["choices"].append(c)
-#             self.data["rts"].append(np.expand_dims(rts_tmp[rts_tmp != filter_rts], axis=1))
-#             self.data["choice_proportions"].append(prop_tmp)
-
-#         self.data["n_trials"] = simulator_data["rts"].shape[0]
+    return np.power((4 / (3 * n)), 1 / 5) * std

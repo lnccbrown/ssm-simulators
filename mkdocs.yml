@@ -1,6 +1,7 @@
 site_name: SSMS (Sequential Sampling Model Simulators)
-repo_name: AlexanderFengler/ssm-simulators
-repo_url: htps://github.com/AlexanderFengler/ssm-simulators
+repo_name: lnccbrown/ssm-simulators
+repo_url: https://github.com/lnccbrown/ssm-simulators
+site_url: https://lnccbrown.github.io/ssm-simulators
 edit_uri: edit/main/docs
 
 nav:
@@ -8,11 +9,14 @@ nav:
       - Overview: index.md
   - Basic Tutorial:
       - Installation: basic_tutorial/basic_tutorial.ipynb
+  - Tutorials:
+      - KDE Class: tutorials/kde_class.ipynb
   - API:
       - ssms: api/ssms.md
       - basic simulators: api/basic_simulators.md
       - config: api/config.md
       - data generators: api/dataset_generators.md
+      - support utils: api/support_utils.md
 
 plugins:
   - search
@@ -82,7 +86,7 @@ theme:
         name: Switch to automatic mode
 
 extra:
-  homepage: "https://AlexanderFengler.github.io/ssm-simulators/"
+  homepage: "https://lnccbrown.github.io/ssm-simulators/"
 
 markdown_extensions:
   - admonition
