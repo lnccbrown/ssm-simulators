@@ -17,7 +17,6 @@ data_generator_config: dict
 import functools
 
 import cssm
-import numpy as np
 import scipy.stats as sps  # type: ignore
 
 from ssms.basic_simulators import boundary_functions as bf
