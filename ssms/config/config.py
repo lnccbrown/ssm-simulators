@@ -42,6 +42,7 @@ def boundary_config_to_function_params(config: dict) -> dict:
     """
     return {"boundary_" + k: config[k] for k in config.keys()}
 
+
 model_config_getter = get_model_config()
 # Configuration dictionary for simulators
 model_config = {
