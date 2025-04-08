@@ -107,14 +107,11 @@ def get_ddm_sdv_config():
     return {
         "name": "ddm_sdv",
         "params": ["v", "a", "z", "t", "sv"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 1e-3, 1e-3],
-            [3.0, 2.5, 0.7, 2.0, 2.0],
-        ],
+        "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, 1e-3], [3.0, 2.5, 0.9, 2.0, 2.5]],
         "boundary_name": "constant",
         "boundary": bf.constant,
         "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 0.2],
+        "default_params": [0.0, 1.0, 0.5, 1e-3, 1e-3],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
@@ -124,6 +121,10 @@ def get_ddm_sdv_config():
             "t_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
         },
         "simulator_param_mappings": {
-            "v_dist": lambda v, sv: functools.partial(sps.norm.rvs, loc=v, scale=sv),
+            "v_dist": lambda sv: functools.partial(
+                sps.norm.rvs,
+                loc=0,
+                scale=sv,
+            ),
         },
     }
