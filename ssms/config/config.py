@@ -17,20 +17,21 @@ data_generator_config: dict
 import functools
 
 import cssm
-import numpy as np
 import scipy.stats as sps  # type: ignore
 
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
+from ssms.config._modelconfig import get_model_config
 
-def boundary_config_to_function_params(boundary_config: dict) -> dict:
+
+def boundary_config_to_function_params(config: dict) -> dict:
     """
     Convert boundary configuration to function parameters.
 
     Parameters
     ----------
-    boundary_config: dict
+    config: dict
         Dictionary containing the boundary configuration
 
     Returns
@@ -39,76 +40,13 @@ def boundary_config_to_function_params(boundary_config: dict) -> dict:
         Dictionary with adjusted key names so that they match function parameters names
         directly.
     """
-    return {"boundary_" + k: boundary_config[k] for k in boundary_config.keys()}
+    return {"boundary_" + k: config[k] for k in config.keys()}
 
 
-boundary_config = {
-    "constant": {
-        "fun": bf.constant,
-        "params": [],
-        "multiplicative": True,
-    },
-    "angle": {
-        "fun": bf.angle,
-        "params": ["theta"],
-        "multiplicative": False,
-    },
-    "weibull_cdf": {
-        "fun": bf.weibull_cdf,
-        "params": ["alpha", "beta"],
-        "multiplicative": True,
-    },
-    "generalized_logistic": {
-        "fun": bf.generalized_logistic,
-        "params": ["B", "M", "v"],
-        "multiplicative": True,
-    },
-    "conflict_gamma": {
-        "fun": bf.conflict_gamma,
-        "params": ["theta", "scale", "alpha_gamma", "scale_gamma"],
-        "multiplicative": False,
-    },
-}
-
-drift_config = {
-    "constant": {
-        "fun": df.constant,
-        "params": [],
-    },
-    "gamma_drift": {
-        "fun": df.gamma_drift,
-        "params": ["shape", "scale", "c"],
-    },
-    "ds_conflict_drift": {
-        "fun": df.ds_conflict_drift,
-        "params": ["tinit", "dinit", "tslope", "dslope", "tfixedp", "tcoh", "dcoh"],
-    },
-    "attend_drift": {
-        "fun": df.attend_drift,
-        "params": ["ptarget", "pouter", "pinner", "r", "sda"],
-    },
-    "attend_drift_simple": {
-        "fun": df.attend_drift_simple,
-        "params": ["ptarget", "pouter", "r", "sda"],
-    },
-}
-
+model_config_getter = get_model_config()
 # Configuration dictionary for simulators
 model_config = {
-    "ddm": {
-        "name": "ddm",
-        "params": ["v", "a", "z", "t"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "boundary_params": [],
-        "n_params": 4,
-        "default_params": [0.0, 1.0, 0.5, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
+    "ddm": model_config_getter["ddm"],
     "ddm_legacy": {
         "name": "ddm_legacy",
         "params": ["v", "a", "z", "t"],
@@ -231,113 +169,10 @@ model_config = {
             ),
         },
     },
-    "ddm_st": {
-        "name": "ddm_st",
-        "params": ["v", "a", "z", "t", "st"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 0.25, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.25],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {
-            "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-        },
-        "simulator_param_mappings": {
-            "t_dist": lambda st: functools.partial(
-                sps.uniform.rvs, loc=(-1) * st, scale=2 * st
-            ),
-        },
-    },
-    "ddm_truncnormt": {
-        "name": "ddm_truncnormt",
-        "params": ["v", "a", "z", "mt", "st"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 0.05, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.5],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {
-            "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "t": 0.0,
-        },
-        "simulator_param_mappings": {
-            "t_dist": lambda mt, st: functools.partial(
-                sps.truncnorm.rvs,
-                a=(-1) * np.divide(mt, st),
-                b=np.inf,
-                loc=mt,
-                scale=st,
-            ),
-        },
-    },
-    "ddm_rayleight": {
-        "name": "ddm_rayleight",
-        "params": ["v", "a", "z", "st"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 1e-3],
-            [3.0, 2.5, 0.7, 1.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 0.2],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {
-            "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "t": 0.0,
-        },
-        "simulator_param_mappings": {
-            "t_dist": lambda st: functools.partial(
-                sps.rayleigh.rvs,
-                loc=0,
-                scale=st,
-            ),
-        },
-    },
-    "ddm_sdv": {
-        "name": "ddm_sdv",
-        "params": ["v", "a", "z", "t", "sv"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, 1e-3], [3.0, 2.5, 0.9, 2.0, 2.5]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {
-            "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "t_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-        },
-        "simulator_param_mappings": {
-            "v_dist": lambda sv: functools.partial(
-                sps.norm.rvs,
-                loc=0,
-                scale=sv,
-            ),
-        },
-    },
+    "ddm_st": model_config_getter["ddm_st"],
+    "ddm_truncnormt": model_config_getter["ddm_truncnormt"],
+    "ddm_rayleight": model_config_getter["ddm_rayleight"],
+    "ddm_sdv": model_config_getter["ddm_sdv"],
     "gamma_drift": {
         "name": "gamma_drift",
         "params": ["v", "a", "z", "t", "shape", "scale", "c"],
@@ -1123,543 +958,59 @@ model_config = {
         "n_particles": 4,
         "simulator": cssm.lca,
     },
-    "ddm_par2": {
-        "name": "ddm_par2",
-        "params": ["vh", "vl1", "vl2", "a", "zh", "zl1", "zl2", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.2, 0.2, 0.2, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 0.8, 0.8, 0.8, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_par2,
-    },
-    "ddm_par2_no_bias": {
-        "name": "ddm_par2_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t"],
-        "param_bounds": [[-4.0, -4.0, -4.0, 0.3, 0.0], [4.0, 4.0, 4.0, 2.5, 2.0]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_par2,
-    },
-    "ddm_par2_conflict_gamma_no_bias": {
-        "name": "ddm_par2_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 9,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.5, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_par2,
-    },
-    "ddm_par2_angle_no_bias": {
-        "name": "ddm_par2_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_par2,
-    },
-    "ddm_par2_weibull_no_bias": {
-        "name": "ddm_par2_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 3.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_par2,
-    },
-    "ddm_seq2": {
-        "name": "ddm_seq2",
-        "params": ["vh", "vl1", "vl2", "a", "zh", "zl1", "zl2", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.2, 0.2, 0.2, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 0.8, 0.8, 0.8, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_seq2,
-    },
-    "ddm_seq2_no_bias": {
-        "name": "ddm_seq2_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t"],
-        "param_bounds": [[-4.0, -4.0, -4.0, 0.3, 0.0], [4.0, 4.0, 4.0, 2.5, 2.0]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_seq2,
-    },
-    "ddm_seq2_conflict_gamma_no_bias": {
-        "name": "ddm_seq2_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 9,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.5, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_seq2,
-    },
-    "ddm_seq2_angle_no_bias": {
-        "name": "ddm_seq2_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_seq2,
-    },
-    "ddm_seq2_weibull_no_bias": {
-        "name": "ddm_seq2_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_seq2,
-    },
-    "ddm_mic2_adj": {
-        "name": "ddm_mic2_adj",
-        "params": ["vh", "vl1", "vl2", "a", "zh", "zl1", "zl2", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.2, 0.2, 0.2, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 0.8, 0.8, 0.8, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 9,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_adj_no_bias": {
-        "name": "ddm_mic2_adj_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_adj_conflict_gamma_no_bias": {
-        "name": "ddm_mic2_adj_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "d",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 10,
-        "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_adj_angle_no_bias": {
-        "name": "ddm_mic2_adj_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_adj_weibull_no_bias": {
-        "name": "ddm_mic2_adj_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_ornstein": {
-        "name": "ddm_mic2_ornstein",
-        "params": ["vh", "vl1", "vl2", "a", "zh", "zl1", "zl2", "d", "g", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.2, 0.2, 0.2, 0.0, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 0.8, 0.8, 0.8, 1.0, 3.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 10,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 0.5, 1.5, 0.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_ornstein_no_bias": {
-        "name": "ddm_mic2_ornstein_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "g", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 3.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_ornstein_conflict_gamma_no_bias": {
-        "name": "ddm_mic2_ornstein_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "d",
-            "g",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 1.0, 3.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 11,
-        "default_params": [0.0, 0.0, 0.0, 0.5, 1.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_ornstein_angle_no_bias": {
-        "name": "ddm_mic2_ornstein_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "g", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 3.0, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.5, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_ornstein_weibull_no_bias": {
-        "name": "ddm_mic2_ornstein_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "g", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 3.0, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 9,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.5, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
+    "ddm_par2": model_config_getter["ddm_par2"],
+    "ddm_par2_no_bias": model_config_getter["ddm_par2_no_bias"],
+    "ddm_par2_conflict_gamma_no_bias": model_config_getter[
+        "ddm_par2_conflict_gamma_no_bias"
+    ],
+    "ddm_par2_angle_no_bias": model_config_getter["ddm_par2_angle_no_bias"],
+    "ddm_par2_weibull_no_bias": model_config_getter["ddm_par2_weibull_no_bias"],
+    "ddm_seq2": model_config_getter["ddm_seq2"],
+    "ddm_seq2_no_bias": model_config_getter["ddm_seq2_no_bias"],
+    "ddm_seq2_conflict_gamma_no_bias": model_config_getter[
+        "ddm_seq2_conflict_gamma_no_bias"
+    ],
+    "ddm_seq2_angle_no_bias": model_config_getter["ddm_seq2_angle_no_bias"],
+    "ddm_seq2_weibull_no_bias": model_config_getter["ddm_seq2_weibull_no_bias"],
+    "ddm_mic2_adj": model_config_getter["ddm_mic2_adj"],
+    "ddm_mic2_adj_no_bias": model_config_getter["ddm_mic2_adj_no_bias"],
+    "ddm_mic2_adj_conflict_gamma_no_bias": model_config_getter[
+        "ddm_mic2_adj_conflict_gamma_no_bias"
+    ],
+    "ddm_mic2_adj_angle_no_bias": model_config_getter["ddm_mic2_adj_angle_no_bias"],
+    "ddm_mic2_adj_weibull_no_bias": model_config_getter["ddm_mic2_adj_weibull_no_bias"],
+    "ddm_mic2_ornstein": model_config_getter["ddm_mic2_ornstein"],
+    "ddm_mic2_ornstein_no_bias": model_config_getter["ddm_mic2_ornstein_no_bias"],
+    "ddm_mic2_ornstein_conflict_gamma_no_bias": model_config_getter[
+        "ddm_mic2_ornstein_conflict_gamma_no_bias"
+    ],
+    "ddm_mic2_ornstein_angle_no_bias": model_config_getter[
+        "ddm_mic2_ornstein_angle_no_bias"
+    ],
+    "ddm_mic2_ornstein_weibull_no_bias": model_config_getter[
+        "ddm_mic2_ornstein_weibull_no_bias"
+    ],
     # -----
-    "ddm_mic2_multinoise_no_bias": {
-        "name": "ddm_mic2_multinoise_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
-    },
-    "ddm_mic2_multinoise_conflict_gamma_no_bias": {
-        "name": "ddm_mic2_multinoise_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "d",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 10,
-        "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
-    },
-    "ddm_mic2_multinoise_angle_no_bias": {
-        "name": "ddm_mic2_multinoise_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
-    },
-    "ddm_mic2_multinoise_weibull_no_bias": {
-        "name": "ddm_mic2_multinoise_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
-    },
+    "ddm_mic2_multinoise_no_bias": model_config_getter["ddm_mic2_multinoise_no_bias"],
+    "ddm_mic2_multinoise_conflict_gamma_no_bias": model_config_getter[
+        "ddm_mic2_multinoise_conflict_gamma_no_bias"
+    ],
+    "ddm_mic2_multinoise_angle_no_bias": model_config_getter[
+        "ddm_mic2_multinoise_angle_no_bias"
+    ],
+    "ddm_mic2_multinoise_weibull_no_bias": model_config_getter[
+        "ddm_mic2_multinoise_weibull_no_bias"
+    ],
     # -----
-    "ddm_mic2_leak": {
-        "name": "ddm_mic2_leak",
-        "params": ["vh", "vl1", "vl2", "a", "zh", "zl1", "zl2", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.2, 0.2, 0.2, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 0.8, 0.8, 0.8, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 9,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_leak_no_bias": {
-        "name": "ddm_mic2_leak_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_leak_conflict_gamma_no_bias": {
-        "name": "ddm_mic2_leak_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "d",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alpha_gamma",
-            "scale_gamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "n_params": 10,
-        "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_leak_angle_no_bias": {
-        "name": "ddm_mic2_leak_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
-    "ddm_mic2_leak_weibull_no_bias": {
-        "name": "ddm_mic2_leak_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_ornstein,
-    },
+    "ddm_mic2_leak": model_config_getter["ddm_mic2_leak"],
+    "ddm_mic2_leak_no_bias": model_config_getter["ddm_mic2_leak_no_bias"],
+    "ddm_mic2_leak_conflict_gamma_no_bias": model_config_getter[
+        "ddm_mic2_leak_conflict_gamma_no_bias"
+    ],
+    "ddm_mic2_leak_angle_no_bias": model_config_getter["ddm_mic2_leak_angle_no_bias"],
+    "ddm_mic2_leak_weibull_no_bias": model_config_getter[
+        "ddm_mic2_leak_weibull_no_bias"
+    ],
     # -----
     "tradeoff_no_bias": {
         "name": "tradeoff_no_bias",

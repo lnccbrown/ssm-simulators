@@ -14,7 +14,8 @@ import pandas as pd
 from numpy.random import default_rng
 
 from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
-from ssms.config.config import boundary_config, drift_config, model_config
+from ssms.config.config import model_config
+from ssms.config._modelconfig.base import boundary_config, drift_config
 
 
 DEFAULT_SIM_PARAMS: dict[str, Any] = {
