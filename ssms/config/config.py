@@ -20,8 +20,8 @@ import cssm
 import numpy as np
 import scipy.stats as sps  # type: ignore
 
-from ssms.basic_simulators import boundary_functions as bf
-from ssms.basic_simulators import drift_functions as df
+from ssms import boundary_functions as bf
+from ssms import drift_functions as df
 
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
