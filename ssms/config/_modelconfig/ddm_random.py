@@ -12,15 +12,15 @@ def get_ddm_st_config():
     """Get configuration for DDM with random non-decision time."""
     return {
         "name": "ddm_st",
-        "params": ["v", "a", "z", "st"],
+        "params": ["v", "a", "z", "t", "st"],
         "param_bounds": [
-            [-3.0, 0.3, 0.3, 1e-3],
-            [3.0, 2.5, 0.7, 1.0],
+            [-3.0, 0.3, 0.3, 0.25, 1e-3],
+            [3.0, 2.5, 0.7, 2.25, 0.25],
         ],
         "boundary_name": "constant",
         "boundary": bf.constant,
-        "n_params": 4,
-        "default_params": [0.0, 1.0, 0.5, 0.2],
+        "n_params": 5,
+        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
@@ -28,10 +28,11 @@ def get_ddm_st_config():
         "simulator_fixed_params": {
             "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
             "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
-            "t": 0.0,
         },
         "simulator_param_mappings": {
-            "t_dist": lambda mt, st: functools.partial(sps.norm.rvs, loc=mt, scale=st),
+            "t_dist": lambda st: functools.partial(
+                sps.uniform.rvs, loc=(-1) * st, scale=2 * st
+            ),
         },
     }
 
