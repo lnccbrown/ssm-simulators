@@ -23,6 +23,13 @@ import scipy.stats as sps  # type: ignore
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
+from ssms.config._modelconfig.tradeoff import (
+    get_tradeoff_no_bias_config,
+    get_tradeoff_angle_no_bias_config,
+    get_tradeoff_weibull_no_bias_config,
+    get_tradeoff_conflict_gamma_no_bias_config,
+)
+
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
     """
@@ -1660,106 +1667,10 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     },
-    # -----
-    "tradeoff_no_bias": {
-        "name": "tradeoff_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
-    },
-    "tradeoff_angle_no_bias": {
-        "name": "tradeoff_angle_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "theta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, -0.1],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "boundary_multiplicative": False,
-        "n_params": 7,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
-    },
-    "tradeoff_weibull_no_bias": {
-        "name": "tradeoff_weibull_no_bias",
-        "params": ["vh", "vl1", "vl2", "a", "d", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.3, 0.0, 0.0, 0.31, 0.31],
-            [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
-        "n_params": 8,
-        "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
-        "nchoices": 4,
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
-    },
-    "tradeoff_conflict_gamma_no_bias": {
-        "name": "tradeoff_conflict_gamma_no_bias",
-        "params": [
-            "vh",
-            "vl1",
-            "vl2",
-            "d",
-            "t",
-            "a",
-            "theta",
-            "scale",
-            "alphagamma",
-            "scalegamma",
-        ],
-        "param_bounds": [
-            [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
-            [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
-        ],
-        "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
-        "boundary_multiplicative": True,
-        "n_params": 10,
-        "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
-        "nchoices": 4,
-        "choices": [0, 1, 2, 3],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
-    },
-    # "glob": {
-    #     "name": "glob",
-    #     "params": ["v", "a", "z", "alphar", "g", "t", "theta"],
-    #     "param_bounds": [
-    #         [-3.0, 0.3, 0.15, 1.0, -1.0, 1e-5, 0.0],
-    #         [3.0, 2.0, 0.85, 2.0, 1.0, 2.0, 1.45],
-    #     ],
-    #     "n_params": 7,
-    #     "default_params": [0.0, 1.0, 0.5, 2.0, 0.0, 1.0, 2.5, 3.5],
-    #     "hddm_include": ["z", "alphar", "g", "theta"],
-    #     "nchoices": 2,
-    #     "boundary_name": "angle",
-    #     "boundary": bf.angle,
-    #     "boundary_multiplicative": False,
-    #     "components": {
-    #         "names": ["g", "alphar", "theta"],
-    #         "off_values": np.float32(np.array([0, 1, 0])),
-    #         "probabilities": np.array([1 / 3, 1 / 3, 1 / 3]),
-    #         "labels": np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-    #         "n_components": 3,
-    #     },
-    # },
+    "tradeoff_no_bias": get_tradeoff_no_bias_config(),
+    "tradeoff_angle_no_bias": get_tradeoff_angle_no_bias_config(),
+    "tradeoff_weibull_no_bias": get_tradeoff_weibull_no_bias_config(),
+    "tradeoff_conflict_gamma_no_bias": get_tradeoff_conflict_gamma_no_bias_config(),
 }
 
 model_config["weibull_cdf"] = model_config["weibull"].copy()
