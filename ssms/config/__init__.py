@@ -14,7 +14,7 @@ __all__ = [
     "kde_simulation_filters",
     "data_generator_config",
     "boundary_config",
-    "modelconfig",  # Export the modelconfig submodule
+    "modelconfig",
     "drift_config",
     "boundary_config_to_function_params",
 ]
