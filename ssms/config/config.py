@@ -40,7 +40,7 @@ def boundary_config_to_function_params(config: dict) -> dict:
         Dictionary with adjusted key names so that they match function parameters names
         directly.
     """
-    return {"boundary_" + k: config[k] for k in config.keys()}
+    return {f"boundary_{k}": v for k, v in config.items()}
 
 
 model_config_getter = get_model_config()
