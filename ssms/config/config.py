@@ -1241,6 +1241,36 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
     },
+
+    "ddm_seq2_no_bias_short": {
+        "name": "ddm_seq2_no_bias",
+        "params": ["vh", "vl1", "vl2", "a", "t"],
+        "param_bounds": [[-4.0, -4.0, -4.0, 0.3, 0.0], [4.0, 4.0, 4.0, 2.5, 2.0]],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
+        "n_params": 5,
+        "default_params": [0.0, 0.0, 0.0, 1.0, 1.0],
+        "nchoices": 4,
+        "choices": [0, 1, 2, 3],
+        "n_particles": 1,
+        "simulator": cssm.ddm_flexbound_seq2_short,
+    },
+    
+    "ddm_seq2_race_no_bias": {
+        "name": "ddm_seq2_race_no_bias",
+        "params": ["vha", "vhb", "vl1a", "vl1b", "vl2a", "vl2b", "a", "t"],
+        "param_bounds": [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.0],
+            [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 2.5, 2.0],
+        ],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
+        "n_params": 8,
+        "default_params": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0],
+        "nchoices": 4,
+        "n_particles": 2,
+        "simulator": cssm.ddm_flexbound_seq2_race2,
+    },
     "ddm_seq2_conflict_gamma_no_bias": {
         "name": "ddm_seq2_conflict_gamma_no_bias",
         "params": [

@@ -344,13 +344,24 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
         # if model in ["ddm_seq2", "ddm_seq2_traj"]:
         #     sim_param_dict["s"] = noise_dict["1_particles"]
 
+        # Seq Race 2 Model
+        # if model in ["ddm_seq2_no_bias_race2"]:
+        if model in ["ddm_seq2_race_no_bias"]:
+            z_vec = np.tile(
+                np.tile(np.array([0.5], dtype=np.float32), reps=n_trials), (2, 1)
+            )
+            theta["zh"], theta["zl1"], theta["zl2"] = [z_vec, z_vec, z_vec]
+
         if model in [
             "ddm_seq2_no_bias",
+            "ddm_seq2_no_bias_short"
             "ddm_seq2_angle_no_bias",
             "ddm_seq2_weibull_no_bias",
             "ddm_seq2_conflict_gamma_no_bias",
         ]:
             theta["zh"], theta["zl1"], theta["zl2"] = [z_vec, z_vec, z_vec]
+
+        #
 
         # if model == "ddm_par2":
         #     sim_param_dict["s"] = noise_dict["1_particles"]
