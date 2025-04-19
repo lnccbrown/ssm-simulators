@@ -2543,6 +2543,187 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
+
+
+
+def ddm_flexbound_seq2_short(np.ndarray[float, ndim = 1] vh,
+                       np.ndarray[float, ndim = 1] vl1,
+                       np.ndarray[float, ndim = 1] vl2,
+                       np.ndarray[float, ndim = 1] a,
+                       np.ndarray[float, ndim = 1] zh,
+                       np.ndarray[float, ndim = 1] zl1,
+                       np.ndarray[float, ndim = 1] zl2,
+                       np.ndarray[float, ndim = 1] t,
+                       np.ndarray[float, ndim = 1] deadline,
+                       np.ndarray[float, ndim = 1] s, # noise sigma
+                       float delta_t = 0.001,
+                       float max_t = 20,
+                       int n_samples = 20000,
+                       int n_trials = 1,
+                       print_info = True,
+                       boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
+                       boundary_multiplicative = True,
+                       boundary_params = {},
+                       random_state = None,
+                       return_option = 'full',
+                       smooth_unif = False,
+                       **kwargs):
+
+    set_seed(random_state)
+    # Param views
+    cdef float[:] vh_view = vh
+    cdef float[:] vl1_view = vl1
+    cdef float[:] vl2_view = vl2
+    cdef float[:] a_view = a
+    cdef float[:] zh_view = zh
+    cdef float[:] zl1_view = zl1
+    cdef float[:] zl2_view = zl2
+    cdef float[:] t_view = t
+    cdef float[:] deadline_view = deadline
+    cdef float[:] s_view = s
+    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
+    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
+
+    cdef float[:, :, :] rts_view = rts
+    cdef int[:, :, :] choices_view = choices
+    cdef int decision_taken = 0
+
+    # TD: Add Trajectory
+    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    traj[:, :] = -999 
+    cdef float[:, :] traj_view = traj
+
+    cdef float delta_t_sqrt = sqrt(delta_t) # correct scalar so we can use standard normal samples for the brownian motion
+    #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
+
+    # Boundary storage for the upper bound
+    cdef int num_draws = int((max_t / delta_t) + 1)
+    t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
+    boundary = np.zeros(t_s.shape, dtype = DTYPE)
+    cdef float[:] boundary_view = boundary
+
+    cdef float y_h, t_particle, t_particle1, t_particle2, y_l, y_l1, y_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef Py_ssize_t n, ix, ix1, ix2, k
+    cdef Py_ssize_t m = 0
+    #cdef Py_ssize_t traj_id
+    cdef float[:] gaussian_values = draw_gaussian(num_draws)
+
+    for k in range(n_trials):
+        # Precompute boundary evaluations
+        boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+
+        # Precompute boundary evaluations
+        if boundary_multiplicative:
+            boundary[:] = np.multiply(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
+        else:
+            boundary[:] = np.add(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
+    
+        deadline_tmp = min(max_t, deadline_view[k] - t_view[k])
+        sqrt_st = delta_t_sqrt * s_view[k]
+        # Loop over samples
+        for n in range(n_samples):
+            decision_taken = 0
+            t_particle = 0.0 # reset time
+            ix = 0 # reset boundary index
+
+            # Random walker 1 (high dimensional)
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))  # reset starting position 
+            
+            if n == 0:
+                if k == 0:
+                    traj_view[0, 0] = y_h
+
+            while y_h >= (-1) * boundary_view[ix] and y_h <= boundary_view[ix] and t_particle <= deadline_tmp:
+                y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+                t_particle += delta_t
+                ix += 1
+                m += 1
+                
+                if m == num_draws:
+                    gaussian_values = draw_gaussian(num_draws)
+                    m = 0
+
+                if n == 0:
+                    if k == 0:
+                        traj_view[ix, 0] = y_h
+
+            # If we are already at maximum t, to generate a choice we just sample from a bernoulli
+            if t_particle >= max_t:
+                # High dim choice depends on position of particle
+                if boundary_view[ix] <= 0:
+                    if random_uniform() <= 0.5:
+                        choices_view[n, k, 0] += 2
+                elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                        choices_view[n, k, 0] += 2
+
+                # Low dim choice random (didn't even get to process it if rt is at max after first choice)
+                # so we just apply a priori bias
+                if choices_view[n, k, 0] == 0:
+                    if random_uniform() <= zl1_view[k]:
+                        choices_view[n, k, 0] += 1
+                else:
+                    if random_uniform() <= zl2_view[k]:
+                        choices_view[n, k, 0] += 1
+                rts_view[n, k, 0] = t_particle
+                decision_taken = 1
+            else:
+                # If boundary is negative (or 0) already, we flip a coin
+                if boundary_view[ix] <= 0:
+                    if random_uniform() <= 0.5:
+                        choices_view[n, k, 0] += 2
+                # Otherwise apply rule from above
+                elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                    choices_view[n, k, 0] += 2
+            
+
+            if smooth_unif:
+                if t_particle == 0.0:
+                    smooth_u = random_uniform() * 0.5 * delta_t
+                elif t_particle < deadline_tmp:
+                    smooth_u = (0.5 - random_uniform()) * delta_t
+                else:
+                    smooth_u = 0.0
+            else:
+                smooth_u = 0.0
+
+             # Add nondecision time and smoothing of rt
+            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
+
+            # Take account of deadline
+            if (rts_view[n, k, 0] >= deadline_view[k]) | (deadline_view[k] <= 0):
+                    rts_view[n, k, 0] = -999
+                
+
+    if return_option == 'full':
+        return {'rts': rts, 'choices': choices, 'metadata': {'vh': vh,
+                                                            'vl1': vl1,
+                                                            'vl2': vl2,
+                                                            'a': a,
+                                                            'zh': zh,
+                                                            'zl1': zl1,
+                                                            'zl2': zl2,
+                                                            't': t,
+                                                            'deadline': deadline,
+                                                            's': s,
+                                                            **boundary_params,
+                                                            'delta_t': delta_t,
+                                                            'max_t': max_t,
+                                                            'n_samples': n_samples,
+                                                            'n_trials': n_trials,
+                                                            'simulator': 'ddm_flexbound',
+                                                            'boundary_fun_type': boundary_fun.__name__,
+                                                            'trajectory': traj,
+                                                            'possible_choices': [0, 1, 2, 3],
+                                                            'boundary': boundary}}
+    elif return_option == 'minimal':
+        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'ddm_flexbound', 
+                                                             'possible_choices': [0, 1, 2, 3],
+                                                             'boundary_fun_type': boundary_fun.__name__,
+                                                             'n_samples': n_samples,
+                                                             'n_trials': n_trials,
+                                                             }}
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
 def ddm_flexbound_seq2_race2(np.ndarray[float, ndim = 1] vha,
                        np.ndarray[float, ndim = 1] vhb,
                        np.ndarray[float, ndim = 1] vl1a,

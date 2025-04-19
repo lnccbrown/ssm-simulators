@@ -326,6 +326,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
 
         if model in [
             "ddm_seq2_no_bias",
+            "ddm_seq2_no_bias_short"
             "ddm_seq2_angle_no_bias",
             "ddm_seq2_weibull_no_bias",
             "ddm_seq2_conflict_gamma_no_bias",
