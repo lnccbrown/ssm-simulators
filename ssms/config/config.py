@@ -23,6 +23,12 @@ import scipy.stats as sps  # type: ignore
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
+from ssms.config._modelconfig.dev_rlwm_lba import (
+    get_dev_rlwm_lba_pw_v1_config,
+    get_dev_rlwm_lba_race_v1_config,
+    get_dev_rlwm_lba_race_v2_config,
+)
+
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
     """
@@ -635,82 +641,9 @@ model_config = {
         "n_particles": 3,
         "simulator": cssm.lba_angle,
     },
-    "dev_rlwm_lba_pw_v1": {
-        "name": "dev_rlwm_lba_pw_v1",
-        "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
-            "a",
-            "z",
-            "t_WM",
-        ],
-        "param_bounds": [
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.0, 0.01],
-            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 0.5, 0.5],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 9,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2, 0.1],
-        "nchoices": 3,
-        "n_particles": 3,
-        "simulator": cssm.rlwm_lba_pw_v1,
-    },
-    "dev_rlwm_lba_race_v1": {
-        # RLWM_Race_LBA_3 without ndt; sum of all v_RL = 1 and sum of all v_WM = 1
-        "name": "dev_rlwm_lba_race_v1",
-        "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
-            "a",
-            "z",
-        ],
-        "param_bounds": [
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.0],
-            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 0.5],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 8,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2],
-        "nchoices": 3,
-        "choices": [0, 1, 2],
-        "n_particles": 3,
-        "simulator": cssm.rlwm_lba_race,
-    },
-    "dev_rlwm_lba_race_v2": {
-        # RLWM_Race_LBA_3 without ndt; no constraints on the sum of v_RL and v_WM.
-        "name": "dev_rlwm_lba_race_v2",
-        "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
-            "a",
-            "z",
-        ],
-        "param_bounds": [
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.0],
-            [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 8,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2],
-        "nchoices": 3,
-        "n_particles": 3,
-        "simulator": cssm.rlwm_lba_race,
-    },
+    "dev_rlwm_lba_pw_v1": get_dev_rlwm_lba_pw_v1_config(),
+    "dev_rlwm_lba_race_v1": get_dev_rlwm_lba_race_v1_config(),
+    "dev_rlwm_lba_race_v2": get_dev_rlwm_lba_race_v2_config(),
     "race_2": {
         "name": "race_2",
         "params": ["v0", "v1", "a", "z0", "z1", "t"],
