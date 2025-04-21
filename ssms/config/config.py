@@ -23,6 +23,14 @@ import scipy.stats as sps  # type: ignore
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
+from ssms.config._modelconfig.lba import (
+    get_lba2_config,
+    get_lba3_config,
+    get_lba_3_vs_constraint_config,
+    get_lba_angle_3_vs_constraint_config,
+    get_lba_angle_3_config,
+)
+
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
     """
@@ -568,73 +576,11 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ornstein_uhlenbeck,
     },
-    "lba2": {
-        "name": "lba2",
-        "params": ["A", "b", "v0", "v1"],
-        "param_bounds": [[0.0, 0.0, 0.0, 0.1], [1.0, 1.0, 1.0, 1.1]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 4,
-        "default_params": [0.3, 0.5, 0.5, 0.5],
-        "nchoices": 2,
-        "choices": [0, 1],
-        "n_particles": 2,
-        "simulator": cssm.lba_vanilla,
-    },
-    "lba3": {
-        "name": "lba3",
-        "params": ["A", "b", "v0", "v1", "v2"],
-        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.1], [1.0, 1.0, 1.0, 1.1, 0.50]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.3, 0.5, 0.25, 0.5, 0.25],
-        "nchoices": 3,
-        "choices": [0, 1, 2],
-        "n_particles": 3,
-        "simulator": cssm.lba_vanilla,
-    },
-    "lba_3_vs_constraint": {
-        # conventional analytical LBA with constraints on vs (sum of all v = 1)
-        "name": "lba_3_vs_constraint",
-        "params": ["v0", "v1", "v2", "a", "z"],
-        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.1], [1.0, 1.0, 1.0, 1.1, 0.50]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2],
-        "nchoices": 3,
-        "choices": [0, 1, 2],
-        "n_particles": 3,
-        "simulator": cssm.lba_vanilla,
-    },
-    "lba_angle_3_vs_constraint": {
-        # conventional analytical LBA with angle with constraints on vs (sum of all v=1)
-        "name": "lba_angle_3_vs_constraint",
-        "params": ["v0", "v1", "v2", "a", "z", "theta"],
-        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [1.0, 1.0, 1.0, 1.1, 0.5, 1.3]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
-        "nchoices": 3,
-        "choices": [0, 1, 2],
-        "n_particles": 3,
-        "simulator": cssm.lba_angle,
-    },
-    "lba_angle_3": {
-        # conventional analytical LBA with angle without any constraints on vs
-        "name": "lba_angle_3",
-        "params": ["v0", "v1", "v2", "a", "z", "theta"],
-        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [6.0, 6.0, 6.0, 1.1, 0.5, 1.3]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
-        "nchoices": 3,
-        "n_particles": 3,
-        "simulator": cssm.lba_angle,
-    },
+    "lba2": get_lba2_config(),
+    "lba3": get_lba3_config(),
+    "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
+    "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
+    "lba_angle_3": get_lba_angle_3_config(),
     "dev_rlwm_lba_pw_v1": {
         "name": "dev_rlwm_lba_pw_v1",
         "params": [
