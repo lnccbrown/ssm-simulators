@@ -37,7 +37,7 @@ class data_generator:  # noqa: N801
     ----------
         generator_config: dict
             Configuration dictionary for the data generator.
-            (For an example load ssms.config.data_generator_config['lan'])
+            (For an example load ssms.config.get_lan_config())
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
@@ -76,7 +76,7 @@ class data_generator:  # noqa: N801
         ---------
         generator_config: dict
             Configuration dictionary for the data generator.
-            (For an example load ssms.config.data_generator_config['lan'])
+            (For an example load ssms.config.get_lan_config())
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])

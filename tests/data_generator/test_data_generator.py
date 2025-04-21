@@ -6,10 +6,10 @@ import pytest
 from expected_constrained_param_space import expected_constrained_param_space
 from expected_shapes import expected_shapes
 
-from ssms.config import data_generator_config, model_config
+from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.lan_mlp import data_generator
 
-gen_config = data_generator_config["lan"]
+gen_config = get_lan_config()
 # Specify number of parameter sets to simulate
 gen_config["n_parameter_sets"] = 100
 gen_config["n_training_samples_by_parameter_set"] = 100
