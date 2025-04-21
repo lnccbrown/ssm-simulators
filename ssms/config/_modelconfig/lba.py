@@ -1,6 +1,6 @@
 """LBA (Linear Ballistic Accumulator) model configurations."""
 
-import boundary_functions as bf
+from ssms.basic_simulators import boundary_functions as bf
 import cssm
 
 
@@ -41,6 +41,7 @@ def get_lba3_config():
 def get_lba_3_vs_constraint_config():
     """Get configuration for LBA3 with vs constraint model."""
     return {
+        # conventional analytical LBA with constraints on vs (sum of all v = 1)
         "name": "lba_3_vs_constraint",
         "params": ["v0", "v1", "v2", "a", "z"],
         "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.1], [1.0, 1.0, 1.0, 1.1, 0.50]],
@@ -58,38 +59,33 @@ def get_lba_3_vs_constraint_config():
 def get_lba_angle_3_vs_constraint_config():
     """Get configuration for LBA angle 3 vs constraint model."""
     return {
+        # conventional analytical LBA with angle with constraints on vs (sum of all v=1)
         "name": "lba_angle_3_vs_constraint",
         "params": ["v0", "v1", "v2", "a", "z", "theta"],
-        "param_bounds": [
-            [0.0, 0.0, 0.0, 0.1, 0.1, -0.1],
-            [1.0, 1.0, 1.0, 1.1, 0.50, 1.3],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
+        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [1.0, 1.0, 1.0, 1.1, 0.5, 1.3]],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
         "n_params": 6,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.01],
+        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lba_vanilla,
+        "simulator": cssm.lba_angle,
     }
 
 
 def get_lba_angle_3_config():
     """Get configuration for LBA angle 3 model without vs constraints."""
     return {
+        # conventional analytical LBA with angle without any constraints on vs
         "name": "lba_angle_3",
         "params": ["v0", "v1", "v2", "a", "z", "theta"],
-        "param_bounds": [
-            [0.0, 0.0, 0.0, 0.1, 0.1, -0.1],
-            [2.0, 2.0, 2.0, 1.1, 0.50, 1.3],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
+        "param_bounds": [[0.0, 0.0, 0.0, 0.1, 0.0, 0], [6.0, 6.0, 6.0, 1.1, 0.5, 1.3]],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
         "n_params": 6,
-        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.01],
+        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
         "nchoices": 3,
-        "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lba_vanilla,
+        "simulator": cssm.lba_angle,
     }
