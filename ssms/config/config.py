@@ -24,6 +24,7 @@ from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
 from ._modelconfig.angle import get_angle_config
+from ._modelconfig.weibull import get_weibull_config
 
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
@@ -125,22 +126,7 @@ model_config = {
         "simulator": cssm.ddm,
     },
     "angle": get_angle_config(),
-    "weibull": {
-        "name": "weibull",
-        "params": ["v", "a", "z", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-2.5, 0.3, 0.2, 1e-3, 0.31, 0.31],
-            [2.5, 2.5, 0.8, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 3.0, 3.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
+    "weibull": get_weibull_config(),
     "levy": {
         "name": "levy",
         "params": ["v", "a", "z", "alpha", "t"],
