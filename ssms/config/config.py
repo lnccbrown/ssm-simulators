@@ -14,10 +14,7 @@ data_generator_config: dict
     modifies to their needs.
 """
 
-import functools
-
 import cssm
-import scipy.stats as sps  # type: ignore
 
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
