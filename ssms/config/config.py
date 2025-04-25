@@ -23,7 +23,13 @@ from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
 from ssms.config._modelconfig import get_model_config
-
+from ssms.config._modelconfig.full_ddm import (
+    get_full_ddm_config,
+    get_full_ddm_rv_config,
+)
+from ssms.config._modelconfig.levy import get_levy_config, get_levy_angle_config
+from ._modelconfig.angle import get_angle_config
+from ._modelconfig.weibull import get_weibull_config
 
 def boundary_config_to_function_params(config: dict) -> dict:
     """
@@ -60,115 +66,12 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ddm,
     },
-    "angle": {
-        "name": "angle",
-        "params": ["v", "a", "z", "t", "theta"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 0.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
-    "weibull": {
-        "name": "weibull",
-        "params": ["v", "a", "z", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-2.5, 0.3, 0.2, 1e-3, 0.31, 0.31],
-            [2.5, 2.5, 0.8, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 3.0, 3.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
-    "levy": {
-        "name": "levy",
-        "params": ["v", "a", "z", "alpha", "t"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 1.0, 1e-3], [3.0, 3.0, 0.9, 2.0, 2]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 1.5, 0.1],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.levy_flexbound,
-    },
-    "levy_angle": {
-        "name": "levy_angle",
-        "params": ["v", "a", "z", "alpha", "t", "theta"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.1, 1.0, 1e-3, -0.1],
-            [3.0, 3.0, 0.9, 2.0, 2, 1.3],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 1.5, 0.1, 0.01],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.levy_flexbound,
-    },
-    "full_ddm": {
-        "name": "full_ddm",
-        "params": ["v", "a", "z", "t", "sz", "sv", "st"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 0.25, 1e-3, 1e-3, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.2, 2.0, 0.25],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 7,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3, 1e-3, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm,
-    },
-    "full_ddm_rv": {
-        "name": "full_ddm_rv",
-        "params": ["v", "a", "z", "t", "sz", "sv", "st"],
-        "param_bounds": {
-            "v": (-3.0, 3.0),
-            "a": (0.3, 2.5),
-            "z": (0.3, 0.7),
-            "t": (0.25, 2.25),
-            "sz": (1e-3, 0.2),
-            "sv": (1e-3, 2.0),
-            "st": (1e-3, "t"),
-        },
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3, 1e-3, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {},
-        "simulator_param_mappings": {
-            "t_dist": lambda st: functools.partial(
-                sps.uniform.rvs, loc=(-1) * st, scale=2 * st
-            ),
-            "v_dist": lambda sv: functools.partial(
-                sps.norm.rvs,
-                loc=0,
-                scale=sv,
-            ),
-            "z_dist": lambda sz: functools.partial(
-                sps.uniform.rvs, loc=(-1) * sz, scale=2 * sz
-            ),
-        },
-    },
+    "full_ddm": get_full_ddm_config(),
+    "full_ddm_rv": get_full_ddm_rv_config(),
+    "levy": get_levy_config(),
+    "levy_angle": get_levy_angle_config(),
+    "angle": get_angle_config(),
+    "weibull": get_weibull_config(),
     "ddm_st": model_config_getter["ddm_st"],
     "ddm_truncnormt": model_config_getter["ddm_truncnormt"],
     "ddm_rayleight": model_config_getter["ddm_rayleight"],
