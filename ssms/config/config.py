@@ -24,6 +24,8 @@ from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
 
 from ssms.config._modelconfig.levy import get_levy_config, get_levy_angle_config
+from ._modelconfig.angle import get_angle_config
+from ._modelconfig.weibull import get_weibull_config
 
 
 def boundary_config_to_function_params(boundary_config: dict) -> dict:
@@ -124,37 +126,10 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ddm,
     },
-    "angle": {
-        "name": "angle",
-        "params": ["v", "a", "z", "t", "theta"],
-        "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 0.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
-    "weibull": {
-        "name": "weibull",
-        "params": ["v", "a", "z", "t", "alpha", "beta"],
-        "param_bounds": [
-            [-2.5, 0.3, 0.2, 1e-3, 0.31, 0.31],
-            [2.5, 2.5, 0.8, 2.0, 4.99, 6.99],
-        ],
-        "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 1e-3, 3.0, 3.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flexbound,
-    },
     "levy": get_levy_config(),
     "levy_angle": get_levy_angle_config(),
+    "angle": get_angle_config(),
+    "weibull": get_weibull_config(),
     "full_ddm": {
         "name": "full_ddm",
         "params": ["v", "a", "z", "t", "sz", "sv", "st"],
