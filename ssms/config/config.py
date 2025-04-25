@@ -31,6 +31,7 @@ from ssms.config._modelconfig.levy import get_levy_config, get_levy_angle_config
 from ._modelconfig.angle import get_angle_config
 from ._modelconfig.weibull import get_weibull_config
 
+
 def boundary_config_to_function_params(config: dict) -> dict:
     """
     Convert boundary configuration to function parameters.
