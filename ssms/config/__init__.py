@@ -14,9 +14,7 @@ from ._modelconfig.base import boundary_config, drift_config
 from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
 
 __all__ = [
-    "model_config",
     "boundary_config",
-    "modelconfig",
     "drift_config",
     "boundary_config_to_function_params",
     "get_lan_config",
