@@ -1,6 +1,6 @@
 """LBA (Linear Ballistic Accumulator) model configurations."""
 
-from ssms.basic_simulators import boundary_functions as bf
+from ssms import boundary_functions as bf
 import cssm
 
 
