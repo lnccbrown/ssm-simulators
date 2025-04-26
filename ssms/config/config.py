@@ -85,6 +85,7 @@ from ssms.config._modelconfig.dev_rlwm_lba import (
     get_dev_rlwm_lba_race_v2_config,
 )
 
+
 def boundary_config_to_function_params(config: dict) -> dict:
     """
     Convert boundary configuration to function parameters.
