@@ -1,7 +1,5 @@
 from .config import (  # noqa: D104
     boundary_config_to_function_params,
-    drift_config,
-    model_config,
 )
 
 from .generator_config.data_generator_config import (
