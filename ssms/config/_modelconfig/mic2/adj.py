@@ -1,7 +1,7 @@
 """Configuration for DDM mic2 models."""
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf
+from ssms import boundary_functions as bf
 
 
 def get_ddm_mic2_adj_config():

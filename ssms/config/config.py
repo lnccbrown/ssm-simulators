@@ -31,9 +31,6 @@ from ssms.config._modelconfig.full_ddm import (
     get_full_ddm_rv_config,
 )
 from ssms.config._modelconfig.levy import get_levy_config, get_levy_angle_config
-from ._modelconfig.angle import get_angle_config
-from ._modelconfig.weibull import get_weibull_config
-
 from ssms.config._modelconfig.lca import (
     get_lca_3_config,
     get_lca_no_bias_3_config,
@@ -46,6 +43,8 @@ from ssms.config._modelconfig.lca import (
     get_lca_no_bias_angle_4_config,
     get_lca_no_z_angle_4_config,
 )
+from ._modelconfig.angle import get_angle_config
+from ._modelconfig.weibull import get_weibull_config
 
 
 def boundary_config_to_function_params(config: dict) -> dict:

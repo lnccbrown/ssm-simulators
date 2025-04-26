@@ -5,7 +5,7 @@ import numpy as np
 import scipy.stats as sps
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf
+from ssms import boundary_functions as bf
 
 
 def get_ddm_st_config():
