@@ -1,4 +1,5 @@
 # MY PACKAGE SPECIFIC ADDITIONS
+generated_data/
 data/
 ssm_simulators.egg-info/
 .vscode/
@@ -138,3 +139,5 @@ dmypy.json
 uv.lock
 
 .vscode/*
+
+explorations/

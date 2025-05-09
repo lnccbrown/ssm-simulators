@@ -96,3 +96,42 @@ def get_defective_detector_config() -> dict:
         "bin_pointwise": False,
         "separate_response_channels": False,
     }
+
+
+def get_ratio_estimator_config() -> dict:
+    return {
+        "output_folder": "data/ratio/",
+        "model": "ddm",
+        "nbins": 0,
+        "n_samples": {"low": 100000, "high": 100000},
+        "n_parameter_sets": 100000,
+        "n_parameter_sets_rejected": 100,
+        "n_training_samples_by_parameter_set": 1000,
+        "max_t": 20.0,
+        "delta_t": 0.001,
+        "pickleprotocol": 4,
+        "n_cpus": "all",
+        "n_subdatasets": 12,
+        "n_trials_per_dataset": 10000,  # EVEN NUMBER ! AF-TODO: Saveguard against odd
+        "kde_data_mixture_probabilities": [0.8, 0.1, 0.1],
+        "simulation_filters": get_kde_simulation_filters(),
+        "negative_rt_cutoff": -66.77497,
+        "n_subruns": 10,
+        "bin_pointwise": False,
+        "separate_response_channels": False,
+    }
+
+
+def get_snpe_config() -> dict:
+    return {
+        "output_folder": "data/snpe_training/",
+        "model": "ddm",  # should be ['ddm'],
+        "n_samples": 5000,  # eventually should be {'low': 100000, 'high': 100000},
+        "n_parameter_sets": 10000,
+        "max_t": 20.0,
+        "delta_t": 0.001,
+        "pickleprotocol": 4,
+        "n_cpus": "all",
+        "n_subruns": 10,
+        "separate_response_channels": False,
+    }

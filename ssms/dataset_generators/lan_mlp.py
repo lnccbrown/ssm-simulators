@@ -155,18 +155,8 @@ class data_generator:  # noqa: N801
             self._get_ncpus()
 
         # Make output folder if not already present
-        folder_str_split = self.generator_config["output_folder"].split()
-
-        cnt = 0
-        folder_partial = ""
-        for folder_str_part in folder_str_split:
-            if cnt > 0:
-                folder_partial += "/" + folder_str_part
-            else:
-                folder_partial += folder_str_part
-
-            if not Path(folder_partial).exists():
-                Path(folder_partial).mkdir(parents=True)
+        output_folder = Path(self.generator_config["output_folder"])
+        output_folder.mkdir(parents=True, exist_ok=True)
 
     def _get_ncpus(self):
         """Get the number cpus to use for parallelization."""
@@ -620,29 +610,26 @@ class data_generator:  # noqa: N801
             ).astype(np.float32)
 
         # Add metadata to training_data
-        data["generator_config"] = self.generator_config
-        data["model_config"] = self.model_config
+        data.update(
+            {
+                "generator_config": self.generator_config,
+                "model_config": self.model_config,
+            }
+        )
 
         if save:
-            if not Path(self.generator_config["output_folder"]).exists():
-                Path(self.generator_config["output_folder"]).mkdir(parents=True)
+            output_folder = Path(self.generator_config["output_folder"])
+            output_folder.mkdir(parents=True, exist_ok=True)
+            full_file_name = output_folder / f"training_data_{uuid.uuid1().hex}.dill"
+            logger.info("Writing to file: %s", full_file_name)
 
-            full_file_name = (
-                self.generator_config["output_folder"]
-                + "/"
-                + "training_data_"
-                + uuid.uuid1().hex
-                + ".dill"
-            )  # self.model_config['name'] + '_' + \
-
-            print("Writing to file: ", full_file_name)
-
-            dill.dump(
-                data,
-                Path(full_file_name).open("wb"),
-                protocol=self.generator_config["pickleprotocol"],
-            )
-            logger.info("Dataset completed")
+            with full_file_name.open("wb") as file:
+                dill.dump(
+                    data,
+                    file,
+                    protocol=self.generator_config["pickleprotocol"],
+                )
+            logger.info("Data saved successfully")
 
         return data
 
