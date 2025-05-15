@@ -8,22 +8,35 @@ model_config: dict
 
 import cssm
 
-from ssms import boundary_functions as bf
-from ssms import drift_functions as df
+# Import specific functions from boundary and drift modules
+from ..boundary_functions import (
+    constant as boundary_constant,
+    angle as boundary_angle,
+    generalized_logistic as boundary_logistic,
+    weibull_cdf as boundary_weibull,
+    conflict_gamma as boundary_conflict,
+)
+from ..drift_functions import (
+    constant as drift_constant,
+    gamma_drift,
+    ds_conflict_drift,
+    attend_drift,
+    attend_drift_simple,
+)
 
-from ssms.config._modelconfig import get_model_config
-from ssms.config._modelconfig.tradeoff import (
+from ._modelconfig import get_model_config
+from ._modelconfig.tradeoff import (
     get_tradeoff_no_bias_config,
     get_tradeoff_angle_no_bias_config,
     get_tradeoff_weibull_no_bias_config,
     get_tradeoff_conflict_gamma_no_bias_config,
 )
-from ssms.config._modelconfig.full_ddm import (
+from ._modelconfig.full_ddm import (
     get_full_ddm_config,
     get_full_ddm_rv_config,
 )
-from ssms.config._modelconfig.levy import get_levy_config, get_levy_angle_config
-from ssms.config._modelconfig.lca import (
+from ._modelconfig.levy import get_levy_config, get_levy_angle_config
+from ._modelconfig.lca import (
     get_lca_3_config,
     get_lca_no_bias_3_config,
     get_lca_no_bias_angle_3_config,
@@ -38,7 +51,7 @@ from ssms.config._modelconfig.lca import (
 from ._modelconfig.angle import get_angle_config
 from ._modelconfig.weibull import get_weibull_config
 
-from ssms.config._modelconfig.lba import (
+from ._modelconfig.lba import (
     get_lba2_config,
     get_lba3_config,
     get_lba_3_vs_constraint_config,
@@ -46,14 +59,14 @@ from ssms.config._modelconfig.lba import (
     get_lba_angle_3_config,
 )
 
-from ssms.config._modelconfig.shrink import (
+from ._modelconfig.shrink import (
     get_shrink_spot_config,
     get_shrink_spot_extended_config,
     get_shrink_spot_simple_config,
     get_shrink_spot_simple_extended_config,
 )
 
-from ssms.config._modelconfig.race import (
+from ._modelconfig.race import (
     get_race_2_config,
     get_race_no_bias_2_config,
     get_race_no_z_2_config,
@@ -71,7 +84,7 @@ from ssms.config._modelconfig.race import (
     get_race_no_z_angle_4_config,
 )
 
-from ssms.config._modelconfig.dev_rlwm_lba import (
+from ._modelconfig.dev_rlwm_lba import (
     get_dev_rlwm_lba_pw_v1_config,
     get_dev_rlwm_lba_race_v1_config,
     get_dev_rlwm_lba_race_v2_config,
@@ -105,7 +118,7 @@ model_config = {
         "params": ["v", "a", "z", "t"],
         "param_bounds": [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": boundary_constant,
         "n_params": 4,
         "default_params": [0.0, 1.0, 0.5, 1e-3],
         "nchoices": 2,
@@ -131,9 +144,9 @@ model_config = {
             [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": boundary_constant,
         "drift_name": "gamma_drift",
-        "drift_fun": df.gamma_drift,
+        "drift_fun": gamma_drift,
         "n_params": 7,
         "default_params": [0.0, 1.0, 0.5, 0.25, 5.0, 0.5, 1.0],
         "nchoices": 2,
@@ -153,9 +166,9 @@ model_config = {
             [3.0, 3.0, 0.9, 2.0, 1.3, 10.0, 1.0, 3.0],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": boundary_angle,
         "drift_name": "gamma_drift",
-        "drift_fun": df.gamma_drift,
+        "drift_fun": gamma_drift,
         "n_params": 7,
         "default_params": [0.0, 1.0, 0.5, 0.25, 0.0, 5.0, 0.5, 1.0],
         "nchoices": 2,
@@ -182,9 +195,9 @@ model_config = {
             [3.0, 0.9, 2.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 1.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": boundary_constant,
         "drift_name": "ds_conflict_drift",
-        "drift_fun": df.ds_conflict_drift,
+        "drift_fun": ds_conflict_drift,
         "n_params": 10,
         "default_params": [2.0, 0.5, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5, -0.5],
         "nchoices": 2,
@@ -212,9 +225,9 @@ model_config = {
             [3.0, 0.9, 2.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 1.0, 1.3],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": boundary_angle,
         "drift_name": "ds_conflict_drift",
-        "drift_fun": df.ds_conflict_drift,
+        "drift_fun": ds_conflict_drift,
         "n_params": 10,
         "default_params": [2.0, 0.5, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5, -0.5, 0.0],
         "nchoices": 2,
@@ -227,7 +240,7 @@ model_config = {
         "params": ["v", "a", "z", "g", "t"],
         "param_bounds": [[-2.0, 0.3, 0.1, -1.0, 1e-3], [2.0, 3.0, 0.9, 1.0, 2]],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": boundary_constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3],
         "nchoices": 2,
@@ -243,7 +256,7 @@ model_config = {
             [2.0, 3.0, 0.9, 1.0, 2, 1.3],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": boundary_angle,
         "n_params": 6,
         "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3, 0.1],
         "nchoices": 2,
