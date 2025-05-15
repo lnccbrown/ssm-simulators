@@ -114,14 +114,8 @@ def conflict_gamma(
     )
 
 
-# Define Type alias for boundary functions
+# Type alias for boundary functions
 BoundaryFunction = Callable[..., np.ndarray]
-
-constant: BoundaryFunction = constant  # noqa: PLW0127
-angle: BoundaryFunction = angle  # noqa: PLW0127
-generalized_logistic: BoundaryFunction = generalized_logistic  # noqa: PLW0127
-weibull_cdf: BoundaryFunction = weibull_cdf  # noqa: PLW0127
-conflict_gamma: BoundaryFunction = conflict_gamma  # noqa: PLW0127
 
 # Export all boundary functions
 __all__ = [
