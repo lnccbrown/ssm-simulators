@@ -241,8 +241,13 @@ def attend_drift_simple(
 # Type alias for drift functions
 DriftFunction = Callable[..., np.ndarray]
 
-attend_drift: DriftFunction = attend_drift  # noqa: PLW0127
-constant: DriftFunction = constant  # noqa: PLW0127
-gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
-ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
-ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127
+# Export all drift functions
+__all__ = [
+    "constant",
+    "gamma_drift",
+    "ds_support_analytic",
+    "ds_conflict_drift",
+    "attend_drift",
+    "attend_drift_simple",
+    "DriftFunction",
+]
