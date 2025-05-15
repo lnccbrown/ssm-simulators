@@ -15,11 +15,14 @@ from numpy.random import default_rng
 
 from .theta_processor import SimpleThetaProcessor
 
+
 # Lazy load config to avoid circular imports
 def _get_config():
     from ..config.config import model_config
     from ..config._modelconfig.base import boundary_config, drift_config
+
     return model_config, boundary_config, drift_config
+
 
 DEFAULT_SIM_PARAMS: dict[str, Any] = {
     "max_t": 20.0,

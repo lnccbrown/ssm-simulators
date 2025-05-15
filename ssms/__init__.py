@@ -12,10 +12,12 @@ __all__ = [
     "drift_functions",
 ]
 
+
 # Use lazy imports to avoid circular dependencies
 def __getattr__(name):
     """Lazy import to avoid circular dependencies."""
     if name in __all__:
         import importlib
+
         return importlib.import_module(f".{name}", __package__)
     raise AttributeError(f"module {__package__} has no attribute {name}")
