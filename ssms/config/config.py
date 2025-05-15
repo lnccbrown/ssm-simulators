@@ -8,12 +8,9 @@ model_config: dict
 
 import cssm
 
-# Import specific functions from boundary and drift modules
-from ..boundary_functions import (
+from ..core import (
     constant as boundary_constant,
     angle as boundary_angle,
-)
-from ..drift_functions import (
     gamma_drift,
     ds_conflict_drift,
 )

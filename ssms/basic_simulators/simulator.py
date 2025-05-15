@@ -13,13 +13,13 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 
+from ..config._modelconfig.base import boundary_config, drift_config
 from .theta_processor import SimpleThetaProcessor
 
 
 # Lazy load config to avoid circular imports
 def _get_config():
     from ..config.config import model_config
-    from ..config._modelconfig.base import boundary_config, drift_config
 
     return model_config, boundary_config, drift_config
 
@@ -617,7 +617,7 @@ def simulator(
     else:
         deadline = False
 
-    model_config_local, boundary_config, drift_config = _get_config()
+    model_config_local, _, _ = _get_config()
     model_config_local = model_config_local[model]
 
     if deadline:
