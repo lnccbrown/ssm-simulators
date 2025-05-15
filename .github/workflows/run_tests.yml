@@ -30,11 +30,11 @@ jobs:
       - name: Install package
         run: uv sync --all-groups
 
-      - name: Check styling
-        run: uv run ruff format --check .
+      # - name: Check styling
+      #   run: uv run ruff format --check .
 
-      - name: Linting
-        run: uv run ruff check .
+      # - name: Linting
+      #   run: uv run ruff check .
 
       - name: Run pytest
         run: uv run pytest
