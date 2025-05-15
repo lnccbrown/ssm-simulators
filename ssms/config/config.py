@@ -12,16 +12,10 @@ import cssm
 from ..boundary_functions import (
     constant as boundary_constant,
     angle as boundary_angle,
-    generalized_logistic as boundary_logistic,
-    weibull_cdf as boundary_weibull,
-    conflict_gamma as boundary_conflict,
 )
 from ..drift_functions import (
-    constant as drift_constant,
     gamma_drift,
     ds_conflict_drift,
-    attend_drift,
-    attend_drift_simple,
 )
 
 from ._modelconfig import get_model_config
