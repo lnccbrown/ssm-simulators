@@ -3,7 +3,7 @@ from ssms.support_utils import kde_class
 import numpy as np
 import warnings
 from copy import deepcopy
-import pickle
+import dill
 import uuid
 import os
 from scipy.stats import mode
@@ -18,8 +18,8 @@ from ssms.config import KDE_NO_DISPLACE_T
 
 
 """
-    This module defines a data generator class for use with LANs. 
-    The class defined below can be used to generate training data 
+    This module defines a data generator class for use with LANs.
+    The class defined below can be used to generate training data
     compatible with the expectations of LANs.
 """
 
@@ -655,12 +655,12 @@ class data_generator:
                 + "/"
                 + "training_data_"
                 + uuid.uuid1().hex
-                + ".pickle"
+                + ".dill"
             )  # self.model_config['name'] + '_' + \
 
             print("Writing to file: ", full_file_name)
 
-            pickle.dump(
+            dill.dump(
                 data,
                 open(full_file_name, "wb"),
                 protocol=self.generator_config["pickleprotocol"],
@@ -810,7 +810,7 @@ class data_generator:
     #         )
     #         print("Writing to file: ", full_file_name)
 
-    #         pickle.dump(
+    #         dill.dump(
     #             data,
     #             open(full_file_name, "wb"),
     #             protocol=self.generator_config["pickleprotocol"],
@@ -839,7 +839,7 @@ class data_generator:
     #         )
     #         print("Writing to file: ", full_file_name)
 
-    #         pickle.dump(
+    #         dill.dump(
     #             data,
     #             open(full_file_name, "wb"),
     #             protocol=self.generator_config["pickleprotocol"],
@@ -957,7 +957,7 @@ class data_generator:
             + self.model_config["name"]
             + "_"
             + uuid.uuid1().hex
-            + ".pickle"
+            + ".dill"
         )
         return full_file_name
 
@@ -1006,12 +1006,12 @@ class data_generator:
                 + "/"
                 + "rejected_parameterizations_"
                 + self.generator_config["file_id"]
-                + ".pickle"
+                + ".dill"
             )
 
             print("Writing to file: ", full_file_name)
 
-            pickle.dump(
+            dill.dump(
                 np.float32(rejected_parameterization_list),
                 open(full_file_name, "wb"),
                 protocol=self.generator_config["pickleprotocol"],

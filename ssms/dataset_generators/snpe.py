@@ -1,6 +1,6 @@
 from ssms.basic_simulators.simulator import simulator
 import numpy as np
-import pickle
+import dill
 import uuid
 import os
 from multiprocessing import Pool
@@ -67,8 +67,7 @@ class data_generator_snpe(data_generator):
                 data = {
                     **data,
                     **{
-                        i
-                        + cum_i: {
+                        i + cum_i: {
                             "data": data_tmp[i]["features"],
                             "labels": data_tmp[i]["labels"],
                         }
@@ -96,12 +95,12 @@ class data_generator_snpe(data_generator):
                 + self.model_config["name"]
                 + "_"
                 + uuid.uuid1().hex
-                + ".pickle"
+                + ".dill"
             )
 
             print("Writing to file: ", full_file_name)
 
-            pickle.dump(
+            dill.dump(
                 data,
                 open(full_file_name, "wb"),
                 protocol=self.generator_config["pickleprotocol"],
