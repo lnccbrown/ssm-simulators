@@ -135,3 +135,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+uv.lock
+explorations/
+tests/config_data_generation.yaml
+.gitignore
+.pre-commit-config.yaml
