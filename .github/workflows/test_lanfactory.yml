@@ -39,8 +39,10 @@ jobs:
         run: |
           ls -l
           cd LANfactory
-          uv remove ssm-simulators
-          uv add ../ssm-simulators
-          uv pip list
-          cat pyproject.toml
-          uv run python -c "import ssms"
+          python -m pip install --upgrade pip
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -e .
+          pip uninstall ssm-simulators -y
+          pip install -e ../ssm-simulators
+          python -c "import lanfactory"
