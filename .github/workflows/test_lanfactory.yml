@@ -35,6 +35,10 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml uv.lock"
 
+      - name: Check current environment
+        run: |
+          ls -l
+
       - name: Install current repo into LANfactory with uv
         run: |
           cd LANfactory

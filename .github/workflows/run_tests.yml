@@ -1,8 +1,6 @@
 name: Run tests
 
-on:
-  pull_request:
-  workflow_call:
+on: [push, pull_request, workflow_call]
 
 jobs:
   run_tests:
@@ -26,7 +24,7 @@ jobs:
         with:
           version: "0.5.9"
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml pdm.lock"
+          cache-dependency-glob: "pyproject.toml uv.lock"
 
       - name: Install package
         run: uv sync --all-groups
