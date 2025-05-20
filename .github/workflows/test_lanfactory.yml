@@ -1,0 +1,43 @@
+name: Test with LANfactory
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout current repo
+      uses: actions/checkout@v4
+      with:
+        path: ssm-simulators
+
+    - name: Checkout LANfactory
+      uses: actions/checkout@v4
+      with:
+        repository: lnccbrown/LANfactory
+        path: LANfactory
+
+    - name: Set up Python 3
+      uses: actions/setup-python@v5
+      with:
+        python-version: ["3.11", "3.12"]
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        version: "0.7.6"
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml uv.lock"
+
+    - name: Install current repo into LANfactory with uv
+      run: |
+        cd LANfactory
+        uv remove ssm-simulators
+        uv add ../ssm-simulators
+        uv sync --all-groups
+
+    - name: Run LANfactory tests
+      run: |
+        cd LANfactory
+        uv run pytest
