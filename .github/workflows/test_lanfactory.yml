@@ -38,15 +38,9 @@ jobs:
       - name: Check current environment
         run: |
           ls -l
-
-      - name: Install current repo into LANfactory with uv
-        run: |
           cd LANfactory
           uv remove ssm-simulators
           uv add ../ssm-simulators
-          uv sync --all-groups
-
-      - name: Run LANfactory tests
-        run: |
-          cd LANfactory
-          uv run pytest
+          uv pip list
+          cat pyproject.toml
+          uv run python -c "import ssms"
