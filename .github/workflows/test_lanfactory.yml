@@ -37,12 +37,11 @@ jobs:
 
       - name: Check current environment
         run: |
-          tree
+          tree -d
           cd LANfactory
-          python -m pip install --upgrade pip
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install -e .
-          pip uninstall ssm-simulators -y
-          pip install -e ../ssm-simulators
-          python -c "import lanfactory"
+          echo -e '\n[tool.uv.sources]\nssm-simulators = { path = "../ssm-simulators" }' >> pyproject.toml
+          sed -i 's/"ssm-simulators == 0.8.3"/"ssm-simulators"/' pyproject.toml
+          uv sync --all-groups
+          uv pip list
+          uv run python -c "import ssms"
+
