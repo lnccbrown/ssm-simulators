@@ -13,15 +13,9 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 
-from ..config._modelconfig.base import boundary_config, drift_config
-from .theta_processor import SimpleThetaProcessor
-
-
-# Lazy load config to avoid circular imports
-def _get_config():
-    from ..config.config import model_config
-
-    return model_config, boundary_config, drift_config
+from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
+from ssms._config.model_config import model_config
+from ssms._config.base import boundary_config, drift_config
 
 
 DEFAULT_SIM_PARAMS: dict[str, Any] = {
@@ -617,8 +611,7 @@ def simulator(
     else:
         deadline = False
 
-    model_config_local, _, _ = _get_config()
-    model_config_local = model_config_local[model]
+    model_config_local = deepcopy(model_config[model])
 
     if deadline:
         model_config_local["params"] += ["deadline"]
