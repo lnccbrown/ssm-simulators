@@ -1,4 +1,9 @@
 """Model configuration module for SSM simulators."""
+
+from .kde_constants import KDE_NO_DISPLACE_T
+
+from .model_config import model_config
+
 from .adj import (
     get_ddm_mic2_adj_config,
     get_ddm_mic2_adj_no_bias_config,
@@ -131,6 +136,8 @@ __all__ = [
     "get_snpe_config",
     "get_default_generator_config",
     "data_generator_config",
+    "KDE_NO_DISPLACE_T",
+    "model_config",
 #     "get_model_config",
 #     "get_angle_config",
 #     "get_weibull_config",
