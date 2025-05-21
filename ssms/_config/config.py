@@ -17,8 +17,8 @@ from ..drift_functions import (
     ds_conflict_drift,
 )
 
-from ._modelconfig import get_model_config
-from ._modelconfig.tradeoff import (
+from . import get_model_config
+from .tradeoff import (
     get_tradeoff_no_bias_config,
     get_tradeoff_angle_no_bias_config,
     get_tradeoff_weibull_no_bias_config,
