@@ -21,7 +21,7 @@ from ssms.basic_simulators.simulator import (
     _theta_dict_to_array,
     simulator,  # , bin_simulator_output
 )
-from ssms.config import KDE_NO_DISPLACE_T
+from ssms._config import KDE_NO_DISPLACE_T
 from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
 
