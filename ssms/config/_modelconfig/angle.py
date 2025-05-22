@@ -1,7 +1,7 @@
 """Angle model configuration."""
 
 import cssm
-from ssms import boundary_functions as bf
+from .boundary_functions import angle
 
 
 def get_angle_config():
@@ -11,7 +11,7 @@ def get_angle_config():
         "params": ["v", "a", "z", "t", "theta"],
         "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 1e-3, 0.0],
         "nchoices": 2,

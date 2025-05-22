@@ -1,7 +1,7 @@
 """Race model configurations."""
 
-import cssm
-from ssms import boundary_functions as bf
+from cssm import race_model
+from .boundary_functions import constant, angle
 
 
 def get_race_2_config():
@@ -14,13 +14,13 @@ def get_race_2_config():
             [2.5, 2.5, 3.0, 0.9, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "default_params": [0.0, 0.0, 2.0, 0.5, 0.5, 1e-3],
         "nchoices": 2,
         "choices": [0, 1],
         "n_particles": 2,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -34,13 +34,13 @@ def get_race_no_bias_2_config():
             [2.5, 2.5, 3.0, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 0.0, 2.0, 0.5, 1e-3],
         "nchoices": 2,
         "choices": [0, 1],
         "n_particles": 2,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -54,13 +54,13 @@ def get_race_no_z_2_config():
             [2.5, 2.5, 3.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 4,
         "default_params": [0.0, 0.0, 2.0, 1e-3],
         "nchoices": 2,
         "choices": [0, 1],
         "n_particles": 2,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -74,13 +74,13 @@ def get_race_no_bias_angle_2_config():
             [2.5, 2.5, 3.0, 0.9, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 6,
         "default_params": [0.0, 0.0, 2.0, 0.5, 1e-3, 0.0],
         "nchoices": 2,
         "choices": [0, 1],
         "n_particles": 2,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -94,13 +94,13 @@ def get_race_no_z_angle_2_config():
             [2.5, 2.5, 3.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 5,
         "default_params": [0.0, 0.0, 2.0, 1e-3, 0.0],
         "nchoices": 2,
         "choices": [0, 1],
         "n_particles": 2,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -114,13 +114,13 @@ def get_race_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 0.9, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 0.5, 0.5, 1e-3],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -134,13 +134,13 @@ def get_race_no_bias_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "n_particles": 3,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 1e-3],
         "nchoices": 3,
         "choices": [0, 1, 2],
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -154,13 +154,13 @@ def get_race_no_z_3_config():
             [2.5, 2.5, 2.5, 3.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 0.0, 0.0, 2.0, 1e-3],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -174,13 +174,13 @@ def get_race_no_bias_angle_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 1e-3, 0.0],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -194,13 +194,13 @@ def get_race_no_z_angle_3_config():
             [2.5, 2.5, 2.5, 3.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 6,
         "default_params": [0.0, 0.0, 0.0, 2.0, 1e-3, 0.0],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -214,13 +214,13 @@ def get_race_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 0.9, 0.9, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 0.5, 0.5, 0.5, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -234,13 +234,13 @@ def get_race_no_bias_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -254,13 +254,13 @@ def get_race_no_z_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -274,13 +274,13 @@ def get_race_no_bias_angle_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 1e-3, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }
 
 
@@ -294,11 +294,11 @@ def get_race_no_z_angle_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 1e-3, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.race_model,
+        "simulator": race_model,
     }

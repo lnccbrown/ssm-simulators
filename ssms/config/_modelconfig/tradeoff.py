@@ -1,7 +1,7 @@
 """Configuration for tradeoff models."""
 
-import cssm
-from ssms import boundary_functions as bf
+from cssm import ddm_flexbound_tradeoff
+from .boundary_functions import constant, angle, weibull_cdf, conflict_gamma
 
 
 def get_tradeoff_no_bias_config():
@@ -14,13 +14,13 @@ def get_tradeoff_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
+        "simulator": ddm_flexbound_tradeoff,
     }
 
 
@@ -34,14 +34,14 @@ def get_tradeoff_angle_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "boundary_multiplicative": False,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
+        "simulator": ddm_flexbound_tradeoff,
     }
 
 
@@ -55,13 +55,13 @@ def get_tradeoff_weibull_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
         ],
         "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
+        "boundary": weibull_cdf,
         "boundary_multiplicative": True,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
         "nchoices": 4,
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
+        "simulator": ddm_flexbound_tradeoff,
     }
 
 
@@ -86,12 +86,12 @@ def get_tradeoff_conflict_gamma_no_bias_config():
             [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
         ],
         "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
+        "boundary": conflict_gamma,
         "boundary_multiplicative": True,
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_tradeoff,
+        "simulator": ddm_flexbound_tradeoff,
     }

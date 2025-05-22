@@ -1,32 +1,43 @@
 """Base configurations and utilities for model configs."""
 
-from ssms import boundary_functions as bf
-from ssms import drift_functions as df
+from .boundary_functions import (
+    constant,
+    angle,
+    weibull_cdf,
+    generalized_logistic,
+    conflict_gamma,
+)
+from .drift_functions import (
+    constant as gamma_drift,
+    ds_conflict_drift,
+    attend_drift,
+    attend_drift_simple,
+)
 
 # Boundary configurations
 boundary_config = {
     "constant": {
-        "fun": bf.constant,
+        "fun": constant,
         "params": [],
         "multiplicative": True,
     },
     "angle": {
-        "fun": bf.angle,
+        "fun": angle,
         "params": ["theta"],
         "multiplicative": False,
     },
     "weibull_cdf": {
-        "fun": bf.weibull_cdf,
+        "fun": weibull_cdf,
         "params": ["alpha", "beta"],
         "multiplicative": True,
     },
     "generalized_logistic": {
-        "fun": bf.generalized_logistic,
+        "fun": generalized_logistic,
         "params": ["B", "M", "v"],
         "multiplicative": True,
     },
     "conflict_gamma": {
-        "fun": bf.conflict_gamma,
+        "fun": conflict_gamma,
         "params": ["theta", "scale", "alpha_gamma", "scale_gamma"],
         "multiplicative": False,
     },
@@ -35,23 +46,23 @@ boundary_config = {
 # Drift configurations
 drift_config = {
     "constant": {
-        "fun": df.constant,
+        "fun": constant,
         "params": [],
     },
     "gamma_drift": {
-        "fun": df.gamma_drift,
+        "fun": gamma_drift,
         "params": ["shape", "scale", "c"],
     },
     "ds_conflict_drift": {
-        "fun": df.ds_conflict_drift,
+        "fun": ds_conflict_drift,
         "params": ["tinit", "dinit", "tslope", "dslope", "tfixedp", "tcoh", "dcoh"],
     },
     "attend_drift": {
-        "fun": df.attend_drift,
+        "fun": attend_drift,
         "params": ["ptarget", "pouter", "pinner", "r", "sda"],
     },
     "attend_drift_simple": {
-        "fun": df.attend_drift_simple,
+        "fun": attend_drift_simple,
         "params": ["ptarget", "pouter", "r", "sda"],
     },
 }

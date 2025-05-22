@@ -4,7 +4,7 @@ import functools
 import scipy.stats as sps  # type: ignore
 
 import cssm
-from ssms import boundary_functions as bf
+from .boundary_functions import constant
 
 
 def get_full_ddm_config():
@@ -17,7 +17,7 @@ def get_full_ddm_config():
             [3.0, 2.5, 0.7, 2.25, 0.2, 2.0, 0.25],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 7,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3, 1e-3, 1e-3],
         "nchoices": 2,
@@ -42,7 +42,7 @@ def get_full_ddm_rv_config():
             "st": (1e-3, "t"),
         },
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3, 1e-3, 1e-3],
         "nchoices": 2,

@@ -1,7 +1,7 @@
 """LCA (Leaky Competing Accumulator) model configurations."""
 
-import cssm
-from ssms import boundary_functions as bf
+from cssm import lca
+from .boundary_functions import constant, angle
 
 
 def get_lca_3_config():
@@ -14,12 +14,12 @@ def get_lca_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 0.9, 0.9, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 0.5, 0.5, 0.0, 0.0, 1e-3],
         "nchoices": 3,
         "n_particles": 3,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -33,13 +33,13 @@ def get_lca_no_z_3_config():
             [2.5, 2.5, 2.5, 3.0, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1e-3],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -66,13 +66,13 @@ def get_lca_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 0.9, 0.9, 0.9, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 12,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -86,13 +86,13 @@ def get_lca_no_z_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -106,13 +106,13 @@ def get_lca_no_z_angle_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 1.0, 1.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 9,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1e-3, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -125,13 +125,13 @@ def get_lca_no_bias_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 0.0, 0.0, 1e-3],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -144,13 +144,13 @@ def get_lca_no_bias_angle_3_config():
             [2.5, 2.5, 2.5, 3.0, 0.9, 1.0, 1.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 9,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 0.0, 0.0, 1e-3, 0.0],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -163,13 +163,13 @@ def get_lca_no_z_angle_3_config():
             [2.5, 2.5, 2.5, 3.0, 1.0, 1.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1e-3, 0.0],
         "nchoices": 3,
         "choices": [0, 1, 2],
         "n_particles": 3,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -182,13 +182,13 @@ def get_lca_no_bias_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 1.0, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 9,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 0.0, 0.0, 1e-3],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }
 
 
@@ -201,11 +201,11 @@ def get_lca_no_bias_angle_4_config():
             [2.5, 2.5, 2.5, 2.5, 3.0, 0.9, 1.0, 1.0, 2.0, 1.45],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 0.0, 2.0, 0.5, 0.0, 0.0, 1e-3, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
-        "simulator": cssm.lca,
+        "simulator": lca,
     }

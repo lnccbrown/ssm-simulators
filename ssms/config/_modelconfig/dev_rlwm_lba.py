@@ -1,7 +1,7 @@
 """Configuration for RLWM LBA models."""
 
 import cssm
-from ssms import boundary_functions as bf
+from .boundary_functions import constant
 
 
 def get_dev_rlwm_lba_pw_v1_config():
@@ -24,7 +24,7 @@ def get_dev_rlwm_lba_pw_v1_config():
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 0.5, 0.5],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 9,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2, 0.1],
         "nchoices": 3,
@@ -53,7 +53,7 @@ def get_dev_rlwm_lba_race_v1_config():
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 0.5],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 8,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2],
         "nchoices": 3,
@@ -83,7 +83,7 @@ def get_dev_rlwm_lba_race_v2_config():
             [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 8,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2],
         "nchoices": 3,

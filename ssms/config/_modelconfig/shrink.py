@@ -1,8 +1,8 @@
 """Shrink model configurations."""
 
-import cssm
-from ssms import boundary_functions as bf
-from ssms import drift_functions as df
+from cssm import ddm_flex
+from .boundary_functions import constant
+from .drift_functions import attend_drift, attend_drift_simple
 
 
 def get_shrink_spot_config():
@@ -24,15 +24,15 @@ def get_shrink_spot_config():
             [3.0, 0.9, 2.0, 5.5, 5.5, 5.5, 0.05, 3],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "drift_name": "attend_drift",
-        "drift_fun": df.attend_drift,
+        "drift_fun": attend_drift,
         "n_params": 8,
         "default_params": [0.7, 0.5, 0.25, 2.0, -2.0, -2.0, 0.01, 1],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex,
+        "simulator": ddm_flex,
     }
 
 
@@ -55,15 +55,15 @@ def get_shrink_spot_extended_config():
             [3.0, 0.9, 2.0, 5.5, 5.5, 5.5, 1.0, 3],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "drift_name": "attend_drift",
-        "drift_fun": df.attend_drift,
+        "drift_fun": attend_drift,
         "n_params": 8,
         "default_params": [0.7, 0.5, 0.25, 2.0, -2.0, -2.0, 0.01, 1],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex,
+        "simulator": ddm_flex,
     }
 
 
@@ -85,15 +85,15 @@ def get_shrink_spot_simple_config():
             [3.0, 0.9, 2.0, 5.5, 5.5, 0.05, 3],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "drift_name": "attend_drift_simple",
-        "drift_fun": df.attend_drift_simple,
+        "drift_fun": attend_drift_simple,
         "n_params": 7,
         "default_params": [0.7, 0.5, 0.25, 2.0, -2.0, 0.01, 1],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex,
+        "simulator": ddm_flex,
     }
 
 
@@ -115,13 +115,13 @@ def get_shrink_spot_simple_extended_config():
             [3.0, 0.9, 2.0, 5.5, 5.5, 1.0, 3],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "drift_name": "attend_drift_simple",
-        "drift_fun": df.attend_drift_simple,
+        "drift_fun": attend_drift_simple,
         "n_params": 7,
         "default_params": [0.7, 0.5, 0.25, 2.0, -2.0, 0.01, 1],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex,
+        "simulator": ddm_flex,
     }

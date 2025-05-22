@@ -7,6 +7,15 @@ from .adj import (
     get_ddm_mic2_adj_angle_no_bias_config,
     get_ddm_mic2_adj_weibull_no_bias_config,
 )
+
+from .leak import (
+    get_ddm_mic2_leak_config,
+    get_ddm_mic2_leak_no_bias_config,
+    get_ddm_mic2_leak_conflict_gamma_no_bias_config,
+    get_ddm_mic2_leak_angle_no_bias_config,
+    get_ddm_mic2_leak_weibull_no_bias_config,
+)
+
 from .multinoise import (
     get_ddm_mic2_multinoise_no_bias_config,
     get_ddm_mic2_multinoise_conflict_gamma_no_bias_config,
@@ -22,13 +31,6 @@ from .ornstein import (
     get_ddm_mic2_ornstein_weibull_no_bias_config,
 )
 
-from .leak import (
-    get_ddm_mic2_leak_config,
-    get_ddm_mic2_leak_no_bias_config,
-    get_ddm_mic2_leak_conflict_gamma_no_bias_config,
-    get_ddm_mic2_leak_angle_no_bias_config,
-    get_ddm_mic2_leak_weibull_no_bias_config,
-)
 
 __all__ = [
     "get_ddm_mic2_adj_config",

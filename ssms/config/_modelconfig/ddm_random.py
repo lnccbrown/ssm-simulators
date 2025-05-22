@@ -4,8 +4,8 @@ import functools
 import numpy as np
 import scipy.stats as sps
 
-import cssm
-from ssms import boundary_functions as bf
+from cssm import full_ddm_rv
+from .boundary_functions import constant
 
 
 def get_ddm_st_config():
@@ -18,13 +18,13 @@ def get_ddm_st_config():
             [3.0, 2.5, 0.7, 2.25, 0.25],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
+        "simulator": full_ddm_rv,
         "simulator_fixed_params": {
             "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
             "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
@@ -47,13 +47,13 @@ def get_ddm_truncnormt_config():
             [3.0, 2.5, 0.7, 2.25, 0.5],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
+        "simulator": full_ddm_rv,
         "simulator_fixed_params": {
             "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
             "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
@@ -81,13 +81,13 @@ def get_ddm_rayleight_config():
             [3.0, 2.5, 0.7, 1.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.25, 0.2],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
+        "simulator": full_ddm_rv,
         "simulator_fixed_params": {
             "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
             "v_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
@@ -110,13 +110,13 @@ def get_ddm_sdv_config():
         "params": ["v", "a", "z", "t", "sv"],
         "param_bounds": [[-3.0, 0.3, 0.1, 1e-3, 1e-3], [3.0, 2.5, 0.9, 2.0, 2.5]],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 1e-3, 1e-3],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
+        "simulator": full_ddm_rv,
         "simulator_fixed_params": {
             "z_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),
             "t_dist": functools.partial(sps.norm.rvs, loc=0, scale=0),

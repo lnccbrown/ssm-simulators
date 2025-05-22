@@ -1,7 +1,7 @@
 """Configuration for multinoise models."""
 
-import cssm
-from ssms import boundary_functions as bf
+from cssm import ddm_flexbound_mic2_multinoise
+from ..boundary_functions import constant, conflict_gamma, angle, weibull_cdf
 
 
 def get_ddm_mic2_multinoise_no_bias_config():
@@ -14,13 +14,13 @@ def get_ddm_mic2_multinoise_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0],
         ],
         "boundary_name": "constant",
-        "boundary": bf.constant,
+        "boundary": constant,
         "n_params": 6,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
+        "simulator": ddm_flexbound_mic2_multinoise,
     }
 
 
@@ -45,13 +45,13 @@ def get_ddm_mic2_multinoise_conflict_gamma_no_bias_config():
             [4.0, 4.0, 4.0, 1.0, 2.0, 2.5, 0.5, 5.0, 5.0, 5.0],
         ],
         "boundary_name": "conflict_gamma",
-        "boundary": bf.conflict_gamma,
+        "boundary": conflict_gamma,
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 1.0, 2, 2],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
+        "simulator": ddm_flexbound_mic2_multinoise,
     }
 
 
@@ -65,14 +65,14 @@ def get_ddm_mic2_multinoise_angle_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 1.0],
         ],
         "boundary_name": "angle",
-        "boundary": bf.angle,
+        "boundary": angle,
         "boundary_multiplicative": False,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
+        "simulator": ddm_flexbound_mic2_multinoise,
     }
 
 
@@ -86,12 +86,12 @@ def get_ddm_mic2_multinoise_weibull_no_bias_config():
             [4.0, 4.0, 4.0, 2.5, 1.0, 2.0, 4.99, 6.99],
         ],
         "boundary_name": "weibull_cdf",
-        "boundary": bf.weibull_cdf,
+        "boundary": weibull_cdf,
         "boundary_multiplicative": True,
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
-        "simulator": cssm.ddm_flexbound_mic2_multinoise,
+        "simulator": ddm_flexbound_mic2_multinoise,
     }
