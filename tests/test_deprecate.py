@@ -1,6 +1,4 @@
-from ssms.config.generator_config.data_generator_config import (
-    DeprecatedDict,
-)
+from ssms.config import DeprecatedDict
 
 
 def test_deprecated_dict_warns(recwarn):

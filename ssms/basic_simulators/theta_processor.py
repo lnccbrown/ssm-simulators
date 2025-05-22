@@ -1,32 +1,17 @@
-"""Define the `AbstractThetaProcessor` and its concrete implementation.
-
-`SimpleThetaProcessor` for processing theta parameters based on model configurations.
-
-Classes:
-    - AbstractThetaProcessor: An abstract base class that defines the interface for
-      processing theta parameters.
-    - SimpleThetaProcessor: A concrete implementation of `AbstractThetaProcessor` that
-      processes theta parameters based on various model configurations.
-
-The `SimpleThetaProcessor` class includes methods to handle different models such as
-single particle models, multi-particle models, LBA-based models, and various choice
-models. It modifies the theta parameters according to the specified model configuration
-and number of trials.
-"""
-
 from abc import ABC, abstractmethod
-from typing import Any
-
+from typing import Dict, Any
 import numpy as np
 
 
 class AbstractThetaProcessor(ABC):
-    """Abstract base class for theta processors."""
+    """
+    Abstract base class for theta processors.
+    """
 
     @abstractmethod
     def process_theta(
-        self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
-    ) -> dict[str, Any]:
+        self, theta: Dict[str, Any], model_config: Dict[str, Any], n_trials: int
+    ) -> Dict[str, Any]:
         """
         Abstract method to process theta parameters.
 
@@ -35,23 +20,23 @@ class AbstractThetaProcessor(ABC):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns
-        -------
+        Returns:
             Dict[str, Any]: Processed theta parameters.
         """
+        pass
 
 
 class SimpleThetaProcessor(AbstractThetaProcessor):
-    """Simple implementation of the AbstractThetaProcessor.
-
+    """
+    A simple implementation of the AbstractThetaProcessor.
     This class collects functions (for now very simple) that build the bridge between
     the model_config level specification of the model and the theta parameters that are
     used in the simulator.
     """
 
     def process_theta(
-        self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
-    ) -> dict[str, Any]:
+        self, theta: Dict[str, Any], model_config: Dict[str, Any], n_trials: int
+    ) -> Dict[str, Any]:
         """
         Process theta parameters based on the model configuration.
 
@@ -60,8 +45,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             model_config (Dict[str, Any]): Dictionary of model configuration.
             n_trials (int): Number of trials.
 
-        Returns
-        -------
+        Returns:
             Dict[str, Any]: Processed theta parameters.
         """
         model = model_config["name"]
@@ -152,7 +136,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["v"] = np.column_stack([theta["v0"], theta["v1"]])
             theta["z"] = np.expand_dims(theta["A"], axis=1)
             theta["a"] = np.expand_dims(theta["b"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
+            theta["ndt"] = np.zeros(n_trials).astype(np.float32)
 
             del theta["A"]
             del theta["b"]
@@ -163,25 +147,25 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
 
             theta["z"] = np.expand_dims(theta["A"], axis=1)
             theta["a"] = np.expand_dims(theta["b"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
+            theta["ndt"] = np.zeros(n_trials).astype(np.float32)
 
             del theta["A"]
             del theta["b"]
 
-        if model == "lba_3_vs_constraint":
+        if model == "lba_3_v1":
             theta["v"] = np.column_stack([theta["v0"], theta["v1"], theta["v2"]])
             theta["a"] = np.expand_dims(theta["a"], axis=1)
             theta["z"] = np.expand_dims(theta["z"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
+            theta["ndt"] = np.zeros(n_trials).astype(np.float32)
 
-        if model in ["lba_angle_3_vs_constraint", "lba_angle_3"]:
+        if model == "lba_angle_3_v1":
             theta["v"] = np.column_stack([theta["v0"], theta["v1"], theta["v2"]])
             theta["a"] = np.expand_dims(theta["a"], axis=1)
             theta["z"] = np.expand_dims(theta["z"], axis=1)
             theta["theta"] = np.expand_dims(theta["theta"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
+            theta["ndt"] = np.zeros(n_trials).astype(np.float32)
 
-        if model in ["dev_rlwm_lba_race_v1", "dev_rlwm_lba_race_v2"]:
+        if model == "rlwm_lba_race_v1":
             theta["v_RL"] = np.column_stack(
                 [theta["v_RL_0"], theta["v_RL_1"], theta["v_RL_2"]]
             )
@@ -190,19 +174,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             )
             theta["a"] = np.expand_dims(theta["a"], axis=1)
             theta["z"] = np.expand_dims(theta["z"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
-
-        if model == "dev_rlwm_lba_pw_v1":
-            theta["v_RL"] = np.column_stack(
-                [theta["v_RL_0"], theta["v_RL_1"], theta["v_RL_2"]]
-            )
-            theta["v_WM"] = np.column_stack(
-                [theta["v_WM_0"], theta["v_WM_1"], theta["v_WM_2"]]
-            )
-            theta["a"] = np.expand_dims(theta["a"], axis=1)
-            theta["z"] = np.expand_dims(theta["z"], axis=1)
-            theta["t_WM"] = np.expand_dims(theta["t_WM"], axis=1)
-            theta["t"] = np.zeros(n_trials).astype(np.float32)
+            theta["ndt"] = np.zeros(n_trials).astype(np.float32)
 
         # 2 Choice
         if model == "race_2":

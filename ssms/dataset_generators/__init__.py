@@ -1,3 +1,4 @@
-from . import lan_mlp  # noqa: D104
+from . import lan_mlp
+from . import snpe
 
-__all__ = ["lan_mlp"]
+__all__ = ["lan_mlp", "snpe"]

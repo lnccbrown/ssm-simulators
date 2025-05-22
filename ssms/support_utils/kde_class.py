@@ -1,13 +1,12 @@
-# KDE GENERATORS
+"""
+This module contains a class for generating kdes from data.
+"""
+
 from collections.abc import Iterable
 from copy import deepcopy
 
 import numpy as np
 from sklearn.neighbors import KernelDensity
-
-"""
-    This module contains a class for generating kdes from data.
-"""
 
 
 class LogKDE:

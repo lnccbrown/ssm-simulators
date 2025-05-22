@@ -1,3 +1,11 @@
+from ssms.config.config import model_config, boundary_config, drift_config
+import numpy as np
+import pandas as pd
+from copy import deepcopy
+import warnings
+from numpy.random import default_rng
+from threading import Lock
+
 """
 This module defines the basic simulator function which is the main
 workshorse of the package.
@@ -5,20 +13,10 @@ In addition some utility functions are provided that help
 with preprocessing the output of the simulator function.
 """
 
-from copy import deepcopy
-from threading import Lock
-from typing import Any
-
-import numpy as np
-import pandas as pd
-from numpy.random import default_rng
-
+from typing import Dict, Any
 from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
-from ssms.config.config import model_config
-from ssms.config._modelconfig.base import boundary_config, drift_config
 
-
-DEFAULT_SIM_PARAMS: dict[str, Any] = {
+DEFAULT_SIM_PARAMS: Dict[str, Any] = {
     "max_t": 20.0,
     "n_samples": 2000,
     "n_trials": 1000,
@@ -61,7 +59,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
         # Turn all values into numpy arrays
         if isinstance(value, list):
             dict_in[key] = np.array(value).astype(np.float32)
-        elif isinstance(value, int | float):
+        elif isinstance(value, (int, float)):
             dict_in[key] = np.array([value]).astype(np.float32)
 
         # Squeeze all values to make sure they are 1d arrays
@@ -95,8 +93,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
 
 
 def _theta_dict_to_array(
-    theta: dict = {},  # TODO: #80 use dict instead of dict | None  # noqa: B006, FIX002
-    model_param_list: list[str] | None = None,
+    theta: dict = {}, model_param_list: list[str] | None = None
 ) -> np.ndarray:
     """Converts theta dictionary to numpy array for use with simulator function.
 
@@ -313,8 +310,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
     return drift_dict
 
 
-# TODO: Make useful as independent utility,
-# this is dropped from basic simulator call now
+# Basic simulators and basic preprocessing
 def bin_simulator_output_pointwise(
     out: tuple[np.ndarray, np.ndarray] = (np.array([0]), np.array([0])),
     bin_dt: float = 0.04,
@@ -430,6 +426,61 @@ def bin_simulator_output(
     return counts
 
 
+def bin_arbitrary_fptd(
+    out: np.ndarray | None = None,
+    bin_dt: float = 0.04,
+    nbins: int = 256,
+    nchoices: int = 2,
+    choice_codes: list[float] = [-1.0, 1.0],
+    max_t: float = 10.0,
+) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
+    """Takes in simulator output and returns a histogram of bin counts
+    Arguments
+    ---------
+        out: np.ndarray
+            Output of the 'simulator' function
+        bin_dt : float
+            If nbins is 0, this determines the desired bin size
+            which in turn automatically determines the resulting number of bins.
+        nbins : int
+            Number of bins to bin reaction time data into.
+            If supplied as 0, bin_dt instead determines the number of
+            bins automatically.
+        nchoices: int <default=2>
+            Number of choices allowed by the simulator.
+        choice_codes = list[float] <default=[-1.0, 1.0]>
+            Choice labels to be used.
+        max_t: float
+            Maximum RT to consider.
+
+    Returns
+    -------
+        2d array (nbins, nchoices): A histogram of bin counts
+    """
+
+    if out is None:
+        raise ValueError("out is not supplied")
+
+    # Generate bins
+    if nbins == 0:
+        nbins = int(max_t / bin_dt)
+        bins = np.zeros(nbins + 1)
+        bins[:nbins] = np.linspace(0, max_t, nbins)
+        bins[nbins] = np.inf
+    else:
+        bins = np.zeros(nbins + 1)
+        bins[:nbins] = np.linspace(0, max_t, nbins)
+        bins[nbins] = np.inf
+
+    cnt = 0
+    counts = np.zeros((nbins, nchoices))
+
+    for choice in choice_codes:
+        counts[:, cnt] = np.histogram(out[:, 0][out[:, 1] == choice], bins=bins)[0]
+        cnt += 1
+    return counts
+
+
 def validate_ssm_parameters(model: str, theta: dict) -> None:
     """
     Validate the parameters for Sequential Sampling Models (SSM).
@@ -488,52 +539,21 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
         if np.any(z >= a):
             raise ValueError("Starting point z >= a for at least one trial")
 
-    if model in [
-        "lba_3_vs_constraint",
-        "lba_angle_3_vs_constraint",
-        "lba_angle_3",
-        "dev_rlwm_lba_race_v1",
-        "dev_rlwm_lba_race_v2",
-        "dev_rlwm_lba_pw_v1",
-    ]:
-        if model in ["lba_3_vs_constraint", "lba_angle_3_vs_constraint"]:
+    if model in ["lba_3_v1", "lba_angle_3_v1", "rlwm_lba_race_v1"]:
+        if model in ["lba_3_v1", "lba_angle_3_v1"]:
             check_lba_drifts_sum(theta["v"])
             check_if_z_gt_a(theta["z"], theta["a"])
-        elif model in ["dev_rlwm_lba_race_v1"]:
+        elif model in ["rlwm_lba_race_v1"]:
             check_lba_drifts_sum(theta["v_RL"])
             check_lba_drifts_sum(theta["v_WM"])
             check_if_z_gt_a(theta["z"], theta["a"])
-        elif model in [
-            "lba3",
-            "lba2",
-            "lba_angle_3",
-            "dev_rlwm_lba_pw_v1",
-            "dev_rlwm_lba_race_v2",
-        ]:
-            check_if_z_gt_a(theta["z"], theta["a"])
+    elif model in ["lba3", "lba2"]:
+        check_if_z_gt_a(theta["z"], theta["a"])
 
 
 def make_noise_vec(
     sigma_noise: float | np.ndarray, n_trials: int, n_particles: int
 ) -> np.ndarray:
-    """
-    Create a noise vector for simulation.
-
-    This function generates a noise vector based on the provided sigma_noise parameter,
-    replicating it across trials and particles as needed.
-
-    Arguments
-    ---------
-        sigma_noise (float | np.ndarray): Standard deviation of the noise. Can be a single float value
-            or a numpy array.
-        n_trials (int): Number of trials to simulate.
-        n_particles (int): Number of particles per trial.
-
-    Returns
-    -------
-        np.ndarray: A noise vector with appropriate shape for the simulation,
-            containing the replicated sigma_noise values.
-    """
     if n_particles == 1 or n_particles is None:
         shape_tuple = n_trials
     else:
@@ -560,8 +580,11 @@ def simulator(
     delta_t: float = 0.001,
     max_t: float = 20,
     no_noise: bool = False,
+    bin_dim: int | None = None,
+    bin_pointwise: bool = False,
     sigma_noise: float | None = None,
     smooth_unif: bool = True,
+    return_option: str = "full",
     random_state: int | None = None,
 ) -> dict:
     """Basic data simulator for the models included in HDDM.
@@ -583,12 +606,27 @@ def simulator(
             Maximum reaction the simulator can reach
         no_noise: bool <default=False>
             Turn noise of (useful for plotting purposes mostly)
+        bin_dim: int | None <default=None>
+            Number of bins to use (in case the simulator output is
+            supposed to come out as a count histogram)
+        bin_pointwise: bool <default=False>
+            Wheter or not to bin the output data pointwise.
+            If true the 'RT' part of the data is now specifies the
+            'bin-number' of a given trial instead of the 'RT' directly.
+            You need to specify bin_dim as some number for this to work.
         sigma_noise: float | None <default=None>
             Standard deviation of noise in the diffusion process. If None, defaults to 1.0 for most models
             and 0.1 for LBA models. If no_noise is True, sigma_noise will be set to 0.0.
             If 'sd' or 's' is passed via theta dictionary, sigma_noise must be None.
         smooth_unif: bool <default=True>
             Whether to add uniform random noise to RTs to smooth the distributions.
+        return_option: str <default='full'>
+            Determines what the function returns. Can be either
+            'full' or 'minimal'. If 'full' the function returns
+            a dictionary with keys 'rts', 'responses' and 'metadata', and
+            metadata contains the model parameters and some additional
+            information. 'metadata' is a simpler dictionary with less information
+            if 'minimal' is chosen.
         random_state: int | None <default=None>
             Integer passed to random_seed function in the simulator.
             Can be used for reproducibility.
@@ -679,12 +717,6 @@ def simulator(
         **sim_param_dict,
     )
 
-    # Ensure x is a dictionary
-    if not isinstance(x, dict):
-        raise TypeError(
-            f"Expected simulator to return a dictionary, got {type(x).__name__}"
-        )
-
     # Postprocess simulator output ----------------------------
     # Additional model outputs, easy to compute:
     # Choice probability
@@ -697,7 +729,7 @@ def simulator(
     x["go_p"] = np.zeros((n_trials, 1))
 
     # Calculate choice probabilities by trial
-    # TODO: #79 vectorize this  # noqa: FIX002
+    # TODO: vectorize this
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
         out_len_no_omission = x["rts"][:, k, :][x["rts"][:, k, :] != -999].shape[0]
@@ -737,4 +769,33 @@ def simulator(
     x["binned_256"] = np.expand_dims(
         bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
     )
-    return x
+
+    # Adjust in output to binning choice
+    if bin_dim == 0 or bin_dim is None:
+        return x
+    elif bin_dim > 0 and n_trials == 1 and not bin_pointwise:
+        binned_out = bin_simulator_output(x, nbins=bin_dim)
+        return {"data": binned_out, "metadata": x["metadata"]}
+    elif bin_dim > 0 and n_trials == 1 and bin_pointwise:
+        binned_out = bin_simulator_output_pointwise(x, nbins=bin_dim)
+        return {
+            "rts": np.expand_dims(binned_out[:, 0], axis=1),
+            "choices": np.expand_dims(binned_out[:, 1], axis=1),
+            "metadata": x["metadata"],
+        }
+    elif bin_dim > 0 and n_trials > 1 and n_samples == 1 and bin_pointwise:
+        binned_out = bin_simulator_output_pointwise(x, nbins=bin_dim)
+        return {
+            "rts": np.expand_dims(binned_out[:, 0], axis=1),
+            "choices": np.expand_dims(binned_out[:, 1], axis=1),
+            "metadata": x["metadata"],
+        }
+    elif bin_dim > 0 and n_trials > 1 and n_samples > 1 and bin_pointwise:
+        return (
+            "currently n_trials > 1 and n_samples > 1, "
+            "will not work together with bin_pointwise"
+        )
+    elif bin_dim > 0 and n_trials > 1 and not bin_pointwise:
+        return "currently binned outputs not implemented for multi-trial simulators"
+    elif bin_dim == -1:
+        return "invalid bin_dim"

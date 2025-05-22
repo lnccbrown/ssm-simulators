@@ -91,6 +91,7 @@ def test_simulator_runs(sim_input_data):
     for key in model_config:
         # Go over different types of input data
         # (listed above in sim_input_data() fixture)
+        logger.info("Trying model: %s", key)
         for subkey in sim_input_data[key]:
             logger.debug(f"{key} -> {subkey}")
 
