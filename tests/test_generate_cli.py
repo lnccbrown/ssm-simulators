@@ -110,4 +110,3 @@ def test_main(mock_data_generator, tmp_path, yaml_config):
     mock_generator_instance.generate_data_training_uniform.assert_called_once_with(
         save=True, cpn_only=False
     )
-    

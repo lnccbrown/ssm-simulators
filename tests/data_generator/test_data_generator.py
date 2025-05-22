@@ -27,7 +27,7 @@ def test_data_persistance(tmp_path):
     my_dataset_generator = data_generator(
         generator_config=generator_config, model_config=model_conf
     )
-    training_data = my_dataset_generator.generate_data_training_uniform(save=True)
+    my_dataset_generator.generate_data_training_uniform(save=True)
     new_data_file = list(tmp_path.iterdir())[0]
     assert new_data_file.exists()
     assert new_data_file.suffix == ".dill"
@@ -66,6 +66,7 @@ ok_model_config = [
 # TODO: Remove this once data generator is optimized for slow models (#113)
 subset_size = 1 + len(ok_model_config) // 10
 ok_model_config = random.sample(ok_model_config, subset_size)
+
 
 @pytest.mark.parametrize("model_name,model_conf", ok_model_config)
 def test_data_generator(model_name, model_conf):

@@ -1805,6 +1805,7 @@ kde_simulation_filters = {
 Convenience functions for getting default configurations for data generation.
 """
 
+
 class DeprecatedDict(dict):
     """
     A pseudo-dictionary that raises a DeprecationWarning when accessed.
@@ -1826,6 +1827,7 @@ class DeprecatedDict(dict):
     def __getitem__(self, key):
         message = f"Accessing this configuration dict is deprecated and will be removed in a future version. Use `{self._alternative}` instead."
         from warnings import warn
+
         warn(
             message,
             DeprecationWarning,
