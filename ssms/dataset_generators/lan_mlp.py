@@ -1,38 +1,43 @@
-from ssms.basic_simulators.simulator import simulator  # , bin_simulator_output
-from ssms.support_utils import kde_class
-import numpy as np
+"""
+This module defines a data generator class for use with LANs.
+The class defined below can be used to generate training data
+compatible with the expectations of LANs.
+"""
+
+import logging
+import uuid
 import warnings
 from copy import deepcopy
-import pickle
-import uuid
-import os
-from scipy.stats import mode
-from pathos.multiprocessing import ProcessingPool as Pool
-import psutil
-
 from functools import partial
+from pathlib import Path
 
-from ssms.support_utils.utils import sample_parameters_from_constraints
-from ssms.basic_simulators.simulator import _theta_dict_to_array
+import pickle
+import numpy as np
+import psutil
+from pathos.multiprocessing import ProcessingPool as Pool
+from scipy.stats import mode
+
+from ssms.basic_simulators.simulator import (
+    _theta_dict_to_array,
+    simulator,  # , bin_simulator_output
+)
 from ssms.config import KDE_NO_DISPLACE_T
+from ssms.support_utils import kde_class
+from ssms.support_utils.utils import sample_parameters_from_constraints
+
+logger = logging.getLogger(__name__)
 
 
-"""
-    This module defines a data generator class for use with LANs.
-    The class defined below can be used to generate training data
-    compatible with the expectations of LANs.
-"""
-
-
-class data_generator:
+# TODO: #77 rew Class name `data_generator` should use CapWords convention  # noqa: FIX002
+class data_generator:  # noqa: N801
     """The data_generator() class is used to generate training data
       for various likelihood approximators.
 
     Attributes
     ----------
         generator_config: dict
-            Configuation dictionary for the data generator.
-            (For an example load ssms.config.data_generator_config['lan'])
+            Configuration dictionary for the data generator.
+            (For an example load ssms.config.get_lan_config())
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
@@ -51,11 +56,6 @@ class data_generator:
             Helper function for generating training data for MLPs.
         _cpn_get_processed_data_for_theta(random_seed_tuple)
             Helper function for generating training data for CPNs.
-        _get_rejected_parameter_setups(random_seed_tuple)
-            Helper function that collectes parameters sets which were rejected
-            by the filter used in the _filter_simulations() method.
-        _make_save_file_name(unique_tag=None)
-            Helper function for generating save file names.
         _build_simulator()
             Builds simulator function for LANs.
         _get_ncpus()
@@ -76,7 +76,7 @@ class data_generator:
         ---------
         generator_config: dict
             Configuration dictionary for the data generator.
-            (For an example load ssms.config.data_generator_config['lan'])
+            (For an example load ssms.config.get_lan_config())
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
@@ -118,11 +118,13 @@ class data_generator:
                 self.generator_config["kde_displace_t"] = False
 
             if (
-                self.generator_config["kde_displace_t"] is True
+                self.generator_config["kde_displace_t"]
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
             ):
                 warnings.warn(
-                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}. Overriding setting to False"
+                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}."
+                    " Overriding setting to False",
+                    stacklevel=2,
                 )
                 self.generator_config["kde_displace_t"] = False
 
@@ -153,27 +155,14 @@ class data_generator:
             self._get_ncpus()
 
         # Make output folder if not already present
-        folder_str_split = str(self.generator_config["output_folder"]).split()
-
-        cnt = 0
-        folder_partial = ""
-        for folder_str_part in folder_str_split:
-            if cnt > 0:
-                folder_partial += "/" + folder_str_part
-            else:
-                folder_partial += folder_str_part
-
-            print("checking: ", folder_partial)
-
-            if not os.path.exists(folder_partial):
-                os.makedirs(folder_partial)
+        output_folder = Path(self.generator_config["output_folder"])
+        output_folder.mkdir(parents=True, exist_ok=True)
 
     def _get_ncpus(self):
         """Get the number cpus to use for parallelization."""
         # Get number of cpus
         if self.generator_config["n_cpus"] == "all":
             n_cpus = psutil.cpu_count(logical=False)
-            print("n_cpus used: ", n_cpus)
         else:
             n_cpus = self.generator_config["n_cpus"]
 
@@ -185,7 +174,6 @@ class data_generator:
             simulator,
             n_samples=self.generator_config["n_samples"],
             max_t=self.generator_config["max_t"],
-            bin_dim=0,
             delta_t=self.generator_config["delta_t"],
             smooth_unif=self.generator_config["smooth_unif"],
         )
@@ -370,8 +358,25 @@ class data_generator:
                 Dictionary containing the transformed parameters.
         """
 
+        # TODO: This is kind of not the right place for these model specific transformations
+        # We should figure out how to make this part of generic model properties than can be drawn upon here
+        # systematically without model specific custom code in this function
+        if self.model_config["name"] in ["lba_angle_3"]:
+            # ensure that a is always greater than z
+            if theta["a"] <= theta["z"]:
+                tmp = theta["a"]
+                theta["a"] = theta["z"]
+                theta["z"] = tmp
+
+        if self.model_config["name"] == "dev_rlwm_lba_pw_v1":
+            # ensure that a is always greater than z
+            if theta["a"] <= theta["z"]:
+                tmp = theta["a"]
+                theta["a"] = theta["z"]
+                theta["z"] = tmp
+
         # For LBA-based models, we need to ensure that the drift rates sum to 1
-        if self.model_config["name"] == "rlwm_lba_race_wo_ndt_v1":
+        if self.model_config["name"] == "dev_rlwm_lba_race_v1":
             # normalize the RL drift rates
             v_rl_sum = (
                 np.sum([theta["v_RL_0"], theta["v_RL_1"], theta["v_RL_2"]]).astype(
@@ -493,33 +498,6 @@ class data_generator:
             "theta": theta_array,
         }
 
-    def _get_rejected_parameter_setups(self, random_seed_tuple: tuple | list):
-        np.random.seed(random_seed_tuple[0])
-        rejected_thetas = []
-        keep = 1
-        rej_cnt = 0
-        while rej_cnt < 100:
-            theta_dict = sample_parameters_from_constraints(
-                self.model_config["constrained_param_space"], 1
-            )
-            # Run extra checks on parameters
-            # (currently used only for very specific RLWM model)
-            theta_dict = self.parameter_transform_for_data_gen(theta_dict)
-
-            simulations = self.get_simulations(
-                theta=theta_dict, random_seed=random_seed_tuple[1]
-            )
-            keep, stats = self._filter_simulations(simulations)
-
-            if keep == 0:
-                print("simulation rejected")
-                print("stats: ", stats)
-                print("theta", theta_dict)
-                rejected_thetas.append(theta_dict)
-            rej_cnt += 1
-
-        return rejected_thetas
-
     def generate_data_training_uniform(
         self, save: bool = False, verbose: bool = True, cpn_only: bool = False
     ):
@@ -558,10 +536,9 @@ class data_generator:
         out_list = []
         for i in range(self.generator_config["n_subruns"]):
             if verbose:
-                print(
-                    "simulation round:",
+                logger.debug(
+                    "simulation round: %d of %d",
                     i + 1,
-                    " of",
                     self.generator_config["n_subruns"],
                 )
             if self.generator_config["n_cpus"] > 1:
@@ -569,26 +546,16 @@ class data_generator:
                     with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
                         out_list += pool.map(
                             self._cpn_get_processed_data_for_theta,
-                            [
-                                k
-                                for k in seed_args[
-                                    (i * subrun_n) : ((i + 1) * subrun_n)
-                                ]
-                            ],
+                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
                         )
                 else:
                     with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
                         out_list += pool.map(
                             self._mlp_get_processed_data_for_theta,
-                            [
-                                k
-                                for k in seed_args[
-                                    (i * subrun_n) : ((i + 1) * subrun_n)
-                                ]
-                            ],
+                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
                         )
             else:
-                print("No Multiprocessing, since only one cpu requested!")
+                logger.info("No Multiprocessing, since only one cpu requested!")
                 if cpn_only:
                     for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
                         out_list.append(self._cpn_get_processed_data_for_theta(k))
@@ -643,30 +610,32 @@ class data_generator:
             ).astype(np.float32)
 
         # Add metadata to training_data
-        data["generator_config"] = self.generator_config
-        data["model_config"] = self.model_config
+        data.update(
+            {
+                "generator_config": self.generator_config,
+                "model_config": self.model_config,
+            }
+        )
 
         if save:
-            if not os.path.exists(self.generator_config["output_folder"]):
-                os.makedirs(self.generator_config["output_folder"])
+            output_folder = Path(self.generator_config["output_folder"])
+            output_folder.mkdir(parents=True, exist_ok=True)
+            full_file_name = output_folder / f"training_data_{uuid.uuid1().hex}.pickle"
+            logger.info("Writing to file: %s", full_file_name)
 
-            full_file_name = (
-                self.generator_config["output_folder"]
-                / f"training_data_{uuid.uuid1().hex}.pickle"
-            )
+            with full_file_name.open("wb") as file:
+                pickle.dump(
+                    data,
+                    file,
+                    protocol=self.generator_config["pickleprotocol"],
+                )
+            logger.info("Data saved successfully")
 
-            print("Writing to file: ", full_file_name)
+        return data
 
-            pickle.dump(
-                data,
-                open(full_file_name, "wb"),
-                protocol=self.generator_config["pickleprotocol"],
-            )
-            return "Dataset completed"
-
-        else:
-            return data
-
+    # TODO: Add parallelized version of this function as well
+    # TODO: This also might need some modification concerning parameter transformations (we want to
+    # keep this but it wasn't used in a while)
     def _training_defective_simulations_get_preprocessed(self, seed):
         np.random.seed(seed)
         rejected_thetas = []
@@ -688,9 +657,9 @@ class data_generator:
             keep, stats = self._filter_simulations(simulations)
 
             if keep == 0 and rej_cnt < cnt_max:
-                print("simulation rejected")
-                print("stats: ", stats)
-                print("theta", theta)
+                logger.debug("simulation rejected")
+                logger.debug("stats: %s", stats)
+                logger.debug("theta: %s", theta)
                 rejected_thetas.append(theta)
                 stats_rej.append(stats)
                 rej_cnt += 1
@@ -698,96 +667,5 @@ class data_generator:
                 accepted_thetas.append(theta)
                 stats_acc.append(stats)
                 acc_cnt += 1
-            else:
-                pass
-        return rejected_thetas
 
-    def _make_save_file_name(self, unique_tag: str = ""):
-        binned = str(0)
-        if self.generator_config["nbins"] > 0:
-            binned = str(1)
-
-        training_data_folder = (
-            self.generator_config["output_folder"]
-            + unique_tag
-            + binned
-            + "_nbins_"
-            + str(self.generator_config["nbins"])
-            + "_n_"
-            + str(self.generator_config["n_samples"])
-        )
-
-        if not os.path.exists(training_data_folder):
-            os.makedirs(training_data_folder)
-
-        full_file_name = (
-            training_data_folder
-            + "/"
-            + "training_data_"
-            + self.model_config["name"]
-            + "_"
-            + uuid.uuid1().hex
-            + ".pickle"
-        )
-        return full_file_name
-
-    def generate_rejected_parameterizations(self, save: bool = False):
-        """Generates parameterizations that are rejected by the filter.
-
-        Arguments
-        ---------
-            save: bool
-                If True, the generated data is saved to disk.
-
-        Returns
-        -------
-            rejected_parameterization_list: np.array
-                Array containing the rejected parameterizations.
-        """
-        seeds = np.random.choice(
-            400000000, size=self.generator_config["n_paramseter_sets_rejected"]
-        )
-
-        # Get Simulations
-        with Pool(processes=self.generator_config["n_cpus"]) as pool:
-            rejected_parameterization_list = pool.map(
-                self._get_rejected_parameter_setups, seeds
-            )
-        rejected_parameterization_list = np.concatenate(
-            [l_rej for l_rej in rejected_parameterization_list if len(l_rej) > 0]
-        )
-
-        if save:
-            training_data_folder = (
-                self.generator_config["method_folder"]
-                + "training_data_binned_"
-                + str(int(self.generator_config["binned"]))
-                + "_nbins_"
-                + str(self.generator_config["nbins"])
-                + "_n_"
-                + str(self.generator_config["n_samples"])
-            )
-
-            if not os.path.exists(training_data_folder):
-                os.makedirs(training_data_folder)
-
-            full_file_name = (
-                training_data_folder
-                + "/"
-                + "rejected_parameterizations_"
-                + self.generator_config["file_id"]
-                + ".pickle"
-            )
-
-            print("Writing to file: ", full_file_name)
-
-            pickle.dump(
-                np.float32(rejected_parameterization_list),
-                open(full_file_name, "wb"),
-                protocol=self.generator_config["pickleprotocol"],
-            )
-            print("Dataset completed")
-            return rejected_parameterization_list
-        else:
-            print("Dataset completed")
-            return rejected_parameterization_list
+        return rejected_thetas, accepted_thetas
