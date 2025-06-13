@@ -22,7 +22,7 @@ def parse_bounds(bounds: Tuple[Any, Any]) -> Set[str]:
 
 
 def build_dependency_graph(
-    param_dict: Dict[str, Tuple[Any, Any]]
+    param_dict: Dict[str, Tuple[Any, Any]],
 ) -> Dict[str, Set[str]]:
     """
     Build a dependency graph based on parameter bounds.
