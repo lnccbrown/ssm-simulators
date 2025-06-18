@@ -67,8 +67,7 @@ class data_generator_snpe(data_generator):
                 data = {
                     **data,
                     **{
-                        i
-                        + cum_i: {
+                        i + cum_i: {
                             "data": data_tmp[i]["features"],
                             "labels": data_tmp[i]["labels"],
                         }
