@@ -71,9 +71,9 @@ class LogKDE:
         self.simulator_info = simulator_data["metadata"]
 
         if displace_t:
-            assert (
-                np.unique(simulator_data["metadata"]["t"]).shape[0] == 1
-            ), "Multiple t values in simulator data. Can't shift."
+            assert np.unique(simulator_data["metadata"]["t"]).shape[0] == 1, (
+                "Multiple t values in simulator data. Can't shift."
+            )
             self.displace_t_val = np.unique(simulator_data["metadata"]["t"])[0]
             self.displace_t = True
         else:
@@ -187,9 +187,9 @@ class LogKDE:
             data_internal["choices"] = np.expand_dims(
                 data["choices"][data["log_rts"] != filter_rts], axis=1
             )
-            assert (
-                data["log_rts"].shape == data["choices"].shape
-            ), "rts and choices need to have matching shapes in data dictionary!"
+            assert data["log_rts"].shape == data["choices"].shape, (
+                "rts and choices need to have matching shapes in data dictionary!"
+            )
             return self._kde_eval_log_rt(
                 data=data_internal, log_eval=log_eval, lb=lb, eps=eps
             )
@@ -200,9 +200,9 @@ class LogKDE:
             data_internal["choices"] = np.expand_dims(
                 data["choices"][data["rts"] != filter_rts], axis=1
             )
-            assert (
-                data_internal["rts"].shape == data_internal["choices"].shape
-            ), "rts and choices need to have matching shapes in data dictionary!"
+            assert data_internal["rts"].shape == data_internal["choices"].shape, (
+                "rts and choices need to have matching shapes in data dictionary!"
+            )
             return self._kde_eval_(
                 data=data_internal, log_eval=log_eval, lb=lb, eps=eps
             )
@@ -213,9 +213,9 @@ class LogKDE:
             data_internal["choices"] = np.expand_dims(
                 data["choices"][data["rts"] != filter_rts], axis=1
             )
-            assert (
-                data_internal["rts"].shape == data_internal["choices"].shape
-            ), "rts and choices need to have matching shapes in data dictionary!"
+            assert data_internal["rts"].shape == data_internal["choices"].shape, (
+                "rts and choices need to have matching shapes in data dictionary!"
+            )
             return self._kde_eval_(
                 data=data_internal, log_eval=log_eval, lb=lb, eps=eps
             )
