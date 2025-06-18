@@ -11,9 +11,6 @@ from pprint import pformat
 
 import typer
 
-
-from ssms.dataset_generators.lan_mlp import data_generator
-from ssms.config import model_config as _model_config
 from generator_config import get_default_generator_config
 
 app = typer.Typer()
@@ -61,6 +58,8 @@ def make_data_generator_configs(
     save_name=None,
     save_folder="",
 ):
+    from ssms.config import model_config as _model_config
+
     # Load copy of the respective model's config dict from ssms
     _no_deadline_model = model.split("_deadline")[0]
     model_config = deepcopy(_model_config[_no_deadline_model])
@@ -170,6 +169,8 @@ def main(
     """
     Generate data using the specified configuration.
     """
+    from ssms.dataset_generators.lan_mlp import data_generator
+
     logging.basicConfig(
         level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
     )
