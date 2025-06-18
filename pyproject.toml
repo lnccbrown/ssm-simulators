@@ -6,7 +6,7 @@ Homepage = "https://github.com/lnccbrown/ssm-simulators"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
 
 [tool.setuptools]
-packages = ["ssms", "cli"]
+packages = ["ssms"]
 
 [project]
 name = "ssm-simulators"
@@ -42,5 +42,5 @@ keywords = [
 [dependency-groups]
 dev = ["pytest>=8.4.0", "ruff>=0.11.13"]
 
-[project.scripts]
-generate = "cli.generate:app"
+# [project.scripts]
+# generate = "cli.generate:app"
