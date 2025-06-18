@@ -2,16 +2,19 @@
 requires = ["setuptools", "wheel", "Cython>=0.29.23", "numpy >= 1.20"]
 
 [project.urls]
-"Homepage" = "https://github.com/AlexanderFengler/ssm-simulators"
-"Bug Tracker" = "https://github.com/AlexanderFengler/ssm-simulators/issues"
+Homepage = "https://github.com/lnccbrown/ssm-simulators"
+"Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
+
+[tool.setuptools]
+packages = ["ssms", "scripts"]
 
 [project]
 name = "ssm-simulators"
-version = "0.8.3"
+version = "0.9.0b5"
 authors = [{ name = "Alexander Fenger", email = "alexander_fengler@brown.edu" }]
 description = "SSMS is a package collecting simulators and training data generators for a bunch of generative models of interest in the cognitive science / neuroscience and approximate bayesian computation communities"
 readme = "README.md"
-requires-python = ">=3.12, <=3.13"
+requires-python = ">3.10, <3.13"
 classifiers = [
     "Development Status :: 1 - Planning",
     "Environment :: Console",
@@ -38,3 +41,6 @@ keywords = [
 
 [dependency-groups]
 dev = ["pytest>=8.4.0", "ruff>=0.11.13"]
+
+[project.scripts]
+generate = "scripts.generate:app"
