@@ -18,8 +18,8 @@ from ssms.config import KDE_NO_DISPLACE_T
 
 
 """
-    This module defines a data generator class for use with LANs. 
-    The class defined below can be used to generate training data 
+    This module defines a data generator class for use with LANs.
+    The class defined below can be used to generate training data
     compatible with the expectations of LANs.
 """
 
@@ -153,7 +153,7 @@ class data_generator:
             self._get_ncpus()
 
         # Make output folder if not already present
-        folder_str_split = self.generator_config["output_folder"].split()
+        folder_str_split = str(self.generator_config["output_folder"]).split()
 
         cnt = 0
         folder_partial = ""
@@ -651,12 +651,12 @@ class data_generator:
                 os.makedirs(self.generator_config["output_folder"])
 
             full_file_name = (
-                self.generator_config["output_folder"]
+                str(self.generator_config["output_folder"])
                 + "/"
                 + "training_data_"
                 + uuid.uuid1().hex
                 + ".pickle"
-            )  # self.model_config['name'] + '_' + \
+            )
 
             print("Writing to file: ", full_file_name)
 
