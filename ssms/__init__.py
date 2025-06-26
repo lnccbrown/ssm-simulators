@@ -3,7 +3,8 @@ from . import basic_simulators
 from . import dataset_generators
 from . import config
 from . import support_utils
+from . generate import main
 
 __version__ = "0.8.3"  # importlib.metadata.version(__package__ or __name__)
 
-__all__ = ["basic_simulators", "dataset_generators", "config", "support_utils"]
+__all__ = ["basic_simulators", "dataset_generators", "config", "support_utils", "main"]
