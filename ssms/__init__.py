@@ -1,8 +1,8 @@
 # import importlib.metadata
-# from . import basic_simulators
-# from . import dataset_generators
-# from . import config
-# from . import support_utils
+from . import basic_simulators
+from . import dataset_generators
+from . import config
+from . import support_utils
 
 __version__ = "0.8.3"  # importlib.metadata.version(__package__ or __name__)
 
