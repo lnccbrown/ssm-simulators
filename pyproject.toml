@@ -55,7 +55,7 @@ Homepage = "https://github.com/lnccbrown/ssm-simulators"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["ssms", "cli"]
+include = ["ssms"]
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -148,10 +148,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [tool.coverage.run]
-omit = [
-    "*/setup.py",
-    "*/__init__.py"
-]
+omit = ["*/setup.py", "*/__init__.py"]
 
 [project.scripts]
-generate = "ssms.generate:app"
+generate = "ssms.generate:main"

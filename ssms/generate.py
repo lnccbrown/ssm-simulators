@@ -8,14 +8,11 @@ from collections import namedtuple
 from copy import deepcopy
 from pathlib import Path
 from pprint import pformat
-
-import typer
+import argparse
 
 from .dataset_generators.lan_mlp import data_generator
 from .config import model_config as _model_config
 from .generator_config import get_default_generator_config
-
-app = typer.Typer()
 
 
 def try_gen_folder(
@@ -147,40 +144,38 @@ def collect_data_generator_config(
     return config_dict
 
 
-log_level_option = typer.Option(
-    "WARNING",
-    "--log-level",
-    "-l",
-    help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
-    case_sensitive=False,
-    show_default=True,
-    rich_help_panel="Logging",
-    metavar="LEVEL",
-    autocompletion=lambda: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-)
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate data using the specified configuration."
+    )
+    parser.add_argument(
+        "--config-path",
+        type=str,
+        required=True,
+        help="Path to the YAML configuration file.",
+    )
+    parser.add_argument(
+        "--output", type=str, required=True, help="Path to the output directory."
+    )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
+    )
+    args = parser.parse_args()
 
-
-@app.command()
-def main(
-    config_path: Path = typer.Option(..., help="Path to the YAML configuration file."),
-    output: Path = typer.Option(..., help="Path to the output directory."),
-    log_level: str = log_level_option,
-):
-    """
-    Generate data using the specified configuration.
-    """
     # See if this avoids circular import issues
     import ssms  # noqa: F401
 
     logging.basicConfig(
-        level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
+        level=args.log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
     )
     logger = logging.getLogger(__name__)
 
-    # Casting config_path to str for now
-    # TODO: Fix this in the future
-    config_path = str(config_path)
-    output = str(output)
+    config_path = str(args.config_path)
+    output = str(args.output)
 
     config_dict = collect_data_generator_config(
         yaml_config_path=config_path, base_path=output
@@ -206,4 +201,4 @@ def main(
 
 
 if __name__ == "__main__":
-    app()
+    main()
