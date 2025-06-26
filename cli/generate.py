@@ -170,6 +170,9 @@ def main(
     """
     Generate data using the specified configuration.
     """
+    # See if this avoids circular import issues
+    import ssms  # noqa: F401
+
     logging.basicConfig(
         level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
     )
