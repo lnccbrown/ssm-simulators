@@ -154,4 +154,4 @@ omit = [
 ]
 
 [project.scripts]
-generate = "cli.generate:app"
+generate = "ssms.generate:app"

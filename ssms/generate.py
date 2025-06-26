@@ -11,7 +11,6 @@ from pprint import pformat
 
 import typer
 
-import ssms
 from ssms.dataset_generators.lan_mlp import data_generator
 from ssms.config import model_config as _model_config
 from .generator_config import get_default_generator_config
