@@ -16,7 +16,7 @@ import ssms
 from ssms.config import get_default_generator_config
 from ssms.config import model_config as _model_config
 
-app = typer.Typer()
+app = typer.Typer(add_completion=False)
 
 
 def try_gen_folder(
