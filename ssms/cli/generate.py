@@ -160,6 +160,8 @@ log_level_option = typer.Option(
     autocompletion=lambda: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
 )
 
+epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-files 10 --log-level INFO`"
+
 
 @app.command()
 def main(
