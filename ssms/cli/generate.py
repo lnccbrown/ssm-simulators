@@ -208,7 +208,17 @@ def main(
     )
 
     is_cpn = config_dict["data_config"].get("cpn_only", False)
-    my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
+
+    def run_generation():
+        my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
+
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(run_generation) for _ in range(n_files)]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as exc:
+                logger.error(f"Data generation failed: {exc}")
 
     logger.info("Data generation finished")
 
