@@ -4,6 +4,6 @@ from . import dataset_generators
 from . import config
 from . import support_utils
 
-__version__ = "0.8.3"  # importlib.metadata.version(__package__ or __name__)
+__version__ = "0.10.0"  # importlib.metadata.version(__package__ or __name__)
 
 __all__ = ["basic_simulators", "dataset_generators", "config", "support_utils"]
