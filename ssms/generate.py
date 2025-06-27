@@ -173,7 +173,7 @@ def main(
     import ssms  # noqa: F401
 
     logging.basicConfig(
-        level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
+        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
     )
     logger = logging.getLogger(__name__)
 
