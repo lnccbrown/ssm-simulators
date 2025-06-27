@@ -167,6 +167,14 @@ epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-f
 def main(
     config_path: Path = typer.Option(..., help="Path to the YAML configuration file."),
     output: Path = typer.Option(..., help="Path to the output directory."),
+    n_files: int = typer.Option(
+        1,
+        "--n-files",
+        "-n",
+        help="Number of files to generate.",
+        min=1,
+        show_default=True,
+    ),
     log_level: str = log_level_option,
 ):
     """
