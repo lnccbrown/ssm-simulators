@@ -163,7 +163,7 @@ log_level_option = typer.Option(
 epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-files 10 --log-level INFO`"
 
 
-@app.command()
+@app.command(epilog=epilog)
 def main(
     config_path: Path = typer.Option(..., help="Path to the YAML configuration file."),
     output: Path = typer.Option(..., help="Path to the output directory."),
