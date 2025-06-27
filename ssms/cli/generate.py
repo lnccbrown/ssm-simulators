@@ -3,16 +3,18 @@
 import logging
 import pickle
 import warnings
-import yaml
 from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from pathlib import Path
 from pprint import pformat
 
 import typer
+import yaml
 
 import ssms
-from ssms.config import get_default_generator_config, model_config as _model_config
+from ssms.config import get_default_generator_config
+from ssms.config import model_config as _model_config
 
 app = typer.Typer()
 
