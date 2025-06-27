@@ -1,4 +1,3 @@
-# from .config import *
 from .config import (
     model_config,
     kde_simulation_filters,
@@ -9,7 +8,7 @@ from .config import (
 
 from .data_generator_config import data_generator_config, get_default_generator_config
 
-from .kde_constants import KDE_NO_DISPLACE_T
+from .kde_constants import KDE_NO_DISPLACE_T # noqa: F401
 
 __all__ = [
     "model_config",
