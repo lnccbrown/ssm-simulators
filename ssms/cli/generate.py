@@ -4,17 +4,16 @@ import logging
 import pickle
 import warnings
 from collections import namedtuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from pathlib import Path
 from pprint import pformat
 
+import tqdm
 import typer
 import yaml
 
 import ssms
-from ssms.config import get_default_generator_config
-from ssms.config import model_config as _model_config
+from ssms.config import get_default_generator_config, model_config as _model_config
 
 app = typer.Typer(add_completion=False)
 
@@ -201,7 +200,6 @@ def main(
     logger.debug(pformat(config_dict["model_config"]))
 
     # Make the generator
-    logger.info("Generating data")
     my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
         generator_config=config_dict["data_config"],
         model_config=config_dict["model_config"],
@@ -209,16 +207,8 @@ def main(
 
     is_cpn = config_dict["data_config"].get("cpn_only", False)
 
-    def run_generation():
+    for i in tqdm.tqdm(range(n_files), desc="Generating simulated data files", unit="file"):
         my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
-
-    with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(run_generation) for _ in range(n_files)]
-        for future in as_completed(futures):
-            try:
-                future.result()
-            except Exception as exc:
-                logger.error(f"Data generation failed: {exc}")
 
     logger.info("Data generation finished")
 
