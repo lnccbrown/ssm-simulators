@@ -55,12 +55,29 @@ N_SUBRUNS: 20
 GENERATOR_APPROACH: 'lan'
 ```
 
+Below, you will find more details on the components of the config file: 
+
+| Option | Definition |
+| ------ | ---------- |
+| `MODEL` | The type of model you want to simulate |
+| `N_SAMPLES` | Number of samples a simulation run should entail for a given parameter set|
+| `N_PARAMETER_SETS` | Number of parameter vectors that are used for training |
+| `DELTA_T` | Time discretization step used in numerical simulation of the model. Interval between updates of evidence-accumulation. |
+| `N_TRAINING_SAMPLES_BY_PARAMETER_SET` | Number of times the kernal density estimate (KDE) is evaluated after creating the KDE from simulations of each set of model parameters. |
+| `N_SUBRUNS` | Number of repetitions of each call to generate data |
+| `GENERATOR_APPROACH` | Type of generator used to generate data | 
+
+To make your own configuration file, you can copy the `config_data_generation.yaml` file from `ssms/cli`, and modify it with your preferences.
+
 **Example:**
 
 ```bash
-generate --config-path myconfig.yaml --output ./output --log-level INFO
+python path/to/generate.py --config-path /users/yourname/myproject/config_data_generation.yaml --output /users/yourname/myproject/my_generated_data --log-level INFO
 ```
-
+If you are using `uv` (see below), you can use the `uv run` command to run `generate` from the command line
+```bash
+uv run path/to/generate.py --config-path /users/yourname/myproject/config_data_generation.yaml --output /users/yourname/myproject/my_generated_data --log-level INFO
+```
 This will generate training data according to your configuration and save it in the specified output directory.
 
 ### Tutorial
