@@ -35,6 +35,7 @@ pip install ssm-simulators
 #### Command Line Interface
 The package exposes a command-line tool, `generate`, for creating training data from a YAML configuration file.
 
+**Example:**
 ```bash
 generate --config-path <path/to/config.yaml> --output <output/directory> [--log-level INFO]
 ```
@@ -69,13 +70,6 @@ Configuration file parameter details follow.
 
 To make your own configuration file, you can copy the example above into a new `.yaml` file and modify it with your preferences.
 
-from `ssms/cli`, and modify it with your preferences.
-
-**Example:**
-
-```bash
-generate --config-path myconfig.yaml --output ./output --log-level INFO
-```
 If you are using `uv` (see below), you can use the `uv run` command to run `generate` from the command line
 
 This will generate training data according to your configuration and save it in the specified output directory.
