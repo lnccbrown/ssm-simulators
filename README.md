@@ -55,7 +55,7 @@ N_SUBRUNS: 20
 GENERATOR_APPROACH: 'lan'
 ```
 
-Below, you will find more details on the components of the config file: 
+Configuration file parameter details follow.
 
 | Option | Definition |
 | ------ | ---------- |
@@ -67,17 +67,17 @@ Below, you will find more details on the components of the config file:
 | `N_SUBRUNS` | Number of repetitions of each call to generate data |
 | `GENERATOR_APPROACH` | Type of generator used to generate data | 
 
-To make your own configuration file, you can copy the `config_data_generation.yaml` file from `ssms/cli`, and modify it with your preferences.
+To make your own configuration file, you can copy the example above into a new `.yaml` file and modify it with your preferences.
+
+from `ssms/cli`, and modify it with your preferences.
 
 **Example:**
 
 ```bash
-python path/to/generate.py --config-path /users/yourname/myproject/config_data_generation.yaml --output /users/yourname/myproject/my_generated_data --log-level INFO
+generate --config-path myconfig.yaml --output ./output --log-level INFO
 ```
 If you are using `uv` (see below), you can use the `uv run` command to run `generate` from the command line
-```bash
-uv run path/to/generate.py --config-path /users/yourname/myproject/config_data_generation.yaml --output /users/yourname/myproject/my_generated_data --log-level INFO
-```
+
 This will generate training data according to your configuration and save it in the specified output directory.
 
 ### Tutorial
