@@ -17,7 +17,7 @@ packages = find_packages(include=["ssms", "ssms.*"])
 
 setup(
     name="ssm-simulators",
-    version="0.10.0",
+    version="0.10.1",
     packages=packages,
     package_data={
         "ssms": ["**/*.py", "**/*.pyx", "**/*.pxd", "**/*.so", "**/*.pyd"],
