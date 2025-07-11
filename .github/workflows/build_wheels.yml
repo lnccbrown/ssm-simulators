@@ -29,6 +29,7 @@ jobs:
           CIBW_ARCHS_LINUX: auto64
           CIBW_ARCHS_WINDOWS: auto64
           CIBW_BUILD_FRONTEND: build
+          CIBW_BUILD_VERBOSITY: 3
 
       - uses: actions/upload-artifact@v4
         with:
