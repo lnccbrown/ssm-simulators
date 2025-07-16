@@ -8,8 +8,8 @@ model_config: dict
 
 import cssm
 
-from ssms import boundary_functions as bf
-from ssms import drift_functions as df
+from ssms.basic_simulators import boundary_functions as bf
+from ssms.basic_simulators import drift_functions as df
 
 from ssms.config._modelconfig import get_model_config
 from ssms.config._modelconfig.tradeoff import (
