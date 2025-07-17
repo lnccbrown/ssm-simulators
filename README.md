@@ -35,13 +35,13 @@ pip install ssm-simulators
 #### Command Line Interface
 The package exposes a command-line tool, `generate`, for creating training data from a YAML configuration file.
 
-**Example:**
 ```bash
 generate --config-path <path/to/config.yaml> --output <output/directory> [--log-level INFO]
 ```
 
 - `--config-path`: Path to your YAML configuration file (required).
 - `--output`: Directory where generated data will be saved (required).
+- `--n-files`: (Optional) Number of data files to generate. Default is `1` file.
 - `--log-level`: (Optional) Set the logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Default is `WARNING`.
 
 Below is a sample YAML configuration you can use with the `generate` command:
@@ -66,7 +66,7 @@ Configuration file parameter details follow.
 | `DELTA_T` | Time discretization step used in numerical simulation of the model. Interval between updates of evidence-accumulation. |
 | `N_TRAINING_SAMPLES_BY_PARAMETER_SET` | Number of times the kernal density estimate (KDE) is evaluated after creating the KDE from simulations of each set of model parameters. |
 | `N_SUBRUNS` | Number of repetitions of each call to generate data |
-| `GENERATOR_APPROACH` | Type of generator used to generate data | 
+| `GENERATOR_APPROACH` | Type of generator used to generate data |
 
 To make your own configuration file, you can copy the example above into a new `.yaml` file and modify it with your preferences.
 
