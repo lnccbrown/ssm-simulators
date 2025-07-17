@@ -207,7 +207,9 @@ def main(
 
     is_cpn = config_dict["data_config"].get("cpn_only", False)
 
-    for i in tqdm.tqdm(range(n_files), desc="Generating simulated data files", unit="file"):
+    for i in tqdm.tqdm(
+        range(n_files), desc="Generating simulated data files", unit="file"
+    ):
         my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
 
     logger.info("Data generation finished")
