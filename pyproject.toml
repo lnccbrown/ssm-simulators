@@ -22,6 +22,7 @@ dependencies = [
     "numpy>=2.0",
     "typer>=0.15.3",
     "pyyaml>=6.0.2",
+    "tqdm>=4.67.1",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
