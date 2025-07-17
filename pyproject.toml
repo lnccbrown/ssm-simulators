@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssm-simulators"
-version = "0.9.0"
+version = "0.10.2"
 description = "SSMS is a package collecting simulators and training data generators for cognitive science, neuroscience, and approximate bayesian computation"
 authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
@@ -13,7 +13,6 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10,<3.13" # for compatibility with lanfactory
 dependencies = [
-    "cython >= 0.29.23",
     "scipy >= 1.6.3",
     "pandas >= 1.0.0",
     "matplotlib",
@@ -147,7 +146,10 @@ warn_return_any = true
 warn_unused_configs = true
 
 [tool.coverage.run]
-omit = ["*/setup.py", "*/__init__.py"]
+omit = [
+    "*/setup.py",
+    "*/__init__.py"
+]
 
 [project.scripts]
 generate = "ssms.cli.generate:app"
