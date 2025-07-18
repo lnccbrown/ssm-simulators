@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_mic2_leak")
 def get_ddm_mic2_leak_config():
     """Get configuration for DDM mic2 leak model."""
     return {
@@ -24,6 +26,7 @@ def get_ddm_mic2_leak_config():
     }
 
 
+@register_model("ddm_mic2_leak_no_bias")
 def get_ddm_mic2_leak_no_bias_config():
     """Get configuration for DDM mic2 leak no bias model."""
     return {
@@ -44,6 +47,7 @@ def get_ddm_mic2_leak_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_leak_conflict_gamma_no_bias")
 def get_ddm_mic2_leak_conflict_gamma_no_bias_config():
     """Get configuration for DDM mic2 leak conflict gamma no bias model."""
     return {
@@ -75,6 +79,7 @@ def get_ddm_mic2_leak_conflict_gamma_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_leak_angle_no_bias")
 def get_ddm_mic2_leak_angle_no_bias_config():
     """Get configuration for DDM mic2 leak angle no bias model."""
     return {
@@ -96,6 +101,7 @@ def get_ddm_mic2_leak_angle_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_leak_weibull_no_bias")
 def get_ddm_mic2_leak_weibull_no_bias_config():
     """Get configuration for DDM mic2 leak weibull no bias model."""
     return {

@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("lca_3")
 def get_lca_3_config():
     """Get configuration for LCA3 model."""
     return {
@@ -23,6 +25,7 @@ def get_lca_3_config():
     }
 
 
+@register_model("lca_3_no_z3")
 def get_lca_no_z_3_config():
     """Get configuration for LCA3 model without bias."""
     return {
@@ -43,6 +46,7 @@ def get_lca_no_z_3_config():
     }
 
 
+@register_model("lca_4")
 def get_lca_4_config():
     """Get configuration for LCA4 model."""
     return {
@@ -76,6 +80,7 @@ def get_lca_4_config():
     }
 
 
+@register_model("lca_4_no_z_4")
 def get_lca_no_z_4_config():
     """Get configuration for LCA4 model without bias."""
     return {
@@ -96,6 +101,7 @@ def get_lca_no_z_4_config():
     }
 
 
+@register_model("lca_no_z_angle_4")
 def get_lca_no_z_angle_4_config():
     """Get configuration for LCA4 model with angle boundary and no bias."""
     return {
@@ -116,6 +122,7 @@ def get_lca_no_z_angle_4_config():
     }
 
 
+@register_model("lca_no_bias_3")
 def get_lca_no_bias_3_config():
     return {
         "name": "lca_no_bias_3",
@@ -135,6 +142,7 @@ def get_lca_no_bias_3_config():
     }
 
 
+@register_model("lca_no_bias_angle_3")
 def get_lca_no_bias_angle_3_config():
     return {
         "name": "lca_no_bias_angle_3",
@@ -154,6 +162,7 @@ def get_lca_no_bias_angle_3_config():
     }
 
 
+@register_model("lca_no_z_angle_3")
 def get_lca_no_z_angle_3_config():
     return {
         "name": "lca_no_z_angle_3",
@@ -173,6 +182,7 @@ def get_lca_no_z_angle_3_config():
     }
 
 
+@register_model("lca_no_bias_4")
 def get_lca_no_bias_4_config():
     return {
         "name": "lca_no_bias_4",
@@ -192,6 +202,7 @@ def get_lca_no_bias_4_config():
     }
 
 
+@register_model("lca_no_bias_angle_4")
 def get_lca_no_bias_angle_4_config():
     return {
         "name": "lca_no_bias_angle_4",

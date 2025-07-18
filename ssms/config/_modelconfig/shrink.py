@@ -3,8 +3,10 @@
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.basic_simulators import drift_functions as df
+from ssms.config.registry import register_model
 
 
+@register_model("shrink_spot")
 def get_shrink_spot_config():
     """Get configuration for shrink spot model."""
     return {
@@ -36,6 +38,7 @@ def get_shrink_spot_config():
     }
 
 
+@register_model("shrink_spot_extended")
 def get_shrink_spot_extended_config():
     """Get configuration for extended shrink spot model."""
     return {
@@ -67,6 +70,7 @@ def get_shrink_spot_extended_config():
     }
 
 
+@register_model("shrink_spot_simple")
 def get_shrink_spot_simple_config():
     """Get configuration for simple shrink spot model."""
     return {
@@ -97,6 +101,7 @@ def get_shrink_spot_simple_config():
     }
 
 
+@register_model("shrink_spot_simple_extended")
 def get_shrink_spot_simple_extended_config():
     """Get configuration for extended simple shrink spot model."""
     return {
