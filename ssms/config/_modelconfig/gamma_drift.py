@@ -27,6 +27,7 @@ def get_gamma_drift_config():
         "simulator": cssm.ddm_flex,
     }
 
+
 @register_model("gamma_drift_angle")
 def get_gamma_drift_angle_config():
     """Get the configuration for the Gamma drift angle model."""

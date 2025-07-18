@@ -78,6 +78,7 @@ def get_lba_angle_3_vs_constraint_config():
         "simulator": cssm.lba_angle,
     }
 
+
 @register_model("lba_angle_3")
 def get_lba_angle_3_config():
     """Get configuration for LBA angle 3 model without vs constraints."""

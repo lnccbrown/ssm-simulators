@@ -25,6 +25,7 @@ def get_ddm_mic2_ornstein_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
+
 @register_model("ddm_mic2_ornstein_no_bias")
 def get_ddm_mic2_ornstein_no_bias_config():
     """Get configuration for DDM mic2 ornstein no bias model."""
@@ -44,6 +45,7 @@ def get_ddm_mic2_ornstein_no_bias_config():
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
+
 
 @register_model("ddm_mic2_ornstein_conflict_gamma_no_bias")
 def get_ddm_mic2_ornstein_conflict_gamma_no_bias_config():
@@ -77,6 +79,7 @@ def get_ddm_mic2_ornstein_conflict_gamma_no_bias_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
+
 @register_model("ddm_mic2_ornstein_angle_no_bias")
 def get_ddm_mic2_ornstein_angle_no_bias_config():
     """Get configuration for DDM mic2 ornstein angle no bias model."""
@@ -97,6 +100,7 @@ def get_ddm_mic2_ornstein_angle_no_bias_config():
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
+
 
 @register_model("ddm_mic2_ornstein_weibull_no_bias")
 def get_ddm_mic2_ornstein_weibull_no_bias_config():

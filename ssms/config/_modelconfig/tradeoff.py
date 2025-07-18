@@ -25,6 +25,7 @@ def get_tradeoff_no_bias_config():
         "simulator": cssm.ddm_flexbound_tradeoff,
     }
 
+
 @register_model("tradeoff_angle_no_bias")
 def get_tradeoff_angle_no_bias_config():
     """Get configuration for tradeoff model with angle boundary and no bias."""
@@ -46,6 +47,7 @@ def get_tradeoff_angle_no_bias_config():
         "simulator": cssm.ddm_flexbound_tradeoff,
     }
 
+
 @register_model("tradeoff_weibull_no_bias")
 def get_tradeoff_weibull_no_bias_config():
     """Get configuration for tradeoff model with Weibull boundary and no bias."""
@@ -65,6 +67,7 @@ def get_tradeoff_weibull_no_bias_config():
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_tradeoff,
     }
+
 
 @register_model("tradeoff_conflict_gamma_no_bias")
 def get_tradeoff_conflict_gamma_no_bias_config():
