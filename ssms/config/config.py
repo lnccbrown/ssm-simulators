@@ -77,6 +77,11 @@ from ssms.config._modelconfig.dev_rlwm_lba import (
     get_dev_rlwm_lba_race_v2_config,
 )
 
+from ssms.config._modelconfig.ornstein import (
+    get_ornstein_config,
+    get_ornstein_angle_config,
+)
+
 
 def boundary_config_to_function_params(config: dict) -> dict:
     """
@@ -222,35 +227,8 @@ model_config = {
         "n_particles": 1,
         "simulator": cssm.ddm_flex,
     },
-    "ornstein": {
-        "name": "ornstein",
-        "params": ["v", "a", "z", "g", "t"],
-        "param_bounds": [[-2.0, 0.3, 0.1, -1.0, 1e-3], [2.0, 3.0, 0.9, 1.0, 2]],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ornstein_uhlenbeck,
-    },
-    "ornstein_angle": {
-        "name": "ornstein_angle",
-        "params": ["v", "a", "z", "g", "t", "theta"],
-        "param_bounds": [
-            [-2.0, 0.3, 0.1, -1.0, 1e-3, -0.1],
-            [2.0, 3.0, 0.9, 1.0, 2, 1.3],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "n_params": 6,
-        "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3, 0.1],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ornstein_uhlenbeck,
-    },
+    "ornstein": get_ornstein_config(),
+    "ornstein_angle": get_ornstein_angle_config(),
     "race_2": get_race_2_config(),
     "race_no_bias_2": get_race_no_bias_2_config(),
     "race_no_z_2": get_race_no_z_2_config(),
