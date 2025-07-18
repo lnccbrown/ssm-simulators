@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_seq2")
 def get_ddm_seq2_config():
     """Get the configuration for the DDM seq2 model."""
     return {
@@ -24,6 +26,7 @@ def get_ddm_seq2_config():
     }
 
 
+@register_model("ddm_seq2_no_bias")
 def get_ddm_seq2_no_bias_config():
     """Get the configuration for the DDM seq2 no bias model."""
     return {
@@ -41,6 +44,7 @@ def get_ddm_seq2_no_bias_config():
     }
 
 
+@register_model("ddm_seq2_conflict_gamma_no_bias")
 def get_ddm_seq2_conflict_gamma_no_bias_config():
     """Get the configuration for the DDM seq2 conflict gamma no bias model."""
     return {
@@ -71,6 +75,7 @@ def get_ddm_seq2_conflict_gamma_no_bias_config():
     }
 
 
+@register_model("ddm_seq2_angle_no_bias")
 def get_ddm_seq2_angle_no_bias_config():
     """Get the configuration for the DDM seq2 angle no bias model."""
     return {
@@ -92,6 +97,7 @@ def get_ddm_seq2_angle_no_bias_config():
     }
 
 
+@register_model("ddm_seq2_weibull_no_bias")
 def get_ddm_seq2_weibull_no_bias_config():
     """Get the configuration for the DDM seq2 weibull no bias model."""
     return {

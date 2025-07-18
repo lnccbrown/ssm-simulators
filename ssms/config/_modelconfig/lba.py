@@ -2,8 +2,10 @@
 
 from ssms.basic_simulators import boundary_functions as bf
 import cssm
+from ssms.config.registry import register_model
 
 
+@register_model("lba2")
 def get_lba2_config():
     """Get configuration for LBA2 model."""
     return {
@@ -21,6 +23,7 @@ def get_lba2_config():
     }
 
 
+@register_model("lba3")
 def get_lba3_config():
     """Get configuration for LBA3 model."""
     return {
@@ -38,6 +41,7 @@ def get_lba3_config():
     }
 
 
+@register_model("lba_3_vs_constraint")
 def get_lba_3_vs_constraint_config():
     """Get configuration for LBA3 with vs constraint model."""
     return {
@@ -56,6 +60,7 @@ def get_lba_3_vs_constraint_config():
     }
 
 
+@register_model("lba_angle_3_vs_constraint")
 def get_lba_angle_3_vs_constraint_config():
     """Get configuration for LBA angle 3 vs constraint model."""
     return {
@@ -73,7 +78,7 @@ def get_lba_angle_3_vs_constraint_config():
         "simulator": cssm.lba_angle,
     }
 
-
+@register_model("lba_angle_3")
 def get_lba_angle_3_config():
     """Get configuration for LBA angle 3 model without vs constraints."""
     return {

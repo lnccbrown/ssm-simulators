@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("levy")
 def get_levy_config():
     """Get configuration for levy model."""
     return {
@@ -21,6 +23,7 @@ def get_levy_config():
     }
 
 
+@register_model("levy_angle")
 def get_levy_angle_config():
     """Get configuration for levy model with angle boundary."""
     return {

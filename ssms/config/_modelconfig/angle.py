@@ -2,8 +2,9 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
-
+@register_model("angle")
 def get_angle_config():
     """Get the configuration for the Angle model."""
     return {

@@ -2,8 +2,9 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
-
+@register_model("ddm")
 def get_ddm_config():
     """Get the configuration for the DDM model."""
     return {

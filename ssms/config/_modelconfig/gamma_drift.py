@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf, drift_functions as df
+from ssms.config.registry import register_model
 
 
+@register_model("gamma_drift")
 def get_gamma_drift_config():
     """Get the configuration for the Gamma drift model."""
     return {
@@ -25,7 +27,7 @@ def get_gamma_drift_config():
         "simulator": cssm.ddm_flex,
     }
 
-
+@register_model("gamma_drift_angle")
 def get_gamma_drift_angle_config():
     """Get the configuration for the Gamma drift angle model."""
     return {

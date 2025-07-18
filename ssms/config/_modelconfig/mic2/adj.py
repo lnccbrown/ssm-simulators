@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_mic2_adj")
 def get_ddm_mic2_adj_config():
     """Get configuration for DDM mic2 adj model."""
     return {
@@ -23,7 +25,7 @@ def get_ddm_mic2_adj_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
-
+@register_model("ddm_mic2_adj_no_bias")
 def get_ddm_mic2_adj_no_bias_config():
     """Get configuration for DDM mic2 adj no bias model."""
     return {
@@ -43,7 +45,7 @@ def get_ddm_mic2_adj_no_bias_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
-
+@register_model("ddm_mic2_adj_conflict_gamma_no_bias")
 def get_ddm_mic2_adj_conflict_gamma_no_bias_config():
     """Get configuration for DDM mic2 adj conflict gamma no bias model."""
     return {
@@ -74,7 +76,7 @@ def get_ddm_mic2_adj_conflict_gamma_no_bias_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
-
+@register_model("ddm_mic2_adj_angle_no_bias")
 def get_ddm_mic2_adj_angle_no_bias_config():
     """Get configuration for DDM mic2 adj angle no bias model."""
     return {
@@ -95,7 +97,7 @@ def get_ddm_mic2_adj_angle_no_bias_config():
         "simulator": cssm.ddm_flexbound_mic2_ornstein,
     }
 
-
+@register_model("ddm_mic2_adj_weibull_no_bias")
 def get_ddm_mic2_adj_weibull_no_bias_config():
     """Get configuration for DDM mic2 adj weibull no bias model."""
     return {

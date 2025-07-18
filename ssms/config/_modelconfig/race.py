@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("race_2")
 def get_race_2_config():
     """Get configuration for race model with 2 choices."""
     return {
@@ -24,6 +26,7 @@ def get_race_2_config():
     }
 
 
+@register_model("race_no_bias_2")
 def get_race_no_bias_2_config():
     """Get configuration for race model with 2 choices and no bias."""
     return {
@@ -44,6 +47,7 @@ def get_race_no_bias_2_config():
     }
 
 
+@register_model("race_no_z_2")
 def get_race_no_z_2_config():
     """Get configuration for race model with 2 choices and no z."""
     return {
@@ -64,6 +68,7 @@ def get_race_no_z_2_config():
     }
 
 
+@register_model("race_no_bias_angle_2")
 def get_race_no_bias_angle_2_config():
     """Get configuration for race model with 2 choices and no bias and angle boundary."""
     return {
@@ -84,6 +89,7 @@ def get_race_no_bias_angle_2_config():
     }
 
 
+@register_model("race_no_z_angle_2")
 def get_race_no_z_angle_2_config():
     """Get configuration for race model with 2 choices and no z and angle boundary."""
     return {
@@ -104,6 +110,7 @@ def get_race_no_z_angle_2_config():
     }
 
 
+@register_model("race_3")
 def get_race_3_config():
     """Get configuration for race model with 3 choices."""
     return {
@@ -124,6 +131,7 @@ def get_race_3_config():
     }
 
 
+@register_model("race_no_bias_3")
 def get_race_no_bias_3_config():
     """Get configuration for race model with 3 choices and no bias."""
     return {
@@ -144,6 +152,7 @@ def get_race_no_bias_3_config():
     }
 
 
+@register_model("race_no_z_3")
 def get_race_no_z_3_config():
     """Get configuration for race model with 3 choices and no z."""
     return {
@@ -164,6 +173,7 @@ def get_race_no_z_3_config():
     }
 
 
+@register_model("race_no_bias_angle_3")
 def get_race_no_bias_angle_3_config():
     """Get configuration for race model with 3 choices and no bias and angle boundary."""
     return {
@@ -184,6 +194,7 @@ def get_race_no_bias_angle_3_config():
     }
 
 
+@register_model("race_no_z_angle_3")
 def get_race_no_z_angle_3_config():
     """Get configuration for race model with 3 choices and no z and angle boundary."""
     return {
@@ -204,6 +215,7 @@ def get_race_no_z_angle_3_config():
     }
 
 
+@register_model("race_4")
 def get_race_4_config():
     """Get configuration for race model with 4 choices."""
     return {
@@ -224,6 +236,7 @@ def get_race_4_config():
     }
 
 
+@register_model("race_no_bias_4")
 def get_race_no_bias_4_config():
     """Get configuration for race model with 4 choices and no bias."""
     return {
@@ -244,6 +257,7 @@ def get_race_no_bias_4_config():
     }
 
 
+@register_model("race_no_z_4")
 def get_race_no_z_4_config():
     """Get configuration for race model with 4 choices and no z."""
     return {
@@ -264,6 +278,7 @@ def get_race_no_z_4_config():
     }
 
 
+@register_model("race_no_bias_angle_4")
 def get_race_no_bias_angle_4_config():
     """Get configuration for race model with 4 choices and no bias and angle boundary."""
     return {
@@ -284,6 +299,7 @@ def get_race_no_bias_angle_4_config():
     }
 
 
+@register_model("race_no_z_angle_4")
 def get_race_no_z_angle_4_config():
     """Get configuration for race model with 4 choices and no z and angle boundary."""
     return {

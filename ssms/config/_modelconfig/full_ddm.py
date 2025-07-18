@@ -5,8 +5,10 @@ import scipy.stats as sps  # type: ignore
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("full_ddm")
 def get_full_ddm_config():
     """Get the configuration for the Full DDM model."""
     return {
@@ -27,6 +29,7 @@ def get_full_ddm_config():
     }
 
 
+@register_model("full_ddm_rv")
 def get_full_ddm_rv_config():
     """Get configuration for full DDM with random variables."""
     return {

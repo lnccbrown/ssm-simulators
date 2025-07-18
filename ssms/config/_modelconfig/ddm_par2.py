@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_par2")
 def get_ddm_par2_config():
     return {
         "name": "ddm_par2",
@@ -23,6 +25,7 @@ def get_ddm_par2_config():
     }
 
 
+@register_model("ddm_par2_no_bias")
 def get_ddm_par2_no_bias_config():
     return {
         "name": "ddm_par2_no_bias",
@@ -39,6 +42,7 @@ def get_ddm_par2_no_bias_config():
     }
 
 
+@register_model("ddm_par2_conflict_gamma_no_bias")
 def get_ddm_par2_conflict_gamma_no_bias_config():
     return {
         "name": "ddm_par2_conflict_gamma_no_bias",
@@ -68,6 +72,7 @@ def get_ddm_par2_conflict_gamma_no_bias_config():
     }
 
 
+@register_model("ddm_par2_angle_no_bias")
 def get_ddm_par2_angle_no_bias_config():
     return {
         "name": "ddm_par2_angle_no_bias",
@@ -88,6 +93,7 @@ def get_ddm_par2_angle_no_bias_config():
     }
 
 
+@register_model("ddm_par2_weibull_no_bias")
 def get_ddm_par2_weibull_no_bias_config():
     return {
         "name": "ddm_par2_weibull_no_bias",

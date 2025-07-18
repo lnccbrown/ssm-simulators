@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("weibull")
 def get_weibull_config():
     """Get the configuration for the Weibull model."""
     return {
