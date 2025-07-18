@@ -77,6 +77,11 @@ from ssms.config._modelconfig.dev_rlwm_lba import (
     get_dev_rlwm_lba_race_v2_config,
 )
 
+from ssms.config._modelconfig.gamma_drift import (
+    get_gamma_drift_config,
+    get_gamma_drift_angle_config,
+)
+
 
 def boundary_config_to_function_params(config: dict) -> dict:
     """
@@ -123,46 +128,12 @@ model_config = {
     "ddm_truncnormt": model_config_getter["ddm_truncnormt"],
     "ddm_rayleight": model_config_getter["ddm_rayleight"],
     "ddm_sdv": model_config_getter["ddm_sdv"],
-    "gamma_drift": {
-        "name": "gamma_drift",
-        "params": ["v", "a", "z", "t", "shape", "scale", "c"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.1, 1e-3, 2.0, 0.01, -3.0],
-            [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "drift_name": "gamma_drift",
-        "drift_fun": df.gamma_drift,
-        "n_params": 7,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 5.0, 0.5, 1.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flex,
-    },
+    "gamma_drift": get_gamma_drift_config(),
     "shrink_spot": get_shrink_spot_config(),
     "shrink_spot_extended": get_shrink_spot_extended_config(),
     "shrink_spot_simple": get_shrink_spot_simple_config(),
     "shrink_spot_simple_extended": get_shrink_spot_simple_extended_config(),
-    "gamma_drift_angle": {
-        "name": "gamma_drift_angle",
-        "params": ["v", "a", "z", "t", "theta", "shape", "scale", "c"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.1, 1e-3, -0.1, 2.0, 0.01, -3.0],
-            [3.0, 3.0, 0.9, 2.0, 1.3, 10.0, 1.0, 3.0],
-        ],
-        "boundary_name": "angle",
-        "boundary": bf.angle,
-        "drift_name": "gamma_drift",
-        "drift_fun": df.gamma_drift,
-        "n_params": 7,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 0.0, 5.0, 0.5, 1.0],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.ddm_flex,
-    },
+    "gamma_drift_angle": get_gamma_drift_angle_config(),
     "ds_conflict_drift": {
         "name": "ds_conflict_drift",
         "params": [
