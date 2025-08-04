@@ -1,8 +1,8 @@
 """Shrink model configurations."""
 
 import cssm
-from ssms import boundary_functions as bf
-from ssms import drift_functions as df
+from ssms.basic_simulators import boundary_functions as bf
+from ssms.basic_simulators import drift_functions as df
 
 
 def get_shrink_spot_config():
