@@ -46,6 +46,20 @@ drift_config = {
         "fun": df.ds_conflict_drift,
         "params": ["tinit", "dinit", "tslope", "dslope", "tfixedp", "tcoh", "dcoh"],
     },
+    "ds_conflict_stimflexons_drift": {
+        "fun": df.ds_conflict_stimflexons_drift,
+        "params": [
+            "tinit",
+            "dinit",
+            "tslope",
+            "dslope",
+            "tfixedp",
+            "tcoh",
+            "dcoh",
+            "tonset",
+            "donset",
+        ],
+    },
     "attend_drift": {
         "fun": df.attend_drift,
         "params": ["ptarget", "pouter", "pinner", "r", "sda"],
