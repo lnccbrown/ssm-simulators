@@ -1,65 +1,97 @@
-"""Configuration dictionary for simulators.
-
-Variables:
----------
-model_config: dict
-    Dictionary containing all the information about the models
-"""
+"""Model configuration module for SSM simulators."""
 
 import cssm
+from ssms import boundary_functions as bf
+from ssms import drift_functions as df
+# from ..support_utils import simulator_functions as sf
 
-from ..boundary_functions import (
-    constant as boundary_constant,
-    angle as boundary_angle,
+from .ddm import get_ddm_config
+from .ddm_random import (
+    get_ddm_st_config,
+    get_ddm_truncnormt_config,
+    get_ddm_rayleight_config,
+    get_ddm_sdv_config,
 )
-from ..drift_functions import (
-    gamma_drift,
-    ds_conflict_drift,
+from .ddm_par2 import (
+    get_ddm_par2_config,
+    get_ddm_par2_no_bias_config,
+    get_ddm_par2_conflict_gamma_no_bias_config,
+    get_ddm_par2_angle_no_bias_config,
+    get_ddm_par2_weibull_no_bias_config,
+)
+from .ddm_seq2 import (
+    get_ddm_seq2_config,
+    get_ddm_seq2_no_bias_config,
+    get_ddm_seq2_conflict_gamma_no_bias_config,
+    get_ddm_seq2_angle_no_bias_config,
+    get_ddm_seq2_weibull_no_bias_config,
 )
 
-from ._modelconfig import get_model_config
-from ._modelconfig.tradeoff import (
-    get_tradeoff_no_bias_config,
-    get_tradeoff_angle_no_bias_config,
-    get_tradeoff_weibull_no_bias_config,
-    get_tradeoff_conflict_gamma_no_bias_config,
+from .dev_rlwm_lba import (
+    get_dev_rlwm_lba_pw_v1_config,
+    get_dev_rlwm_lba_race_v1_config,
+    get_dev_rlwm_lba_race_v2_config,
 )
-from ._modelconfig.full_ddm import (
-    get_full_ddm_config,
-    get_full_ddm_rv_config,
-)
-from ._modelconfig.levy import get_levy_config, get_levy_angle_config
-from ._modelconfig.lca import (
-    get_lca_3_config,
-    get_lca_no_bias_3_config,
-    get_lca_no_bias_angle_3_config,
-    get_lca_no_z_3_config,
-    get_lca_no_z_angle_3_config,
-    get_lca_4_config,
-    get_lca_no_bias_4_config,
-    get_lca_no_z_4_config,
-    get_lca_no_bias_angle_4_config,
-    get_lca_no_z_angle_4_config,
-)
-from ._modelconfig.angle import get_angle_config
-from ._modelconfig.weibull import get_weibull_config
 
-from ._modelconfig.lba import (
+from .full_ddm import get_full_ddm_config, get_full_ddm_rv_config
+
+from .levy import get_levy_config, get_levy_angle_config
+
+from .adj import (
+    get_ddm_mic2_adj_config,
+    get_ddm_mic2_adj_no_bias_config,
+    get_ddm_mic2_adj_conflict_gamma_no_bias_config,
+    get_ddm_mic2_adj_angle_no_bias_config,
+    get_ddm_mic2_adj_weibull_no_bias_config,
+)
+
+from .angle import get_angle_config
+
+from .ornstein import (
+    get_ddm_mic2_ornstein_config,
+    get_ddm_mic2_ornstein_no_bias_config,
+    get_ddm_mic2_ornstein_conflict_gamma_no_bias_config,
+    get_ddm_mic2_ornstein_angle_no_bias_config,
+    get_ddm_mic2_ornstein_weibull_no_bias_config,
+)
+
+from .lba import (
     get_lba2_config,
     get_lba3_config,
     get_lba_3_vs_constraint_config,
     get_lba_angle_3_vs_constraint_config,
-    get_lba_angle_3_config,
+    get_lba_angle_3_config, 
 )
 
-from ._modelconfig.shrink import (
-    get_shrink_spot_config,
-    get_shrink_spot_extended_config,
-    get_shrink_spot_simple_config,
-    get_shrink_spot_simple_extended_config,
+from .lca import (
+    get_lca_3_config,
+    get_lca_no_z_3_config,
+    get_lca_4_config,
+    get_lca_no_z_4_config,
+    get_lca_no_z_angle_4_config,
+    get_lca_no_bias_3_config,
+    get_lca_no_bias_angle_3_config,
+    get_lca_no_z_angle_3_config,
+    get_lca_no_bias_4_config,
+    get_lca_no_bias_angle_4_config,
 )
 
-from ._modelconfig.race import (
+from .leak import (
+    get_ddm_mic2_leak_config,
+    get_ddm_mic2_leak_no_bias_config,
+    get_ddm_mic2_leak_conflict_gamma_no_bias_config,
+    get_ddm_mic2_leak_angle_no_bias_config,
+    get_ddm_mic2_leak_weibull_no_bias_config,
+)
+
+from .multinoise import (
+    get_ddm_mic2_multinoise_no_bias_config,
+    get_ddm_mic2_multinoise_conflict_gamma_no_bias_config,
+    get_ddm_mic2_multinoise_angle_no_bias_config,
+    get_ddm_mic2_multinoise_weibull_no_bias_config,
+)
+
+from .race import (
     get_race_2_config,
     get_race_no_bias_2_config,
     get_race_no_z_2_config,
@@ -77,33 +109,89 @@ from ._modelconfig.race import (
     get_race_no_z_angle_4_config,
 )
 
-from ._modelconfig.dev_rlwm_lba import (
-    get_dev_rlwm_lba_pw_v1_config,
-    get_dev_rlwm_lba_race_v1_config,
-    get_dev_rlwm_lba_race_v2_config,
+from .shrink import (
+    get_shrink_spot_config,
+    get_shrink_spot_extended_config,
+    get_shrink_spot_simple_config,
+    get_shrink_spot_simple_extended_config,
 )
 
+from .tradeoff import (
+    get_tradeoff_no_bias_config,
+    get_tradeoff_angle_no_bias_config,
+    get_tradeoff_weibull_no_bias_config,
+    get_tradeoff_conflict_gamma_no_bias_config,
+)
 
-def boundary_config_to_function_params(config: dict) -> dict:
-    """
-    Convert boundary configuration to function parameters.
+from .weibull import get_weibull_config
 
-    Parameters
-    ----------
-    config: dict
-        Dictionary containing the boundary configuration
+
+#     get_ddm_mic2_ornstein_config,
+#     get_ddm_mic2_ornstein_no_bias_config,
+#     get_ddm_mic2_ornstein_conflict_gamma_no_bias_config,
+#     get_ddm_mic2_ornstein_angle_no_bias_config,
+#     get_ddm_mic2_ornstein_weibull_no_bias_config,
+#     get_ddm_mic2_leak_config,
+#     get_ddm_mic2_leak_no_bias_config,
+#     get_ddm_mic2_leak_conflict_gamma_no_bias_config,
+#     get_ddm_mic2_leak_angle_no_bias_config,
+#     get_ddm_mic2_leak_weibull_no_bias_config,
+# )
+# from .mic2.multinoise import (
+#     get_ddm_mic2_multinoise_no_bias_config,
+#     get_ddm_mic2_multinoise_conflict_gamma_no_bias_config,
+#     get_ddm_mic2_multinoise_angle_no_bias_config,
+#     get_ddm_mic2_multinoise_weibull_no_bias_config,
+# )
+
+def get_model_config():
+    """Accessor for model configurations.
 
     Returns
     -------
     dict
-        Dictionary with adjusted key names so that they match function parameters names
-        directly.
+        Dictionary containing all model configurations.
     """
-    return {f"boundary_{k}": v for k, v in config.items()}
+    # TODO: Refactor to load these lazily
+    return {
+        "ddm": get_ddm_config(),
+        "ddm_st": get_ddm_st_config(),
+        "ddm_truncnormt": get_ddm_truncnormt_config(),
+        "ddm_rayleight": get_ddm_rayleight_config(),
+        "ddm_sdv": get_ddm_sdv_config(),
+        "ddm_par2": get_ddm_par2_config(),
+        "ddm_par2_no_bias": get_ddm_par2_no_bias_config(),
+        "ddm_par2_conflict_gamma_no_bias": get_ddm_par2_conflict_gamma_no_bias_config(),
+        "ddm_par2_angle_no_bias": get_ddm_par2_angle_no_bias_config(),
+        "ddm_par2_weibull_no_bias": get_ddm_par2_weibull_no_bias_config(),
+        "ddm_seq2": get_ddm_seq2_config(),
+        "ddm_seq2_no_bias": get_ddm_seq2_no_bias_config(),
+        "ddm_seq2_conflict_gamma_no_bias": get_ddm_seq2_conflict_gamma_no_bias_config(),
+        "ddm_seq2_angle_no_bias": get_ddm_seq2_angle_no_bias_config(),
+        "ddm_seq2_weibull_no_bias": get_ddm_seq2_weibull_no_bias_config(),
+        "ddm_mic2_adj": get_ddm_mic2_adj_config(),
+        "ddm_mic2_adj_no_bias": get_ddm_mic2_adj_no_bias_config(),
+        "ddm_mic2_adj_conflict_gamma_no_bias": get_ddm_mic2_adj_conflict_gamma_no_bias_config(),
+        "ddm_mic2_adj_angle_no_bias": get_ddm_mic2_adj_angle_no_bias_config(),
+        "ddm_mic2_adj_weibull_no_bias": get_ddm_mic2_adj_weibull_no_bias_config(),
+        "ddm_mic2_ornstein": get_ddm_mic2_ornstein_config(),
+        "ddm_mic2_ornstein_no_bias": get_ddm_mic2_ornstein_no_bias_config(),
+        "ddm_mic2_ornstein_conflict_gamma_no_bias": get_ddm_mic2_ornstein_conflict_gamma_no_bias_config(),
+        "ddm_mic2_ornstein_angle_no_bias": get_ddm_mic2_ornstein_angle_no_bias_config(),
+        "ddm_mic2_ornstein_weibull_no_bias": get_ddm_mic2_ornstein_weibull_no_bias_config(),
+        "ddm_mic2_leak": get_ddm_mic2_leak_config(),
+        "ddm_mic2_leak_no_bias": get_ddm_mic2_leak_no_bias_config(),
+        "ddm_mic2_leak_conflict_gamma_no_bias": get_ddm_mic2_leak_conflict_gamma_no_bias_config(),
+        "ddm_mic2_leak_angle_no_bias": get_ddm_mic2_leak_angle_no_bias_config(),
+        "ddm_mic2_leak_weibull_no_bias": get_ddm_mic2_leak_weibull_no_bias_config(),
+        "ddm_mic2_multinoise_no_bias": get_ddm_mic2_multinoise_no_bias_config(),
+        "ddm_mic2_multinoise_conflict_gamma_no_bias": get_ddm_mic2_multinoise_conflict_gamma_no_bias_config(),
+        "ddm_mic2_multinoise_angle_no_bias": get_ddm_mic2_multinoise_angle_no_bias_config(),
+        "ddm_mic2_multinoise_weibull_no_bias": get_ddm_mic2_multinoise_weibull_no_bias_config(),
+    }
 
 
 model_config_getter = get_model_config()
-# Configuration dictionary for simulators
 model_config = {
     "ddm": model_config_getter["ddm"],
     "ddm_legacy": {
@@ -111,7 +199,7 @@ model_config = {
         "params": ["v", "a", "z", "t"],
         "param_bounds": [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]],
         "boundary_name": "constant",
-        "boundary": boundary_constant,
+        "boundary": bf.constant,
         "n_params": 4,
         "default_params": [0.0, 1.0, 0.5, 1e-3],
         "nchoices": 2,
@@ -137,9 +225,9 @@ model_config = {
             [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],
         ],
         "boundary_name": "constant",
-        "boundary": boundary_constant,
+        "boundary": bf.constant,
         "drift_name": "gamma_drift",
-        "drift_fun": gamma_drift,
+        "drift_fun": df.gamma_drift,
         "n_params": 7,
         "default_params": [0.0, 1.0, 0.5, 0.25, 5.0, 0.5, 1.0],
         "nchoices": 2,
@@ -159,9 +247,9 @@ model_config = {
             [3.0, 3.0, 0.9, 2.0, 1.3, 10.0, 1.0, 3.0],
         ],
         "boundary_name": "angle",
-        "boundary": boundary_angle,
+        "boundary": bf.angle,
         "drift_name": "gamma_drift",
-        "drift_fun": gamma_drift,
+        "drift_fun": df.gamma_drift,
         "n_params": 7,
         "default_params": [0.0, 1.0, 0.5, 0.25, 0.0, 5.0, 0.5, 1.0],
         "nchoices": 2,
@@ -188,9 +276,9 @@ model_config = {
             [3.0, 0.9, 2.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 1.0],
         ],
         "boundary_name": "constant",
-        "boundary": boundary_constant,
+        "boundary": bf.constant,
         "drift_name": "ds_conflict_drift",
-        "drift_fun": ds_conflict_drift,
+        "drift_fun": df.ds_conflict_drift,
         "n_params": 10,
         "default_params": [2.0, 0.5, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5, -0.5],
         "nchoices": 2,
@@ -218,9 +306,9 @@ model_config = {
             [3.0, 0.9, 2.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 1.0, 1.3],
         ],
         "boundary_name": "angle",
-        "boundary": boundary_angle,
+        "boundary": bf.angle,
         "drift_name": "ds_conflict_drift",
-        "drift_fun": ds_conflict_drift,
+        "drift_fun": df.ds_conflict_drift,
         "n_params": 10,
         "default_params": [2.0, 0.5, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5, -0.5, 0.0],
         "nchoices": 2,
@@ -233,7 +321,7 @@ model_config = {
         "params": ["v", "a", "z", "g", "t"],
         "param_bounds": [[-2.0, 0.3, 0.1, -1.0, 1e-3], [2.0, 3.0, 0.9, 1.0, 2]],
         "boundary_name": "constant",
-        "boundary": boundary_constant,
+        "boundary": bf.constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3],
         "nchoices": 2,
@@ -249,7 +337,7 @@ model_config = {
             [2.0, 3.0, 0.9, 1.0, 2, 1.3],
         ],
         "boundary_name": "angle",
-        "boundary": boundary_angle,
+        "boundary": bf.angle,
         "n_params": 6,
         "default_params": [0.0, 1.0, 0.5, 0.0, 1e-3, 0.1],
         "nchoices": 2,
@@ -373,3 +461,47 @@ model_config["ddm_mic2_leak_weibull_no_bias_no_lowdim_noise"] = model_config[
 model_config["ddm_mic2_leak_conflict_gamma_no_bias_no_lowdim_noise"] = model_config[
     "ddm_mic2_leak_conflict_gamma_no_bias"
 ].copy()
+
+
+
+
+__all__ = [
+    "get_model_config",
+    "get_ddm_config",
+    "get_angle_config",
+    "get_weibull_config",
+    "get_full_ddm_config",
+    "get_ddm_st_config",
+    "get_ddm_truncnormt_config",
+    "get_ddm_rayleight_config",
+    "get_ddm_sdv_config",
+    "get_ddm_par2_config",
+    "get_ddm_par2_no_bias_config",
+    "get_ddm_par2_conflict_gamma_no_bias_config",
+    "get_ddm_par2_angle_no_bias_config",
+    "get_ddm_par2_weibull_no_bias_config",
+    "get_ddm_seq2_config",
+    "get_ddm_seq2_no_bias_config",
+    "get_ddm_seq2_conflict_gamma_no_bias_config",
+    "get_ddm_seq2_angle_no_bias_config",
+    "get_ddm_seq2_weibull_no_bias_config",
+    "get_ddm_mic2_adj_config",
+    "get_ddm_mic2_adj_no_bias_config",
+    "get_ddm_mic2_adj_conflict_gamma_no_bias_config",
+    "get_ddm_mic2_adj_angle_no_bias_config",
+    "get_ddm_mic2_adj_weibull_no_bias_config",
+    "get_ddm_mic2_ornstein_config",
+    "get_ddm_mic2_ornstein_no_bias_config",
+    "get_ddm_mic2_ornstein_conflict_gamma_no_bias_config",
+    "get_ddm_mic2_ornstein_angle_no_bias_config",
+    "get_ddm_mic2_ornstein_weibull_no_bias_config",
+    "get_ddm_mic2_leak_config",
+    "get_ddm_mic2_leak_no_bias_config",
+    "get_ddm_mic2_leak_conflict_gamma_no_bias_config",
+    "get_ddm_mic2_leak_angle_no_bias_config",
+    "get_ddm_mic2_leak_weibull_no_bias_config",
+    "get_ddm_mic2_multinoise_no_bias_config",
+    "get_ddm_mic2_multinoise_conflict_gamma_no_bias_config",
+    "get_ddm_mic2_multinoise_angle_no_bias_config",
+    "get_ddm_mic2_multinoise_weibull_no_bias_config",
+]

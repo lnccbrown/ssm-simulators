@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from ssms.basic_simulators.simulator import simulator
-from ssms.config import model_config
+from ssms._config import model_config
 
 logger = logging.getLogger(__name__)
 

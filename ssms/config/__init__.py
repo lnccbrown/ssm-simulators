@@ -23,7 +23,7 @@ from .generator_config.data_generator_config import (
 )
 
 from ._modelconfig.base import boundary_config, drift_config
-from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
+from .kde_constants import KDE_NO_DISPLACE_T
 
 __all__ = [
     "model_config",
@@ -38,4 +38,5 @@ __all__ = [
     "get_ratio_estimator_config",
     "get_default_generator_config",
     "data_generator_config",  # TODO: remove from interface in v1.0.0
+    "KDE_NO_DISPLACE_T",
 ]
