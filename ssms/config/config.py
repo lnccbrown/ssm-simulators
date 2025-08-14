@@ -448,7 +448,7 @@ model_config = {
         ],
         "param_bounds": [
             [0.3, 0.1, 1e-3, 2.0, -7, 0.01, 1e-1],
-            [3.0, 0.9, 2.0, 5.5, 7, 3, 3],
+            [3.0, 0.9, 2.0, 7, 7, 3, 3],
         ],
         "boundary_name": "constant",
         "boundary": bf.constant,
