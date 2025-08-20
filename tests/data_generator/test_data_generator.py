@@ -88,7 +88,6 @@ ok_model_config = random.sample(ok_model_config, subset_size)
 def test_data_generator(model_name, model_conf):
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = model_name
-    generator_config["n_subruns"] = 1
 
     my_dataset_generator = data_generator(
         generator_config=generator_config, model_config=model_conf
