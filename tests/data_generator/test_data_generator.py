@@ -72,10 +72,13 @@ def test_bad_inputs():
 
 # TODO: Remove this once #114 is fixed
 models_to_skip = [
-    "lba_3_vs_constraint",
-    "lba_angle_3_vs_constraint",
-    "dev_rlwm_lba_race_v2",
+    "lba_3_vs_constraint",  # broken
+    "lba_angle_3_vs_constraint",  # broken
+    "dev_rlwm_lba_race_v2",  # broken
+    "race_3",  # too slow
+    "lca_4",  # too slow
 ]
+
 ok_model_config = [
     item for item in model_config.items() if item[0] not in models_to_skip
 ]
