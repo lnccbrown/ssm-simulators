@@ -5,6 +5,7 @@ import pickle
 import warnings
 from collections import namedtuple
 from copy import deepcopy
+from importlib.resources import files, as_file
 from pathlib import Path
 from pprint import pformat
 
@@ -164,7 +165,7 @@ epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-f
 
 @app.command(epilog=epilog)
 def main(
-    config_path: Path = typer.Option(..., help="Path to the YAML configuration file."),
+    config_path: Path = typer.Option(None, help="Path to the YAML configuration file."),
     output: Path = typer.Option(..., help="Path to the output directory."),
     n_files: int = typer.Option(
         1,
@@ -184,10 +185,12 @@ def main(
     )
     logger = logging.getLogger(__name__)
 
-    # Casting config_path to str for now
-    # TODO: Fix this in the future
-    config_path = str(config_path)
-    output = str(output)
+    if config_path is None:
+        logger.warning("No config path provided, using default configuration.")
+        with as_file(
+            files("ssms.cli") / "config_data_generation.yaml"
+        ) as default_config:
+            config_path = default_config
 
     config_dict = collect_data_generator_config(
         yaml_config_path=config_path, base_path=output

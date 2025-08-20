@@ -49,6 +49,18 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
     used in the simulator.
     """
 
+    models_dynamic_drift = [
+        "ds_conflict_drift",
+        "ds_conflict_drift_angle",
+        "ds_conflict_stimflexons_drift",
+        "ds_conflict_stimflexons_drift_angle",
+        "shrink_spot",
+        "shrink_spot_simple",
+        "shrink_spot_extended",
+        "shrink_spot_extended_angle",
+        "shrink_spot_simple_extended",
+    ]
+
     def process_theta(
         self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
     ) -> dict[str, Any]:
@@ -86,7 +98,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             pass
 
         # ----- Single particle models -----
-        if model in ["ds_conflict_drift", "ds_conflict_drift_angle"]:
+        if model in self.models_dynamic_drift:
             theta["v"] = np.tile(np.array([0], dtype=np.float32), n_trials)
 
         if model in ["ddm_st"]:
@@ -135,15 +147,6 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["v_dist"] = model_config["simulator_param_mappings"]["v_dist"](
                 theta["sv"]
             )
-
-        if model in [
-            "shrink_spot",
-            "shrink_spot_simple",
-            "shrink_spot_extended",
-            "shrink_spot_extended_angle",
-            "shrink_spot_simple_extended",
-        ]:
-            theta["v"] = np.tile(np.array([0], dtype=np.float32), n_trials)
 
         # Multi-particle models
         #   LBA-based models
