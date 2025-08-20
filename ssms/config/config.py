@@ -87,6 +87,7 @@ from ssms.config._modelconfig.ornstein import (
     get_ornstein_angle_config,
 )
 
+
 def boundary_config_to_function_params(config: dict) -> dict:
     """
     Convert boundary configuration to function parameters.
