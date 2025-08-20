@@ -9,6 +9,24 @@ from expected_shapes import get_expected_shapes
 from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.lan_mlp import data_generator
 
+N_PARAMETER_SETS = random.randint(2, 10)
+N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(2, 10)
+
+
+def _make_gen_config(
+    n_parameter_sets=N_PARAMETER_SETS,
+    n_training_samples_by_parameter_set=N_TRAINING_SAMPLES_BY_PARAMETER_SET,
+    n_samples=10,
+    n_subruns=1,
+):
+    return {
+        "n_parameter_sets": n_parameter_sets,
+        "n_training_samples_by_parameter_set": n_training_samples_by_parameter_set,
+        "n_samples": n_samples,
+        "n_subruns": n_subruns,
+    }
+
+
 gen_config = get_lan_config()
 gen_config.update(
     _make_gen_config(N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET, 5, 1)
