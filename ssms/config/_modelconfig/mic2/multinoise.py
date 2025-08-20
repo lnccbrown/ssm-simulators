@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_mic2_multinoise_no_bias")
 def get_ddm_mic2_multinoise_no_bias_config():
     """Get configuration for DDM MIC2 multinoise model without bias."""
     return {
@@ -24,6 +26,7 @@ def get_ddm_mic2_multinoise_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_multinoise_conflict_gamma_no_bias")
 def get_ddm_mic2_multinoise_conflict_gamma_no_bias_config():
     """Get configuration for DDM MIC2 multinoise model with conflict gamma boundary and no bias."""
     return {
@@ -55,6 +58,7 @@ def get_ddm_mic2_multinoise_conflict_gamma_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_multinoise_angle_no_bias")
 def get_ddm_mic2_multinoise_angle_no_bias_config():
     """Get configuration for DDM MIC2 multinoise model with angle boundary and no bias."""
     return {
@@ -76,6 +80,7 @@ def get_ddm_mic2_multinoise_angle_no_bias_config():
     }
 
 
+@register_model("ddm_mic2_multinoise_weibull_no_bias")
 def get_ddm_mic2_multinoise_weibull_no_bias_config():
     """Get configuration for DDM MIC2 multinoise model with Weibull boundary and no bias."""
     return {

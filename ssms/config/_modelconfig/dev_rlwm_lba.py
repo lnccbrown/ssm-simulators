@@ -2,8 +2,10 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("dev_rlwm_lba_pw_v1")
 def get_dev_rlwm_lba_pw_v1_config():
     """Get configuration for RLWM LBA pairwise v1 model."""
     return {
@@ -33,6 +35,7 @@ def get_dev_rlwm_lba_pw_v1_config():
     }
 
 
+@register_model("dev_rlwm_lba_race_v1")
 def get_dev_rlwm_lba_race_v1_config():
     """Get configuration for RLWM LBA race v1 model."""
     return {
@@ -63,6 +66,7 @@ def get_dev_rlwm_lba_race_v1_config():
     }
 
 
+@register_model("dev_rlwm_lba_race_v2")
 def get_dev_rlwm_lba_race_v2_config():
     """Get configuration for RLWM LBA race v2 model."""
     return {

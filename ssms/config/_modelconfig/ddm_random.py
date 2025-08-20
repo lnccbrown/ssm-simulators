@@ -6,8 +6,10 @@ import scipy.stats as sps
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.config.registry import register_model
 
 
+@register_model("ddm_st")
 def get_ddm_st_config():
     """Get configuration for DDM with random non-decision time."""
     return {
@@ -37,6 +39,7 @@ def get_ddm_st_config():
     }
 
 
+@register_model("ddm_truncnormt")
 def get_ddm_truncnormt_config():
     """Get configuration for DDM with truncated normal non-decision time."""
     return {
@@ -71,6 +74,7 @@ def get_ddm_truncnormt_config():
     }
 
 
+@register_model("ddm_rayleight")
 def get_ddm_rayleight_config():
     """Get configuration for DDM with Rayleigh non-decision time."""
     return {
@@ -103,6 +107,7 @@ def get_ddm_rayleight_config():
     }
 
 
+@register_model("ddm_sdv")
 def get_ddm_sdv_config():
     """Get configuration for DDM with random drift rate."""
     return {
