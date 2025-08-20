@@ -4,7 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 from expected_constrained_param_space import expected_constrained_param_space
-from expected_shapes import expected_shapes
+from expected_shapes import get_expected_shapes
 
 from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.lan_mlp import data_generator
