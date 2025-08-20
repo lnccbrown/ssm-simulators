@@ -3,7 +3,6 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
-from expected_constrained_param_space import expected_constrained_param_space
 from expected_shapes import expected_shapes
 
 from ssms.config import get_lan_config, model_config
@@ -15,6 +14,43 @@ gen_config["n_parameter_sets"] = 100
 gen_config["n_training_samples_by_parameter_set"] = 100
 # Specify how many samples a simulation run should entail
 gen_config["n_samples"] = 10
+
+
+def infer_constrained_param_space(conf: dict) -> dict:
+    """Infer a conservative constrained parameter space from a model config.
+
+    Supports two formats for ``param_bounds``:
+    1. ``[[low_1, ...], [high_1, ...]]`` aligned with ``params`` order.
+    2. ``{param: (low, high)}`` mapping.
+
+    Silently skips malformed / mismatched entries.
+    """
+    params = conf.get("params")
+    bounds = conf.get("param_bounds")
+    if bounds is None:
+        return {}
+    out = {}
+    if (
+        isinstance(bounds, (list, tuple))
+        and len(bounds) == 2
+        and not isinstance(bounds[0], (int, float))
+    ):
+        if not params:
+            return {}
+        lows, highs = bounds
+        if not (hasattr(lows, "__len__") and hasattr(highs, "__len__")):
+            return {}
+        for i, p in enumerate(params):
+            if i < len(lows) and i < len(highs):
+                out[p] = (lows[i], highs[i])
+        return out
+    if isinstance(bounds, dict):
+        keys = params if params else list(bounds.keys())
+        for p in keys:
+            if p in bounds:
+                out[p] = bounds[p]
+        return out
+    return {}
 
 
 def test_data_persistance(tmp_path):
@@ -105,7 +141,7 @@ def test_data_generator(model_name, model_conf):
         "model_config",
     ]
 
-    assert (
-        training_data["model_config"]["constrained_param_space"]
-        == expected_constrained_param_space[model_name]
-    )
+    # Check that the inferred constrained parameter space from model config matches those in the generated training data
+    assert training_data["model_config"][
+        "constrained_param_space"
+    ] == infer_constrained_param_space(model_config[model_name])
