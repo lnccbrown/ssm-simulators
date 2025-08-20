@@ -10,11 +10,27 @@ from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.lan_mlp import data_generator
 
 gen_config = get_lan_config()
-# Specify number of parameter sets to simulate
-gen_config["n_parameter_sets"] = 100
-gen_config["n_training_samples_by_parameter_set"] = 100
-# Specify how many samples a simulation run should entail
-gen_config["n_samples"] = 10
+gen_config.update(
+    _make_gen_config(N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET, 5, 1)
+)
+
+EXPECTED_KEYS = [
+    "cpn_data",
+    "cpn_labels",
+    "cpn_no_omission_data",
+    "cpn_no_omission_labels",
+    "opn_data",
+    "opn_labels",
+    "gonogo_data",
+    "gonogo_labels",
+    "thetas",
+    "lan_data",
+    "lan_labels",
+    "binned_128",
+    "binned_256",
+    "generator_config",
+    "model_config",
+]
 
 
 def test_data_persistance(tmp_path):
@@ -85,25 +101,14 @@ def test_data_generator(model_name, model_conf):
         k: v.shape for k, v in training_data.items() if isinstance(v, np.ndarray)
     }
 
-    assert td_array_shapes == expected_shapes[model_name]
+    assert (
+        td_array_shapes
+        == get_expected_shapes(N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET)[
+            model_name
+        ]
+    )
 
-    assert list(training_data.keys()) == [
-        "cpn_data",
-        "cpn_labels",
-        "cpn_no_omission_data",
-        "cpn_no_omission_labels",
-        "opn_data",
-        "opn_labels",
-        "gonogo_data",
-        "gonogo_labels",
-        "thetas",
-        "lan_data",
-        "lan_labels",
-        "binned_128",
-        "binned_256",
-        "generator_config",
-        "model_config",
-    ]
+    assert list(training_data.keys()) == EXPECTED_KEYS
 
     assert (
         training_data["model_config"]["constrained_param_space"]
