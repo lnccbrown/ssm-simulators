@@ -6,7 +6,7 @@ data generator for different models and configurations.
 
 def get_expected_shapes(n_parameter_sets, n_training_samples_by_parameter_set):
     total_samples = n_parameter_sets * n_training_samples_by_parameter_set
-    lan_data_samples = total_samples - 2*n_parameter_sets
+    lan_data_samples = total_samples - 2 * n_parameter_sets
     lan_data_samples_minus_nps = lan_data_samples - n_parameter_sets
     lan_data_samples_minus_nps = lan_data_samples
     return {
