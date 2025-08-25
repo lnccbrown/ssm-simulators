@@ -57,7 +57,7 @@ EXPECTED_KEYS = [
 ]
 
 # TODO: Remove this once #114 is fixed
-models_to_skip = [
+broken_models = [
     "lba_3_vs_constraint",  # broken
     "lba_angle_3_vs_constraint",  # broken
     "dev_rlwm_lba_race_v2",  # broken
