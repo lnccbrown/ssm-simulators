@@ -76,6 +76,7 @@ slow_prefixes = (
     "tradeoff",
 )
 
+
 @pytest.mark.parametrize("model_name,model_conf", model_config.item())
 def test_data_generator(model_name, model_conf):
     if model_name in broken_models:
