@@ -63,9 +63,9 @@ broken_models = [
     "dev_rlwm_lba_race_v2",  # broken
 ]
 
-slow_models = ["race_3", "race_no_bias_3", "race_no_z_3"]
+# Ultra slow models, likely broken?
 slow_prefixes = (
-    "race",  # slow
+    "race",
     "dev_rlwm",
     "lba3",
     "lba_angle_3",
@@ -76,17 +76,11 @@ slow_prefixes = (
     "tradeoff",
 )
 
-ok_model_config = [
-    item for item in model_config.items() if item[0] not in models_to_skip
-]
-# TODO: Remove this once data generator is optimized for slow models (#113)
-# subset_size = 1 + len(ok_model_config) // 10
-# ok_model_config = random.sample(ok_model_config, subset_size)
-
-
-@pytest.mark.parametrize("model_name,model_conf", ok_model_config)
+@pytest.mark.parametrize("model_name,model_conf", model_config.item())
 def test_data_generator(model_name, model_conf):
-    if model_name in slow_models or model_name.startswith(slow_prefixes):
+    if model_name in broken_models:
+        pytest.skip(f"Skipping broken model: {model_name}")
+    if model_name.startswith(slow_prefixes):
         pytest.skip(f"Skipping slow model: {model_name}")
 
     generator_config = deepcopy(gen_config)
