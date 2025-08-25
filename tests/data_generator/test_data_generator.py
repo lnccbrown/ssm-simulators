@@ -10,7 +10,9 @@ from ssms.dataset_generators.lan_mlp import data_generator
 
 N_PARAMETER_SETS = random.randint(2, 10)
 N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(2, 10)
-N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(6, 10) # seems to need to be at least 6 for n_paramsets = 1
+N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(
+    6, 10
+)  # seems to need to be at least 6 for n_paramsets = 1
 N_SAMPLES = 4  # lowerbound seems to be 4 -- breaks if random number is chosen
 
 
