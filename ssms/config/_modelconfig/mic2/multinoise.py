@@ -1,7 +1,7 @@
 """Configuration for multinoise models."""
 
 import cssm
-from ssms import boundary_functions as bf
+from ssms.basic_simulators import boundary_functions as bf
 
 
 def get_ddm_mic2_multinoise_no_bias_config():
