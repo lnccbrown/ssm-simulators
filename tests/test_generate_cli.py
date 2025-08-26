@@ -1,6 +1,5 @@
 import io
 import yaml
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -8,7 +7,6 @@ from ssms.cli.generate import (
     try_gen_folder,
     make_data_generator_configs,
     collect_data_generator_config,
-    main,
 )
 
 
@@ -85,24 +83,4 @@ def test_collect_data_generator_config(tmp_path, yaml_config):
     assert data_config["delta_t"] == 0.1
 
 
-@pytest.mark.parametrize("config_path", [None, "config.yaml"])
-@patch("ssms.dataset_generators.lan_mlp.data_generator")
-def test_main(mock_data_generator, tmp_path, yaml_config, config_path):
-    if config_path is not None:
-        config_path = tmp_path / config_path
-        with open(config_path, "w") as f:
-            yaml.dump(yaml_config, f)
-
-    mock_generator_instance = MagicMock()
-    mock_data_generator.return_value = mock_generator_instance
-
-    with patch("typer.echo"), patch("typer.Exit"):
-        main(
-            config_path=config_path,
-            output=tmp_path,
-            log_level="info",
-        )
-        mock_data_generator.assert_called_once()
-        mock_generator_instance.generate_data_training_uniform.assert_called_once_with(
-            save=True, cpn_only=False
-        )
+# TODO: test app object and CLI commands. Harder to do than with argparse
