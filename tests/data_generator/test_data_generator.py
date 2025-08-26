@@ -27,29 +27,20 @@ def infer_constrained_param_space(conf: dict) -> dict:
     """
     params = conf.get("params")
     bounds = conf.get("param_bounds")
-    if bounds is None:
-        return {}
-    out = {}
-    if (
-        isinstance(bounds, (list, tuple))
-        and len(bounds) == 2
-        and not isinstance(bounds[0], (int, float))
-    ):
-        if not params:
-            return {}
-        lows, highs = bounds
-        if not (hasattr(lows, "__len__") and hasattr(highs, "__len__")):
-            return {}
-        for i, p in enumerate(params):
-            if i < len(lows) and i < len(highs):
-                out[p] = (lows[i], highs[i])
-        return out
+
     if isinstance(bounds, dict):
-        keys = params if params else list(bounds.keys())
-        for p in keys:
-            if p in bounds:
-                out[p] = bounds[p]
-        return out
+        return bounds.copy()
+
+    if (
+        params
+        and isinstance(bounds, (list, tuple))
+        and len(bounds) == 2
+        and isinstance(bounds[0], (list, tuple))
+        and isinstance(bounds[1], (list, tuple))
+    ):
+        lows, highs = bounds
+        return {p: (low, high) for p, low, high in zip(params, lows, highs)}
+
     return {}
 
 
