@@ -37,6 +37,7 @@ gen_config.update(
     )
 )
 
+
 EXPECTED_KEYS = [
     "cpn_data",
     "cpn_labels",
@@ -97,9 +98,6 @@ def test_data_generator(model_name, model_conf):
         k: v.shape for k, v in training_data.items() if isinstance(v, np.ndarray)
     }
 
-    assert (
-        td_array_shapes
-        == get_expected_shapes(N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET)[
-            model_name
-        ]
+    assert td_array_shapes == get_expected_shapes(
+        model_conf, N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET
     )
