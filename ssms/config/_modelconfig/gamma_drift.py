@@ -39,7 +39,7 @@ def get_gamma_drift_angle_config():
         "boundary": bf.angle,
         "drift_name": "gamma_drift",
         "drift_fun": df.gamma_drift,
-        "n_params": 7,
+        "n_params": 8,
         "default_params": [0.0, 1.0, 0.5, 0.25, 0.0, 5.0, 0.5, 1.0],
         "nchoices": 2,
         "choices": [-1, 1],
