@@ -16,6 +16,34 @@ N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(
 N_SAMPLES = 4  # lowerbound seems to be 4 -- breaks if random number is chosen
 
 
+def infer_constrained_param_space(conf: dict) -> dict:
+    """Infer a conservative constrained parameter space from a model config.
+
+    Supports two formats for ``param_bounds``:
+    1. ``[[low_1, ...], [high_1, ...]]`` aligned with ``params`` order.
+    2. ``{param: (low, high)}`` mapping.
+
+    Silently skips malformed / mismatched entries.
+    """
+    params = conf.get("params")
+    bounds = conf.get("param_bounds")
+
+    if isinstance(bounds, dict):
+        return bounds.copy()
+
+    if (
+        params
+        and isinstance(bounds, (list, tuple))
+        and len(bounds) == 2
+        and isinstance(bounds[0], (list, tuple))
+        and isinstance(bounds[1], (list, tuple))
+    ):
+        lows, highs = bounds
+        return {p: (low, high) for p, low, high in zip(params, lows, highs)}
+
+    return {}
+
+
 def _make_gen_config(
     n_parameter_sets=N_PARAMETER_SETS,
     n_training_samples_by_parameter_set=N_TRAINING_SAMPLES_BY_PARAMETER_SET,
@@ -28,14 +56,6 @@ def _make_gen_config(
         "n_samples": n_samples,
         "n_subruns": n_subruns,
     }
-
-
-gen_config = get_lan_config()
-gen_config.update(
-    _make_gen_config(
-        N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET, N_SAMPLES, 1
-    )
-)
 
 
 EXPECTED_KEYS = [
@@ -76,6 +96,43 @@ slow_prefixes = (
     "tradeoff",
 )
 
+gen_config = get_lan_config()
+gen_config.update(
+    _make_gen_config(
+        N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET, N_SAMPLES, 1
+    )
+)
+
+def test_data_persistance(tmp_path):
+    model_conf = model_config["ddm"]
+    my_dataset_generator = data_generator(
+        generator_config=gen_config, model_config=model_conf
+    )
+    my_dataset_generator.generate_data_training_uniform(save=True)
+    new_data_file = list(tmp_path.iterdir())[0]
+    assert new_data_file.exists()
+    assert new_data_file.suffix == ".pickle"
+
+@pytest.mark.parametrize("model_name", list(model_config.keys()))
+def test_model_config(model_name):
+    # Take an example config for a given model
+    model_conf = deepcopy(model_config[model_name])
+
+    assert type(model_conf["simulator"]).__name__ == "cython_function_or_method"
+
+    assert callable(model_conf["simulator"])
+    assert callable(model_conf["boundary"])
+
+
+def test_bad_inputs():
+    model_conf = model_config["ddm"]
+
+    with pytest.raises(ValueError):
+        data_generator(generator_config=gen_config, model_config=None)
+
+    with pytest.raises(ValueError):
+        data_generator(generator_config=None, model_config=model_conf)
+
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
 def test_data_generator(model_name, model_conf):
@@ -101,3 +158,7 @@ def test_data_generator(model_name, model_conf):
     assert td_array_shapes == get_expected_shapes(
         model_conf, N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET
     )
+
+    assert training_data["model_config"][
+        "constrained_param_space"
+    ] == infer_constrained_param_space(model_config[model_name])
