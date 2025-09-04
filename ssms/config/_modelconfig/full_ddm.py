@@ -4,7 +4,7 @@ import functools
 import scipy.stats as sps  # type: ignore
 
 import cssm
-from ssms import boundary_functions as bf
+from ssms.basic_simulators import boundary_functions as bf
 
 
 def get_full_ddm_config():

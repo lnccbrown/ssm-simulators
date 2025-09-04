@@ -1,7 +1,7 @@
 """Configuration for RLWM LBA models."""
 
 import cssm
-from ssms import boundary_functions as bf
+from ssms.basic_simulators import boundary_functions as bf
 
 
 def get_dev_rlwm_lba_pw_v1_config():
