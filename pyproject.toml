@@ -64,7 +64,6 @@ addopts = [
     "--cov=.",
     "--cov-report=term-missing",
     "--cov-report=xml",
-    "--exitfirst",
     "--timer-top-n=25",
 ]
 

@@ -3,10 +3,13 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
-from expected_shapes import get_expected_shapes
 
 from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.lan_mlp import data_generator
+
+from expected_shapes import get_expected_shapes
+from expected_constrained_param_space import infer_constrained_param_space
+
 
 N_PARAMETER_SETS = random.randint(2, 10)
 N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(2, 10)
@@ -101,3 +104,44 @@ def test_data_generator(model_name, model_conf):
     assert td_array_shapes == get_expected_shapes(
         model_conf, N_PARAMETER_SETS, N_TRAINING_SAMPLES_BY_PARAMETER_SET
     )
+
+    assert training_data["model_config"][
+        "constrained_param_space"
+    ] == infer_constrained_param_space(model_config[model_name])
+
+
+def test_data_persistance(tmp_path):
+    model_conf = model_config["ddm"]
+    generator_config = deepcopy(gen_config)
+    generator_config["dgp_list"] = "ddm"
+    generator_config["output_folder"] = str(tmp_path)
+    generator_config["n_subruns"] = 1
+
+    my_dataset_generator = data_generator(
+        generator_config=generator_config, model_config=model_conf
+    )
+    my_dataset_generator.generate_data_training_uniform(save=True)
+    new_data_file = list(tmp_path.iterdir())[0]
+    assert new_data_file.exists()
+    assert new_data_file.suffix == ".pickle"
+
+
+@pytest.mark.parametrize("model_name", list(model_config.keys()))
+def test_model_config(model_name):
+    # Take an example config for a given model
+    model_conf = deepcopy(model_config[model_name])
+
+    assert type(model_conf["simulator"]).__name__ == "cython_function_or_method"
+
+    assert callable(model_conf["simulator"])
+    assert callable(model_conf["boundary"])
+
+
+def test_bad_inputs():
+    model_conf = model_config["ddm"]
+
+    with pytest.raises(ValueError):
+        data_generator(generator_config=gen_config, model_config=None)
+
+    with pytest.raises(ValueError):
+        data_generator(generator_config=None, model_config=model_conf)
