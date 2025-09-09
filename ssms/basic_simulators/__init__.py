@@ -1,6 +1,6 @@
-from . import boundary_functions
-from . import drift_functions
-from . import simulator
-from . import theta_processor
+from . import (  # noqa: D104
+    simulator,
+    theta_processor,
+)
 
-__all__ = ["boundary_functions", "drift_functions", "simulator", "theta_processor"]
+__all__ = ["simulator", "theta_processor"]

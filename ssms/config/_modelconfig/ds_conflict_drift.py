@@ -1,7 +1,8 @@
 """Configuration for conflict models with dynamical drift."""
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf, drift_functions as df
+from ssms import boundary_functions as bf
+from ssms import drift_functions as df
 
 
 def get_ds_conflict_drift_config():

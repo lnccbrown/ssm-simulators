@@ -1,7 +1,7 @@
 """Race model configurations."""
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf
+from ssms import boundary_functions as bf
 
 
 def get_race_2_config():

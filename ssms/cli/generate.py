@@ -3,20 +3,19 @@
 import logging
 import pickle
 import warnings
+import yaml
 from collections import namedtuple
 from copy import deepcopy
 from importlib.resources import files, as_file
 from pathlib import Path
 from pprint import pformat
 
-import tqdm
 import typer
-import yaml
 
 import ssms
 from ssms.config import get_default_generator_config, model_config as _model_config
 
-app = typer.Typer(add_completion=False)
+app = typer.Typer()
 
 
 def try_gen_folder(
@@ -160,21 +159,11 @@ log_level_option = typer.Option(
     autocompletion=lambda: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
 )
 
-epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-files 10 --log-level INFO`"
 
-
-@app.command(epilog=epilog)
+@app.command()
 def main(
     config_path: Path = typer.Option(None, help="Path to the YAML configuration file."),
     output: Path = typer.Option(..., help="Path to the output directory."),
-    n_files: int = typer.Option(
-        1,
-        "--n-files",
-        "-n",
-        help="Number of files to generate.",
-        min=1,
-        show_default=True,
-    ),
     log_level: str = log_level_option,
 ):
     """
@@ -203,17 +192,14 @@ def main(
     logger.debug(pformat(config_dict["model_config"]))
 
     # Make the generator
+    logger.info("Generating data")
     my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
         generator_config=config_dict["data_config"],
         model_config=config_dict["model_config"],
     )
 
     is_cpn = config_dict["data_config"].get("cpn_only", False)
-
-    for i in tqdm.tqdm(
-        range(n_files), desc="Generating simulated data files", unit="file"
-    ):
-        my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
+    my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
 
     logger.info("Data generation finished")
 
