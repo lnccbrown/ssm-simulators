@@ -441,16 +441,14 @@ class LogKDE:
         self.data = {"rts": [], "log_rts": [], "choices": [], "choice_proportions": []}
 
         # Loop through the choices made to get proportions and separated out rts
-        if "log_rts" in simulator_data.keys() and ("rts" not in simulator_data.keys()):
+        if "log_rts" in simulator_data and ("rts" not in simulator_data):
             simulator_data["rts"] = (
                 np.ones(simulator_data["log_rts"].shape) * filter_rts
             )
             simulator_data["rts"][simulator_data["log_rts"] != filter_rts] = np.exp(
                 simulator_data["log_rts"][simulator_data["log_rts"] != filter_rts]
             )
-        elif "rts" in simulator_data.keys() and (
-            "log_rts" not in simulator_data.keys()
-        ):
+        elif "rts" in simulator_data and ("log_rts" not in simulator_data):
             simulator_data["log_rts"] = (
                 np.ones(simulator_data["rts"].shape) * filter_rts
             )

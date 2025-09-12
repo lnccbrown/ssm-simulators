@@ -47,6 +47,7 @@ dev = [
     "nbconvert>=7.16.6",
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
+    "pytest-rerunfailures>=16.0.1",
 ]
 
 [project.urls]
@@ -65,6 +66,8 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=xml",
     "--timer-top-n=25",
+    "--reruns=2",
+    "--reruns-delay=1",
 ]
 
 [tool.ruff]

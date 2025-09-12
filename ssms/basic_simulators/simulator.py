@@ -14,7 +14,7 @@ import pandas as pd
 from numpy.random import default_rng
 
 from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
-from ssms.config.config import model_config
+from ssms.config import model_config
 from ssms.config._modelconfig.base import boundary_config, drift_config
 
 
@@ -299,7 +299,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
             - drift_params (dict): Extracted drift-related parameters.
             If no drift name is specified in config, returns an empty dictionary.
     """
-    if "drift_name" in config.keys():
+    if "drift_name" in config:
         drift_name = config["drift_name"]
         drift_params = {
             param_name: value
@@ -629,9 +629,7 @@ def simulator(
     # Update all values of sim_param_dict that are defined in locals()
     locals_dict = locals()
     sim_param_dict = {
-        key_: locals_dict[key_]
-        for key_ in locals_dict.keys()
-        if key_ in sim_param_dict.keys()
+        key_: locals_dict[key_] for key_ in locals_dict if key_ in sim_param_dict
     }
 
     # Fix up noise level
