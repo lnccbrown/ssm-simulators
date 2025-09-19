@@ -54,8 +54,8 @@ dev = [
 Homepage = "https://github.com/lnccbrown/ssm-simulators"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
 
-[tool.setuptools]
-packages = ["ssms"]
+[tool.setuptools.packages.find]
+include = ["ssms", "ssms.*"]
 
 [tool.pytest.ini_options]
 log_cli = true
