@@ -1,7 +1,4 @@
 # SSMS (Sequential Sampling Model Simulators)
-Python Package which collects simulators for Sequential Sampling Models.
-
-Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators/).
 
 [![DOI](https://zenodo.org/badge/386076271.svg)](https://doi.org/10.5281/zenodo.17137303)
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
@@ -9,6 +6,10 @@ Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/lnccbrown/ssm-simulators/branch/main/graph/badge.svg)](https://codecov.io/gh/lnccbrown/ssm-simulators)
+
+Python Package to collect simulators for Sequential Sampling Models.
+
+Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators/).
 
 
 ### Quick Start
@@ -94,6 +95,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync --all-groups  # Installs all dependency groups
 ```
 
-### CITE SSMs
+### Cite `ssm-simulators`
 
 Please use the this DOI to cite ssm-simulators: [https://doi.org/10.5281/zenodo.17137303](https://doi.org/10.5281/zenodo.17137303)
