@@ -1,6 +1,6 @@
 # SSMS (Sequential Sampling Model Simulators)
 
-[![DOI](https://zenodo.org/badge/386076271.svg)](https://doi.org/10.5281/zenodo.17137303)
+[![DOI](https://zenodo.org/badge/370812185.svg)](https://doi.org/10.5281/zenodo.17156205)
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
 ![PyPI_dl](https://img.shields.io/pypi/dm/ssm-simulators)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
