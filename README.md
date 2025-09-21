@@ -97,4 +97,4 @@ uv sync --all-groups  # Installs all dependency groups
 
 ### Cite `ssm-simulators`
 
-Please use the this DOI to cite ssm-simulators: [https://doi.org/10.5281/zenodo.17137303](https://doi.org/10.5281/zenodo.17137303)
+Please use the this DOI to cite ssm-simulators: [https://doi.org/10.5281/zenodo.17156205](https://doi.org/10.5281/zenodo.17156205)
