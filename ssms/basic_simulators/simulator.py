@@ -17,16 +17,8 @@ from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
 from ssms.config import model_config
 from ssms.config._modelconfig.base import boundary_config, drift_config
 
-
-DEFAULT_SIM_PARAMS: dict[str, Any] = {
-    "max_t": 20.0,
-    "n_samples": 2000,
-    "n_trials": 1000,
-    "delta_t": 0.001,
-    "random_state": None,
-    "return_option": "full",
-    "smooth_unif": False,
-}
+# Constants
+from ssms.basic_simulators.constants import DEFAULT_SIM_PARAMS
 
 _global_rng = default_rng()
 _rng_lock = Lock()
@@ -707,17 +699,22 @@ def simulator(
                     x["choices"][:, k, :][x["rts"][:, k, :] != -999] == choice
                 ).sum() / out_len_no_omission
             else:
+                # AF-TODO: Don't get why -999 is used here
                 x["choice_p_no_omission"][k, n] = -999
 
-    x["omission_p"][k, 0] = (x["rts"][:, k, :] == -999).sum() / out_len
-    x["nogo_p"][k, 0] = (
-        (x["choices"][:, k, :] != max(x["metadata"]["possible_choices"]))
-        | (x["rts"][:, k, :] == -999)
-    ).sum() / out_len
-    x["go_p"][k, 0] = 1 - x["nogo_p"][k, 0]
+        # Omission Probability (deadline)
+        x["omission_p"][k, 0] = (x["rts"][:, k, :] == -999).sum() / out_len
 
-    # Choice probability no-omission
-    # Calculate choice probability only from rts that did not pass a given deadline
+        # Nogo Probability 
+        # NOTE: If deadline is set in simulator --> this is the nogo probability
+        # + the omission probability
+        x["nogo_p"][k, 0] = (
+            # AF-TODO: This should rather have a designated no-go choice
+            # instead of `max`
+            (x["choices"][:, k, :] != max(x["metadata"]["possible_choices"]))
+            | (x["rts"][:, k, :] == -999)
+        ).sum() / out_len
+        x["go_p"][k, 0] = 1 - x["nogo_p"][k, 0]
 
     # Output compatibility
     if n_trials == 1:
