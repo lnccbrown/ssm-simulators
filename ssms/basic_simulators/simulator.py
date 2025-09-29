@@ -7,7 +7,6 @@ with preprocessing the output of the simulator function.
 
 from copy import deepcopy
 from threading import Lock
-from typing import Any
 
 import numpy as np
 import pandas as pd
