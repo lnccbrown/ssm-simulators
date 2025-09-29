@@ -705,7 +705,7 @@ def simulator(
         # Omission Probability (deadline)
         x["omission_p"][k, 0] = (x["rts"][:, k, :] == -999).sum() / out_len
 
-        # Nogo Probability 
+        # Nogo Probability
         # NOTE: If deadline is set in simulator --> this is the nogo probability
         # + the omission probability
         x["nogo_p"][k, 0] = (
