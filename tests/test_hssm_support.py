@@ -20,8 +20,8 @@ from ssms.hssm_support import (
     decorate_atomic_simulator,
     hssm_sim_wrapper,
     _build_decorated_simulator,
-    _get_simulator_fun_internal,
-    _validate_simulator_fun,
+    get_simulator_fun_internal,
+    validate_simulator_fun,
 )
 
 
@@ -447,15 +447,15 @@ class TestBuildDecoratedSimulator:
 
 
 class TestGetSimulatorFunInternal:
-    """Tests for _get_simulator_fun_internal function."""
+    """Tests for get_simulator_fun_internal function."""
 
     def test_get_simulator_fun_internal_callable(self):
-        """Test _get_simulator_fun_internal with callable input."""
+        """Test get_simulator_fun_internal with callable input."""
 
         def mock_simulator():
             pass
 
-        result = _get_simulator_fun_internal(mock_simulator)
+        result = get_simulator_fun_internal(mock_simulator)
         assert result is mock_simulator
 
     @patch("ssms.hssm_support.ssms_model_config")
@@ -463,12 +463,12 @@ class TestGetSimulatorFunInternal:
     def test_get_simulator_fun_internal_string_known_model(
         self, mock_build, mock_config
     ):
-        """Test _get_simulator_fun_internal with known model string."""
+        """Test get_simulator_fun_internal with known model string."""
         mock_config.__contains__ = Mock(return_value=True)
         mock_config.get = Mock(return_value={"choices": [0, 1]})
         mock_build.return_value = Mock()
 
-        result = _get_simulator_fun_internal("ddm")
+        result = get_simulator_fun_internal("ddm")
 
         mock_build.assert_called_once_with(model_name="ddm", choices=[0, 1])
         assert result == mock_build.return_value
@@ -479,12 +479,12 @@ class TestGetSimulatorFunInternal:
     def test_get_simulator_fun_internal_string_unknown_model(
         self, mock_logger, mock_build, mock_config
     ):
-        """Test _get_simulator_fun_internal with unknown model string."""
+        """Test get_simulator_fun_internal with unknown model string."""
         mock_config.__contains__ = Mock(return_value=False)
         mock_config.get = Mock(return_value={"choices": [0, 1, 2]})
         mock_build.return_value = Mock()
 
-        _get_simulator_fun_internal("unknown_model")
+        get_simulator_fun_internal("unknown_model")
 
         mock_logger.warning.assert_called_once()
         mock_build.assert_called_once_with(
@@ -492,14 +492,14 @@ class TestGetSimulatorFunInternal:
         )
 
     def test_get_simulator_fun_internal_invalid_type(self):
-        """Test _get_simulator_fun_internal with invalid type."""
+        """Test get_simulator_fun_internal with invalid type."""
         match = "`simulator_fun` must be a string or a callable"
         with pytest.raises(ValueError, match=match):
-            _get_simulator_fun_internal(123)
+            get_simulator_fun_internal(123)
 
 
 class TestValidateSimulatorFun:
-    """Tests for _validate_simulator_fun function."""
+    """Tests for validate_simulator_fun function."""
 
     @pytest.fixture
     def mock_simulator(self):
@@ -515,39 +515,39 @@ class TestValidateSimulatorFun:
         return f"The simulator function must have a `{attribute}` attribute"
 
     def test_validate_simulator_fun_valid(self, mock_simulator):
-        """Test _validate_simulator_fun with valid simulator function."""
-        model_name, choices, obs_dim_int = _validate_simulator_fun(mock_simulator)
+        """Test validate_simulator_fun with valid simulator function."""
+        model_name, choices, obs_dim_int = validate_simulator_fun(mock_simulator)
 
         assert model_name == "ddm"
         assert choices == [0, 1]
         assert obs_dim_int == 2
 
     def test_validate_simulator_fun_missing_model_name(self, mock_simulator):
-        """Test _validate_simulator_fun with missing model_name."""
+        """Test validate_simulator_fun with missing model_name."""
         del mock_simulator.model_name
 
         with pytest.raises(ValueError, match=self._missing_attr_msg("model_name")):
-            _validate_simulator_fun(mock_simulator)
+            validate_simulator_fun(mock_simulator)
 
     def test_validate_simulator_fun_missing_choices(self, mock_simulator):
-        """Test _validate_simulator_fun with missing choices."""
+        """Test validate_simulator_fun with missing choices."""
         del mock_simulator.choices
 
         with pytest.raises(ValueError, match=self._missing_attr_msg("choices")):
-            _validate_simulator_fun(mock_simulator)
+            validate_simulator_fun(mock_simulator)
 
     def test_validate_simulator_fun_missing_obs_dim(self, mock_simulator):
-        """Test _validate_simulator_fun with missing obs_dim."""
+        """Test validate_simulator_fun with missing obs_dim."""
         del mock_simulator.obs_dim
 
         with pytest.raises(ValueError, match=self._missing_attr_msg("obs_dim")):
-            _validate_simulator_fun(mock_simulator)
+            validate_simulator_fun(mock_simulator)
 
     def test_validate_simulator_fun_invalid_obs_dim_type(self, mock_simulator):
-        """Test _validate_simulator_fun with invalid obs_dim type."""
+        """Test validate_simulator_fun with invalid obs_dim type."""
         mock_simulator.obs_dim = "2"  # String instead of int
 
         with pytest.raises(
             ValueError, match="The obs_dim attribute must be an integer"
         ):
-            _validate_simulator_fun(mock_simulator)
+            validate_simulator_fun(mock_simulator)
