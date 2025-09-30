@@ -462,8 +462,8 @@ def rng_fn(
     p_outlier, arg_arrays = _get_p_outlier(cls, arg_arrays)
     seed = _get_seed(rng)
 
-    is_all_args_scalar, theta, max_shape, new_data_size = (
-        _prepare_theta_and_shape(arg_arrays, size)
+    is_all_args_scalar, theta, max_shape, new_data_size = _prepare_theta_and_shape(
+        arg_arrays, size
     )
     n_replicas = _calculate_n_replicas(is_all_args_scalar, size, new_data_size)
 
@@ -486,4 +486,3 @@ def rng_fn(
         choices=choices,
     )
     return sims_out
-
