@@ -403,6 +403,7 @@ def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
     return model_name, choices, obs_dim_int
 
 
+# pragma: no cover
 def rng_fn(
     cls,
     rng: np.random.Generator,
@@ -412,7 +413,7 @@ def rng_fn(
     obs_dim_int: int,
     *args,
     **kwargs,
-) -> np.ndarray: # pragma: no cover
+) -> np.ndarray:
     """Generate random variables from this distribution.
 
     Parameters
