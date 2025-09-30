@@ -324,7 +324,7 @@ def _build_decorated_simulator(
     return decorated_simulator(sim_wrapper)
 
 
-def _get_simulator_fun_internal(simulator_fun: Callable | str):
+def get_simulator_fun_internal(simulator_fun: Callable | str):
     """
     Get the internal simulator function for a given model.
 
