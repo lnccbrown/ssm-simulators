@@ -365,7 +365,7 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
     return simulator_fun_internal
 
 
-def _validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
+def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
     """
     Validate that the simulator function has required attributes.
 
