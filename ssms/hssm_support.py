@@ -405,7 +405,7 @@ def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
 
 # pragma: no cover
 def rng_fn(
-    cls,
+    cls: _HasListParams,
     rng: np.random.Generator,
     simulator_fun: Callable,
     apply_lapse_model: Callable,
