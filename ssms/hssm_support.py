@@ -414,22 +414,32 @@ def rng_fn(
     *args,
     **kwargs,
 ) -> np.ndarray:
-    """Generate random variables from this distribution.
+    """
+    Generate random variables from this distribution using the provided simulator function.
 
     Parameters
     ----------
-    rng
-        A `np.random.Generator` object for random state.
-    args
-        Unnamed arguments of parameters, in the order of `_list_params`, plus
-        the last one as size.
-    kwargs
-        Other keyword arguments passed to the ssms simulator.
+    cls : _HasListParams
+        The class (or object) containing the `_list_params` attribute.
+    rng : np.random.Generator
+        Random number generator for reproducibility.
+    simulator_fun : Callable
+        The simulator function to generate samples.
+    apply_lapse_model : Callable
+        Function to apply a lapse model to the simulated data.
+    choices : list or np.ndarray
+        List or array of possible choices/responses.
+    obs_dim_int : int
+        Number of observation dimensions.
+    *args : tuple
+        Model parameters, in the order of `_list_params`, with the last argument as size.
+    **kwargs : dict
+        Additional keyword arguments passed to the simulator function.
 
     Returns
     -------
     np.ndarray
-        An array of `(rt, response)` generated from the distribution.
+        An array of shape (..., obs_dim_int) containing generated (rt, response) pairs.
 
     Note
     ----
