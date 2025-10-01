@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, Protocol, cast
+from typing import Any, Callable, Protocol, cast, TYPE_CHECKING
 import logging
 
 import numpy as np
@@ -7,12 +7,15 @@ import numpy as np
 from .basic_simulators.simulator import simulator
 from .config import model_config as ssms_model_config
 
+if TYPE_CHECKING:
+    from bambi import Prior
+
 _logger = logging.getLogger(__name__)
 
 
 class _RandomVariable(Protocol):  # for mypy
     _list_params: list[str]
-    _lapse: Any  # bmb.Prior in actual usage, not included in ssm-simulators
+    _lapse: Prior  # bmb.Prior in actual usage, not included in ssm-simulators
 
 
 def _create_arg_arrays(cls: _RandomVariable, args: tuple) -> list[np.ndarray]:
