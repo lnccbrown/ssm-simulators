@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 class _RandomVariable(Protocol):  # for mypy
     _list_params: list[str]
-    _lapse: Prior  # bmb.Prior in actual usage, not included in ssm-simulators
+    _lapse: "Prior"  # bmb.Prior in actual usage, not included in ssm-simulators
 
 
 def _create_arg_arrays(cls: _RandomVariable, args: tuple) -> list[np.ndarray]:
