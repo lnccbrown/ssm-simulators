@@ -10,11 +10,12 @@ from .config import model_config as ssms_model_config
 _logger = logging.getLogger(__name__)
 
 
-class _HasListParams(Protocol):  # for mypy
+class _RandomVariable(Protocol):  # for mypy
     _list_params: list[str]
+    _lapse: Any  # bmb.Prior in actual usage, not included in ssm-simulators
 
 
-def _create_arg_arrays(cls: _HasListParams, args: tuple) -> list[np.ndarray]:
+def _create_arg_arrays(cls: _RandomVariable, args: tuple) -> list[np.ndarray]:
     """
     Create argument arrays from input arguments.
 
@@ -184,7 +185,7 @@ def _validate_size(size_val: int, new_data_size: int) -> None:
         raise ValueError("`size` needs to be a multiple of the size of data")
 
 
-def _get_p_outlier(cls: _HasListParams, arg_arrays):
+def _get_p_outlier(cls: _RandomVariable, arg_arrays):
     """Get p_outlier from arg_arrays and update arg_arrays."""
     list_params = cls._list_params
     p_outlier = None
@@ -405,7 +406,7 @@ def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
 
 # pragma: no cover
 def rng_fn(
-    cls: _HasListParams,
+    cls: _RandomVariable,
     rng: np.random.Generator,
     simulator_fun: Callable,
     apply_lapse_model: Callable,
@@ -419,8 +420,8 @@ def rng_fn(
 
     Parameters
     ----------
-    cls : _HasListParams
-        The class (or object) containing the `_list_params` attribute.
+    cls : _RandomVariable
+        The class (or object) containing the `_list_params` and `_lapse` attributes.
     rng : np.random.Generator
         Random number generator for reproducibility.
     simulator_fun : Callable
