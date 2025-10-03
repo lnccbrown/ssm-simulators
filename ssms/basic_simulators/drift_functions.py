@@ -311,6 +311,57 @@ def ds_conflict_stimflexons_drift(
     return v_t
 
 
+
+def ds_conflict_stimflexons_leak_drift(
+    t: np.ndarray | None,
+    tinit: float = 0,
+    dinit: float = 0,
+    tslope: float = 1,
+    dslope: float = 1,
+    tfixedp: float = 1,
+    tcoh: float = 1.0,
+    dcoh: float = 1.0,
+    tonset: float = 0,
+    donset: float = 0,
+) -> np.ndarray:
+    """Drift function for conflict task with stimuli with potentially variable onset.
+
+    Arguments:
+    ---------
+        t: np.ndarray
+            Timepoints at which to evaluate the drift.
+            Usually np.arange() of some sort.
+        tcoh: float
+            Coherence of the target stimulus when 'on'.
+        dcoh: float
+            Coherence of the distractor stimulus when 'on'.
+        tinit: float
+            Initial condition of target drift timecourse.
+        dinit: float
+            Initial condition of distractor drift timecourse.
+        tslope: float
+            Slope parameter for target drift timecourse.
+        dslope: float
+            Slope parameter for distractor drift timecourse.
+        tfixedp: float
+            Fixed point for target drift timecourse.
+        tonset: float
+            Onset time of the target stimulus coherence.
+        donset: float
+            Onset time of the distractor stimulus coherence.
+    """
+    if t is None:
+        t = np.arange(0, 20, 0.1)
+    tcohs = stimflexons_support(t, tonset, tcoh)
+    dcohs = stimflexons_support(t, donset, dcoh)
+
+    w_t = ds_support_analytic(t=t, init_p=tinit, fix_point=tfixedp, slope=tslope)
+    w_d = ds_support_analytic(t=t, init_p=dinit, fix_point=0, slope=dslope)
+    v_t = (w_t * tcohs) + (w_d * dcohs)
+
+    return v_t
+
+
 # Type alias for drift functions
 DriftFunction = Callable[..., np.ndarray]
 
@@ -320,3 +371,4 @@ gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
 ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
 ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127
 ds_conflict_stimflexons_drift: DriftFunction = ds_conflict_stimflexons_drift  # noqa: PLW0127
+ds_conflict_stimflexons_leak_drift: DriftFunction = ds_conflict_stimflexons_leak_drift

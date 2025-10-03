@@ -9,6 +9,8 @@ from .ds_conflict_drift import (
     get_ds_conflict_drift_config,
     get_ds_conflict_stimflexons_drift_angle_config,
     get_ds_conflict_stimflexons_drift_config,
+    get_ds_conflict_stimflexons_leak_drift_angle_config,
+    get_ds_conflict_stimflexons_leak_drift_config,
 )
 from .full_ddm import (
     get_full_ddm_config,
@@ -193,6 +195,8 @@ def get_model_config():
         "ds_conflict_drift_angle": get_ds_conflict_drift_angle_config(),
         "ds_conflict_stimflexons_drift": get_ds_conflict_stimflexons_drift_config(),
         "ds_conflict_stimflexons_drift_angle": get_ds_conflict_stimflexons_drift_angle_config(),
+        "ds_conflict_stimflexons_leak_drift": get_ds_conflict_stimflexons_leak_drift_config(),
+        "ds_conflict_stimflexons_leak_drift_angle": get_ds_conflict_stimflexons_leak_drift_angle_config(),
         "ornstein": get_ornstein_config(),
         "ornstein_angle": get_ornstein_angle_config(),
         "race_2": get_race_2_config(),

@@ -54,6 +54,8 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
         "ds_conflict_drift_angle",
         "ds_conflict_stimflexons_drift",
         "ds_conflict_stimflexons_drift_angle",
+        "ds_conflict_stimflexons_leak_drift",
+        "ds_conflict_stimflexons_leak_drift_angle",
         "shrink_spot",
         "shrink_spot_simple",
         "shrink_spot_extended",
