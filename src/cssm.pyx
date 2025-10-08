@@ -861,7 +861,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES, FLEXIBLE SLOPE, AND DECAY ----------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flex_decay(np.ndarray[float, ndim = 1] v,
+def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
              np.ndarray[float, ndim = 1] a,
              np.ndarray[float, ndim = 1] z,
              np.ndarray[float, ndim = 1] g,
@@ -1026,7 +1026,7 @@ def ddm_flex_decay(np.ndarray[float, ndim = 1] v,
                                                             'max_t': max_t,
                                                             'n_samples': n_samples,
                                                             'n_trials': n_trials,
-                                                            'simulator': 'ddm_flex_decay',
+                                                            'simulator': 'ddm_flex_leak',
                                                             'boundary_fun_type': boundary_fun.__name__,
                                                             'drift_fun_type': boundary_fun.__name__,
                                                             'possible_choices': [-1, 1],
@@ -1034,7 +1034,7 @@ def ddm_flex_decay(np.ndarray[float, ndim = 1] v,
                                                             'drift': drift,
                                                             'boundary': boundary}}
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices,  'metadata': {'simulator': 'ddm_flex_decay', 
+        return {'rts': rts, 'choices': choices,  'metadata': {'simulator': 'ddm_flex_leak', 
                                                              'possible_choices': [-1, 1],
                                                              'boundary_fun_type': boundary_fun.__name__,
                                                              'drift_fun_type': boundary_fun.__name__,

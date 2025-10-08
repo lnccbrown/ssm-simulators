@@ -177,14 +177,14 @@ def get_ds_conflict_stimflexons_leak_drift_config():
         ],
         "boundary_name": "constant",
         "boundary": bf.constant,
-        "drift_name": "ds_conflict_stimflexons_leak_drift",
-        "drift_fun": df.ds_conflict_stimflexons_leak_drift,
+        "drift_name": "ds_conflict_stimflexons_drift",
+        "drift_fun": df.ds_conflict_stimflexons_drift,
         "n_params": 13,
         "default_params": [2.0, 0.5, 0.0, 1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 0.5, -0.5, 0.0, 0.0],
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex_decay,
+        "simulator": cssm.ddm_flex_leak,
     }
 
 
@@ -213,8 +213,8 @@ def get_ds_conflict_stimflexons_leak_drift_angle_config():
         ],
         "boundary_name": "angle",
         "boundary": bf.angle,
-        "drift_name": "ds_conflict_stimflexons_leak_drift",
-        "drift_fun": df.ds_conflict_stimflexons_leak_drift,
+        "drift_name": "ds_conflict_stimflexons_drift",
+        "drift_fun": df.ds_conflict_stimflexons_drift,
         "n_params": 14,
         "default_params": [
             2.0,
@@ -235,5 +235,5 @@ def get_ds_conflict_stimflexons_leak_drift_angle_config():
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
-        "simulator": cssm.ddm_flex_decay,
+        "simulator": cssm.ddm_flex_leak,
     }
