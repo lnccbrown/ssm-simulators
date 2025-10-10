@@ -60,6 +60,18 @@ drift_config = {
             "donset",
         ],
     },
+    "conflict_stimflexons_drift": {
+        "fun": df.conflict_stimflexons_drift,
+        "params": ["v_t", "v_d", "tcoh", "dcoh", "tonset", "donset"],
+    },
+    "conflict_stimflex_drift": {
+        "fun": df.conflict_stimflex_drift,
+        "params": ["v_t", "v_d", "tcoh", "dcoh", "tonset", "donset", "toffset", "doffset"],
+    },
+    "conflict_stimflex_drift2": {
+        "fun": df.conflict_stimflex_drift2,
+        "params": ["v_t", "v_d", "tcoh", "dcoh", "tonset", "donset", "toffset", "doffset"],
+    },
     "attend_drift": {
         "fun": df.attend_drift,
         "params": ["ptarget", "pouter", "pinner", "r", "sda"],
