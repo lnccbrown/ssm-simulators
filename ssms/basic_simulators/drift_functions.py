@@ -2,6 +2,7 @@
 
 # External
 from collections.abc import Callable
+from functools import partial
 
 import numpy as np
 from scipy.stats import norm
@@ -240,10 +241,8 @@ def attend_drift_simple(
 
 
 def stimflex_support(
-    t: np.ndarray,
-    onset: float,
-    offset: float,
-    coh: float) -> np.ndarray:
+    t: np.ndarray, onset: float, offset: float, coh: float
+) -> np.ndarray:
     """
     Construct a rectangular coherence timecourse, with discrete and
     potentially variable onsets and offsets of stimulus evidence.
@@ -267,7 +266,7 @@ def stimflex_support(
     return cohs
 
 
-def ds_conflict_stimflexons_drift(
+def ds_conflict_stimflex_drift(
     t: np.ndarray | None,
     tinit: float = 0,
     dinit: float = 0,
@@ -278,6 +277,7 @@ def ds_conflict_stimflexons_drift(
     dcoh: float = 1.0,
     tonset: float = 0,
     donset: float = 0,
+    rel_first: bool = True,
 ) -> np.ndarray:
     """Drift function for conflict task with stimuli with potentially variable onset.
 
@@ -304,9 +304,18 @@ def ds_conflict_stimflexons_drift(
             Onset time of the target stimulus coherence.
         donset: float
             Onset time of the distractor stimulus coherence.
+        rel_first: bool
+            If True, the first stimulus to appear (target or distractor)
+            is treated as appearing at time 0, and the other stimulus
+            is adjusted accordingly. If False, the onsets are treated
+            as absolute times.
     """
     if t is None:
         t = np.arange(0, 20, 0.1)
+    if rel_first:
+        first = min(tonset, donset)
+        tonset -= first
+        donset -= first
     offset = np.max(t)
     tcohs = stimflex_support(t, tonset, offset, tcoh)
     dcohs = stimflex_support(t, donset, offset, dcoh)
@@ -318,45 +327,6 @@ def ds_conflict_stimflexons_drift(
     return v_t
 
 
-def conflict_stimflexons_drift(
-    t: np.ndarray | None,
-    v_t: float = 0,
-    v_d: float = 0,
-    tcoh: float = 1.0,
-    dcoh: float = 1.0,
-    tonset: float = 0,
-    donset: float = 0,
-) -> np.ndarray:
-    """Drift function for conflict task with stimuli with potentially variable onset.
-
-    Arguments:
-    ---------
-        t: np.ndarray
-            Timepoints at which to evaluate the drift.
-            Usually np.arange() of some sort.
-        tcoh: float
-            Coherence of the target stimulus when 'on'.
-        dcoh: float
-            Coherence of the distractor stimulus when 'on'.
-        v_t: float
-            Static drift-rate of target stimulus, when 'on'.
-        v_d: float
-            Static drift-rate of distractor stimulus, when 'on'.
-        tonset: float
-            Onset time of the target stimulus coherence.
-        donset: float
-            Onset time of the distractor stimulus coherence.
-    """
-    if t is None:
-        t = np.arange(0, 20, 0.1)
-    offset = np.max(t)
-    tcohs = stimflex_support(t, tonset, offset, tcoh)
-    dcohs = stimflex_support(t, donset, offset, dcoh)
-
-    return v_t * tcohs + v_d * dcohs
-
-
-
 def conflict_stimflex_drift(
     t: np.ndarray | None,
     v_t: float = 0,
@@ -365,10 +335,12 @@ def conflict_stimflex_drift(
     dcoh: float = 1.0,
     tonset: float = 0,
     donset: float = 0,
-    toffset: float = 0.2,
-    doffset: float = 0.2,
+    toffset: float | None = None,
+    doffset: float | None = None,
+    rel_first: bool = False,
+    sum_drifts: bool = True,
 ) -> np.ndarray:
-    """Drift function for conflict task with stimuli with potentially variable onset.
+    """Drift function for conflict task with stimuli with potentially variable onset and duration.
 
     Arguments:
     ---------
@@ -387,53 +359,46 @@ def conflict_stimflex_drift(
             Onset time of the target stimulus coherence.
         donset: float
             Onset time of the distractor stimulus coherence.
+        toffset, doffset: float or None
+            Duration of the stimulus coherence pulse. If None, the pulse
+            lasts until the end of the trial.
+        rel_first: bool
+            If True, the first stimulus to appear (target or distractor)
+            is treated as appearing at time 0, and the other stimulus
+            is adjusted accordingly. If False, the onsets are treated
+            as absolute times.
+        sum_drifts: bool
+            If True, the drift contributions from target and distractor
+            are summed to produce a single drift timecourse. If False,
+            a 2D array is returned with separate columns for target
+            and distractor drift timecourses.
+    Returns
+    -------
+        np.ndarray: Array of drift values, same length as t. If sum_drifts
+            is False, the array has shape (len(t), 2)
     """
     if t is None:
         t = np.arange(0, 20, 0.1)
+    if rel_first:
+        first = min(tonset, donset)
+        tonset -= first
+        donset -= first
+    if toffset is None:
+        toffset = np.max(t)
+    if doffset is None:
+        doffset = np.max(t)
     tcohs = stimflex_support(t, tonset, toffset, tcoh)
     dcohs = stimflex_support(t, donset, doffset, dcoh)
+    if sum_drifts:
+        return v_t * tcohs + v_d * dcohs
+    else:
+        return np.column_stack((v_t * tcohs, v_d * dcohs))
 
-    return v_t * tcohs + v_d * dcohs
 
-
-def conflict_stimflex_drift2(
-    t: np.ndarray | None,
-    v_t: float = 0,
-    v_d: float = 0,
-    tcoh: float = 1.0,
-    dcoh: float = 1.0,
-    tonset: float = 0,
-    donset: float = 0,
-    toffset: float = 0.2,
-    doffset: float = 0.2,
-) -> np.ndarray:
-    """Drift function for conflict task with stimuli with potentially variable onset.
-
-    Arguments:
-    ---------
-        t: np.ndarray
-            Timepoints at which to evaluate the drift.
-            Usually np.arange() of some sort.
-        tcoh: float
-            Coherence of the target stimulus when 'on'.
-        dcoh: float
-            Coherence of the distractor stimulus when 'on'.
-        v_t: float
-            Static drift-rate of target stimulus, when 'on'.
-        v_d: float
-            Static drift-rate of distractor stimulus, when 'on'.
-        tonset: float
-            Onset time of the target stimulus coherence.
-        donset: float
-            Onset time of the distractor stimulus coherence.
-    """
-    if t is None:
-        t = np.arange(0, 20, 0.1)
-    tcohs = stimflex_support(t, tonset, toffset, tcoh)
-    dcohs = stimflex_support(t, donset, doffset, dcoh)
-    
-    return np.column_stack((v_t * tcohs, v_d * dcohs))
-
+conflict_stimflexrel1_drift = partial(conflict_stimflex_drift, rel_first=True)
+conflict_stimflexrel1_dual_drift = partial(
+    conflict_stimflex_drift, rel_first=True, sum_drifts=False
+)
 
 
 # Type alias for drift functions
@@ -444,7 +409,5 @@ constant: DriftFunction = constant  # noqa: PLW0127
 gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
 ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
 ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127
-ds_conflict_stimflexons_drift: DriftFunction = ds_conflict_stimflexons_drift  # noqa: PLW0127
+ds_conflict_stimflex_drift: DriftFunction = ds_conflict_stimflex_drift  # noqa: PLW0127
 conflict_stimflex_drift: DriftFunction = conflict_stimflex_drift  # noqa: PLW0127
-conflict_stimflexons_drift: DriftFunction = conflict_stimflexons_drift  # noqa: PLW0127
-conflict_stimflex_drift2: DriftFunction = conflict_stimflex_drift2  # noqa: PLW0127

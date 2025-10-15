@@ -52,24 +52,24 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
     models_dynamic_drift = [
         "ds_conflict_drift",
         "ds_conflict_drift_angle",
-        "ds_conflict_stimflexons_drift",
-        "ds_conflict_stimflexons_drift_angle",
-        "ds_conflict_stimflexons_leak_drift",
-        "ds_conflict_stimflexons_leak_drift_angle",
-        "conflict_stimflexons_drift",
-        "conflict_stimflexons_drift_angle",
-        "conflict_stimflex_drift",
-        "conflict_stimflex_drift_angle",
+        "ds_conflict_stimflex_drift",
+        "ds_conflict_stimflex_drift_angle",
+        "conflict_stimflex",
+        "conflict_stimflex_angle",
+        "conflict_stimflexrel1",
+        "conflict_stimflexrel1_angle",
+        "conflict_stimflexrel1_leak",
+        "conflict_stimflexrel1_leak2",
         "shrink_spot",
         "shrink_spot_simple",
         "shrink_spot_extended",
         "shrink_spot_extended_angle",
         "shrink_spot_simple_extended",
     ]
-    
+
     models_dual_drift = [
         "conflict_stimflex_leak2_drift",
-        "conflict_stimflex_leak2_drift_angle"
+        "conflict_stimflex_leak2_drift_angle",
     ]
 
     def process_theta(
@@ -111,9 +111,11 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
         # ----- Single particle models -----
         if model in self.models_dynamic_drift:
             theta["v"] = np.tile(np.array([0], dtype=np.float32), n_trials)
-        
+
         if model in self.models_dual_drift:
-            theta["v"] = np.tile(np.array([0]*2, dtype=np.float32), (n_trials, 1)) ## target, distractor
+            theta["v"] = np.tile(
+                np.array([0] * 2, dtype=np.float32), (n_trials, 1)
+            )  ## target, distractor
 
         if model in ["ddm_st"]:
             theta["z_dist"] = model_config["simulator_fixed_params"]["z_dist"]
