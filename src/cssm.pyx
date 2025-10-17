@@ -4895,8 +4895,9 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
     cdef float[:] sigma_view = sigma 
     cdef float[:] tau_view = tau 
 
-    rts = np.zeros((n_samples, n_trials), dtype = DTYPE)
-    cdef float[:, :] rts_view = rts
+    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
+    cdef float[:, :, :], : rts_view = rts
+    cdef int[:, :, :] choices_view = choices
 
     for k in range(n_trials): 
         for n in range(n_samples): 
@@ -4908,19 +4909,22 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 
             rt_val = norm_sample + exp_sample  
 
-            rts_view[n, k] = rt_val 
+            rts_view[n, k, 0] = rt_val 
+            choices_view[n, k, 0] = 1
     
     if return_option == 'full': 
         return {
             'rts': rts,
+            'choices': choices,
             'metadata': {
                 'mu': mu, 'sigma': sigma, 'tau': tau,
                 'n_samples': n_samples,
                 'n_trials': n_trials,
-                'simulator': 'exgauss'
+                'simulator': 'exgauss',
+                'possible_choices': [1],
             }
         }
     elif return_option == 'minimal':
-        return {'rts': rts, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials}}
+        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [1]}}
     else:
         raise ValueError("return_option must be 'full' or 'minimal'")

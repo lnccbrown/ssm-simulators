@@ -123,6 +123,9 @@ from .shrink import (
     get_shrink_spot_simple_extended_config,
 )
 
+from .exgauss import (
+    get_exgauss_config
+)
 
 def get_model_config():
     """Accessor for model configurations.
@@ -234,6 +237,7 @@ def get_model_config():
         "weibull_cdf": get_weibull_config(),
         "full_ddm2": get_full_ddm_config(),
         "ddm_legacy": get_ddm_legacy_config(),
+        "exgauss": get_exgauss_config(),
     }
 
 
