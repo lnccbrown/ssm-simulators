@@ -4871,3 +4871,56 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------
+
+
+
+# Simulate (rt, choice) tuples from: EX GAUSSIAN ------------------------------------
+# @cythonboundscheck(False)
+# @cythonwraparound(False)
+def exgauss(np.ndarray[float, ndim = 1] mu,
+                           np.ndarray[float, ndim = 1] sigma, 
+                           np.ndarray[float, ndim = 1] tau, 
+                           float delta_t = 0.001,
+                           float max_t = 20,
+                           int n_samples = 20000,
+                           int n_trials = 1,
+                           random_state = None,
+                           return_option = 'full',
+                           **kwargs):
+    """ Uhhhhhh thing """ 
+
+    set_seed(random_state)
+    
+    cdef float[:] mu_view = mu 
+    cdef float[:] sigma_view = sigma 
+    cdef float[:] tau_view = tau 
+
+    rts = np.zeros((n_samples, n_trials), dtype = DTYPE)
+    cdef float[:, :] rts_view = rts
+
+    for k in range(n_trials): 
+        for n in range(n_samples): 
+            # Draw normal + exponential 
+            norm_sample = random_gaussian()
+            norm_sample = mu_view[k] + sigma_view[k] * norm_sample
+
+            exp_sample = tau_view[k] * random_exponential()
+
+            rt_val = norm_sample + exp_sample  
+
+            rts_view[n, k] = rt_val 
+    
+    if return_option == 'full': 
+        return {
+            'rts': rts,
+            'metadata': {
+                'mu': mu, 'sigma': sigma, 'tau': tau,
+                'n_samples': n_samples,
+                'n_trials': n_trials,
+                'simulator': 'exgauss'
+            }
+        }
+    elif return_option == 'minimal':
+        return {'rts': rts, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials}}
+    else:
+        raise ValueError("return_option must be 'full' or 'minimal'")
