@@ -9,15 +9,15 @@ def get_dev_rlwm_lba_pw_v1_config():
     return {
         "name": "dev_rlwm_lba_pw_v1",
         "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
+            "vRL0",
+            "vRL1",
+            "vRL2",
+            "vWM0",
+            "vWM1",
+            "vWM2",
             "a",
             "z",
-            "t_WM",
+            "tWM",
         ],
         "param_bounds": [
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.0, 0.01],
@@ -36,15 +36,15 @@ def get_dev_rlwm_lba_pw_v1_config():
 def get_dev_rlwm_lba_race_v1_config():
     """Get configuration for RLWM LBA race v1 model."""
     return {
-        # RLWM_Race_LBA_3 without ndt; sum of all v_RL = 1 and sum of all v_WM = 1
+        # RLWM_Race_LBA_3 without ndt; sum of all vRL = 1 and sum of all vWM = 1
         "name": "dev_rlwm_lba_race_v1",
         "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
+            "vRL0",
+            "vRL1",
+            "vRL2",
+            "vWM0",
+            "vWM1",
+            "vWM2",
             "a",
             "z",
         ],
@@ -66,15 +66,15 @@ def get_dev_rlwm_lba_race_v1_config():
 def get_dev_rlwm_lba_race_v2_config():
     """Get configuration for RLWM LBA race v2 model."""
     return {
-        # RLWM_Race_LBA_3 without ndt; no constraints on the sum of v_RL and v_WM.
+        # RLWM_Race_LBA_3 without ndt; no constraints on the sum of vRL and vWM.
         "name": "dev_rlwm_lba_race_v2",
         "params": [
-            "v_RL_0",
-            "v_RL_1",
-            "v_RL_2",
-            "v_WM_0",
-            "v_WM_1",
-            "v_WM_2",
+            "vRL0",
+            "vRL1",
+            "vRL2",
+            "vWM0",
+            "vWM1",
+            "vWM2",
             "a",
             "z",
         ],

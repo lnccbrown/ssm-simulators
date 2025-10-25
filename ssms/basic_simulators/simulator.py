@@ -491,8 +491,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             check_lba_drifts_sum(theta["v"])
             check_if_z_gt_a(theta["z"], theta["a"])
         elif model in ["dev_rlwm_lba_race_v1"]:
-            check_lba_drifts_sum(theta["v_RL"])
-            check_lba_drifts_sum(theta["v_WM"])
+            check_lba_drifts_sum(theta["vRL"])
+            check_lba_drifts_sum(theta["vWM"])
             check_if_z_gt_a(theta["z"], theta["a"])
         elif model in [
             "lba3",

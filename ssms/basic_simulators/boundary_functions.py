@@ -90,8 +90,8 @@ def conflict_gamma(
     ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
     theta: float = 0.5,
     scale: float = 1,
-    alpha_gamma: float = 1.01,
-    scale_gamma: float = 0.3,
+    alphaGamma: float = 1.01,
+    scaleGamma: float = 0.3,
 ) -> np.ndarray:
     """Conflict bound that allows initial divergence then collapse.
 
@@ -105,11 +105,11 @@ def conflict_gamma(
         scale: float
             Scaling the gamma distribution of the boundary
             (since bound does not have to integrate to one). Defaults to 1.0.
-        alpha_gamma: float
+        alphaGamma: float
             alpha parameter for a gamma in scale shape parameterization. Defaults to
     """
     return (
-        scale * gamma.pdf(t, a=alpha_gamma, loc=0, scale=scale_gamma)
+        scale * gamma.pdf(t, a=alphaGamma, loc=0, scale=scaleGamma)
         + np.multiply(t, (-np.sin(theta) / np.cos(theta))),
     )
 

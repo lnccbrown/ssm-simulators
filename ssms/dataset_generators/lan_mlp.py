@@ -379,27 +379,23 @@ class data_generator:  # noqa: N801
         if self.model_config["name"] == "dev_rlwm_lba_race_v1":
             # normalize the RL drift rates
             v_rl_sum = (
-                np.sum([theta["v_RL_0"], theta["v_RL_1"], theta["v_RL_2"]]).astype(
-                    np.float32
-                )
+                np.sum([theta["vRL0"], theta["vRL1"], theta["vRL2"]]).astype(np.float32)
                 + 1e-20
             )
-            theta["v_RL_0"] = (theta["v_RL_0"] + (1e-20 / 3)) / v_rl_sum
-            theta["v_RL_1"] = (theta["v_RL_1"] + (1e-20 / 3)) / v_rl_sum
-            theta["v_RL_2"] = (theta["v_RL_2"] + (1e-20 / 3)) / v_rl_sum
+            theta["vRL0"] = (theta["vRL0"] + (1e-20 / 3)) / v_rl_sum
+            theta["vRL1"] = (theta["vRL1"] + (1e-20 / 3)) / v_rl_sum
+            theta["vRL2"] = (theta["vRL2"] + (1e-20 / 3)) / v_rl_sum
 
             # theta[0:3] = theta[0:3] / np.sum(theta[0:3])
 
             # normalize the WM drift rates
             v_wm_sum = (
-                np.sum([theta["v_WM_0"], theta["v_WM_1"], theta["v_WM_2"]]).astype(
-                    np.float32
-                )
+                np.sum([theta["vWM0"], theta["vWM1"], theta["vWM2"]]).astype(np.float32)
                 + 1e-20
             )
-            theta["v_WM_0"] = (theta["v_WM_0"] + (1e-20 / 3)) / v_wm_sum
-            theta["v_WM_1"] = (theta["v_WM_1"] + (1e-20 / 3)) / v_wm_sum
-            theta["v_WM_2"] = (theta["v_WM_2"] + (1e-20 / 3)) / v_wm_sum
+            theta["vWM0"] = (theta["vWM0"] + (1e-20 / 3)) / v_wm_sum
+            theta["vWM1"] = (theta["vWM1"] + (1e-20 / 3)) / v_wm_sum
+            theta["vWM2"] = (theta["vWM2"] + (1e-20 / 3)) / v_wm_sum
 
             # theta[3:6] = theta[3:6] / np.sum(theta[3:6])
 

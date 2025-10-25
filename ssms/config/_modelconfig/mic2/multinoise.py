@@ -37,8 +37,8 @@ def get_ddm_mic2_multinoise_conflict_gamma_no_bias_config():
             "a",
             "theta",
             "scale",
-            "alpha_gamma",
-            "scale_gamma",
+            "alphaGamma",
+            "scaleGamma",
         ],
         "param_bounds": [
             [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],

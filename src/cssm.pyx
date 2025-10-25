@@ -4059,11 +4059,11 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
 
 # Simulate (rt, choice) tuples from LBA piece-wise model  -----------------------------
-def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] v_RL, 
-        np.ndarray[float, ndim = 2] v_WM,
+def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL, 
+        np.ndarray[float, ndim = 2] vWM,
         np.ndarray[float, ndim = 2] a, 
         np.ndarray[float, ndim = 2] z,  
-        np.ndarray[float, ndim = 2] t_WM,
+        np.ndarray[float, ndim = 2] tWM,
         np.ndarray[float, ndim = 1] deadline,
         np.ndarray[float, ndim = 2] sd, # std dev 
         np.ndarray[float, ndim = 1] t, # ndt is supposed to be 0 by default because of parameter identifiability issues
@@ -4075,11 +4075,11 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] v_RL,
         ):
 
     # Param views
-    cdef float[:, :] v_RL_view = v_RL
-    cdef float[:, :] v_WM_view = v_WM
+    cdef float[:, :] v_RL_view = vRL
+    cdef float[:, :] v_WM_view = vWM
     cdef float[:, :] a_view = a
     cdef float[:, :] z_view = z
-    cdef float[:, :] t_WM_view = t_WM
+    cdef float[:, :] t_WM_view = tWM
     cdef float[:] t_view = t
 
     cdef float[:] deadline_view = deadline
@@ -4125,13 +4125,13 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] v_RL,
 
     v_dict = {}    
     for i in range(nact):
-        v_dict['v_RL_' + str(i)] = v_RL[:, i]
-        v_dict['v_WM_' + str(i)] = v_WM[:, i]
+        v_dict['vRL' + str(i)] = vRL[:, i]
+        v_dict['vWM' + str(i)] = vWM[:, i]
 
     return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
                                                          'a': a,
                                                          'z': z,
-                                                         't_WM': t_WM,
+                                                         'tWM': tWM,
                                                          't': t,
                                                          'deadline': deadline,
                                                          'sd': sd,
@@ -4142,8 +4142,8 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] v_RL,
                                                          }}
 
 # Simulate (rt, choice) tuples from: RLWM LBA Race Model without ndt -----------------------------
-def rlwm_lba_race(np.ndarray[float, ndim = 2] v_RL, # RL drift parameters (np.array expect: one column of floats)
-        np.ndarray[float, ndim = 2] v_WM, # WM drift parameters (np.array expect: one column of floats)
+def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.array expect: one column of floats)
+        np.ndarray[float, ndim = 2] vWM, # WM drift parameters (np.array expect: one column of floats)
         np.ndarray[float, ndim = 2] a, # criterion height
         np.ndarray[float, ndim = 2] z, # initial bias parameters (np.array expect: one column of floats)
         np.ndarray[float, ndim = 1] deadline,
@@ -4160,9 +4160,9 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] v_RL, # RL drift parameters (np.ar
 
     Parameters:
     -----------
-    v_RL : np.ndarray[float, ndim=2]
+    vRL : np.ndarray[float, ndim=2]
         Drift rate for the Reinforcement Learning (RL) component.
-    v_WM : np.ndarray[float, ndim=2]
+    vWM : np.ndarray[float, ndim=2]
         Drift rate for the Working Memory (WM) component.
     a : np.ndarray[float, ndim=2]
         Decision threshold (criterion height).
@@ -4193,8 +4193,8 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] v_RL, # RL drift parameters (np.ar
     """
 
     # Param views
-    cdef float[:, :] v_RL_view = v_RL
-    cdef float[:, :] v_WM_view = v_WM
+    cdef float[:, :] v_RL_view = vRL
+    cdef float[:, :] v_WM_view = vWM
     cdef float[:, :] a_view = a
     cdef float[:, :] z_view = z
     cdef float[:] t_view = t
@@ -4240,8 +4240,8 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] v_RL, # RL drift parameters (np.ar
 
     v_dict = {}    
     for i in range(nact):
-        v_dict['v_RL_' + str(i)] = v_RL[:, i]
-        v_dict['v_WM_' + str(i)] = v_WM[:, i]
+        v_dict['vRL' + str(i)] = vRL[:, i]
+        v_dict['vWM' + str(i)] = vWM[:, i]
 
     return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
                                                          'a': a,

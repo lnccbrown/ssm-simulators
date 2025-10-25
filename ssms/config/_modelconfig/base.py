@@ -27,7 +27,7 @@ boundary_config = {
     },
     "conflict_gamma": {
         "fun": bf.conflict_gamma,
-        "params": ["theta", "scale", "alpha_gamma", "scale_gamma"],
+        "params": ["theta", "scale", "alphaGamma", "scaleGamma"],
         "multiplicative": False,
     },
 }

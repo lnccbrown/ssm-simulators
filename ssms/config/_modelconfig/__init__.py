@@ -122,6 +122,7 @@ from .shrink import (
     get_shrink_spot_simple_config,
     get_shrink_spot_simple_extended_config,
 )
+from .validation import validate_param_names
 
 
 def get_model_config():
@@ -277,3 +278,19 @@ __all__ = [
     "get_ddm_mic2_multinoise_angle_no_bias_config",
     "get_ddm_mic2_multinoise_weibull_no_bias_config",
 ]
+
+# Validate
+
+try:
+    _ALL_MODEL_CONFIGS = get_model_config()
+    valid_model = {}
+    for _model_name, _cfg in _ALL_MODEL_CONFIGS.items():
+        valid_model[_model_name] = validate_param_names(_cfg["params"])
+except Exception as _e:
+    raise RuntimeError(
+        (
+            f"Model config validation failed during import.\n"
+            f"Model name: {_model_name}.\n"
+            f"Error: {_e}"
+        )
+    ) from _e
