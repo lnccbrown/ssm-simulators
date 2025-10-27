@@ -2,6 +2,7 @@
 Utility functions for model configuration.
 """
 
+
 def _new_param(default: float, lower: float, upper: float) -> dict:
     return {"default": default, "bounds": [lower, upper]}
 

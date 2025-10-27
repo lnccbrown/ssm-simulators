@@ -50,10 +50,10 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
     """
 
     models_dynamic_drift = [
-        "ds_conflict_drift",
-        "ds_conflict_drift_angle",
-        "ds_conflict_stimflex_drift",
-        "ds_conflict_stimflex_drift_angle",
+        "conflict_ds",
+        "conflict_ds_angle",
+        "conflict_dsstimflex",
+        "conflict_dsstimflex_angle",
         "conflict_stimflex",
         "conflict_stimflex_angle",
         "conflict_stimflexrel1",

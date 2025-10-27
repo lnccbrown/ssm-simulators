@@ -5,9 +5,9 @@ from ssms.basic_simulators import boundary_functions as bf, drift_functions as d
 from ssms.config._modelconfig.utils import _new_config, _new_param
 
 
-def get_ds_conflict_drift_config():
+def get_conflict_ds_config():
     return _new_config(
-        name="ds_conflict_drift",
+        name="conflict_ds",
         param_dict=dict(
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
@@ -22,17 +22,17 @@ def get_ds_conflict_drift_config():
         ),
         boundary_name="constant",
         boundary=bf.constant,
-        drift_name="ds_conflict_drift",
-        drift_fun=df.ds_conflict_drift,
+        drift_name="conflict_ds_drift",
+        drift_fun=df.conflict_ds_drift,
         choices=[-1, 1],
         n_particles=1,
         simulator=cssm.ddm_flex,
     )
 
 
-def get_ds_conflict_drift_angle_config():
+def get_conflict_ds_angle_config():
     return _new_config(
-        name="ds_conflict_drift_angle",
+        name="conflict_ds_angle",
         param_dict=dict(
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
@@ -48,17 +48,17 @@ def get_ds_conflict_drift_angle_config():
         ),
         boundary_name="angle",
         boundary=bf.angle,
-        drift_name="ds_conflict_drift",
-        drift_fun=df.ds_conflict_drift,
+        drift_name="conflict_ds_drift",
+        drift_fun=df.conflict_ds_drift,
         choices=[-1, 1],
         n_particles=1,
         simulator=cssm.ddm_flex,
     )
 
 
-def get_ds_conflict_stimflex_config():
+def get_conflict_dsstimflex_config():
     return _new_config(
-        name="ds_conflict_stimflex",
+        name="conflict_dsstimflex",
         param_dict=dict(
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
@@ -75,17 +75,17 @@ def get_ds_conflict_stimflex_config():
         ),
         boundary_name="constant",
         boundary=bf.constant,
-        drift_name="ds_conflict_stimflex_drift",
-        drift_fun=df.ds_conflict_stimflex_drift,
+        drift_name="conflict_dsstimflex_drift",
+        drift_fun=df.conflict_dsstimflex_drift,
         choices=[-1, 1],
         n_particles=1,
         simulator=cssm.ddm_flex,
     )
 
 
-def get_ds_conflict_stimflex_angle_config():
+def get_conflict_dsstimflex_angle_config():
     return _new_config(
-        name="ds_conflict_stimflex_angle",
+        name="conflict_dsstimflex_angle",
         param_dict=dict(
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
@@ -103,8 +103,8 @@ def get_ds_conflict_stimflex_angle_config():
         ),
         boundary_name="angle",
         boundary=bf.angle,
-        drift_name="ds_conflict_stimflex_drift",
-        drift_fun=df.ds_conflict_stimflex_drift,
+        drift_name="conflict_dsstimflex_drift",
+        drift_fun=df.conflict_dsstimflex_drift,
         choices=[-1, 1],
         n_particles=1,
         simulator=cssm.ddm_flex,
@@ -118,8 +118,8 @@ def get_conflict_stimflex_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
@@ -142,8 +142,8 @@ def get_conflict_stimflex_angle_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
@@ -167,8 +167,8 @@ def get_conflict_stimflexrel1_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
@@ -191,8 +191,8 @@ def get_conflict_stimflexrel1_angle_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
@@ -216,8 +216,8 @@ def get_conflict_stimflexrel1_leak_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
@@ -243,16 +243,16 @@ def get_conflict_stimflexrel1_leak2_config():
             a=_new_param(2.0, 0.3, 3.0),
             z=_new_param(0.5, 0.1, 0.9),
             t=_new_param(1.0, 1e-3, 2.0),
-            v_t=_new_param(2.0, 0.0, 5.0),
-            v_d=_new_param(2.0, 0.0, 5.0),
+            vt=_new_param(2.0, 0.0, 5.0),
+            vd=_new_param(2.0, 0.0, 5.0),
             tcoh=_new_param(0.5, -1.0, 1.0),
             dcoh=_new_param(-0.5, -1.0, 1.0),
             tonset=_new_param(0.0, 0.0, 1.0),
             donset=_new_param(0.0, 0.0, 1.0),
             toffset=_new_param(0.2, 0.0, 1.0),
             doffset=_new_param(0.2, 0.0, 1.0),
-            g_t=_new_param(0.0, 0.0, 1.0),
-            g_d=_new_param(0.0, 0.0, 1.0),
+            gt=_new_param(0.0, 0.0, 1.0),
+            gd=_new_param(0.0, 0.0, 1.0),
         ),
         boundary_name="constant",
         boundary=bf.constant,

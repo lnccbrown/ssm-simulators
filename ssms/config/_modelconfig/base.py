@@ -42,12 +42,12 @@ drift_config = {
         "fun": df.gamma_drift,
         "params": ["shape", "scale", "c"],
     },
-    "ds_conflict_drift": {
-        "fun": df.ds_conflict_drift,
+    "conflict_ds_drift": {
+        "fun": df.conflict_ds_drift,
         "params": ["tinit", "dinit", "tslope", "dslope", "tfixedp", "tcoh", "dcoh"],
     },
-    "ds_conflict_stimflex_drift": {
-        "fun": df.ds_conflict_stimflex_drift,
+    "conflict_dsstimflex_drift": {
+        "fun": df.conflict_dsstimflex_drift,
         "params": [
             "tinit",
             "dinit",

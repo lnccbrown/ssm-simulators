@@ -99,7 +99,7 @@ def ds_support_analytic(
     return (init_p - fix_point) * np.exp(-(slope * t)) + fix_point
 
 
-def ds_conflict_drift(
+def conflict_ds_drift(
     t: np.ndarray | None,
     tinit: float = 0,
     dinit: float = 0,
@@ -266,7 +266,7 @@ def stimflex_support(
     return cohs
 
 
-def ds_conflict_stimflex_drift(
+def conflict_dsstimflex_drift(
     t: np.ndarray | None,
     tinit: float = 0,
     dinit: float = 0,
@@ -395,6 +395,7 @@ def conflict_stimflex_drift(
         return np.column_stack((vt * tcohs, vd * dcohs))
 
 
+# Re-use drift fun but set different default args
 conflict_stimflexrel1_drift = partial(conflict_stimflex_drift, rel_first=True)
 conflict_stimflexrel1_dual_drift = partial(
     conflict_stimflex_drift, rel_first=True, sum_drifts=False
@@ -408,6 +409,6 @@ attend_drift: DriftFunction = attend_drift  # noqa: PLW0127
 constant: DriftFunction = constant  # noqa: PLW0127
 gamma_drift: DriftFunction = gamma_drift  # noqa: PLW0127
 ds_support_analytic: DriftFunction = ds_support_analytic  # noqa: PLW0127
-ds_conflict_drift: DriftFunction = ds_conflict_drift  # noqa: PLW0127
-ds_conflict_stimflex_drift: DriftFunction = ds_conflict_stimflex_drift  # noqa: PLW0127
+conflict_ds_drift: DriftFunction = conflict_ds_drift  # noqa: PLW0127
+conflict_dsstimflex_drift: DriftFunction = conflict_dsstimflex_drift  # noqa: PLW0127
 conflict_stimflex_drift: DriftFunction = conflict_stimflex_drift  # noqa: PLW0127
