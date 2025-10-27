@@ -1050,12 +1050,12 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
 def ddm_flex_leak2(
-    np.ndarray[float, ndim = 1] v_t,
-    np.ndarray[float, ndim = 1] v_d,
+    np.ndarray[float, ndim = 1] vt,
+    np.ndarray[float, ndim = 1] vd,
     np.ndarray[float, ndim = 1] a,
     np.ndarray[float, ndim = 1] z,
-    np.ndarray[float, ndim = 1] g_t,
-    np.ndarray[float, ndim = 1] g_d,
+    np.ndarray[float, ndim = 1] gt,
+    np.ndarray[float, ndim = 1] gd,
     np.ndarray[float, ndim = 1] t,
     np.ndarray[float, ndim = 1] deadline,
     np.ndarray[float, ndim = 1] s, # noise sigma
@@ -1109,8 +1109,8 @@ def ddm_flex_leak2(
     # Param views:
     cdef float[:] a_view = a
     cdef float[:] z_view = z
-    cdef float[:] g_t_view = g_t
-    cdef float[:] g_d_view = g_d
+    cdef float[:] g_t_view = gt
+    cdef float[:] g_d_view = gd
     cdef float[:] t_view = t
     cdef float[:] deadline_view = deadline
     cdef float[:] s_view = s
@@ -1213,12 +1213,12 @@ def ddm_flex_leak2(
                 rts_view[n, k, 0] = -999
     
     if return_option == 'full':
-        return {'rts': rts, 'choices': choices,  'metadata': {'v_t': v_t,
-                                                            'v_d': v_d,
+        return {'rts': rts, 'choices': choices,  'metadata': {'vt': vt,
+                                                            'vd': vd,
                                                             'a': a,
                                                             'z': z,
-                                                            'g_t': g_t,
-                                                            'g_d': g_d,
+                                                            'gt': gt,
+                                                            'gd': gd,
                                                             't': t,
                                                             'deadline': deadline,
                                                             's': s,

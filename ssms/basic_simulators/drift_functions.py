@@ -329,8 +329,8 @@ def ds_conflict_stimflex_drift(
 
 def conflict_stimflex_drift(
     t: np.ndarray | None,
-    v_t: float = 0,
-    v_d: float = 0,
+    vt: float = 0,
+    vd: float = 0,
     tcoh: float = 1.0,
     dcoh: float = 1.0,
     tonset: float = 0,
@@ -351,9 +351,9 @@ def conflict_stimflex_drift(
             Coherence of the target stimulus when 'on'.
         dcoh: float
             Coherence of the distractor stimulus when 'on'.
-        v_t: float
+        vt: float
             Static drift-rate of target stimulus, when 'on'.
-        v_d: float
+        vd: float
             Static drift-rate of distractor stimulus, when 'on'.
         tonset: float
             Onset time of the target stimulus coherence.
@@ -390,9 +390,9 @@ def conflict_stimflex_drift(
     tcohs = stimflex_support(t, tonset, toffset, tcoh)
     dcohs = stimflex_support(t, donset, doffset, dcoh)
     if sum_drifts:
-        return v_t * tcohs + v_d * dcohs
+        return vt * tcohs + vd * dcohs
     else:
-        return np.column_stack((v_t * tcohs, v_d * dcohs))
+        return np.column_stack((vt * tcohs, vd * dcohs))
 
 
 conflict_stimflexrel1_drift = partial(conflict_stimflex_drift, rel_first=True)
