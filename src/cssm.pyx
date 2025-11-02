@@ -1073,13 +1073,23 @@ def ddm_flex_leak2(
     smooth_unif  = False,
     **kwargs):
     """
-    Simulate reaction times and choices from a drift diffusion model with flexible boundaries, flexible drift, and decay.
+    Simulate reaction times and choices from a sequential sampling model that pools choice evidence across two sensory 
+    input dimensions, one 'target' and one 'distractor', with flexible boundaries, flexible drifts, and separate decay
+    parameters.
+
+    This model assumes two accumulators for two sensory input dimensions, a 'target' and 'distractor' dimension. Each 
+    accumulator has its own drift rate and decay parameter, but fully share noise. The decision variable (DV) from each
+    accumulator, `y_t` and `y_d`, is summed to form a single DV, `y`, which is compared to the decision boundaries.
+    Individual accumulators are always initiated with no starting-point bias; instead, the starting point bias is 
+    applied to the combined DV `y`.
 
     Args:
-        v (np.ndarray): Drift rate for each trial.
+        vt (np.ndarray): Drift rate for target input for each trial.
+        vd (np.ndarray): Drift rate for distractor input for each trial.
         a (np.ndarray): Boundary separation for each trial.
         z (np.ndarray): Starting point (between 0 and 1) for each trial.
-        g (np.ndarray): Decay parameter for each trial.
+        gt (np.ndarray): Decay parameter for target input for each trial.
+        gd (np.ndarray): Decay parameter for distractor input for each trial.
         t (np.ndarray): Non-decision time for each trial.
         deadline (np.ndarray): Maximum reaction time allowed for each trial.
         s (np.ndarray): Noise standard deviation for each trial.

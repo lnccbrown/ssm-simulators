@@ -62,7 +62,14 @@ drift_config = {
     },
     "conflict_stimflex_drift": {
         "fun": df.conflict_stimflex_drift,
-        "params": ["v_t", "v_d", "tcoh", "dcoh", "tonset", "donset"],
+        "params": [
+            "v_t",
+            "v_d",
+            "tcoh",
+            "dcoh",
+            "tonset",
+            "donset",
+        ],
     },
     "conflict_stimflexrel1_drift": {
         "fun": df.conflict_stimflexrel1_drift,
