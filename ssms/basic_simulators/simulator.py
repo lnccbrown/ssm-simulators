@@ -667,7 +667,7 @@ def simulator(
         **drift_dict,
         **sim_param_dict,
     )
-    print("this is simulator output", x)
+    
     # Ensure x is a dictionary
     if not isinstance(x, dict):
         raise TypeError(

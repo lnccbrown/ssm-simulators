@@ -4880,6 +4880,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
 def exgauss(np.ndarray[float, ndim = 1] mu,
                            np.ndarray[float, ndim = 1] sigma, 
                            np.ndarray[float, ndim = 1] tau, 
+                           np.ndarray[float, ndim = 1] p, # choice probability
                            float delta_t = 0.001,
                            float max_t = 20,
                            int n_samples = 20000,
@@ -4896,21 +4897,27 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
     cdef float[:] tau_view = tau 
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
-    cdef float[:, :, :], : rts_view = rts
+    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
+    cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
 
-    for k in range(n_trials): 
+    for k in range(n_trials):
         for n in range(n_samples): 
             # Draw normal + exponential 
+
+            random_val = rand() / float(RAND_MAX) 
+            if random_val <= p: 
+                choices_view[n, k, 0] = 1
+            else:
+                choices_view[n, k, 0] = -1
+
             norm_sample = random_gaussian()
             norm_sample = mu_view[k] + sigma_view[k] * norm_sample
 
             exp_sample = tau_view[k] * random_exponential()
 
             rt_val = norm_sample + exp_sample  
-
             rts_view[n, k, 0] = rt_val 
-            choices_view[n, k, 0] = 1
     
     if return_option == 'full': 
         return {
@@ -4921,10 +4928,127 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                 'n_samples': n_samples,
                 'n_trials': n_trials,
                 'simulator': 'exgauss',
-                'possible_choices': [1],
+                'possible_choices': [-1, 1],
+                'delta_t': delta_t, 
+                'max_t': max_t,
             }
         }
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [1]}}
+        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [-1, 1]}}
     else:
-        raise ValueError("return_option must be 'full' or 'minimal'")
+        raise ValueError("return_option must be 'full' or 'minimal'") 
+# -----------------------------------------------------------------------------------------------
+
+
+# Simulate (rt, choice) tuples from: SHIFTED WALD ------------------------------------
+# @cythonboundscheck(False)
+# @cythonwraparound(False)
+def shifted_wald(np.ndarray[float, ndim = 1] gamma,
+                           np.ndarray[float, ndim = 1] alpha, 
+                           np.ndarray[float, ndim = 1] theta, 
+                           np.ndarray[float, ndim = 1] s, # noise sigma 
+                           float delta_t = 0.001,
+                           float max_t = 20,
+                           int n_samples = 20000,
+                           int n_trials = 1,
+                           random_state = None,
+                           return_option = 'full',
+                           **kwargs):
+    """ Uhhhhhh thing for shifted wald """ 
+
+    set_seed(random_state)
+    
+    cdef float[:] gamma_view = gamma 
+    cdef float[:] alpha_view = alpha 
+    cdef float[:] theta_view = theta 
+    cdef float[:] s_view = s
+
+    traj = np.zeros((int(max_t / delta_t) + 1, 1), dtype=DTYPE)
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
+    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
+    cdef float[:, :, :] rts_view = rts
+    cdef int[:, :, :] choices_view = choices
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    cdef float y, t_particle, smooth_u, sqrt_st
+
+    cdef Py_ssize_t n, ix, k
+    cdef int m = 0 
+    cdef int num_draws = int(max_t / delta_t) + 1
+    cdef float[:] gaussian_values = draw_gaussian(num_draws)
+
+
+    for k in range(n_trials): 
+        sqrt_st = delta_t_sqrt * s_view[k]
+
+        for n in range(n_samples): 
+            y = 0.0 
+            t_particle = 0.0 
+            ix = 0 
+
+            if n == 0:
+                if k == 0:
+                    traj_view[0, 0] = y
+            
+            random_val = rand() / float(RAND_MAX) 
+            if random_val <= p: 
+                choices_view[n, k, 0] = 1
+            else:
+                choices_view[n, k, 0] = -1
+
+
+            while (y < alpha_view[k]) and (t_particle <= max_t):
+                y += (gamma_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+                t_particle += delta_t
+                ix += 1
+                m += 1
+                if m == num_draws:
+                    gaussian_values = draw_gaussian(num_draws)
+                    m = 0
+
+                if n == 0:
+                    if k == 0:
+                        traj_view[ix, 0] = y
+
+            if smooth_unif:
+                if t_particle == 0.0:
+                    smooth_u = random_uniform() * 0.5 * delta_t
+                elif t_particle < max_t:
+                    smooth_u = (0.5 - random_uniform()) * delta_t
+                else:
+                    smooth_u = 0.0
+            else:
+                smooth_u = 0.0
+
+            rts_view[n, k, 0] = t_particle + theta_view[k] + smooth_u
+            
+    if return_option == 'full': 
+        return { 
+            'rts': rts,
+            'choices': choices,
+            'metadata': {
+                'gamma': gamma, 'alpha': alpha, 'theta': theta, 's': s,
+                'n_samples': n_samples,
+                'n_trials': n_trials,
+                'simulator': 'shifted_wald',
+                'possible_choices': [-1, 1],
+                'delta_t': delta_t, 
+                'max_t': max_t,
+                'trajectory': traj,
+            }
+        }
+    elif return_option == 'minimal':
+        return {'rts': rts, 'choices': choices, 'metadata': 
+                                            {'simulator': 'shifted_wald', 
+                                            'n_samples': n_samples, 
+                                            'n_trials': n, 
+                                            'possible_choices': [-1, 1]}}
+    else:
+        raise ValueError("return_option must be 'full' or 'minimal'") 
+# -----------------------------------------------------------------------------------------------
+            
+
+
