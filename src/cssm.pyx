@@ -4888,7 +4888,23 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                            random_state = None,
                            return_option = 'full',
                            **kwargs):
-    """ Uhhhhhh thing """ 
+    """ Fit reaction times and choices from an ex-Gaussian distribution 
+    
+    Args: 
+        mu (np.ndarray[float, ndim = 1]): mean of the gaussian component
+        sigma (np.ndarray[float, ndim = 1]): standard deviation of the gaussian component
+        tau (np.ndarray[float, ndim = 1]): mean of the exponential component
+        p (np.ndarray[float, ndim = 1]): probability of choice 1
+        delta_t (float, optional): time step for simulation. Defaults to 0.001.
+        max_t (float, optional): maximum time for simulation. Defaults to 20.
+        n_samples (int, optional): number of samples per trial. Defaults to 20000.
+        n_trials (int, optional): number of trials to simulate. Defaults to 1.
+        random_state (int, optional): random seed. Defaults to None.
+        return_option (str, optional): 'full' or 'minimal' return data. Defaults to 'full'.
+    
+    Returns: 
+        dict: simulated reaction times, choices, and metadata
+    """ 
 
     set_seed(random_state)
     
@@ -4916,7 +4932,10 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 
             exp_sample = tau_view[k] * random_exponential()
 
-            rt_val = norm_sample + exp_sample  
+            rt_val = norm_sample + exp_sample 
+
+            if rt_val < 0.0: # ensure no negative rts 
+                rt_val = 0.0 
             rts_view[n, k, 0] = rt_val 
     
     if return_option == 'full': 

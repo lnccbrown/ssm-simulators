@@ -8,7 +8,7 @@ def get_exgauss_config():
     return { 
         "name": "exgauss", 
         "params": ["mu", "sigma", "tau", "p"], 
-        "param_bounds": [[-50.0, 0.0, 0.0, 0.0], [50.0, 50.0, 50.0, 1.0]], 
+        "param_bounds": [[0.0, 0.0, 0.0, 0.0], [50.0, 50.0, 50.0, 1.0]], 
         "boundary_name": 'constant', 
         "boundary": bf.constant, 
         "boundary_params": [], 
