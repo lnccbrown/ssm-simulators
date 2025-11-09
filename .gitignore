@@ -7,6 +7,16 @@ ssm_simulators.egg-info/
 src/cssm.cpp
 sysconfig.sh
 
+# Cython build outputs
+# Build output directory (compiled .so files)
+cssm/
+# Generated C++ files from Cython
+src/cssm/*.cpp
+# Generated C files from Cython
+src/cssm/*.c
+# Backup files
+*.bak
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
