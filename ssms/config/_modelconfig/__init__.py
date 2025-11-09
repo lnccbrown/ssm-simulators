@@ -128,7 +128,8 @@ from .shrink import (
     get_shrink_spot_simple_config,
     get_shrink_spot_simple_extended_config,
 )
-from .validation import validate_param_names
+from .base import drift_config, boundary_config
+from .validation import get_invalid_configs
 
 
 def get_model_config():
@@ -293,16 +294,13 @@ __all__ = [
 
 # Validate
 
-try:
-    _ALL_MODEL_CONFIGS = get_model_config()
-    valid_model = {}
-    for _model_name, _cfg in _ALL_MODEL_CONFIGS.items():
-        valid_model[_model_name] = validate_param_names(_cfg["params"])
-except Exception as _e:
-    raise RuntimeError(
-        (
-            f"Model config validation failed during import.\n"
-            f"Model name: {_model_name}.\n"
-            f"Error: {_e}"
-        )
-    ) from _e
+_ALL_CONFIGS = {
+    "model_configs": get_model_config(),
+    "drift_configs": drift_config,
+    "boundary_configs": boundary_config,
+}
+invalid_configs = {
+    key: get_invalid_configs(configs) for key, configs in _ALL_CONFIGS.items()
+}
+if any(invalid_configs.values()):
+    raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
