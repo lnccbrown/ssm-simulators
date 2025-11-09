@@ -37,37 +37,36 @@ from .ornstein_models import ornstein_uhlenbeck
 
 __all__ = [
     # DDM models
-    'full_ddm_hddm_base',
-    'ddm',
-    'ddm_flexbound',
-    'ddm_flex',
-    'ddm_flex_leak',
-    'ddm_flex_leak2',
-    'full_ddm_rv',
-    'full_ddm',
-    'ddm_sdv',
-    'ddm_flexbound_tradeoff',
+    "full_ddm_hddm_base",
+    "ddm",
+    "ddm_flexbound",
+    "ddm_flex",
+    "ddm_flex_leak",
+    "ddm_flex_leak2",
+    "full_ddm_rv",
+    "full_ddm",
+    "ddm_sdv",
+    "ddm_flexbound_tradeoff",
     # Race models
-    'race_model',
-    'lca',
+    "race_model",
+    "lca",
     # LBA models
-    'lba_vanilla',
-    'lba_angle',
-    'rlwm_lba_pw_v1',
-    'rlwm_lba_race',
+    "lba_vanilla",
+    "lba_angle",
+    "rlwm_lba_pw_v1",
+    "rlwm_lba_race",
     # Sequential models
-    'ddm_flexbound_seq2',
-    'ddm_flexbound_mic2_ornstein',
-    'ddm_flexbound_mic2_multinoise',
-    'ddm_flexbound_mic2_ornstein_multinoise',
-    'ddm_flexbound_mic2_unnormalized_ornstein_multinoise',
+    "ddm_flexbound_seq2",
+    "ddm_flexbound_mic2_ornstein",
+    "ddm_flexbound_mic2_multinoise",
+    "ddm_flexbound_mic2_ornstein_multinoise",
+    "ddm_flexbound_mic2_unnormalized_ornstein_multinoise",
     # Parallel models
-    'ddm_flexbound_par2',
+    "ddm_flexbound_par2",
     # Levy models
-    'levy_flexbound',
+    "levy_flexbound",
     # Ornstein models
-    'ornstein_uhlenbeck',
+    "ornstein_uhlenbeck",
 ]
 
-__version__ = '0.11.3'
-
+__version__ = "0.11.3"
