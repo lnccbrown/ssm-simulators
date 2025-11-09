@@ -267,9 +267,25 @@ class data_generator:  # noqa: N801
 
         n = self.generator_config["n_training_samples_by_parameter_set"]
         p = self.generator_config["kde_data_mixture_probabilities"]
+
+        # Initial sample distribution
         n_kde = int(n * p[0])
         n_unif_up = int(n * p[1])
         n_unif_down = int(n * p[2])
+
+        total = n_kde + n_unif_up + n_unif_down
+        if total != n:
+            # Adjust n_kde to make up the difference
+            n_kde += n - total
+            # Safety check: ensure n_kde doesn't become negative
+            if n_kde < 0:
+                raise ValueError(
+                    f"Rounding error too large: cannot adjust n_kde to {n_kde}. "
+                    f"n={n}, p={p}, "
+                    f"n_kde={n_kde - (n - total)}"
+                    f", n_unif_up={n_unif_up}"
+                    f", n_unif_down={n_unif_down}"
+                )
 
         if self.generator_config["separate_response_channels"]:
             out = np.zeros(

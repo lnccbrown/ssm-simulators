@@ -16,9 +16,6 @@ from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
 from ssms.config import model_config
 from ssms.config._modelconfig.base import boundary_config, drift_config
 
-# Constants
-from ssms.basic_simulators.constants import DEFAULT_SIM_PARAMS
-
 _global_rng = default_rng()
 _rng_lock = Lock()
 
@@ -554,6 +551,7 @@ def simulator(
     sigma_noise: float | None = None,
     smooth_unif: bool = True,
     random_state: int | None = None,
+    return_option: str = "full",
 ) -> dict:
     """Basic data simulator for the models included in HDDM.
 
@@ -583,6 +581,13 @@ def simulator(
         random_state: int | None <default=None>
             Integer passed to random_seed function in the simulator.
             Can be used for reproducibility.
+        return_option: str <default='full'>
+            Determines what the function returns. Can be either
+            'full' or 'minimal'. If 'full' the function returns
+            a dictionary with keys 'rts', 'responses' and 'metadata', and
+            metadata contains the model parameters and some additional
+            information. 'metadata' is a simpler dictionary with less information
+            if 'minimal' is chosen.
 
     Return
     ------
@@ -614,14 +619,22 @@ def simulator(
     n_trials, theta = _preprocess_theta_deadline(theta, deadline, model_config_local)
 
     # Initialize dictionary that collects
-    # simulator inputs that are commong across simulator functions
-    sim_param_dict = deepcopy(DEFAULT_SIM_PARAMS)
+    # simulator inputs that are common across simulator functions
+    sim_param_dict = {
+        "max_t": max_t,
+        "n_samples": n_samples,
+        "n_trials": n_trials,
+        "delta_t": delta_t,
+        "random_state": random_state,
+        "return_option": return_option,
+        "smooth_unif": smooth_unif,
+    }
 
     # Update all values of sim_param_dict that are defined in locals()
-    locals_dict = locals()
-    sim_param_dict = {
-        key_: locals_dict[key_] for key_ in locals_dict if key_ in sim_param_dict
-    }
+    # locals_dict = locals()
+    # sim_param_dict = {
+    #     key_: locals_dict[key_] for key_ in locals_dict if key_ in sim_param_dict
+    # }
 
     # Fix up noise level
     if "sd" in theta or "s" in theta:
@@ -644,6 +657,7 @@ def simulator(
             sigma_noise = 1.0
 
     noise_vec = make_noise_vec(sigma_noise, n_trials, model_config_local["n_particles"])
+
     if "lba" in model:
         theta["sd"] = noise_vec
     else:
