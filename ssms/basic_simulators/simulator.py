@@ -616,10 +616,7 @@ def simulator(
         random_state = _get_unique_seed()
 
     theta = _preprocess_theta_generic(theta)
-    n_trials, theta = _preprocess_theta_deadline(theta,
-                                                 deadline,
-                                                 model_config_local
-                                                 )
+    n_trials, theta = _preprocess_theta_deadline(theta, deadline, model_config_local)
 
     # Initialize dictionary that collects
     # simulator inputs that are common across simulator functions
@@ -659,10 +656,7 @@ def simulator(
         elif sigma_noise is None:
             sigma_noise = 1.0
 
-    noise_vec = make_noise_vec(sigma_noise,
-                               n_trials,
-                               model_config_local["n_particles"]
-                               )
+    noise_vec = make_noise_vec(sigma_noise, n_trials, model_config_local["n_particles"])
 
     if "lba" in model:
         theta["sd"] = noise_vec
@@ -670,10 +664,7 @@ def simulator(
         theta["s"] = noise_vec
 
     # Process theta
-    theta = SimpleThetaProcessor().process_theta(theta,
-                                                 model_config_local,
-                                                 n_trials
-                                                 )
+    theta = SimpleThetaProcessor().process_theta(theta, model_config_local, n_trials)
 
     # Make boundary dictionary
     boundary_dict = make_boundary_dict(model_config_local, theta)

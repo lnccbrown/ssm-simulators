@@ -9,10 +9,8 @@ def get_expected_shapes(
 ):
     n_model_parameters = _model_config["n_params"]
     n_choice_options = _model_config["nchoices"]
-    lan_data_samples = (
-        n_parameter_sets * n_training_samples_by_parameter_set
-    )
-    
+    lan_data_samples = n_parameter_sets * n_training_samples_by_parameter_set
+
     cpn_labels_b = n_choice_options if n_choice_options > 2 else n_choice_options - 1
     cpn_labels = (
         (n_parameter_sets,) if cpn_labels_b == 1 else (n_parameter_sets, cpn_labels_b)
