@@ -15,44 +15,44 @@ from ssms.config._modelconfig.base import boundary_config, drift_config
 
 class ConfigBuilder:
     """Helper class for building custom model configurations.
-    
+
     This class provides static methods for creating model configurations
     in various ways:
     - Starting from an existing model and overriding specific values
     - Building a configuration from scratch for fully custom simulators
     - Creating minimal valid configurations
     - Validating configurations
-    
+
     Examples
     --------
     Start from existing model and override:
-    
-    >>> config = ConfigBuilder.from_model("ddm", 
-    ...                                     param_bounds=[[-4, 0.3, 0.1, 0], 
+
+    >>> config = ConfigBuilder.from_model("ddm",
+    ...                                     param_bounds=[[-4, 0.3, 0.1, 0],
     ...                                                   [4, 3.0, 0.9, 2.0]])
-    
+
     Build from scratch:
-    
+
     >>> config = ConfigBuilder.from_scratch(
     ...     name="my_model",
     ...     params=["v", "a", "z", "t"],
     ...     simulator_function=my_sim_fn,
     ...     nchoices=2
     ... )
-    
+
     Create minimal configuration:
-    
+
     >>> config = ConfigBuilder.minimal_config(
     ...     params=["v", "a"],
     ...     simulator_function=my_sim_fn,
     ...     nchoices=2
     ... )
     """
-    
+
     @staticmethod
     def from_model(model_name: str, **overrides) -> dict:
         """Create configuration starting from an existing model.
-        
+
         Parameters
         ----------
         model_name : str
@@ -70,21 +70,21 @@ class ConfigBuilder:
             - simulator : Callable - Custom simulator function
             - nchoices : int - Number of choices
             - choices : list - Possible choice values
-            
+
         Returns
         -------
         dict
             Configuration dictionary
-            
+
         Raises
         ------
         ValueError
             If model_name is not recognized
-            
+
         Examples
         --------
-        >>> config = ConfigBuilder.from_model("ddm", 
-        ...                                     param_bounds=[[-4, 0.3, 0.1, 0], 
+        >>> config = ConfigBuilder.from_model("ddm",
+        ...                                     param_bounds=[[-4, 0.3, 0.1, 0],
         ...                                                   [4, 3.0, 0.9, 2.0]])
         """
         model_config_dict = get_model_config()
@@ -93,12 +93,12 @@ class ConfigBuilder:
                 f"Unknown model '{model_name}'. Available models: "
                 f"{list(model_config_dict.keys())}"
             )
-            
+
         config = deepcopy(model_config_dict[model_name])
         config.update(overrides)
-        
+
         return config
-        
+
     @staticmethod
     def from_scratch(
         name: str,
@@ -108,10 +108,10 @@ class ConfigBuilder:
         **config,
     ) -> dict:
         """Build a complete configuration from scratch.
-        
+
         Use this method when creating a fully custom simulator that doesn't
         build on any existing model.
-        
+
         Parameters
         ----------
         name : str
@@ -135,18 +135,18 @@ class ConfigBuilder:
             - drift : Callable - Drift function
             - drift_name : str - Drift name
             - drift_params : list[str] - Drift parameter names
-            
+
         Returns
         -------
         dict
             Complete configuration dictionary
-            
+
         Examples
         --------
         >>> def my_sim(v, a, **kwargs):
         ...     # Custom simulation logic
         ...     return {'rts': ..., 'choices': ..., 'metadata': ...}
-        >>> 
+        >>>
         >>> config = ConfigBuilder.from_scratch(
         ...     name="my_custom_model",
         ...     params=["v", "a"],
@@ -165,7 +165,7 @@ class ConfigBuilder:
             "n_particles": config.get("n_particles", 1),
             "simulator": simulator_function,
         }
-        
+
         # Add optional fields if provided
         optional_fields = [
             "param_bounds",
@@ -178,13 +178,13 @@ class ConfigBuilder:
             "drift_name",
             "drift_params",
         ]
-        
+
         for field in optional_fields:
             if field in config:
                 base_config[field] = config[field]
-                
+
         return base_config
-        
+
     @staticmethod
     def minimal_config(
         params: list[str],
@@ -193,10 +193,10 @@ class ConfigBuilder:
         name: str = "custom",
     ) -> dict:
         """Create a minimal valid configuration.
-        
+
         This is the simplest way to create a configuration for a custom simulator.
         It includes only the required fields.
-        
+
         Parameters
         ----------
         params : list[str]
@@ -207,12 +207,12 @@ class ConfigBuilder:
             Number of choices
         name : str, default="custom"
             Model name
-            
+
         Returns
         -------
         dict
             Minimal configuration dictionary
-            
+
         Examples
         --------
         >>> config = ConfigBuilder.minimal_config(
@@ -230,25 +230,25 @@ class ConfigBuilder:
             "n_particles": 1,
             "simulator": simulator_function,
         }
-        
+
     @staticmethod
     def validate_config(config: dict, strict: bool = False) -> tuple[bool, list[str]]:
         """Validate a configuration dictionary.
-        
+
         Parameters
         ----------
         config : dict
             Configuration to validate
         strict : bool, default=False
             If True, also check for recommended optional fields
-            
+
         Returns
         -------
         is_valid : bool
             Whether the configuration is valid
         errors : list[str]
             List of error messages (empty if valid)
-            
+
         Examples
         --------
         >>> config = {"params": ["v", "a"], "nchoices": 2}
@@ -257,14 +257,14 @@ class ConfigBuilder:
         ...     print("Errors:", errors)
         """
         errors = []
-        
+
         # Check required fields
         required_fields = {
             "params": list,
             "nchoices": int,
             "simulator": Callable,
         }
-        
+
         for field, expected_type in required_fields.items():
             if field not in config:
                 errors.append(f"Missing required field: '{field}'")
@@ -278,7 +278,7 @@ class ConfigBuilder:
                         f"Field '{field}' has wrong type: expected {expected_type}, "
                         f"got {type(config[field])}"
                     )
-                    
+
         # Check consistency
         if "params" in config and "n_params" in config:
             if config["n_params"] != len(config["params"]):
@@ -286,7 +286,7 @@ class ConfigBuilder:
                     f"Inconsistent n_params: expected {len(config['params'])}, "
                     f"got {config['n_params']}"
                 )
-                
+
         if "param_bounds" in config and "params" in config:
             bounds = config["param_bounds"]
             if len(bounds) != 2:
@@ -299,23 +299,23 @@ class ConfigBuilder:
                 errors.append(
                     f"param_bounds must match number of params ({len(config['params'])})"
                 )
-                
+
         if "default_params" in config and "params" in config:
             if len(config["default_params"]) != len(config["params"]):
                 errors.append(
                     f"default_params must match number of params ({len(config['params'])})"
                 )
-                
+
         # Strict mode: check recommended fields
         if strict:
             recommended = ["name", "n_particles", "choices", "param_bounds"]
             for field in recommended:
                 if field not in config:
                     errors.append(f"Recommended field missing: '{field}'")
-                    
+
         is_valid = len(errors) == 0
         return is_valid, errors
-        
+
     @staticmethod
     def add_boundary(
         config: dict,
@@ -324,7 +324,7 @@ class ConfigBuilder:
         multiplicative: bool = True,
     ) -> dict:
         """Add or replace boundary function in configuration.
-        
+
         Parameters
         ----------
         config : dict
@@ -335,17 +335,17 @@ class ConfigBuilder:
             Parameter names for boundary function (required if boundary is callable)
         multiplicative : bool, default=True
             Whether boundary is multiplicative (True) or additive (False)
-            
+
         Returns
         -------
         dict
             Modified configuration (note: modifies in place and returns)
-            
+
         Raises
         ------
         ValueError
             If boundary specification is invalid
-            
+
         Examples
         --------
         >>> config = ConfigBuilder.from_model("ddm")
@@ -373,9 +373,9 @@ class ConfigBuilder:
             config["boundary_multiplicative"] = multiplicative
         else:
             raise ValueError("boundary must be string name or callable")
-            
+
         return config
-        
+
     @staticmethod
     def add_drift(
         config: dict,
@@ -383,7 +383,7 @@ class ConfigBuilder:
         drift_params: list[str] | None = None,
     ) -> dict:
         """Add or replace drift function in configuration.
-        
+
         Parameters
         ----------
         config : dict
@@ -392,21 +392,21 @@ class ConfigBuilder:
             Drift function name or callable
         drift_params : list[str] or None
             Parameter names for drift function (required if drift is callable)
-            
+
         Returns
         -------
         dict
             Modified configuration (note: modifies in place and returns)
-            
+
         Raises
         ------
         ValueError
             If drift specification is invalid
-            
+
         Examples
         --------
         >>> config = ConfigBuilder.from_model("ddm_flex")
-        >>> config = ConfigBuilder.add_drift(config, "gamma_drift", 
+        >>> config = ConfigBuilder.add_drift(config, "gamma_drift",
         ...                                   ["shape", "scale", "c"])
         """
         if isinstance(drift, str):
@@ -427,6 +427,5 @@ class ConfigBuilder:
             config["drift_params"] = drift_params
         else:
             raise ValueError("drift must be string name or callable")
-            
-        return config
 
+        return config

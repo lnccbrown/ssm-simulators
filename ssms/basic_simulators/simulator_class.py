@@ -28,38 +28,41 @@ from ssms.basic_simulators.simulator import (
     validate_ssm_parameters,
 )
 from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_processor import AbstractThetaProcessor, SimpleThetaProcessor
+from ssms.basic_simulators.theta_processor import (
+    AbstractThetaProcessor,
+    SimpleThetaProcessor,
+)
 from ssms.basic_simulators.theta_transforms import ThetaTransformation
 from ssms.config import boundary_config, drift_config, model_config
 
 
 class Simulator:
     """Class-based interface for Sequential Sampling Model simulations.
-    
+
     This class provides a flexible, extensible way to configure and run SSM simulations.
     It supports:
     - Pre-defined models (via string names like "ddm", "angle", etc.)
     - Custom boundary and drift functions with existing simulators
     - Fully custom simulator functions
     - Configuration overrides for any model parameter
-    
+
     Examples
     --------
     Basic usage with pre-defined model:
-    
+
     >>> sim = Simulator("ddm")
     >>> results = sim.simulate(theta={'v': 0.5, 'a': 1.0, 'z': 0.5, 't': 0.3})
-    
+
     Custom boundary function:
-    
+
     >>> def my_boundary(t, theta, scale):
     ...     return scale * np.sin(theta * t)
     >>> sim = Simulator("ddm", boundary=my_boundary, boundary_params=["theta", "scale"])
     >>> results = sim.simulate(theta={'v': 0.5, 'a': 1.0, 'z': 0.5, 't': 0.3,
     ...                               'theta': 0.5, 'scale': 1.0})
-    
+
     Fully custom simulator:
-    
+
     >>> def my_sim(v, a, z, t, max_t=20, n_samples=1000, **kwargs):
     ...     rts = np.random.exponential(1/abs(v), n_samples) + t
     ...     choices = np.where(np.random.random(n_samples) < z, 1, -1)
@@ -68,13 +71,13 @@ class Simulator:
     >>> sim = Simulator(simulator_function=my_sim, params=["v", "a", "z", "t"],
     ...                 nchoices=2)
     >>> results = sim.simulate(theta={'v': 0.5, 'a': 1.0, 'z': 0.5, 't': 0.3})
-    
+
     Attributes
     ----------
     config : dict
         The full model configuration dictionary
     """
-    
+
     def __init__(
         self,
         model: str | dict | None = None,
@@ -86,7 +89,7 @@ class Simulator:
         **config_overrides,
     ):
         """Initialize a Simulator instance.
-        
+
         Parameters
         ----------
         model : str, dict, or None
@@ -122,36 +125,36 @@ class Simulator:
             - boundary_params : list[str] - Parameters for custom boundary function
             - drift_params : list[str] - Parameters for custom drift function
             - name : str - Model name (for custom simulators)
-            
+
         Raises
         ------
         ValueError
             If configuration is invalid or missing required parameters
-            
+
         Examples
         --------
         Use default modular processor:
-        
+
         >>> sim = Simulator("lba2")
         >>> results = sim.simulate(theta={'v0': 0.5, 'v1': 0.6, 'A': 0.5, 'b': 1.0})
-        
+
         Add custom transformations:
-        
+
         >>> from ssms.basic_simulators.theta_transforms import SetDefaultValue
         >>> sim = Simulator("ddm", theta_transforms=[SetDefaultValue("custom_param", 42)])
-        
+
         Use legacy processor:
-        
+
         >>> sim = Simulator("ddm", theta_processor=SimpleThetaProcessor())
         """
         # Set theta processor (default to modular)
         self._theta_processor = theta_processor or ModularThetaProcessor()
         self._custom_transforms = theta_transforms or []
-        
+
         self._config = self._build_config(
             model, boundary, drift, simulator_function, config_overrides
         )
-        
+
     def _build_config(
         self,
         model: str | dict | None,
@@ -161,7 +164,7 @@ class Simulator:
         config_overrides: dict,
     ) -> dict:
         """Build the configuration dictionary from inputs.
-        
+
         Parameters
         ----------
         model : str, dict, or None
@@ -174,12 +177,12 @@ class Simulator:
             Custom simulator function
         config_overrides : dict
             Configuration overrides
-            
+
         Returns
         -------
         dict
             Complete configuration dictionary
-            
+
         Raises
         ------
         ValueError
@@ -202,45 +205,45 @@ class Simulator:
             raise ValueError(
                 "Must provide either a model name, config dict, or simulator_function"
             )
-            
+
         # Apply config overrides
         config.update(config_overrides)
-        
+
         # Handle custom simulator function
         if simulator_function is not None:
             self._validate_simulator_function(simulator_function, config)
             config["simulator"] = simulator_function
-            
+
         # Handle custom boundary
         if boundary is not None:
             self._apply_custom_boundary(config, boundary)
-            
+
         # Handle custom drift
         if drift is not None:
             self._apply_custom_drift(config, drift)
-            
+
         # Validate final configuration
         self._validate_config(config)
-        
+
         return config
-        
+
     def _create_minimal_config(
         self, simulator_function: Callable, overrides: dict
     ) -> dict:
         """Create minimal config for custom simulator.
-        
+
         Parameters
         ----------
         simulator_function : Callable
             The custom simulator function
         overrides : dict
             User-provided configuration parameters
-            
+
         Returns
         -------
         dict
             Minimal valid configuration
-            
+
         Raises
         ------
         ValueError
@@ -257,13 +260,13 @@ class Simulator:
                 "When using a custom simulator_function without a base model, "
                 "you must provide 'nchoices' (number of choices)"
             )
-            
+
         params = overrides["params"]
         nchoices = overrides["nchoices"]
-        
+
         # Infer requirements from simulator function
         requirements = self._infer_simulator_requirements(simulator_function)
-        
+
         # Build minimal config
         config = {
             "name": overrides.get("name", "custom"),
@@ -274,27 +277,25 @@ class Simulator:
             "n_particles": overrides.get("n_particles", 1),
             "simulator": simulator_function,
         }
-        
+
         # Add optional fields if provided
         if "param_bounds" in overrides:
             config["param_bounds"] = overrides["param_bounds"]
         if "default_params" in overrides:
             config["default_params"] = overrides["default_params"]
-            
+
         return config
-        
-    def _validate_simulator_function(
-        self, func: Callable, config: dict
-    ) -> None:
+
+    def _validate_simulator_function(self, func: Callable, config: dict) -> None:
         """Validate that simulator function has correct signature.
-        
+
         Parameters
         ----------
         func : Callable
             The simulator function to validate
         config : dict
             Configuration dictionary containing parameter names
-            
+
         Raises
         ------
         ValueError
@@ -302,10 +303,10 @@ class Simulator:
         """
         sig = inspect.signature(func)
         params = sig.parameters
-        
+
         # Check for required simulation parameters
         required_sim_params = ["max_t", "n_samples", "delta_t", "random_state"]
-        
+
         for param in required_sim_params:
             if param not in params:
                 warnings.warn(
@@ -313,7 +314,7 @@ class Simulator:
                     f"parameter '{param}'. This may cause issues during simulation.",
                     UserWarning,
                 )
-                
+
         # Check that model parameters are in signature
         model_params = config.get("params", [])
         for param in model_params:
@@ -322,15 +323,15 @@ class Simulator:
                     f"Simulator function '{func.__name__}' is missing required "
                     f"model parameter '{param}'"
                 )
-                
+
     def _infer_simulator_requirements(self, func: Callable) -> dict:
         """Inspect simulator function to determine its requirements.
-        
+
         Parameters
         ----------
         func : Callable
             The simulator function to inspect
-            
+
         Returns
         -------
         dict
@@ -342,10 +343,10 @@ class Simulator:
         """
         sig = inspect.signature(func)
         params = sig.parameters
-        
+
         required = []
         optional = []
-        
+
         for name, param in params.items():
             if param.default == inspect.Parameter.empty and param.kind not in (
                 inspect.Parameter.VAR_POSITIONAL,
@@ -354,26 +355,24 @@ class Simulator:
                 required.append(name)
             else:
                 optional.append(name)
-                
+
         return {
             "required_params": required,
             "optional_params": optional,
             "supports_boundary": "boundary_fun" in params,
             "supports_drift": "drift_fun" in params,
         }
-        
-    def _apply_custom_boundary(
-        self, config: dict, boundary: str | Callable
-    ) -> None:
+
+    def _apply_custom_boundary(self, config: dict, boundary: str | Callable) -> None:
         """Apply custom boundary to configuration.
-        
+
         Parameters
         ----------
         config : dict
             Configuration dictionary to modify
         boundary : str or Callable
             Boundary specification
-            
+
         Raises
         ------
         ValueError
@@ -405,19 +404,17 @@ class Simulator:
                 config["boundary_params"] = []
         else:
             raise ValueError("boundary must be a string name or callable function")
-            
-    def _apply_custom_drift(
-        self, config: dict, drift: str | Callable
-    ) -> None:
+
+    def _apply_custom_drift(self, config: dict, drift: str | Callable) -> None:
         """Apply custom drift to configuration.
-        
+
         Parameters
         ----------
         config : dict
             Configuration dictionary to modify
         drift : str or Callable
             Drift specification
-            
+
         Raises
         ------
         ValueError
@@ -449,15 +446,15 @@ class Simulator:
                 config["drift_params"] = []
         else:
             raise ValueError("drift must be a string name or callable function")
-            
+
     def _validate_boundary_function(self, func: Callable) -> None:
         """Validate boundary function signature.
-        
+
         Parameters
         ----------
         func : Callable
             Boundary function to validate
-            
+
         Raises
         ------
         ValueError
@@ -465,21 +462,21 @@ class Simulator:
         """
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
-        
+
         if not params or params[0] != "t":
             raise ValueError(
                 f"Boundary function '{func.__name__}' must accept 't' as "
                 "first positional argument"
             )
-            
+
     def _validate_drift_function(self, func: Callable) -> None:
         """Validate drift function signature.
-        
+
         Parameters
         ----------
         func : Callable
             Drift function to validate
-            
+
         Raises
         ------
         ValueError
@@ -487,32 +484,32 @@ class Simulator:
         """
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
-        
+
         if not params or params[0] != "t":
             raise ValueError(
                 f"Drift function '{func.__name__}' must accept 't' as "
                 "first positional argument"
             )
-            
+
     def _validate_config(self, config: dict) -> None:
         """Validate configuration dictionary.
-        
+
         Parameters
         ----------
         config : dict
             Configuration to validate
-            
+
         Raises
         ------
         ValueError
             If configuration is missing required fields
         """
         required_fields = ["params", "nchoices", "simulator"]
-        
+
         for field in required_fields:
             if field not in config:
                 raise ValueError(f"Configuration missing required field: '{field}'")
-                
+
     def simulate(
         self,
         theta: list | np.ndarray | dict | pd.DataFrame,
@@ -526,7 +523,7 @@ class Simulator:
         return_option: str = "full",
     ) -> dict:
         """Run simulation with given parameters.
-        
+
         Parameters
         ----------
         theta : list, np.ndarray, dict, or pd.DataFrame
@@ -548,7 +545,7 @@ class Simulator:
             Random seed for reproducibility
         return_option : str, default="full"
             Output format: "full" or "minimal"
-            
+
         Returns
         -------
         dict
@@ -557,7 +554,7 @@ class Simulator:
             - 'choices' : np.ndarray of choices
             - 'metadata' : dict with simulation metadata
             - Additional keys depending on model and return_option
-            
+
         Raises
         ------
         ValueError
@@ -570,21 +567,21 @@ class Simulator:
             model_name = model_name.replace("_deadline", "")
         else:
             deadline = False
-            
+
         model_config_local = deepcopy(self._config)
-        
+
         if deadline:
             model_config_local["params"] += ["deadline"]
-            
+
         if random_state is None:
             random_state = _get_unique_seed()
-            
+
         # Preprocess theta
         theta = _preprocess_theta_generic(theta)
         n_trials, theta = _preprocess_theta_deadline(
             theta, deadline, model_config_local
         )
-        
+
         # Build simulation parameters dict
         sim_param_dict = {
             "max_t": max_t,
@@ -595,7 +592,7 @@ class Simulator:
             "return_option": return_option,
             "smooth_unif": smooth_unif,
         }
-        
+
         # Handle noise
         if "sd" in theta or "s" in theta:
             if sigma_noise is not None:
@@ -616,26 +613,26 @@ class Simulator:
                 sigma_noise = 0.1
             elif sigma_noise is None:
                 sigma_noise = 1.0
-                
+
         noise_vec = make_noise_vec(
             sigma_noise, n_trials, model_config_local["n_particles"]
         )
-        
+
         if "lba" in model_name:
             theta["sd"] = noise_vec
         else:
             theta["s"] = noise_vec
-            
+
         # Process theta with configured processor
-        theta = self._theta_processor.process_theta(
-            theta, model_config_local, n_trials
-        )
-        
+        theta = self._theta_processor.process_theta(theta, model_config_local, n_trials)
+
         # Apply custom transformations (if using ModularThetaProcessor and custom transforms provided)
-        if self._custom_transforms and isinstance(self._theta_processor, ModularThetaProcessor):
+        if self._custom_transforms and isinstance(
+            self._theta_processor, ModularThetaProcessor
+        ):
             for transform in self._custom_transforms:
                 theta = transform.apply(theta, model_config_local, n_trials)
-        
+
         # Make boundary and drift dictionaries (if applicable)
         boundary_dict = {}
         drift_dict = {}
@@ -643,10 +640,10 @@ class Simulator:
             boundary_dict = make_boundary_dict(model_config_local, theta)
         if "drift_name" in model_config_local or "drift" in model_config_local:
             drift_dict = make_drift_dict(model_config_local, theta)
-        
+
         # Validate parameters
         validate_ssm_parameters(model_name, theta)
-        
+
         # Call simulator
         x = model_config_local["simulator"](
             **theta,
@@ -654,12 +651,10 @@ class Simulator:
             **drift_dict,
             **sim_param_dict,
         )
-        
+
         if not isinstance(x, dict):
-            raise TypeError(
-                f"Simulator returned {type(x).__name__}, expected dict"
-            )
-            
+            raise TypeError(f"Simulator returned {type(x).__name__}, expected dict")
+
         # Postprocess results - squeeze dimensions for compatibility
         # (This matches the behavior of the legacy simulator() function)
         if n_trials == 1:
@@ -668,19 +663,19 @@ class Simulator:
         if n_trials > 1 and n_samples == 1:
             x["rts"] = np.squeeze(x["rts"], axis=0)
             x["choices"] = np.squeeze(x["choices"], axis=0)
-            
+
         x["metadata"]["model"] = model_name
-        
+
         return x
-        
+
     def validate_params(self, theta: dict) -> None:
         """Validate parameter values.
-        
+
         Parameters
         ----------
         theta : dict
             Parameter dictionary to validate
-            
+
         Raises
         ------
         ValueError
@@ -688,26 +683,25 @@ class Simulator:
         """
         model_name = self._config.get("name", "")
         validate_ssm_parameters(model_name, theta)
-        
+
     @property
     def config(self) -> dict:
         """Get the full model configuration.
-        
+
         Returns
         -------
         dict
             Configuration dictionary
         """
         return deepcopy(self._config)
-    
+
     @property
     def theta_processor(self) -> AbstractThetaProcessor:
         """Get the configured theta processor.
-        
+
         Returns
         -------
         AbstractThetaProcessor
             The theta processor instance used for parameter transformations
         """
         return self._theta_processor
-

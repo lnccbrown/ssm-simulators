@@ -6,6 +6,7 @@ ssm_simulators.egg-info/
 #.ruff_cache/
 src/cssm.cpp
 sysconfig.sh
+.cursor/
 
 # Cython build outputs
 # Generated C++ files from Cython

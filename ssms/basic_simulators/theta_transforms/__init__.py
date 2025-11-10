@@ -15,12 +15,12 @@ Example:
     >>> from ssms.basic_simulators.theta_transforms import (
     ...     ExpandDimension, ColumnStackParameters
     ... )
-    >>> 
+    >>>
     >>> transforms = [
     ...     ColumnStackParameters(["v0", "v1", "v2"], "v"),
     ...     ExpandDimension(["a", "t"])
     ... ]
-    >>> 
+    >>>
     >>> for transform in transforms:
     ...     theta = transform.apply(theta, model_config, n_trials)
 """
@@ -57,4 +57,3 @@ __all__ = [
     # Registry
     "ThetaProcessorRegistry",
 ]
-
