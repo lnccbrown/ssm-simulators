@@ -4882,7 +4882,6 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                            np.ndarray[float, ndim = 1] tau, 
                            np.ndarray[float, ndim = 1] p, # choice probability
                            float delta_t = 0.001,
-                           float max_t = 20,
                            int n_samples = 20000,
                            int n_trials = 1,
                            random_state = None,
@@ -4896,7 +4895,6 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
         tau (np.ndarray[float, ndim = 1]): mean of the exponential component
         p (np.ndarray[float, ndim = 1]): probability of choice 1
         delta_t (float, optional): time step for simulation. Defaults to 0.001.
-        max_t (float, optional): maximum time for simulation. Defaults to 20.
         n_samples (int, optional): number of samples per trial. Defaults to 20000.
         n_trials (int, optional): number of trials to simulate. Defaults to 1.
         random_state (int, optional): random seed. Defaults to None.
@@ -4906,16 +4904,15 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
         dict: simulated reaction times, choices, and metadata
     """ 
 
-    set_seed(random_state)
+    rng = np.random.default_rng(random_state)
     
-    cdef float[:] mu_view = mu 
-    cdef float[:] sigma_view = sigma 
-    cdef float[:] tau_view = tau 
+    
+    mu = np.asarray(mu, dtype=float)
+    sigma = np.asarray(sigma, dtype=float)
+    tau = np.asarray(tau, dtype=float)
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
-    cdef float[:, :, :] rts_view = rts
-    cdef int[:, :, :] choices_view = choices
 
     for k in range(n_trials):
         for n in range(n_samples): 
@@ -4923,9 +4920,9 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 
             random_val = rand() / float(RAND_MAX) 
             if random_val <= p: 
-                choices_view[n, k, 0] = 1
+                choices[n, k, 0] = 1
             else:
-                choices_view[n, k, 0] = -1
+                choices[n, k, 0] = -1
 
             norm_sample = random_gaussian()
             norm_sample = mu_view[k] + sigma_view[k] * norm_sample
@@ -4949,7 +4946,6 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                 'simulator': 'exgauss',
                 'possible_choices': [-1, 1],
                 'delta_t': delta_t, 
-                'max_t': max_t,
             }
         }
     elif return_option == 'minimal':
@@ -4962,9 +4958,9 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 # Simulate (rt, choice) tuples from: SHIFTED WALD ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def shifted_wald(np.ndarray[float, ndim = 1] gamma,
-                           np.ndarray[float, ndim = 1] alpha, 
-                           np.ndarray[float, ndim = 1] theta, 
+def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate 
+                           np.ndarray[float, ndim = 1] a, # boundary separation 
+                           np.ndarray[float, ndim = 1] t, # nondecision time
                            np.ndarray[float, ndim = 1] p, # choice probability 
                            np.ndarray[float, ndim = 1] s, # noise sigma 
                            float delta_t = 0.001,
@@ -4975,13 +4971,31 @@ def shifted_wald(np.ndarray[float, ndim = 1] gamma,
                            return_option = 'full', 
                            smooth_unif = False,
                            **kwargs):
-    """ Uhhhhhh thing for shifted wald """ 
+    """ Fit reaction times and choices from a shifted Wald distribution 
+    
+    Args: 
+        v (np.ndarray[float, ndim = 1]): drift rate
+        a (np.ndarray[float, ndim = 1]): boundary separation
+        t (np.ndarray[float, ndim = 1]): non-decision time
+        p (np.ndarray[float, ndim = 1]): probability of choice 1
+        s (np.ndarray[float, ndim = 1]): noise standard deviation
+        delta_t (float, optional): time step for simulation. Defaults to 0.001.
+        max_t (float, optional): maximum time for simulation. Defaults to 20.
+        n_samples (int, optional): number of samples per trial. Defaults to 20000.
+        n_trials (int, optional): number of trials to simulate. Defaults to 1.
+        random_state (int, optional): random seed. Defaults to None.
+        return_option (str, optional): 'full' or 'minimal' return data. Defaults to 'full'.
+        smooth_unif (bool, optional): whether to use smooth uniform distribution for small time increments. Defaults to False.
+    
+    Returns: 
+        dict: simulated reaction times, choices, and metadata
+    """ 
 
     set_seed(random_state)
     
-    cdef float[:] gamma_view = gamma 
-    cdef float[:] alpha_view = alpha 
-    cdef float[:] theta_view = theta 
+    cdef float[:] v_view = v
+    cdef float[:] a_view = a 
+    cdef float[:] t_view = t 
     cdef float[:] p_view = p
     cdef float[:] s_view = s
 
@@ -5023,8 +5037,8 @@ def shifted_wald(np.ndarray[float, ndim = 1] gamma,
                 choices_view[n, k, 0] = -1
 
             # Random walk 
-            while (y < alpha_view[k]) and (t_particle <= max_t):
-                y += (gamma_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+            while (y < a_view[k]) and (t_particle <= max_t):
+                y += (b_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 t_particle += delta_t
                 ix += 1
                 m += 1
@@ -5046,14 +5060,14 @@ def shifted_wald(np.ndarray[float, ndim = 1] gamma,
             else:
                 smooth_u = 0.0
 
-            rts_view[n, k, 0] = t_particle + theta_view[k] + smooth_u
+            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
             
     if return_option == 'full': 
         return { 
             'rts': rts,
             'choices': choices,
             'metadata': {
-                'gamma': gamma, 'alpha': alpha, 'theta': theta, 's': s,
+                'v': v, 'a': a, 't': t, 's': s,
                 'n_samples': n_samples,
                 'n_trials': n_trials,
                 'simulator': 'shifted_wald',

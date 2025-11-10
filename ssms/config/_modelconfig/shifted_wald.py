@@ -7,7 +7,7 @@ def get_shifted_wald_config():
     """Get the configuration of the Shifted Wald model""" 
     return { 
         "name": "shifted_wald", 
-        "params": ["gamma", "alpha", "theta", "p"], 
+        "params": ["v", "a", "t", "p"], 
         "param_bounds": [[0.0, 0.3, 0.0, 0.0], [5, 2.5, 2.0, 1.0]], 
         "boundary_name": 'constant', 
         "boundary": bf.constant, 
