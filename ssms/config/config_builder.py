@@ -7,7 +7,6 @@ model configurations for use with the Simulator class.
 
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
 
 from ssms.config._modelconfig import get_model_config
 from ssms.config._modelconfig.base import boundary_config, drift_config

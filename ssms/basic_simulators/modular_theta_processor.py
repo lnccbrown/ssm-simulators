@@ -17,10 +17,8 @@ from ssms.basic_simulators.theta_transforms import (
     ExpandDimension,
     LambdaTransformation,
     RenameParameter,
-    SetDefaultValue,
     SetZeroArray,
     ThetaProcessorRegistry,
-    TileArray,
 )
 
 

@@ -6,7 +6,6 @@ can be combined to handle most model parameter processing needs.
 """
 
 from collections.abc import Callable
-from typing import Any
 
 import numpy as np
 

@@ -10,28 +10,21 @@ import inspect
 import warnings
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ssms.basic_simulators.simulator import (
     _get_unique_seed,
-    _make_valid_dict,
     _preprocess_theta_deadline,
     _preprocess_theta_generic,
-    _theta_array_to_dict,
-    _theta_dict_to_array,
     make_boundary_dict,
     make_drift_dict,
     make_noise_vec,
     validate_ssm_parameters,
 )
 from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_processor import (
-    AbstractThetaProcessor,
-    SimpleThetaProcessor,
-)
+from ssms.basic_simulators.theta_processor import AbstractThetaProcessor
 from ssms.basic_simulators.theta_transforms import ThetaTransformation
 from ssms.config import boundary_config, drift_config, model_config
 
@@ -263,9 +256,6 @@ class Simulator:
 
         params = overrides["params"]
         nchoices = overrides["nchoices"]
-
-        # Infer requirements from simulator function
-        requirements = self._infer_simulator_requirements(simulator_function)
 
         # Build minimal config
         config = {

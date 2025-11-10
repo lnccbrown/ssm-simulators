@@ -14,7 +14,7 @@ import pytest
 
 from ssms import Simulator
 from ssms.basic_simulators.simulator import simulator
-from ssms.config import ConfigBuilder, boundary_config, drift_config
+from ssms.config import ConfigBuilder
 
 
 class TestSimulatorInitialization:
