@@ -4886,6 +4886,7 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                            int n_trials = 1,
                            random_state = None,
                            return_option = 'full',
+                           float max_t = -1,
                            **kwargs):
     """ Fit reaction times and choices from an ex-Gaussian distribution 
     
@@ -4907,9 +4908,19 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
     rng = np.random.default_rng(random_state)
     
     
-    mu = np.asarray(mu, dtype=float)
-    sigma = np.asarray(sigma, dtype=float)
-    tau = np.asarray(tau, dtype=float)
+    mu = np.asarray(mu, dtype=DTYPE).reshape(-1)
+    sigma = np.asarray(sigma, dtype=DTYPE).reshape(-1)
+    tau = np.asarray(tau, dtype=DTYPE).reshape(-1)
+    p = np.asarray(p, dtype=DTYPE).reshape(-1)
+
+    if mu.size == 1:
+        mu = np.repeat(mu, n_trials)
+    if sigma.size == 1:
+        sigma = np.repeat(sigma, n_trials)
+    if tau.size == 1:
+        tau = np.repeat(tau, n_trials)
+    if p.size == 1:
+        p = np.repeat(p, n_trials)
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
@@ -4918,22 +4929,20 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
         for n in range(n_samples): 
             # Draw normal + exponential 
 
-            random_val = rand() / float(RAND_MAX) 
-            if random_val <= p: 
+            random_val = rng.random()
+            if random_val <= p[k]: 
                 choices[n, k, 0] = 1
             else:
                 choices[n, k, 0] = -1
 
-            norm_sample = random_gaussian()
-            norm_sample = mu_view[k] + sigma_view[k] * norm_sample
-
-            exp_sample = tau_view[k] * random_exponential()
+            norm_sample = rng.normal(mu[k], sigma[k])
+            exp_sample = rng.exponential(tau[k])
 
             rt_val = norm_sample + exp_sample 
 
             if rt_val < 0.0: # ensure no negative rts 
                 rt_val = 0.0 
-            rts_view[n, k, 0] = rt_val 
+            rts[n, k, 0] = rt_val 
     
     if return_option == 'full': 
         return {
@@ -4946,6 +4955,7 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
                 'simulator': 'exgauss',
                 'possible_choices': [-1, 1],
                 'delta_t': delta_t, 
+                'max_t': max_t
             }
         }
     elif return_option == 'minimal':
@@ -5038,7 +5048,7 @@ def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate
 
             # Random walk 
             while (y < a_view[k]) and (t_particle <= max_t):
-                y += (b_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+                y += (v_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 t_particle += delta_t
                 ix += 1
                 m += 1
