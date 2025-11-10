@@ -22,6 +22,7 @@ from .generator_config.data_generator_config import (
     get_ratio_estimator_config,
 )
 from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
+from .config_builder import ConfigBuilder
 
 
 def boundary_config_to_function_params(config: dict) -> dict:
@@ -64,4 +65,5 @@ __all__ = [
     "get_ratio_estimator_config",
     "get_default_generator_config",
     "data_generator_config",  # TODO: remove from interface in v1.0.0
+    "ConfigBuilder",
 ]

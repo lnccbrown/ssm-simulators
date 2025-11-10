@@ -5,6 +5,7 @@ from . import dataset_generators
 from . import config
 from . import support_utils
 from . import hssm_support
+from .basic_simulators import Simulator
 
 __version__ = importlib.metadata.version("ssm-simulators")
 
@@ -14,4 +15,5 @@ __all__ = [
     "config",
     "support_utils",
     "hssm_support",
+    "Simulator",
 ]
