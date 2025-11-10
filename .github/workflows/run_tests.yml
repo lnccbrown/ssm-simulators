@@ -2,6 +2,9 @@ name: Run tests
 
 on:
   pull_request:
+  push:
+    branches:
+      - main # Tracking coverage for main branch as well
 
 jobs:
   run_tests:
@@ -38,3 +41,12 @@ jobs:
 
       - name: Run pytest
         run: uv run pytest
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: /.coverage.xml
+          flags: unittests
+          name: codecov-${{ matrix.python-version }}
+          fail_ci_if_error: false
