@@ -225,6 +225,12 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["v"] = np.column_stack([theta["v0"], theta["v1"]])
             theta["t"] = np.expand_dims(theta["t"], axis=1)
             theta["a"] = np.expand_dims(theta["a"], axis=1)
+        
+        if model in ["exgauss"]: 
+            theta["mu"] = np.column_stack([theta["mu0"], theta["mu1"]])
+            theta["sigma"] = np.column_stack([theta["sigma0"], theta["sigma1"]])
+            theta["tau"] = np.column_stack([theta["tau0"], theta["tau1"]])
+            
 
         # 3 Choice models
 

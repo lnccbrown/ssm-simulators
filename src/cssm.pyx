@@ -4877,9 +4877,9 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
 # Simulate (rt, choice) tuples from: EX GAUSSIAN ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def exgauss(np.ndarray[float, ndim = 1] mu,
-                           np.ndarray[float, ndim = 1] sigma, 
-                           np.ndarray[float, ndim = 1] tau, 
+def exgauss(np.ndarray[float, ndim = 2] mu,
+                           np.ndarray[float, ndim = 2] sigma, 
+                           np.ndarray[float, ndim = 2] tau, 
                            np.ndarray[float, ndim = 1] p, # choice probability
                            float delta_t = 0.001,
                            int n_samples = 20000,
@@ -4907,11 +4907,11 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 
     rng = np.random.default_rng(random_state)
     
+    mu = np.asarray(mu, dtype=DTYPE)
+    sigma = np.asarray(sigma, dtype=DTYPE)
+    tau = np.asarray(tau, dtype=DTYPE)
+    p = np.asarray(p, dtype=DTYPE)
     
-    mu = np.asarray(mu, dtype=DTYPE).reshape(-1)
-    sigma = np.asarray(sigma, dtype=DTYPE).reshape(-1)
-    tau = np.asarray(tau, dtype=DTYPE).reshape(-1)
-    p = np.asarray(p, dtype=DTYPE).reshape(-1)
 
     if mu.size == 1:
         mu = np.repeat(mu, n_trials)
@@ -4919,30 +4919,36 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
         sigma = np.repeat(sigma, n_trials)
     if tau.size == 1:
         tau = np.repeat(tau, n_trials)
-    if p.size == 1:
-        p = np.repeat(p, n_trials)
+
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
 
     for k in range(n_trials):
-        for n in range(n_samples): 
-            # Draw normal + exponential 
-
+        for n in range(n_samples):
+            # decide choice
             random_val = rng.random()
-            if random_val <= p[k]: 
+            if random_val <= p[k]:
+                choice_idx = 0
                 choices[n, k, 0] = 1
+                
             else:
+                choice_idx = 1
                 choices[n, k, 0] = -1
+                
+    
+            mu_val = mu[k, choice_idx]
+            sigma_val = sigma[k, choice_idx]
+            tau_val = tau[k, choice_idx]
 
-            norm_sample = rng.normal(mu[k], sigma[k])
-            exp_sample = rng.exponential(tau[k])
+            # draw components and compose RT
+            norm_sample = rng.normal(mu_val, sigma_val)
+            exp_sample = rng.exponential(tau_val)
+            rt_val = norm_sample + exp_sample
 
-            rt_val = norm_sample + exp_sample 
-
-            if rt_val < 0.0: # ensure no negative rts 
-                rt_val = 0.0 
-            rts[n, k, 0] = rt_val 
+            if rt_val < 0.0:  # ensure no negative rts
+                rt_val = 0.0
+            rts[n, k, 0] = rt_val
     
     if return_option == 'full': 
         return {
@@ -4968,9 +4974,9 @@ def exgauss(np.ndarray[float, ndim = 1] mu,
 # Simulate (rt, choice) tuples from: SHIFTED WALD ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate 
-                           np.ndarray[float, ndim = 1] a, # boundary separation 
-                           np.ndarray[float, ndim = 1] t, # nondecision time
+def shifted_wald(np.ndarray[float, ndim = 2] v, # drift rate 
+                           np.ndarray[float, ndim = 2] a, # boundary separation 
+                           np.ndarray[float, ndim = 2] t, # nondecision time
                            np.ndarray[float, ndim = 1] p, # choice probability 
                            np.ndarray[float, ndim = 1] s, # noise sigma 
                            float delta_t = 0.001,
@@ -5003,9 +5009,9 @@ def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate
 
     set_seed(random_state)
     
-    cdef float[:] v_view = v
-    cdef float[:] a_view = a 
-    cdef float[:] t_view = t 
+    cdef float[:, :] v_view = v
+    cdef float[:, :] a_view = a 
+    cdef float[:, :] t_view = t 
     cdef float[:] p_view = p
     cdef float[:] s_view = s
 
@@ -5043,12 +5049,14 @@ def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate
             random_val = rand() / float(RAND_MAX) 
             if random_val <= p_view[k]: 
                 choices_view[n, k, 0] = 1
+                choice_idx = 0 
             else:
                 choices_view[n, k, 0] = -1
+                choice_idx = 1 
 
             # Random walk 
-            while (y < a_view[k]) and (t_particle <= max_t):
-                y += (v_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+            while (y < a_view[k, choice_idx]) and (t_particle <= max_t):
+                y += (v_view[k, choice_idx] * delta_t) + (sqrt_st * gaussian_values[m])
                 t_particle += delta_t
                 ix += 1
                 m += 1
@@ -5070,7 +5078,7 @@ def shifted_wald(np.ndarray[float, ndim = 1] v, # drift rate
             else:
                 smooth_u = 0.0
 
-            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
+            rts_view[n, k, 0] = t_particle + t_view[k, choice_idx] + smooth_u
             
     if return_option == 'full': 
         return { 
