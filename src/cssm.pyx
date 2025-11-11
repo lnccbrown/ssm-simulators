@@ -5031,6 +5031,7 @@ def shifted_wald(np.ndarray[float, ndim = 2] v, # drift rate
                            random_state = None,
                            return_option = 'full', 
                            smooth_unif = False,
+                           race = False,
                            **kwargs):
     """ Fit reaction times and choices from a shifted Wald distribution 
     
@@ -5076,78 +5077,141 @@ def shifted_wald(np.ndarray[float, ndim = 2] v, # drift rate
     cdef int m = 0 
     cdef int num_draws = int(max_t / delta_t) + 1
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
-
+    n_choices = v.shape[1]
 
     for k in range(n_trials): 
         sqrt_st = delta_t_sqrt * s_view[k]
 
         for n in range(n_samples): 
-            y = 0.0 
-            t_particle = 0.0 
-            ix = 0 
-
-            if n == 0:
-                if k == 0:
-                    traj_view[0, 0] = y
-
             # Random choice depending on p 
-            random_val = rand() / float(RAND_MAX) 
-            if random_val <= p_view[k]: 
-                choices_view[n, k, 0] = 1
-                choice_idx = 0 
-            else:
-                choices_view[n, k, 0] = -1
-                choice_idx = 1 
+            if race: 
+                rt_candidates = np.empty(n_choices, dtype=DTYPE)
+                for c in range(n_choices): 
+                    y = 0.0 
+                    t_particle = 0.0 
+                    ix = 0 
 
-            # Random walk 
-            while (y < a_view[k, choice_idx]) and (t_particle <= max_t):
-                y += (v_view[k, choice_idx] * delta_t) + (sqrt_st * gaussian_values[m])
-                t_particle += delta_t
-                ix += 1
-                m += 1
-                if m == num_draws:
-                    gaussian_values = draw_gaussian(num_draws)
-                    m = 0
+                    if n == 0:
+                        if k == 0:
+                            traj_view[0, 0] = y
+                    while (y < a_view[k, c]) and (t_particle <= max_t):
+                        y += (v_view[k, c] * delta_t) + (sqrt_st * gaussian_values[m])
+                        t_particle += delta_t
+                        ix += 1
+                        m += 1
+                        if m == num_draws:
+                            gaussian_values = draw_gaussian(num_draws)
+                            m = 0
+
+                        if n == 0:
+                            if k == 0:
+                                traj_view[ix, 0] = y
+
+                        if smooth_unif:
+                            if t_particle == 0.0:
+                                smooth_u = random_uniform() * 0.5 * delta_t
+                            elif t_particle < max_t:
+                                smooth_u = (0.5 - random_uniform()) * delta_t
+                            else:
+                                smooth_u = 0.0
+                        else:
+                            smooth_u = 0.0
+                    rt_candidates[c] = t_particle + t_view[k, c] + smooth_u
+
+                choices_idx = np.argmin(rt_candidates)    
+                choices_view[n, k, 0] = 1 if choices_idx == 0 else -1
+                rts_view[n, k, 0] = rt_candidates[choices_idx]
+                            
+            else: 
+                y = 0.0 
+                t_particle = 0.0 
+                ix = 0 
 
                 if n == 0:
                     if k == 0:
-                        traj_view[ix, 0] = y
+                        traj_view[0, 0] = y
+                
+                random_val = rand() / float(RAND_MAX) 
+                if random_val <= p_view[k]: 
+                    choices_view[n, k, 0] = 1
+                    choice_idx = 0 
+                else:
+                    choices_view[n, k, 0] = -1
+                    choice_idx = 1 
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < max_t:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
+                # Random walk 
+                while (y < a_view[k, choice_idx]) and (t_particle <= max_t):
+                    y += (v_view[k, choice_idx] * delta_t) + (sqrt_st * gaussian_values[m])
+                    t_particle += delta_t
+                    ix += 1
+                    m += 1
+                    if m == num_draws:
+                        gaussian_values = draw_gaussian(num_draws)
+                        m = 0
+
+                    if n == 0:
+                        if k == 0:
+                            traj_view[ix, 0] = y
+
+                if smooth_unif:
+                    if t_particle == 0.0:
+                        smooth_u = random_uniform() * 0.5 * delta_t
+                    elif t_particle < max_t:
+                        smooth_u = (0.5 - random_uniform()) * delta_t
+                    else:
+                        smooth_u = 0.0
                 else:
                     smooth_u = 0.0
-            else:
-                smooth_u = 0.0
 
-            rts_view[n, k, 0] = t_particle + t_view[k, choice_idx] + smooth_u
-            
-    if return_option == 'full': 
-        return { 
-            'rts': rts,
-            'choices': choices,
-            'metadata': {
-                'v': v, 'a': a, 't': t, 's': s,
-                'n_samples': n_samples,
-                'n_trials': n_trials,
-                'simulator': 'shifted_wald',
-                'possible_choices': [-1, 1],
-                'delta_t': delta_t, 
-                'max_t': max_t,
-                'trajectory': traj,
+                rts_view[n, k, 0] = t_particle + t_view[k, choice_idx] + smooth_u
+    if race:       
+        if return_option == 'full': 
+            return { 
+                'rts': rts,
+                'choices': choices,
+                'metadata': {
+                    'v': v, 'a': a, 't': t, 's': s,
+                    'n_samples': n_samples,
+                    'n_trials': n_trials,
+                    'simulator': 'shifted_wald_race',
+                    'possible_choices': [-1, 1],
+                    'delta_t': delta_t, 
+                    'max_t': max_t,
+                    'trajectory': traj,
+                }
             }
-        }
-    elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': 
-                                            {'simulator': 'shifted_wald', 
-                                            'n_samples': n_samples, 
-                                            'n_trials': n_trials, 
-                                            'possible_choices': [-1, 1]}}
-    else:
-        raise ValueError("return_option must be 'full' or 'minimal'") 
+        elif return_option == 'minimal':
+            return {'rts': rts, 'choices': choices, 'metadata': 
+                                                {'simulator': 'shifted_wald_race', 
+                                                'n_samples': n_samples, 
+                                                'n_trials': n_trials, 
+                                                'possible_choices': [-1, 1]}}
+        else:
+            raise ValueError("return_option must be 'full' or 'minimal'") 
+    else: 
+        if return_option == 'full': 
+            return { 
+                'rts': rts,
+                'choices': choices,
+                'metadata': {
+                    'v': v, 'a': a, 't': t, 's': s,
+                    'n_samples': n_samples,
+                    'n_trials': n_trials,
+                    'simulator': 'shifted_wald',
+                    'possible_choices': [-1, 1],
+                    'delta_t': delta_t, 
+                    'max_t': max_t,
+                    'trajectory': traj,
+                }
+            }
+        elif return_option == 'minimal':
+            return {'rts': rts, 'choices': choices, 'metadata': 
+                                                {'simulator': 'shifted_wald', 
+                                                'n_samples': n_samples, 
+                                                'n_trials': n_trials, 
+                                                'possible_choices': [-1, 1]}}
+        else:
+            raise ValueError("return_option must be 'full' or 'minimal'") 
 # -----------------------------------------------------------------------------------------------
             
 

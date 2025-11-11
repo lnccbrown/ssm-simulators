@@ -502,9 +502,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             "dev_rlwm_lba_race_v2",
         ]:
             check_if_z_gt_a(theta["z"], theta["a"])
-    
-    if model in ["exgauss_race"]: 
-        
+
+
 
 
 def make_noise_vec(

@@ -36,5 +36,5 @@ def get_exgauss_race_config():
         "nchoices": 2, 
         "choices": [-1, 1], 
         "n_particles": 1, 
-        "simulator": cssm.exgauss_race,
+        "simulator": cssm.exgauss,
     } 

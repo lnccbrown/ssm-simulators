@@ -129,7 +129,8 @@ from .exgauss import (
 )
 
 from .shifted_wald import (
-    get_shifted_wald_config
+    get_shifted_wald_config,
+    get_shifted_wald_race_config
 )
 
 def get_model_config():
@@ -245,6 +246,7 @@ def get_model_config():
         "exgauss": get_exgauss_config(),
         "exgauss_race": get_exgauss_race_config(),
         "shifted_wald": get_shifted_wald_config(),
+        "shifted_wald_race": get_shifted_wald_race_config(),
     }
 
 
