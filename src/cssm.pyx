@@ -4887,6 +4887,7 @@ def exgauss(np.ndarray[float, ndim = 2] mu,
                            random_state = None,
                            return_option = 'full',
                            float max_t = -1,
+                           race = False,
                            **kwargs):
     """ Fit reaction times and choices from an ex-Gaussian distribution 
     
@@ -4911,7 +4912,7 @@ def exgauss(np.ndarray[float, ndim = 2] mu,
     sigma = np.asarray(sigma, dtype=DTYPE)
     tau = np.asarray(tau, dtype=DTYPE)
     p = np.asarray(p, dtype=DTYPE)
-    
+    n_choices = mu.shape[1]
 
     if mu.size == 1:
         mu = np.repeat(mu, n_trials)
@@ -4927,48 +4928,92 @@ def exgauss(np.ndarray[float, ndim = 2] mu,
     for k in range(n_trials):
         for n in range(n_samples):
             # decide choice
-            random_val = rng.random()
-            if random_val <= p[k]:
-                choice_idx = 0
-                choices[n, k, 0] = 1
-                
-            else:
-                choice_idx = 1
-                choices[n, k, 0] = -1
-                
-    
-            mu_val = mu[k, choice_idx]
-            sigma_val = sigma[k, choice_idx]
-            tau_val = tau[k, choice_idx]
+            if race:
+                # choose 'choice' from race  
+                rt_candidates = np.empty(n_choices, dtype=DTYPE)
+                for c in range(n_choices): 
+                    mu_val = mu[k, c]
+                    sigma_val = sigma[k, c]
+                    tau_val = tau[k, c]
 
-            # draw components and compose RT
-            norm_sample = rng.normal(mu_val, sigma_val)
-            exp_sample = rng.exponential(tau_val)
-            rt_val = norm_sample + exp_sample
+                    # draw components and compose RT
+                    norm_sample = rng.normal(mu_val, sigma_val)
+                    exp_sample = rng.exponential(tau_val)
+                    rt_val = norm_sample + exp_sample
 
-            if rt_val < 0.0:  # ensure no negative rts
-                rt_val = 0.0
-            rts[n, k, 0] = rt_val
+                    if rt_val < 0.0:  # ensure no negative rts
+                        rt_val = 0.0
+                    rt_candidates[c] = rt_val
+                choice_idx = np.argmin(rt_candidates)
+                choices[n, k, 0] = 1 if choice_idx == 0 else -1
+                rts[n, k, 0] = rt_candidates[choice_idx]
+            
+            else: 
+                # choose 'choice' from Bernoulli
+                random_val = rng.random()
+                if random_val <= p[k]:
+                    choice_idx = 0
+                    choices[n, k, 0] = 1
+                    
+                else:
+                    choice_idx = 1
+                    choices[n, k, 0] = -1
+                    
+                mu_val = mu[k, choice_idx]
+                sigma_val = sigma[k, choice_idx]
+                tau_val = tau[k, choice_idx]
+
+                # draw components and compose RT
+                norm_sample = rng.normal(mu_val, sigma_val)
+                exp_sample = rng.exponential(tau_val)
+                rt_val = norm_sample + exp_sample
+
+                if rt_val < 0.0:  # ensure no negative rts
+                    rt_val = 0.0
+                rts[n, k, 0] = rt_val
     
-    if return_option == 'full': 
-        return {
-            'rts': rts,
-            'choices': choices,
-            'metadata': {
-                'mu': mu, 'sigma': sigma, 'tau': tau,
-                'n_samples': n_samples,
-                'n_trials': n_trials,
-                'simulator': 'exgauss',
-                'possible_choices': [-1, 1],
-                'delta_t': delta_t, 
-                'max_t': max_t
+    if race: 
+        if return_option == 'full': 
+            return {
+                'rts': rts,
+                'choices': choices,
+                'metadata': {
+                    'mu': mu, 'sigma': sigma, 'tau': tau,
+                    'n_samples': n_samples,
+                    'n_trials': n_trials,
+                    'simulator': 'exgauss_race',
+                    'possible_choices': [-1, 1],
+                    'delta_t': delta_t, 
+                    'max_t': max_t
+                }
             }
-        }
-    elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [-1, 1]}}
-    else:
-        raise ValueError("return_option must be 'full' or 'minimal'") 
+        elif return_option == 'minimal':
+            return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss_race', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [-1, 1]}}
+        else:
+            raise ValueError("return_option must be 'full' or 'minimal'") 
+    else: 
+        if return_option == 'full': 
+            return {
+                'rts': rts,
+                'choices': choices,
+                'metadata': {
+                    'mu': mu, 'sigma': sigma, 'tau': tau,
+                    'n_samples': n_samples,
+                    'n_trials': n_trials,
+                    'simulator': 'exgauss',
+                    'possible_choices': [-1, 1],
+                    'delta_t': delta_t, 
+                    'max_t': max_t
+                }
+            }
+        elif return_option == 'minimal':
+            return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'exgauss', 'n_samples': n_samples, 'n_trials': n_trials, 'possible_choices': [-1, 1]}}
+        else:
+            raise ValueError("return_option must be 'full' or 'minimal'") 
 # -----------------------------------------------------------------------------------------------
+
+
+
 
 
 # Simulate (rt, choice) tuples from: SHIFTED WALD ------------------------------------

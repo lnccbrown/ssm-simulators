@@ -124,7 +124,8 @@ from .shrink import (
 )
 
 from .exgauss import (
-    get_exgauss_config
+    get_exgauss_config,
+    get_exgauss_race_config
 )
 
 from .shifted_wald import (
@@ -242,6 +243,7 @@ def get_model_config():
         "full_ddm2": get_full_ddm_config(),
         "ddm_legacy": get_ddm_legacy_config(),
         "exgauss": get_exgauss_config(),
+        "exgauss_race": get_exgauss_race_config(),
         "shifted_wald": get_shifted_wald_config(),
     }
 

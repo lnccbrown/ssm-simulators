@@ -230,6 +230,13 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["mu"] = np.column_stack([theta["mu0"], theta["mu1"]])
             theta["sigma"] = np.column_stack([theta["sigma0"], theta["sigma1"]])
             theta["tau"] = np.column_stack([theta["tau0"], theta["tau1"]])
+        
+        if model in ["shifted_wald"]: 
+            theta["v"] = np.column_stack([theta["v0"], theta["v1"]])
+            theta["a"] = np.column_stack([theta["a0"], theta["a1"]])
+            theta["t"] = np.expand_dims(theta["t"], axis=1)
+        
+
             
 
         # 3 Choice models
