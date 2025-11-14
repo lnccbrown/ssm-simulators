@@ -19,7 +19,21 @@ import numpy as np
 cimport numpy as np
 
 # Import utility functions from the _utils module
-from cssm._utils import set_seed, random_uniform, draw_gaussian, sign, csum
+from cssm._utils import (
+    set_seed,
+    random_uniform,
+    draw_gaussian,
+    sign,
+    csum,
+    compute_boundary,
+    compute_smooth_unif,
+    enforce_deadline,
+    compute_deadline_tmp,
+    build_param_dict_from_2d_array,
+    build_full_metadata,
+    build_minimal_metadata,
+    build_return_dict,
+)
 
 DTYPE = np.float32
 
@@ -155,12 +169,10 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
         # Precompute boundary evaluations
-        if boundary_multiplicative:
-            boundary[:] = np.multiply(a_view[k, 0], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
-        else:
-            boundary[:] = np.add(a_view[k, 0], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
+        compute_boundary(boundary, t_s, a_view[k, 0], boundary_fun, 
+                        boundary_params_tmp, boundary_multiplicative)
     
-        deadline_tmp = min(max_t, deadline_view[k] - t_view[k, 0])
+        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k, 0])
         # Loop over samples
         for n in range(n_samples):
             for j in range(n_particles):
@@ -190,59 +202,49 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
             rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u # for now no t per choice option
             choices_view[n, k, 0] = np.argmax(particles)
             #rts_view[n, 0] = t + t[choices_view[n, 0]]
 
-            if (rts_view[n, k, 0] >= deadline_view[k]) | (deadline_view[k] <= 0):
-                rts_view[n, k, 0] = -999
+            enforce_deadline(rts_view, deadline_view, n, k, 0)
             
 
-        # Create some dics
-        v_dict = {}
-        z_dict = {}
-        #t_dict = {}
-        for i in range(n_particles):
-            v_dict['v' + str(i)] = v[:, i]
-            z_dict['z' + str(i)] = z[:, i]
-            #t_dict['t_' + str(i)] = t[i] # for now no t by choice
-
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='race_model',
+        possible_choices=[-1, 1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
+    
     if return_option == 'full':
-        return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                            'a': a, 
-                                                            **z_dict,
-                                                            't': t,
-                                                            'deadline': deadline,
-                                                            # **t_dict, # for now no t by choice
-                                                            's': s,
-                                                            **boundary_params,
-                                                            'delta_t': delta_t,
-                                                            'max_t': max_t,
-                                                            'n_samples': n_samples,
-                                                            'n_trials': n_trials,
-                                                            'simulator': 'race_model',
-                                                            'boundary_fun_type': boundary_fun.__name__,
-                                                            'possible_choices': list(np.arange(0, n_particles, 1)),
-                                                            'trajectory': traj,
-                                                            'boundary': boundary}}
+        # Build v_dict and z_dict dynamically
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+        z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
+        
+        # Update possible_choices for full (n_particles-specific)
+        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
+        
+        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        params = {'a': a, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundary,
+            traj=traj,
+            boundary_params=boundary_params,
+            extra_params={**v_dict, **z_dict}
+        )
+        return build_return_dict(rts, choices, full_meta)
+    
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'race_model', 
-                                                             'possible_choices': [-1, 1],
-                                                             'boundary_fun_type': boundary_fun.__name__,
-                                                             'n_samples': n_samples,
-                                                             'n_trials': n_trials,
-                                                             }}
-
+        return build_return_dict(rts, choices, minimal_meta)
+    
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
     # -------------------------------------------------------------------------------------------------
@@ -375,7 +377,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         else:
             boundary[:] = np.add(a_view[k, 0], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
 
-        deadline_tmp = min(max_t, deadline_view[k] - t_view[k, 0])
+        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k, 0])
         for n in range(n_samples):
             # Reset particle starting points
             for i in range(n_particles):
@@ -413,57 +415,47 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
                         for i in range(n_particles):
                             traj_view[ix, i] = particles[i]
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
         
             choices_view[n, k, 0] = np.argmax(particles) # store choices for sample n
             rts_view[n, k, 0] = t_particle + t_view[k, 0] + smooth_u # t[choices_view[n, 0]] # store reaction time for sample n
 
-            if (rts_view[n, k, 0] >= deadline_view[k]) | (deadline_view[k] <= 0):
-                rts_view[n, k, 0] = -999
+            enforce_deadline(rts_view, deadline_view, n, k, 0)
         
-    # Create some dics
-    v_dict = {}
-    z_dict = {}
-    #t_dict = {}
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='lca',
+        possible_choices=[-1, 1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
     
-    for i in range(n_particles):
-        v_dict['v' + str(i)] = v[:, i]
-        z_dict['z' + str(i)] = z[:, i]
-
     if return_option == 'full':
-        return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                            'a': a,
-                                                            **z_dict,
-                                                            'g': g,
-                                                            'b': b,
-                                                            't': t,
-                                                            'deadline': deadline,
-                                                            's': s,
-                                                            **boundary_params,
-                                                            'delta_t': delta_t,
-                                                            'max_t': max_t,
-                                                            'n_samples': n_samples,
-                                                            'n_trials': n_trials,
-                                                            'simulator' : 'lca',
-                                                            'boundary_fun_type': boundary_fun.__name__,
-                                                            'possible_choices': list(np.arange(0, n_particles, 1)),
-                                                            'trajectory': traj,
-                                                            'boundary': boundary}}
+        # Build v_dict and z_dict dynamically
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+        z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
+        
+        # Update possible_choices for full (n_particles-specific)
+        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
+        
+        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        params = {'a': a, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundary,
+            traj=traj,
+            boundary_params=boundary_params,
+            extra_params={**v_dict, **z_dict}
+        )
+        return build_return_dict(rts, choices, full_meta)
+    
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'lca', 
-                                                             'possible_choices': [-1, 1],
-                                                             'boundary_fun_type': boundary_fun.__name__,
-                                                             'n_samples': n_samples,
-                                                             'n_trials': n_trials,
-                                                             }}
+        return build_return_dict(rts, choices, minimal_meta)
+    
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------

@@ -19,7 +19,15 @@ import numpy as np
 cimport numpy as np
 
 # Import utility functions from the _utils module
-from cssm._utils import set_seed, random_uniform, draw_gaussian
+from cssm._utils import (
+    set_seed,
+    random_uniform,
+    draw_gaussian,
+    build_param_dict_from_2d_array,
+    build_full_metadata,
+    build_minimal_metadata,
+    build_return_dict,
+)
 
 DTYPE = np.float32
 
@@ -107,21 +115,28 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
                 rts_view[n, k, 0] = -999
         
 
-    v_dict = {}    
-    for i in range(nact):
-        v_dict['v_' + str(i)] = v[:, i]
-
-    return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                         'a': a,
-                                                         'z': z,
-                                                         'deadline': deadline,
-                                                         'sd': sd,
-                                                         't': t,
-                                                         'n_samples': n_samples,
-                                                         'simulator' : 'lba_vanilla',
-                                                         'possible_choices': list(np.arange(0, nact, 1)),
-                                                         'max_t': max_t,
-                                                         }}
+    # Build v_dict dynamically
+    v_dict = build_param_dict_from_2d_array(v, 'v_', nact)
+    
+    # LBA models always return full metadata (no return_option)
+    minimal_meta = build_minimal_metadata(
+        simulator_name='lba_vanilla',
+        possible_choices=list(np.arange(0, nact, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials
+    )
+    
+    sim_config = {'max_t': max_t}
+    params = {'a': a, 'z': z, 'deadline': deadline, 'sd': sd, 't': t}
+    
+    full_meta = build_full_metadata(
+        minimal_metadata=minimal_meta,
+        params=params,
+        sim_config=sim_config,
+        extra_params=v_dict
+    )
+    
+    return build_return_dict(rts, choices, full_meta)
 
 
 
@@ -211,22 +226,28 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
             # if np.min(x_t) <= 0:
             #     print("\n ssms sim error: ", a[k], zs, vs, np.tan(theta[k]))
     
-    v_dict = {}  
-    for i in range(nact):
-        v_dict['v_' + str(i)] = v[:, i]
-
-    return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                         'a': a,
-                                                         'z': z,
-                                                         'theta': theta,
-                                                         'deadline': deadline,
-                                                         'sd': sd,
-                                                         't': t,
-                                                         'n_samples': n_samples,
-                                                         'simulator' : 'lba_angle',
-                                                         'possible_choices': list(np.arange(0, nact, 1)),
-                                                         'max_t': max_t,
-                                                         }}
+    # Build v_dict dynamically
+    v_dict = build_param_dict_from_2d_array(v, 'v_', nact)
+    
+    # LBA models always return full metadata (no return_option)
+    minimal_meta = build_minimal_metadata(
+        simulator_name='lba_angle',
+        possible_choices=list(np.arange(0, nact, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials
+    )
+    
+    sim_config = {'max_t': max_t}
+    params = {'a': a, 'z': z, 'theta': theta, 'deadline': deadline, 'sd': sd, 't': t}
+    
+    full_meta = build_full_metadata(
+        minimal_metadata=minimal_meta,
+        params=params,
+        sim_config=sim_config,
+        extra_params=v_dict
+    )
+    
+    return build_return_dict(rts, choices, full_meta)
 
 
 # Simulate (rt, choice) tuples from LBA piece-wise model  -----------------------------
@@ -298,19 +319,26 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
-
-    return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                         'a': a,
-                                                         'z': z,
-                                                         'tWM': tWM,
-                                                         't': t,
-                                                         'deadline': deadline,
-                                                         'sd': sd,
-                                                         'n_samples': n_samples,
-                                                         'simulator' : 'rlwm_lba_pw_v1',
-                                                         'possible_choices': list(np.arange(0, nact, 1)),
-                                                         'max_t': max_t,
-                                                         }}
+    
+    # LBA models always return full metadata (no return_option)
+    minimal_meta = build_minimal_metadata(
+        simulator_name='rlwm_lba_pw_v1',
+        possible_choices=list(np.arange(0, nact, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials
+    )
+    
+    sim_config = {'max_t': max_t}
+    params = {'a': a, 'z': z, 'tWM': tWM, 't': t, 'deadline': deadline, 'sd': sd}
+    
+    full_meta = build_full_metadata(
+        minimal_metadata=minimal_meta,
+        params=params,
+        sim_config=sim_config,
+        extra_params=v_dict
+    )
+    
+    return build_return_dict(rts, choices, full_meta)
 
 # Simulate (rt, choice) tuples from: RLWM LBA Race Model without ndt -----------------------------
 def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.array expect: one column of floats)
@@ -413,19 +441,27 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
+    
+    # LBA models always return full metadata (no return_option)
+    minimal_meta = build_minimal_metadata(
+        simulator_name='rlwm_lba_race',
+        possible_choices=list(np.arange(0, nact, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials
+    )
+    
+    sim_config = {'max_t': max_t}
+    params = {'a': a, 'z': z, 't': t, 'deadline': deadline, 'sd': sd}
+    
+    full_meta = build_full_metadata(
+        minimal_metadata=minimal_meta,
+        params=params,
+        sim_config=sim_config,
+        extra_params=v_dict
+    )
+    
+    return build_return_dict(rts, choices, full_meta)
 
-    return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                         'a': a,
-                                                         'z': z,
-                                                         't': 0,
-                                                         'deadline': deadline,
-                                                         'sd': sd,
-                                                         't': t,
-                                                         'n_samples': n_samples,
-                                                         'simulator' : 'rlwm_lba_race',
-                                                         'possible_choices': list(np.arange(0, nact, 1)),
-                                                         'max_t': max_t,
-                                                         }}
 # ----------------------------------------------------------------------------------------------------
 
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------

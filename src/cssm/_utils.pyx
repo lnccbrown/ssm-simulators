@@ -187,3 +187,185 @@ cpdef float[:] draw_gaussian(int n):
         result[n - 1] = random_gaussian()
     return result
 
+
+# Help
+cpdef dict setup_simulation(
+      int n_samples,
+      int n_trials,
+      float max_t,
+      float delta_t,
+      random_state
+):
+    """Set up common simulation data structures."""
+    set_seed(random_state)
+    
+    cdef int num_draws = int((max_t / delta_t) + 1)
+    
+    # Trajectory storage
+    traj = np.zeros((num_draws, 1), dtype=DTYPE)
+    traj[:, :] = -999
+    
+    # Output arrays
+    rts = np.zeros((n_samples,
+                    n_trials,
+                    1),
+                    dtype=DTYPE)
+    choices = np.zeros((n_samples,
+                        n_trials,
+                        1),
+                        dtype=np.intc)
+    
+    # Time array
+    t_s = np.arange(0,
+                    max_t + delta_t,
+                    delta_t)\
+                    .astype(DTYPE)
+    
+    # Gaussian values
+    gaussian_values = draw_gaussian(num_draws)
+    return {
+        'traj': traj,
+        'rts': rts,
+        'choices': choices,
+        't_s': t_s,
+        'gaussian_values': gaussian_values,
+        'num_draws': num_draws,
+        'delta_t_sqrt': sqrt(delta_t)
+    }
+
+cpdef void compute_boundary(
+    boundary,
+    t_s,
+    float a,
+    boundary_fun,
+    dict boundary_params,
+    bint multiplicative
+):
+    """Compute boundary values for given time points."""
+    if multiplicative:
+        boundary[:] = np.multiply(a, boundary_fun(t=t_s,
+                                                  **boundary_params))\
+                                                  .astype(DTYPE)
+    else:
+        boundary[:] = np.add(a, boundary_fun(t=t_s,
+                                             **boundary_params))\
+                                             .astype(DTYPE)
+
+cpdef float compute_smooth_unif(
+    bint smooth_unif,
+    float t_particle,
+    float deadline_tmp,
+    float delta_t
+):
+    """Compute uniform smoothing adjustment for reaction times."""
+    if not smooth_unif:
+        return 0.0
+    
+    if t_particle == 0.0:
+        return random_uniform() * 0.5 * delta_t
+    elif t_particle < deadline_tmp:
+        return (0.5 - random_uniform()) * delta_t
+    else:
+        return 0.0
+
+cpdef void enforce_deadline(
+    float[:, :, :] rts_view,
+    float[:] deadline_view,
+    int n,
+    int k,
+    int idx=0
+):
+    """Set RT to -999 if it exceeds deadline or deadline is invalid."""
+    if (rts_view[n, k, idx] >= deadline_view[k]) or (deadline_view[k] <= 0):
+        rts_view[n, k, idx] = -999
+
+cpdef inline float compute_deadline_tmp(
+    float max_t,
+    float deadline_k,
+    float t_k
+):
+    """Compute effective deadline for simulation loop."""
+    return min(max_t, deadline_k - t_k)
+
+cpdef dict build_param_dict_from_2d_array(
+    np.ndarray arr,
+    str prefix,
+    int n_cols
+):
+    """
+    Build dictionary from 2D array columns for race/LBA models.
+    Example: v[:, 0], v[:, 1] -> {'v0': v[:, 0], 'v1': v[:, 1]}
+    """
+    result = {}
+    for i in range(n_cols):
+        result[f'{prefix}{i}'] = arr[:, i]
+    return result
+
+cpdef dict build_minimal_metadata(
+    str simulator_name,
+    list possible_choices,
+    int n_samples,
+    int n_trials,
+    str boundary_fun_name=None
+):
+    """Build minimal metadata dictionary - the BASE for all metadata."""
+    metadata = {
+        'simulator': simulator_name,
+        'possible_choices': possible_choices,
+        'n_samples': n_samples,
+        'n_trials': n_trials,
+    }
+    if boundary_fun_name is not None:
+        metadata['boundary_fun_type'] = boundary_fun_name
+    return metadata
+
+cpdef dict build_full_metadata(
+    dict minimal_metadata,
+    dict params,
+    dict sim_config,
+    boundary_fun=None,
+    np.ndarray boundary=None,
+    np.ndarray traj=None,
+    dict boundary_params=None,
+    dict drift_params=None,
+    dict extra_params=None
+):
+    """
+    Build full metadata by AUGMENTING minimal_metadata.
+    This ensures consistency - full always includes everything from minimal.
+    """
+    # Start with a copy of minimal metadata
+    metadata = dict(minimal_metadata)
+    
+    # Add all the full metadata fields
+    metadata.update(params)
+    metadata.update(sim_config)
+    
+    # Add optional fields
+    if boundary_fun is not None:
+        metadata['boundary_fun_type'] = boundary_fun.__name__
+    if boundary is not None:
+        metadata['boundary'] = boundary
+    if traj is not None:
+        metadata['trajectory'] = traj
+    if boundary_params:
+        metadata.update(boundary_params)
+    if drift_params:
+        metadata.update(drift_params)
+    if extra_params:
+        metadata.update(extra_params)
+    
+    return metadata
+
+cpdef dict build_return_dict(
+    np.ndarray rts,
+    np.ndarray choices,
+    dict metadata,
+    dict extra_arrays=None
+):
+    """Build return dictionary with rts, choices, and metadata."""
+    result = {'rts': rts, 'choices': choices, 'metadata': metadata}
+    if extra_arrays:
+        result.update(extra_arrays)
+    return result
+
