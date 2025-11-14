@@ -556,15 +556,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix = ix2
             
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k] + smooth_u
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -894,15 +886,7 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix_l = ix2
 
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -1240,15 +1224,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix_l = ix2
 
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -1581,15 +1557,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix_l = ix2
 
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -2321,15 +2289,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                 y_l = y_l2
                 ix_l = ix2
 
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]

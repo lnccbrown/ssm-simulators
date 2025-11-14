@@ -1254,15 +1254,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = t_particle + t_tmp + smooth_u # Store rt
             choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -1446,15 +1438,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = t_particle + t_tmp + smooth_u # Store rt
             choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -1781,15 +1765,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
             choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -2044,15 +2020,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            if smooth_unif:
-                if t_h == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif fmax(t_h, t_l) < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
 
