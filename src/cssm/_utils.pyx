@@ -34,6 +34,8 @@ import numbers
 
 DTYPE = np.float32
 
+cdef object _global_rng = None
+
 cpdef void set_seed(random_state):
     """
     Set the random seed for the simulation.
@@ -44,10 +46,24 @@ cpdef void set_seed(random_state):
     This function sets a random state globally for the simulation.
     """
 
+    cdef long seed_value
+    global _global_rng
+
     if random_state is None:
         srand(time(NULL))
+        _global_rng = np.random.default_rng()
+        return
+
     if isinstance(random_state, numbers.Integral):
-        srand(random_state)
+        seed_value = <long>random_state
+    else:
+        try:
+            seed_value = <long>int(random_state)
+        except (TypeError, ValueError):
+            raise ValueError("random_state must be an integer or None")
+
+    srand(seed_value)
+    _global_rng = np.random.default_rng(seed_value)
 
 # Method to draw random samples from a gaussian
 cpdef float random_uniform():
@@ -131,9 +147,6 @@ cpdef float random_exponential():
 #
 #     w = ((-2.0 * log(w)) / w) ** 0.5
 #     return x1 * w
-
-# Fast Gaussian generation using NumPy's Ziggurat
-cdef object _global_rng = None
 
 cpdef float[:] draw_gaussian(int n):
     """
