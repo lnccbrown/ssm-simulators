@@ -1,10 +1,30 @@
-recursive-include docs
+# Old Manifest
+# recursive-include docs
+# include README.md LICENSE
+# include ssms *.py
+# include src/*.pyx
+# include notebooks/*
+# global-exclude .gitignore
+# global-exclude .git
+# global-exclude *~
+# global-exclude *.pyc
+# global-exclude .#*
+
+# New Manifest
+# Include documentation and metadata
 include README.md LICENSE
-include ssms *.py
-include src/*.pyx
-include notebooks/*
+
+# Include Python package files
+recursive-include ssms *.py
+recursive-include ssms/cli *.yaml
+
+# Include Cython source files
+recursive-include src *.pyx *.pxd
+
+# Exclude unwanted files
 global-exclude .gitignore
 global-exclude .git
 global-exclude *~
 global-exclude *.pyc
 global-exclude .#*
+global-exclude __pycache__
