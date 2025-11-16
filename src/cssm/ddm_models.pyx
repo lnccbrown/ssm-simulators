@@ -344,6 +344,8 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 
+
+
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)

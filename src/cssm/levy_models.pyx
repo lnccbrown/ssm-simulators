@@ -123,10 +123,18 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
         # Precompute boundary evaluations
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun,
-                         boundary_params_tmp, boundary_multiplicative)
+        compute_boundary(boundary,
+                         t_s,
+                         a_view[k],
+                         boundary_fun,
+                         boundary_params_tmp,
+                         boundary_multiplicative
+                         )
+        deadline_tmp = compute_deadline_tmp(max_t,
+                                            deadline_view[k],
+                                            t_view[k]
+                                            )
 
-        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         # Loop over samples
         for n in range(n_samples):
             y = (-1) * boundary_view[0] + (z_view[k] * 2 * (boundary_view[0]))  # reset starting position 
@@ -149,13 +157,21 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
                     alpha_stable_values = draw_random_stable(num_draws, alpha_view[k])
                     m = 0
 
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif,
+                                           t_particle,
+                                           deadline_tmp,
+                                           delta_t
+                                           )
 
             rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
             choices_view[n, k, 0] = sign(y) # Store choice
+            enforce_deadline(rts_view,
+                             deadline_view,
+                             n,
+                             k,
+                             0
+                            )
 
-            enforce_deadline(rts_view, deadline_view, n, k, 0)
-        
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='levy_flexbound',
@@ -164,13 +180,14 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
-            'v': v, 'a': a, 'z': z, 't': t,
-            'alpha': alpha, 's': s
+            'v': v, 'a': a, 'z': z,
+            't': t, 'alpha': alpha, 's': s,
         }
+
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -181,10 +198,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta)
-    
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta)
-    
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
-
