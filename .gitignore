@@ -16,6 +16,14 @@ src/cssm/*.c
 # Backup files
 *.bak
 
+# Cython build outputs
+# Generated C++ files from Cython
+src/cssm/*.cpp
+# Generated C files from Cython
+src/cssm/*.c
+# Backup files
+*.bak
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

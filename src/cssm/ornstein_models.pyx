@@ -19,7 +19,20 @@ import numpy as np
 cimport numpy as np
 
 # Import utility functions from the _utils module
-from cssm._utils import set_seed, random_uniform, draw_gaussian, sign
+from cssm._utils import (
+    set_seed,
+    random_uniform,
+    draw_gaussian,
+    sign,
+    setup_simulation,
+    compute_boundary,
+    compute_smooth_unif,
+    enforce_deadline,
+    compute_deadline_tmp,
+    build_full_metadata,
+    build_minimal_metadata,
+    build_return_dict,
+)
 
 DTYPE = np.float32
 
@@ -72,12 +85,20 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
         ValueError: If return_option is not 'full' or 'minimal'.
     """
 
-    set_seed(random_state)
-    # Data-structs for trajectory storage
-    traj = np.zeros((int(max_t / delta_t) + 1, 1), dtype = DTYPE)
-    traj[:, :] = -999 
-    cdef float[:,:] traj_view = traj
-
+    setup = setup_simulation(n_samples, n_trials, max_t, delta_t, random_state)
+    
+    # Extract arrays and create memory views for C-level performance
+    traj = setup['traj']
+    rts = setup['rts']
+    choices = setup['choices']
+    cdef float[:, :] traj_view = traj
+    cdef float[:, :, :] rts_view = rts
+    cdef int[:, :, :] choices_view = choices
+    cdef float[:] gaussian_values = setup['gaussian_values']
+    t_s = setup['t_s']
+    cdef int num_draws = setup['num_draws']
+    cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    
     # Param views
     cdef float[:] v_view  = v
     cdef float[:] a_view = a
@@ -86,39 +107,22 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     cdef float[:] t_view = t
     cdef float[:] deadline_view = deadline
     cdef float[:] s_view = s
-
-    # Initializations
-    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE) # rt storage
-    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc) # choice storage
-
-    cdef float[:, :, :] rts_view = rts
-    cdef int[:, :, :] choices_view = choices
-
-    cdef float delta_t_sqrt = sqrt(delta_t) # correct scalar so we can use standard normal samples for the brownian motion
-    #cdef float sqrt_st = s * delta_t_sqrt
-
-    # Boundary Storage
-    cdef int num_draws = int((max_t / delta_t) + 1)
-    t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
+    
+    # Boundary storage for the upper bound
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
 
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
-    cdef float[:] gaussian_values = draw_gaussian(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-
-        # Precompute boundary evaluations
-        if boundary_multiplicative:
-            boundary[:] = np.multiply(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
-        else:
-            boundary[:] = np.add(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
+        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
+                        boundary_params_tmp, boundary_multiplicative)
     
-        deadline_tmp = min(max_t, deadline_view[k] - t_view[k])
+        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
         for n in range(n_samples):
@@ -145,47 +149,42 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp:
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
             choices_view[n, k, 0] = sign(y)
 
-            if (rts_view[n, k, 0] >= deadline_view[k]) | (deadline_view[k] <= 0):
-                rts_view[n, k, 0] = -999
+            enforce_deadline(rts_view, deadline_view, n, k, 0)
 
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='ornstein_uhlenbeck',
+        possible_choices=[-1, 1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
+    
     if return_option == 'full':
-        return { 'rts': rts, 'choices': choices, 'metadata': {'v': v,
-                                                            'a': a,
-                                                            'z': z,
-                                                            'g': g,
-                                                            't': t,
-                                                            'deadline': deadline,
-                                                            's': s,
-                                                            **boundary_params,
-                                                            'delta_t': delta_t,
-                                                            'max_t': max_t,
-                                                            'n_samples': n_samples,
-                                                            'n_trials': n_trials,
-                                                            'simulator': 'ornstein_uhlenbeck',
-                                                            'boundary_fun_type': boundary_fun.__name__,
-                                                            'possible_choices': [-1, 1],
-                                                            'trajectory': traj,
-                                                            'boundary': boundary}}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        params = {
+            'v': v, 'a': a, 'z': z, 'g': g, 't': t,
+            'deadline': deadline, 's': s
+        }
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundary,
+            traj=traj,
+            boundary_params=boundary_params
+        )
+        return build_return_dict(rts, choices, full_meta)
+    
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices,  'metadata': {'simulator': 'ornstein_uhlenbeck', 
-                                                             'possible_choices': [-1, 1],
-                                                             'boundary_fun_type': boundary_fun.__name__,
-                                                             'n_samples': n_samples,
-                                                             'n_trials': n_trials,
-                                                             }}
+        return build_return_dict(rts, choices, minimal_meta)
+    
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 

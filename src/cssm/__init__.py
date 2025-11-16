@@ -22,8 +22,10 @@ from .ddm_models import (
     ddm_sdv,
     ddm_flexbound_tradeoff,
 )
+
 from .race_models import race_model, lca
 from .lba_models import lba_vanilla, lba_angle, rlwm_lba_pw_v1, rlwm_lba_race
+
 from .sequential_models import (
     ddm_flexbound_seq2,
     ddm_flexbound_mic2_ornstein,
@@ -32,7 +34,9 @@ from .sequential_models import (
     ddm_flexbound_mic2_unnormalized_ornstein_multinoise,
 )
 from .parallel_models import ddm_flexbound_par2
+
 from .levy_models import levy_flexbound
+
 from .ornstein_models import ornstein_uhlenbeck
 
 __all__ = [

@@ -7,6 +7,8 @@ try:
 
     ext_modules = cythonize(
         [
+            # Keep old cssm for backward compatibility (deprecated)
+            Extension("cssm", ["src/cssm.pyx"], language="c++"),
             # New modular structure
             Extension(
                 "cssm._utils",
@@ -61,6 +63,7 @@ try:
     )
 except ImportError:
     ext_modules = [
+        Extension("cssm", ["src/cssm.pyx"], language="c++"),
         Extension(
             "cssm._utils",
             ["src/cssm/_utils.pyx"],
