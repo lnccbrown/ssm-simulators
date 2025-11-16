@@ -131,6 +131,15 @@ from .shrink import (
 from .base import drift_config, boundary_config
 from .validation import get_invalid_configs
 
+from .exgauss import (
+    get_exgauss_config,
+    get_exgauss_race_config
+)
+
+from .shifted_wald import (
+    get_shifted_wald_config,
+    get_shifted_wald_race_config
+)
 
 def get_model_config():
     """Accessor for model configurations.
@@ -248,6 +257,10 @@ def get_model_config():
         "weibull_cdf": get_weibull_config(),
         "full_ddm2": get_full_ddm_config(),
         "ddm_legacy": get_ddm_legacy_config(),
+        "exgauss": get_exgauss_config(),
+        "exgauss_race": get_exgauss_race_config(),
+        "shifted_wald": get_shifted_wald_config(),
+        "shifted_wald_race": get_shifted_wald_race_config(),
     }
 
 

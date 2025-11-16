@@ -501,6 +501,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             check_if_z_gt_a(theta["z"], theta["a"])
 
 
+
+
 def make_noise_vec(
     sigma_noise: float | np.ndarray, n_trials: int, n_particles: int
 ) -> np.ndarray:
@@ -608,7 +610,7 @@ def simulator(
         deadline = False
 
     model_config_local = deepcopy(model_config[model])
-
+    
     if deadline:
         model_config_local["params"] += ["deadline"]
 
@@ -681,7 +683,7 @@ def simulator(
         **drift_dict,
         **sim_param_dict,
     )
-
+    
     # Ensure x is a dictionary
     if not isinstance(x, dict):
         raise TypeError(
