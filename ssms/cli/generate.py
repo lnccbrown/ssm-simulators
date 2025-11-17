@@ -164,7 +164,7 @@ epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-f
 
 
 @app.command(epilog=epilog)
-def main(
+def main(  # pragma: no cover
     config_path: Path = typer.Option(None, help="Path to the YAML configuration file."),
     output: Path = typer.Option(..., help="Path to the output directory."),
     n_files: int = typer.Option(

@@ -648,7 +648,9 @@ class data_generator:  # noqa: N801
     # TODO: Add parallelized version of this function as well
     # TODO: This also might need some modification concerning parameter transformations (we want to
     # keep this but it wasn't used in a while)
-    def _training_defective_simulations_get_preprocessed(self, seed):
+    def _training_defective_simulations_get_preprocessed(
+        self, seed
+    ):  # pragma: no cover
         np.random.seed(seed)
         rejected_thetas = []
         accepted_thetas = []
