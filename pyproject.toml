@@ -152,7 +152,17 @@ module = ["bambi"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
-omit = ["*/setup.py", "*/__init__.py"]
+omit = ["*/setup.py", "*/__init__.py", "tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [project.scripts]
 generate = "ssms.cli.generate:app"
