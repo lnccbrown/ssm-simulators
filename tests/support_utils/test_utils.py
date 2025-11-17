@@ -70,6 +70,7 @@ def test_topological_sort_propagates_cycle_error():
 
 
 def test_sample_parameters_from_constraints_independent_bounds():
+    """Test sampling with independent (non-dependent) parameter bounds."""
     np.random.seed(0)
     param_dict = {"a": (0.0, 1.0), "b": (-1.0, 1.0)}
     samples = utils.sample_parameters_from_constraints(param_dict, sample_size=5)
@@ -81,39 +82,7 @@ def test_sample_parameters_from_constraints_independent_bounds():
 
 
 def test_sample_parameters_from_constraints_with_dependencies():
-    np.random.seed(1)
-    param_dict = {"a": (0.0, 1.0), "b": ("a", 2.0)}
-    samples = utils.sample_parameters_from_constraints(param_dict, sample_size=4)
-    assert np.all(samples["b"] >= samples["a"])
-    assert np.all(samples["b"] <= 2.0)
-
-
-def test_sample_parameters_from_constraints_missing_dependency():
-    param_dict = {"b": ("a", 2.0)}
-    with pytest.raises(ValueError, match="must be defined"):
-        utils.sample_parameters_from_constraints(param_dict, sample_size=1)
-
-
-def test_sample_parameters_from_constraints_invalid_bounds():
-    param_dict = {"a": (0.0, 1.0), "b": ("a", "a")}
-    with pytest.raises(ValueError, match="must be less than upper bound"):
-        utils.sample_parameters_from_constraints(param_dict, sample_size=3)
-
-
-def test_sample_parameters_from_constraints_independent():
-    np.random.seed(0)
-    param_dict = {"a": (0.0, 1.0), "b": (-1.0, 1.0)}
-    samples = utils.sample_parameters_from_constraints(param_dict, sample_size=5)
-    assert set(samples.keys()) == {"a", "b"}
-    assert samples["a"].shape == (5,)
-    assert samples["b"].shape == (5,)
-    assert np.all(samples["a"] >= 0.0)
-    assert np.all(samples["a"] <= 1.0)
-    assert np.all(samples["b"] >= -1.0)
-    assert np.all(samples["b"] <= 1.0)
-
-
-def test_sample_parameters_from_constraints_with_dependency():
+    """Test sampling with dependent bounds (one parameter depends on another)."""
     np.random.seed(1)
     param_dict = {"a": (0.0, 1.0), "b": ("a", 2.0)}
     samples = utils.sample_parameters_from_constraints(param_dict, sample_size=4)
@@ -124,14 +93,21 @@ def test_sample_parameters_from_constraints_with_dependency():
 
 
 def test_sample_parameters_from_constraints_missing_dependency():
-    np.random.seed(0)
-    param_dict = {"a": ("missing", 1.0)}
-    with pytest.raises(ValueError, match="not defined"):
-        utils.sample_parameters_from_constraints(param_dict, sample_size=2)
+    """Test that missing dependency raises appropriate error."""
+    param_dict = {"b": ("a", 2.0)}  # 'a' is not defined
+    with pytest.raises(ValueError, match="must be defined|not defined"):
+        utils.sample_parameters_from_constraints(param_dict, sample_size=1)
 
 
-def test_sample_parameters_from_constraints_cycle():
-    np.random.seed(0)
-    param_dict = {"a": (0.0, "b"), "b": (0.0, "a")}
+def test_sample_parameters_from_constraints_invalid_bounds():
+    """Test that invalid bounds (lower >= upper) raises error."""
+    param_dict = {"a": (0.0, 1.0), "b": ("a", "a")}  # lower == upper
+    with pytest.raises(ValueError, match="must be less than upper bound"):
+        utils.sample_parameters_from_constraints(param_dict, sample_size=3)
+
+
+def test_sample_parameters_from_constraints_circular_dependency():
+    """Test that circular dependencies are detected and raise error."""
+    param_dict = {"a": (0.0, "b"), "b": (0.0, "a")}  # a depends on b, b depends on a
     with pytest.raises(ValueError, match="Error in topological sorting"):
         utils.sample_parameters_from_constraints(param_dict, sample_size=2)
