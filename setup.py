@@ -1,118 +1,43 @@
 from setuptools import setup, Extension, find_packages
 import numpy
 
+# Define all Cython extension modules
+CYTHON_MODULES = [
+    "_utils",
+    "ddm_models",
+    "race_models",
+    "lba_models",
+    "sequential_models",
+    "parallel_models",
+    "levy_models",
+    "ornstein_models",
+]
+
+
+def create_extensions(modules):
+    """Create Extension objects for all Cython modules."""
+    return [
+        Extension(
+            f"cssm.{module}",
+            [f"src/cssm/{module}.pyx"],
+            language="c++",
+            include_dirs=[numpy.get_include(), "src/cssm"],
+        )
+        for module in modules
+    ]
+
+
 # Try to build with Cython if available
 try:
     from Cython.Build import cythonize
 
     ext_modules = cythonize(
-        [
-            # Keep old cssm for backward compatibility (deprecated)
-            # Extension("cssm", ["src/cssm.pyx"], language="c++"),
-            # New modular structure
-            Extension(
-                "cssm._utils",
-                ["src/cssm/_utils.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.ddm_models",
-                ["src/cssm/ddm_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.race_models",
-                ["src/cssm/race_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.lba_models",
-                ["src/cssm/lba_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.sequential_models",
-                ["src/cssm/sequential_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.parallel_models",
-                ["src/cssm/parallel_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.levy_models",
-                ["src/cssm/levy_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-            Extension(
-                "cssm.ornstein_models",
-                ["src/cssm/ornstein_models.pyx"],
-                language="c++",
-                include_dirs=[numpy.get_include(), "src/cssm"],
-            ),
-        ],
+        create_extensions(CYTHON_MODULES),
         compiler_directives={"language_level": "3"},
     )
 except ImportError:
-    ext_modules = [
-        # Extension("cssm", ["src/cssm.pyx"], language="c++"),
-        Extension(
-            "cssm._utils",
-            ["src/cssm/_utils.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.ddm_models",
-            ["src/cssm/ddm_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.race_models",
-            ["src/cssm/race_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.lba_models",
-            ["src/cssm/lba_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.sequential_models",
-            ["src/cssm/sequential_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.parallel_models",
-            ["src/cssm/parallel_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.levy_models",
-            ["src/cssm/levy_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-        Extension(
-            "cssm.ornstein_models",
-            ["src/cssm/ornstein_models.pyx"],
-            language="c++",
-            include_dirs=[numpy.get_include(), "src/cssm"],
-        ),
-    ]
+    # Fallback to pre-compiled .c files if Cython is not available
+    ext_modules = create_extensions(CYTHON_MODULES)
 
 # Use find_packages to automatically discover all packages
 packages = find_packages(include=["ssms", "ssms.*"])
