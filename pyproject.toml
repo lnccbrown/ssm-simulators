@@ -47,6 +47,7 @@ dev = [
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
+    "marimo[recommended]",
 ]
 
 [project.urls]
