@@ -359,6 +359,7 @@ class data_generator:  # noqa: N801
         out[(n_kde + n_unif_up) :, -1] = self.generator_config["negative_rt_cutoff"]
         return out.astype(np.float32)
 
+    # This should be handled by theta-processors?
     def parameter_transform_for_data_gen(self, theta: dict):
         """
         Function to impose constraints on the parameters for data generation.
@@ -422,7 +423,6 @@ class data_generator:  # noqa: N801
                 tmp = theta["a"]
                 theta["a"] = theta["z"]
                 theta["z"] = tmp
-
         return theta
 
     def _mlp_get_processed_data_for_theta(self, random_seed_tuple: tuple | list):

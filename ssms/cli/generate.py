@@ -1,8 +1,8 @@
 #!/usr/bin/env -S uv run --script
 
 import logging
+import os
 import pickle
-import warnings
 from collections import namedtuple
 from copy import deepcopy
 from importlib.resources import files, as_file
@@ -19,38 +19,38 @@ from ssms.config import get_default_generator_config, model_config as _model_con
 app = typer.Typer(add_completion=False)
 
 
-def try_gen_folder(
-    folder: str | Path | None = None, allow_abs_path_folder_generation: bool = True
-) -> None:
-    """Function to generate a folder from a string. If the folder already exists, it will not be generated.
+# def try_gen_folder(
+#     folder: str | Path | None = None, allow_abs_path_folder_generation: bool = True
+# ) -> None:
+#     """Function to generate a folder from a string. If the folder already exists, it will not be generated.
 
-    Arguments
-    ---------
-        folder (str):
-            The folder string to generate.
-        allow_abs_path_folder_generation (bool):
-            If True, the folder string is treated as an absolute path.
-            If False, the folder string is treated as a relative path.
-    """
-    if not folder:
-        raise ValueError("Folder path cannot be None or empty.")
+#     Arguments
+#     ---------
+#         folder (str):
+#             The folder string to generate.
+#         allow_abs_path_folder_generation (bool):
+#             If True, the folder string is treated as an absolute path.
+#             If False, the folder string is treated as a relative path.
+#     """
+#     if not folder:
+#         raise ValueError("Folder path cannot be None or empty.")
 
-    folder_path = Path(folder)
+#     folder_path = Path(folder)
 
-    # Check if the path is absolute and if absolute path generation is allowed
-    if folder_path.is_absolute() and not allow_abs_path_folder_generation:
-        warnings.warn(
-            "Absolute folder path provided, but allow_abs_path_folder_generation is False. "
-            "No folders will be generated."
-        )
-        return
+#     # Check if the path is absolute and if absolute path generation is allowed
+#     if folder_path.is_absolute() and not allow_abs_path_folder_generation:
+#         warnings.warn(
+#             "Absolute folder path provided, but allow_abs_path_folder_generation is False. "
+#             "No folders will be generated."
+#         )
+#         return
 
-    try:
-        # Create the folder and any necessary parent directories
-        folder_path.mkdir(parents=True, exist_ok=True)
-        logging.info("Folder %s created or already exists.", folder_path)
-    except Exception as e:
-        logging.error("Error creating folder '%s': %s", folder, e)
+#     try:
+#         # Create the folder and any necessary parent directories
+#         folder_path.mkdir(parents=True, exist_ok=True)
+#         logging.info("Folder %s created or already exists.", folder_path)
+#     except Exception as e:
+#         logging.error("Error creating folder '%s': %s", folder, e)
 
 
 def make_data_generator_configs(
@@ -74,7 +74,7 @@ def make_data_generator_configs(
     config_dict = {"model_config": model_config, "data_config": data_config}
 
     if save_name:
-        try_gen_folder(save_folder)
+        Path(save_folder).mkdir(parents=True, exist_ok=True)
         output_file = Path(save_folder) / save_name
         logging.info("Saving config to: %s", output_file)
         with open(output_file, "wb") as f:
@@ -175,6 +175,30 @@ def main(  # pragma: no cover
         min=1,
         show_default=True,
     ),
+    mlflow_run_name: str = typer.Option(
+        None,
+        "--mlflow-run-name",
+        help="MLflow Run ID to resume. "
+        "If provided, metrics and artifacts will be logged to this run.",
+    ),
+    mlflow_experiment_name: str = typer.Option(
+        None,
+        "--mlflow-experiment-name",
+        help="MLflow Experiment Name to log to. "
+        "If provided, metrics and artifacts will be logged to this experiment.",
+    ),
+    mlflow_tracking_uri: str = typer.Option(
+        None,
+        "--mlflow-tracking-uri",
+        help="MLflow tracking URI (e.g., 'sqlite:///path/to/mlflow.db' or 'http://mlflow-server:5000'). "
+        "Defaults to MLFLOW_TRACKING_URI env var, then 'sqlite:///mlflow.db'.",
+    ),
+    mlflow_artifact_location: str = typer.Option(
+        None,
+        "--mlflow-artifact-location",
+        help="Root directory for MLflow artifacts. "
+        "Defaults to MLFLOW_ARTIFACT_LOCATION env var, then './mlruns'.",
+    ),
     log_level: str = log_level_option,
 ):
     """
@@ -184,6 +208,72 @@ def main(  # pragma: no cover
         level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
     )
     logger = logging.getLogger(__name__)
+
+    # Setup MLflow
+    mlflow_active = False
+    if mlflow_run_name:
+        try:
+            import mlflow
+
+            # Set tracking URI with priority: CLI arg > env var > default
+            if mlflow_tracking_uri:
+                tracking_uri = mlflow_tracking_uri
+            else:
+                tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+
+            mlflow.set_tracking_uri(tracking_uri)
+            logger.info("MLflow tracking URI: %s", tracking_uri)
+
+            # Set experiment with optional artifact location
+            if mlflow_experiment_name:
+                # Determine artifact location with priority: CLI arg > env var > default
+                if mlflow_artifact_location:
+                    artifact_location = mlflow_artifact_location
+                else:
+                    artifact_location = os.getenv("MLFLOW_ARTIFACT_LOCATION", None)
+
+                if artifact_location:
+                    # Ensure artifact location is absolute path
+                    artifact_location = str(Path(artifact_location).absolute())
+
+                    # Try to get existing experiment, or create new one with artifact location
+                    try:
+                        experiment = mlflow.get_experiment_by_name(
+                            mlflow_experiment_name
+                        )
+                        if experiment is None:
+                            # Create new experiment with artifact location
+                            mlflow.create_experiment(
+                                mlflow_experiment_name,
+                                artifact_location=artifact_location,
+                            )
+                            logger.info(
+                                "Created MLflow experiment: %s (artifacts: %s)",
+                                mlflow_experiment_name,
+                                artifact_location,
+                            )
+                        mlflow.set_experiment(mlflow_experiment_name)
+                    except Exception as e:
+                        logger.warning(
+                            "Could not set artifact location: %s. Using default.", e
+                        )
+                        mlflow.set_experiment(mlflow_experiment_name)
+                else:
+                    mlflow.set_experiment(mlflow_experiment_name)
+                    logger.info(
+                        "Set MLflow experiment: %s (default artifact location)",
+                        mlflow_experiment_name,
+                    )
+
+            mlflow.start_run(run_name=mlflow_run_name)
+            mlflow_active = True
+            logger.info("Started new MLflow run: %s", mlflow_run_name)
+            logger.info("MLflow run ID: %s", mlflow.active_run().info.run_id)
+        except ImportError as e:
+            logger.warning(
+                "MLflow package not installed but --mlflow-run-name provided. Ignoring --mlflow-run-name. Error: %s",
+                e,
+            )
 
     if config_path is None:
         logger.warning("No config path provided, using default configuration.")
@@ -202,18 +292,91 @@ def main(  # pragma: no cover
     logger.debug("MODEL CONFIG")
     logger.debug(pformat(config_dict["model_config"]))
 
+    if mlflow_active:
+        mlflow.log_params(
+            {f"data_{k}": v for k, v in config_dict["data_config"].items()}
+        )
+        mlflow.log_dict(config_dict["model_config"], "model_config.json")
+
     # Make the generator
     my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
         generator_config=config_dict["data_config"],
         model_config=config_dict["model_config"],
     )
 
+    # In generate.py, BEFORE the generation loop (around line 246)
+    output_folder = Path(config_dict["data_config"]["output_folder"])
+    # training_data_path = output_folder / "data" / "training_data"
+
+    # Capture existing files before generation
+    existing_files = set()
+    if output_folder.exists():
+        existing_files = set(output_folder.rglob("*.pickle"))
+        logger.info("Existing files: %s", existing_files)
+
     is_cpn = config_dict["data_config"].get("cpn_only", False)
 
-    for i in tqdm.tqdm(
+    for _ in tqdm.tqdm(
         range(n_files), desc="Generating simulated data files", unit="file"
     ):
         my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
+
+    # After generation loop, find new files
+    newly_generated_files = []
+    if output_folder.exists():
+        current_files = set(output_folder.rglob("*.pickle"))
+        new_files = current_files - existing_files  # Set difference
+        newly_generated_files = sorted(new_files)
+        logger.info("Newly generated files: %s", newly_generated_files)
+    else:
+        logger.warning(
+            "Output folder does not exist: %s. "
+            "Something went wrong with generation, please check the logs",
+            output_folder,
+        )
+
+    if mlflow_active:
+        output_folder = Path(config_dict["data_config"]["output_folder"])
+
+        # Log the output folder path
+        mlflow.log_param("data_output_folder", str(output_folder))
+
+        # Capture the list of generated files
+        generated_files = []
+        if output_folder.exists():
+            # Get all pickle files in the training data directory
+            generated_files = [
+                {
+                    "filename": f.name,
+                    "relative_path": str(output_folder / str(f.name)),
+                    "size_bytes": f.stat().st_size,
+                    "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                }
+                for f in newly_generated_files
+            ]
+        else:
+            logger.warning(
+                "No generated files found in output folder: %s", output_folder
+            )
+
+        # Log file inventory as a JSON artifact
+        file_inventory = {
+            "num_files": len(generated_files),
+            "total_size_mb": round(sum(f["size_mb"] for f in generated_files), 2),
+            "files": generated_files,
+        }
+        mlflow.log_dict(file_inventory, "generated_files_inventory.json")
+
+        # Log summary metrics
+        mlflow.log_metric("num_files_generated", len(generated_files))
+        mlflow.log_metric("total_data_size_mb", file_inventory["total_size_mb"])
+
+        # Log configuration files for reproducibility
+        mlflow.log_dict(config_dict["data_config"], "data_config.json")
+        mlflow.log_dict(config_dict["model_config"], "model_config.json")
+        logger.info("Logged %d files to MLflow inventory", len(generated_files))
+
+        mlflow.end_run()
 
     logger.info("Data generation finished")
 
