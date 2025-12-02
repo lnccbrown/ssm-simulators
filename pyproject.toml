@@ -25,6 +25,9 @@ dependencies = [
     "pyyaml>=6.0.2",
     "tqdm>=4.67.1",
 ]
+
+[project.optional-dependencies]
+mlflow = ["mlflow>=3.6.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -47,6 +50,7 @@ dev = [
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
+    "mlflow>=3.6.0",
 ]
 
 [project.urls]
