@@ -242,6 +242,11 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
             theta["t"] = np.expand_dims(theta["t"], axis=1)
             theta["a"] = np.expand_dims(theta["a"], axis=1)
 
+        if model == "poisson_race":
+            theta["r"] = np.column_stack([theta["r0"], theta["r1"]])
+            theta["k"] = np.column_stack([theta["k0"], theta["k1"]])
+            theta["t"] = np.expand_dims(theta["t"], axis=1)
+
         # 3 Choice models
 
         if model == "race_3":
