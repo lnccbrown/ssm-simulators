@@ -137,6 +137,10 @@ def collect_data_generator_config(
         "cpn_only": True if (bc.generator_approach == "cpn") else False,
     }
 
+    # Phase 2: Add estimator_type if present in YAML
+    if hasattr(bc, "estimator_type"):
+        data_generator_arg_dict["estimator_type"] = bc.estimator_type.lower()
+
     config_dict = make_data_generator_configs(
         model=bc.model,  # TODO: model is already set in data_generator_arg_dict
         generator_approach=bc.generator_approach,
@@ -175,10 +179,27 @@ def main(  # pragma: no cover
         min=1,
         show_default=True,
     ),
+    estimator_type: str = typer.Option(
+        None,
+        "--estimator-type",
+        "-e",
+        help="Likelihood estimator type ('kde' or 'pyddm'). Overrides YAML config if specified.",
+        case_sensitive=False,
+    ),
     log_level: str = log_level_option,
 ):
     """
     Generate data using the specified configuration.
+
+    The estimator-type option allows you to choose between different likelihood
+    estimation methods:
+
+    - 'kde': Kernel Density Estimation (default, always available)
+
+    - 'pyddm': Analytical PDF from PyDDM (Phase 3, coming soon)
+
+    If not specified, the estimator type is read from the YAML config file.
+    If neither the CLI flag nor YAML config specifies it, defaults to 'kde'.
     """
     logging.basicConfig(
         level=log_level.upper(), format="%(asctime)s - %(levelname)s - %(message)s"
@@ -196,16 +217,34 @@ def main(  # pragma: no cover
         yaml_config_path=config_path, base_path=output
     )
 
+    # Phase 2: Override estimator_type if specified via CLI
+    if estimator_type is not None:
+        logger.info(f"Overriding estimator_type from CLI: {estimator_type}")
+        config_dict["data_config"]["estimator_type"] = estimator_type.lower()
+
     logger.debug("GENERATOR CONFIG")
     logger.debug(pformat(config_dict["data_config"]))
 
     logger.debug("MODEL CONFIG")
     logger.debug(pformat(config_dict["model_config"]))
 
-    # Make the generator
+    # Phase 2: Create estimator builder based on config
+    from ssms.dataset_generators.estimator_builders import create_estimator_builder
+
+    try:
+        estimator_builder = create_estimator_builder(
+            config_dict["data_config"], config_dict["model_config"]
+        )
+        logger.info(f"Using estimator: {type(estimator_builder).__name__}")
+    except NotImplementedError as e:
+        logger.error(str(e))
+        raise typer.Exit(code=1)
+
+    # Make the generator with injected builder
     my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
         generator_config=config_dict["data_config"],
         model_config=config_dict["model_config"],
+        estimator_builder=estimator_builder,  # Phase 2: Inject builder
     )
 
     is_cpn = config_dict["data_config"].get("cpn_only", False)

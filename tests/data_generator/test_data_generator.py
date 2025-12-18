@@ -276,7 +276,8 @@ def test_make_kde_data_raises_on_none_simulations():
 
     theta_dict = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3}
 
-    with pytest.raises(ValueError, match="No simulations provided"):
+    # Phase 1 refactoring: Error message now comes from estimator builder
+    with pytest.raises(ValueError, match="KDE estimator requires simulations"):
         my_gen._make_kde_data(simulations=None, theta=theta_dict)
 
 

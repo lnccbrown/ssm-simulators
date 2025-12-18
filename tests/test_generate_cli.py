@@ -83,4 +83,82 @@ def test_collect_data_generator_config(tmp_path, yaml_config):
     assert data_config["delta_t"] == 0.1
 
 
-# TODO: test app object and CLI commands. Harder to do than with argparse
+# Phase 2: Tests for estimator_type configuration
+
+
+def test_collect_config_with_estimator_type_yaml(tmp_path):
+    """Test that estimator_type from YAML is correctly parsed."""
+    yaml_config = {
+        "GENERATOR_APPROACH": "lan",
+        "N_SAMPLES": 1000,
+        "DELTA_T": 0.1,
+        "MODEL": "ddm",
+        "N_PARAMETER_SETS": 10,
+        "N_TRAINING_SAMPLES_BY_PARAMETER_SET": 100,
+        "N_SUBRUNS": 1,
+        "ESTIMATOR_TYPE": "kde",
+    }
+
+    yaml_buffer = io.StringIO()
+    yaml.dump(yaml_config, yaml_buffer)
+    yaml_buffer.seek(0)
+
+    config_dict = collect_data_generator_config(
+        yaml_config_path=yaml_buffer, base_path=tmp_path
+    )
+
+    assert "estimator_type" in config_dict["data_config"]
+    assert config_dict["data_config"]["estimator_type"] == "kde"
+
+
+def test_collect_config_without_estimator_type(tmp_path):
+    """Test that config works when estimator_type is not specified."""
+    yaml_config = {
+        "GENERATOR_APPROACH": "lan",
+        "N_SAMPLES": 1000,
+        "DELTA_T": 0.1,
+        "MODEL": "ddm",
+        "N_PARAMETER_SETS": 10,
+        "N_TRAINING_SAMPLES_BY_PARAMETER_SET": 100,
+        "N_SUBRUNS": 1,
+    }
+
+    yaml_buffer = io.StringIO()
+    yaml.dump(yaml_config, yaml_buffer)
+    yaml_buffer.seek(0)
+
+    config_dict = collect_data_generator_config(
+        yaml_config_path=yaml_buffer, base_path=tmp_path
+    )
+
+    # estimator_type should not be present if not in YAML
+    assert "estimator_type" not in config_dict["data_config"]
+
+
+def test_collect_config_estimator_type_case_insensitive(tmp_path):
+    """Test that estimator_type is converted to lowercase."""
+    yaml_config = {
+        "GENERATOR_APPROACH": "lan",
+        "N_SAMPLES": 1000,
+        "DELTA_T": 0.1,
+        "MODEL": "ddm",
+        "N_PARAMETER_SETS": 10,
+        "N_TRAINING_SAMPLES_BY_PARAMETER_SET": 100,
+        "N_SUBRUNS": 1,
+        "ESTIMATOR_TYPE": "KDE",  # Uppercase
+    }
+
+    yaml_buffer = io.StringIO()
+    yaml.dump(yaml_config, yaml_buffer)
+    yaml_buffer.seek(0)
+
+    config_dict = collect_data_generator_config(
+        yaml_config_path=yaml_buffer, base_path=tmp_path
+    )
+
+    # Should be lowercased
+    assert config_dict["data_config"]["estimator_type"] == "kde"
+
+
+# TODO: test app object and CLI commands with --estimator-type flag.
+# This requires using typer.testing.CliRunner, which is harder to do than with argparse
