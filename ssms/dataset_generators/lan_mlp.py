@@ -10,6 +10,13 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ssms.dataset_generators.protocols import (
+        EstimatorBuilderProtocol,
+        TrainingDataStrategyProtocol,
+    )
 
 import pickle
 import numpy as np
@@ -22,8 +29,10 @@ from ssms.basic_simulators.simulator import (
     simulator,  # , bin_simulator_output
 )
 from ssms.config import KDE_NO_DISPLACE_T
-from ssms.support_utils import kde_class
 from ssms.support_utils.utils import sample_parameters_from_constraints
+
+# Phase 1 refactoring: modular estimator and strategy components
+from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +50,11 @@ class data_generator:  # noqa: N801
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
+        _estimator_builder: EstimatorBuilderProtocol
+            Builder for creating likelihood estimators (injected or default KDE)
+        _training_strategy: TrainingDataStrategyProtocol
+            Strategy for generating training data (injected or default ResampleMixture)
+
     Methods
     -------
         generate_data_training_uniform(save=False, verbose=True, cpn_only=False)
@@ -50,8 +64,10 @@ class data_generator:  # noqa: N801
         _filter_simulations(simulations=None)
             Filters simulations according to the criteria
             specified in the generator_config.
+        _generate_training_data(simulations=None, theta=None)
+            Generates training data using injected estimator and strategy.
         _make_kde_data(simulations=None, theta=None)
-            Generates KDE data from simulations.
+            [DEPRECATED] Legacy wrapper for _generate_training_data.
         _mlp_get_processed_data_for_theta(random_seed_tuple)
             Helper function for generating training data for MLPs.
         _cpn_get_processed_data_for_theta(random_seed_tuple)
@@ -65,10 +81,21 @@ class data_generator:  # noqa: N801
     Returns
     -------
         data_generator object
+
+    Notes
+    -----
+    Phase 1 refactoring: The class now supports dependency injection of
+    estimator_builder and training_strategy, enabling modular and extensible
+    training data generation. By default, it uses KDEEstimatorBuilder and
+    ResampleMixtureStrategy for backward compatibility.
     """
 
     def __init__(
-        self, generator_config: dict | None = None, model_config: dict | None = None
+        self,
+        generator_config: dict | None = None,
+        model_config: dict | None = None,
+        estimator_builder: Optional["EstimatorBuilderProtocol"] = None,
+        training_strategy: Optional["TrainingDataStrategyProtocol"] = None,
     ):
         """Initialize data generator class.
 
@@ -80,6 +107,12 @@ class data_generator:  # noqa: N801
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
+        estimator_builder: EstimatorBuilderProtocol, optional
+            Builder for creating likelihood estimators. If None, defaults to
+            KDEEstimatorBuilder for backward compatibility.
+        training_strategy: TrainingDataStrategyProtocol, optional
+            Strategy for generating training data. If None, defaults to
+            ResampleMixtureStrategy for backward compatibility.
 
         Raises
         ------
@@ -89,6 +122,11 @@ class data_generator:  # noqa: N801
         Returns
         -------
         data_generator object
+
+        Notes
+        -----
+        Phase 1 refactoring: The estimator_builder and training_strategy parameters
+        enable dependency injection, making the data generator modular and extensible.
         """
         # INIT -----------------------------------------
         if generator_config is None:
@@ -153,6 +191,27 @@ class data_generator:  # noqa: N801
 
             self._build_simulator()
             self._get_ncpus()
+
+            # Phase 1 refactoring: Inject estimator builder and training strategy
+            # Default to KDE-based components for backward compatibility
+            if estimator_builder is not None:
+                self._estimator_builder = estimator_builder
+            else:
+                # Check if estimator_type is specified in config
+                from ssms.dataset_generators.estimator_builders.builder_factory import (
+                    create_estimator_builder,
+                )
+
+                self._estimator_builder = create_estimator_builder(
+                    self.generator_config, self.model_config
+                )
+
+            if training_strategy is not None:
+                self._training_strategy = training_strategy
+            else:
+                self._training_strategy = ResampleMixtureStrategy(
+                    self.generator_config, self.model_config
+                )
 
         # Make output folder if not already present
         output_folder = Path(self.generator_config["output_folder"])
@@ -243,10 +302,59 @@ class data_generator:  # noqa: N801
             [mode_, mean_, std_, mode_cnt_rel_, tmp_n_c, n_sim], dtype=np.float32
         )
 
+    def _generate_training_data(
+        self, simulations: dict | None = None, theta: dict | None = None
+    ) -> np.ndarray:
+        """Generate training data using injected estimator and strategy.
+
+        This method is FULLY GENERIC - it works with ANY likelihood estimator
+        (KDE, analytical PDF, etc.) and ANY training data strategy.
+
+        Arguments
+        ---------
+        simulations: dict, optional
+            Dictionary containing the simulations. Required for KDE estimators,
+            but may be optional for analytical estimators (e.g., PyDDM).
+        theta: dict
+            Dictionary containing the parameters.
+
+        Returns
+        -------
+        out: np.ndarray
+            Training data array of shape (n_samples, n_features) where:
+            - First columns: theta parameters
+            - Middle columns: RT and choice (possibly one-hot encoded)
+            - Last column: log-likelihood
+
+        Raises
+        ------
+        ValueError
+            If theta is None, or if the estimator builder requires simulations
+            but none are provided.
+
+        Notes
+        -----
+        Phase 1 refactoring: Extracted from _make_kde_data (lines 280-394).
+        This method now uses injected estimator_builder and training_strategy,
+        making it agnostic to the underlying likelihood computation method.
+        """
+        if theta is None:
+            raise ValueError("No theta provided")
+
+        # Build likelihood estimator for this theta
+        likelihood_estimator = self._estimator_builder.build(theta, simulations)
+
+        # Generate training data using the injected strategy
+        return self._training_strategy.generate(theta, likelihood_estimator)
+
     def _make_kde_data(
         self, simulations: dict | None = None, theta: dict | None = None
     ):
         """Generates KDE data from simulations.
+
+        .. deprecated:: Phase 1
+            Use :meth:`_generate_training_data` instead. This method is kept
+            for backward compatibility and will be removed in a future version.
 
         Arguments
         ---------
@@ -259,105 +367,13 @@ class data_generator:  # noqa: N801
         -------
         out: np.array
             Array containing the KDE data.
+
+        Notes
+        -----
+        This method now delegates to _generate_training_data, which uses
+        the injected estimator_builder and training_strategy.
         """
-        if simulations is None:
-            raise ValueError("No simulations provided")
-        if theta is None:
-            raise ValueError("No theta provided")
-
-        n = self.generator_config["n_training_samples_by_parameter_set"]
-        p = self.generator_config["kde_data_mixture_probabilities"]
-
-        # Initial sample distribution
-        n_kde = int(n * p[0])
-        n_unif_up = int(n * p[1])
-        n_unif_down = int(n * p[2])
-
-        total = n_kde + n_unif_up + n_unif_down
-        if total != n:
-            # Adjust n_kde to make up the difference
-            n_kde += n - total
-            # Safety check: ensure n_kde doesn't become negative
-            if n_kde < 0:
-                raise ValueError(
-                    f"Rounding error too large: cannot adjust n_kde to {n_kde}. "
-                    f"n={n}, p={p}, "
-                    f"n_kde={n_kde - (n - total)}"
-                    f", n_unif_up={n_unif_up}"
-                    f", n_unif_down={n_unif_down}"
-                )
-
-        if self.generator_config["separate_response_channels"]:
-            out = np.zeros(
-                (
-                    n_kde + n_unif_up + n_unif_down,
-                    2 + self.model_config["nchoices"] + len(theta.items()),
-                )
-            )
-        else:
-            out = np.zeros((n_kde + n_unif_up + n_unif_down, 3 + len(theta.items())))
-
-        out[:, : len(theta.items())] = np.tile(
-            np.stack([theta[key_] for key_ in self.model_config["params"]], axis=1),
-            (n_kde + n_unif_up + n_unif_down, 1),
-        )
-
-        tmp_kde = kde_class.LogKDE(
-            simulations,
-            displace_t=self.generator_config["kde_displace_t"],
-        )
-
-        # Get kde part
-        samples_kde = tmp_kde.kde_sample(n_samples=n_kde)
-        likelihoods_kde = tmp_kde.kde_eval(data=samples_kde).ravel()
-
-        if self.generator_config["separate_response_channels"]:
-            out[:n_kde, (-2 - self.model_config["nchoices"])] = samples_kde[0].ravel()
-
-            r_cnt = 0
-            choices = samples_kde[1].ravel()
-            for response in simulations["metadata"]["possible_choices"]:
-                out[:n_kde, ((-1 - self.model_config["nchoices"]) + r_cnt)] = (
-                    choices == response
-                ).astype(int)
-                r_cnt += 1
-        else:
-            out[:n_kde, -3] = samples_kde["rts"].ravel()
-            out[:n_kde, -2] = samples_kde["choices"].ravel()
-
-        out[:n_kde, -1] = likelihoods_kde
-
-        # Get positive uniform part:
-        choice_tmp = np.random.choice(
-            simulations["metadata"]["possible_choices"], size=n_unif_up
-        )
-
-        if simulations["metadata"]["max_t"] < 100:
-            rt_tmp = np.random.uniform(
-                low=0.0001, high=simulations["metadata"]["max_t"], size=n_unif_up
-            )
-        else:
-            rt_tmp = np.random.uniform(low=0.0001, high=100, size=n_unif_up)
-
-        likelihoods_unif = tmp_kde.kde_eval(
-            data={"rts": rt_tmp, "choices": choice_tmp}
-        ).ravel()
-
-        out[n_kde : (n_kde + n_unif_up), -3] = rt_tmp
-        out[n_kde : (n_kde + n_unif_up), -2] = choice_tmp
-        out[n_kde : (n_kde + n_unif_up), -1] = likelihoods_unif
-
-        # Get negative uniform part:
-        choice_tmp = np.random.choice(
-            simulations["metadata"]["possible_choices"], size=n_unif_down
-        )
-
-        rt_tmp = np.random.uniform(low=-1.0, high=0.0001, size=n_unif_down)
-
-        out[(n_kde + n_unif_up) :, -3] = rt_tmp
-        out[(n_kde + n_unif_up) :, -2] = choice_tmp
-        out[(n_kde + n_unif_up) :, -1] = self.generator_config["negative_rt_cutoff"]
-        return out.astype(np.float32)
+        return self._generate_training_data(simulations=simulations, theta=theta)
 
     def parameter_transform_for_data_gen(self, theta: dict):
         """
@@ -445,8 +461,10 @@ class data_generator:  # noqa: N801
             keep, stats = self._filter_simulations(simulations)
 
         # Now that we are happy with data
-        # construct KDEs
-        kde_data = self._make_kde_data(simulations=simulations, theta=theta_dict)
+        # generate training data using injected components
+        kde_data = self._generate_training_data(
+            simulations=simulations, theta=theta_dict
+        )
 
         if len(simulations["metadata"]["possible_choices"]) == 2:
             cpn_labels = np.expand_dims(simulations["choice_p"][0, 1], axis=0)

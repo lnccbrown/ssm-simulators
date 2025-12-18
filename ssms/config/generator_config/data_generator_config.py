@@ -103,6 +103,9 @@ def get_lan_config() -> dict:
         "separate_response_channels": False,
         "smooth_unif": True,
         "kde_displace_t": False,
+        "estimator_type": "kde",  # 'kde' or 'pyddm'
+        "pdf_interpolation": "cubic",  # For PyDDM: 'linear' or 'cubic'
+        "max_undecided_prob": 0.5,  # For PyDDM: reject params if P(undecided) > this
     }
 
 

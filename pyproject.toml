@@ -33,6 +33,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 
+[project.optional-dependencies]
+pyddm = ["pyddm>=0.9.0"]
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -48,6 +51,7 @@ dev = [
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
     "marimo[recommended]",
+    "pyddm>=0.9.0",
 ]
 
 [project.urls]
