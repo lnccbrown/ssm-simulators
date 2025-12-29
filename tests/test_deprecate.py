@@ -1,4 +1,4 @@
-from ssms.config.generator_config.data_generator_config import (
+from ssms.config.generator_config.DataGenerator_config import (
     DeprecatedDict,
 )
 

@@ -106,6 +106,13 @@ class SSMSToPyDDMMapper:
         - Position-dependent drift (Ornstein: v - g*x)
         - Custom time-dependent drift (gamma_drift, conflict models, etc.)
 
+        Architecture:
+        - Standard model configs specify drift_name and drift_fun
+        - Metadata (params) is looked up from the drift registry
+        - Direct drift_config dict is supported for custom runtime configurations
+
+        This design avoids duplicating metadata across 100+ model configs.
+
         Args:
             model_config: Model configuration dictionary from ssms.config
 
@@ -113,12 +120,36 @@ class SSMSToPyDDMMapper:
             Callable that accepts (t, x, **theta) and returns drift rate
         """
         model_name = model_config["name"]
-        drift_config = model_config.get("drift_config", None)
+        drift_cfg = model_config.get("drift_config", None)
+
+        # Standard case: look up drift metadata from registry
+        if drift_cfg is None:
+            drift_name = model_config.get("drift_name", "constant")
+            drift_fn = model_config.get("drift_fun", None)
+
+            # Look up parameters from drift registry
+            if drift_name != "constant" and drift_fn is not None:
+                from ssms.config import get_drift_registry
+
+                drift_registry = get_drift_registry()
+                if drift_registry.is_registered(drift_name):
+                    # Registry lookup (standard path for all predefined models)
+                    drift_info = drift_registry.get(drift_name)
+                    drift_params = drift_info["params"]
+                else:
+                    # Fallback for custom drifts defined at runtime
+                    drift_params = model_config.get("drift_params", [])
+
+                # Assemble drift configuration
+                drift_cfg = {
+                    "fun": drift_fn,
+                    "params": drift_params,
+                }
 
         # If there's a custom drift function specified
-        if drift_config is not None and drift_config != "constant":
-            drift_fn = drift_config["fun"]
-            drift_params = drift_config["params"]
+        if drift_cfg is not None and drift_cfg != "constant":
+            drift_fn = drift_cfg["fun"]
+            drift_params = drift_cfg["params"]
 
             # Adapt ssms drift function (f(t, **params)) to PyDDM signature (f(t, x, **params))
             def pyddm_drift(
@@ -165,19 +196,58 @@ class SSMSToPyDDMMapper:
 
         Returns callable with signature: boundary(t, **theta)
 
+        Architecture:
+        - Standard model configs specify boundary_name and boundary function
+        - Metadata (params, multiplicative) is looked up from the boundary registry
+        - Direct boundary_config dict is supported for custom runtime configurations
+
+        This design avoids duplicating metadata across 100+ model configs and ensures
+        consistent behavior for all instances of a given boundary type (e.g., all
+        "angle" boundaries work the same way).
+
         Args:
             model_config: Model configuration dictionary from ssms.config
 
         Returns:
             Callable that accepts (t, **theta) and returns boundary value
         """
-        boundary_config = model_config.get("boundary_config", None)
+        # Check if boundary_config dict is directly embedded (custom runtime config)
+        boundary_cfg = model_config.get("boundary_config", None)
+
+        # Standard case: look up boundary metadata from registry
+        if boundary_cfg is None:
+            boundary_name = model_config.get("boundary_name", "constant")
+            boundary_fn = model_config.get("boundary", None)
+
+            # Look up parameters and multiplicative flag from boundary registry
+            if boundary_name != "constant" and boundary_fn is not None:
+                from ssms.config import get_boundary_registry
+
+                boundary_registry = get_boundary_registry()
+                if boundary_registry.is_registered(boundary_name):
+                    # Registry lookup (standard path for all predefined models)
+                    boundary_info = boundary_registry.get(boundary_name)
+                    boundary_params = boundary_info["params"]
+                    is_multiplicative = boundary_info["multiplicative"]
+                else:
+                    # Fallback for custom boundaries defined at runtime
+                    boundary_params = model_config.get("boundary_params", [])
+                    is_multiplicative = model_config.get(
+                        "boundary_multiplicative", True
+                    )
+
+                # Assemble boundary configuration
+                boundary_cfg = {
+                    "fun": boundary_fn,
+                    "params": boundary_params,
+                    "multiplicative": is_multiplicative,
+                }
 
         # If custom boundary specified
-        if boundary_config is not None and boundary_config != "constant":
-            boundary_fn = boundary_config["fun"]
-            boundary_params = boundary_config["params"]
-            is_multiplicative = boundary_config.get("multiplicative", True)
+        if boundary_cfg is not None and boundary_cfg != "constant":
+            boundary_fn = boundary_cfg["fun"]
+            boundary_params = boundary_cfg["params"]
+            is_multiplicative = boundary_cfg.get("multiplicative", True)
 
             def pyddm_boundary(t: float, **theta: Any) -> float:
                 # Extract boundary params
@@ -188,9 +258,12 @@ class SSMSToPyDDMMapper:
                 result = boundary_fn(np.array([t]), **boundary_kwargs)
 
                 if is_multiplicative:
+                    # Multiplicative: boundary(t) = a * f(t)
                     return float(a * result[0])
                 else:
-                    return float(result[0])  # Already includes 'a'
+                    # Additive: boundary(t) = a + f(t)
+                    # (f(t) is typically negative for collapsing bounds)
+                    return float(a + result[0])
 
             return pyddm_boundary
 
@@ -224,14 +297,15 @@ class SSMSToPyDDMMapper:
         cls,
         model_config: dict[str, Any],
         theta: dict[str, Any],
-        generator_config: dict[str, Any],
+        generator_config: dict[str, Any] | None = None,
     ):
         """Build PyDDM model for specific parameter values.
 
         Args:
             model_config: Model structure (name, params, drift_config, boundary_config)
             theta: Specific parameter values for this instance
-            generator_config: Simulation settings (delta_t, max_t)
+            generator_config: Simulation settings (delta_t, max_t). If None, uses
+                defaults: {'delta_t': 0.001, 'max_t': 20.0}
 
         Returns:
             pyddm.Model instance ready to solve()
@@ -247,6 +321,13 @@ class SSMSToPyDDMMapper:
                 "PyDDM package required for analytical PDF estimation. "
                 "Install with: pip install pyddm"
             )
+
+        # Use default generator config if none provided
+        if generator_config is None:
+            generator_config = {
+                "delta_t": 0.001,  # 1ms time step (good balance of accuracy/speed)
+                "max_t": 20.0,  # 20s maximum decision time (captures long tail)
+            }
 
         is_compat, reason = cls.is_compatible(model_config)
         if not is_compat:

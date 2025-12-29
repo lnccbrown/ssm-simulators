@@ -1,7 +1,7 @@
 """
-Base classes for theta transformations.
+Base classes for parameter adaptations.
 
-This module defines the abstract base class that all theta transformations
+This module defines the abstract base class that all parameter adaptations
 must inherit from.
 """
 
@@ -9,21 +9,21 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-class ThetaTransformation(ABC):
-    """Abstract base class for theta parameter transformations.
+class ParameterAdaptation(ABC):
+    """Abstract base class for parameter adaptations.
 
-    A theta transformation is a single, focused operation that modifies
-    the theta parameter dictionary in some way. Transformations can be
-    composed into pipelines to handle complex parameter processing logic.
+    A parameter adaptation is a single, focused operation that prepares
+    theta parameters for simulator consumption. Adaptations can be
+    composed into pipelines to handle complex parameter preparation logic.
 
     Subclasses must implement the `apply` method which performs the actual
-    transformation.
+    adaptation.
 
     Examples
     --------
-    Create a custom transformation:
+    Create a custom adaptation:
 
-    >>> class ScaleParameter(ThetaTransformation):
+    >>> class ScaleParameter(ParameterAdaptation):
     ...     def __init__(self, param_name: str, scale: float):
     ...         self.param_name = param_name
     ...         self.scale = scale
@@ -38,7 +38,7 @@ class ThetaTransformation(ABC):
     def apply(
         self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
     ) -> dict[str, Any]:
-        """Apply transformation to theta parameters.
+        """Apply adaptation to theta parameters.
 
         This method should modify the theta dictionary in place and return it.
         It may add new parameters, modify existing parameters, or remove
@@ -60,7 +60,7 @@ class ThetaTransformation(ABC):
 
         Notes
         -----
-        - Transformations should be pure when possible (no side effects)
+        - Adaptations should be pure when possible (no side effects)
         - If creating new arrays, use dtype=np.float32 for consistency
         - Document any parameters that are added, modified, or removed
         """
@@ -72,7 +72,7 @@ class ThetaTransformation(ABC):
         Returns
         -------
         str
-            A string describing this transformation.
+            A string describing this adaptation.
         """
         # Default implementation shows class name and attributes
         attrs = []

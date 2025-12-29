@@ -98,7 +98,11 @@ class PyDDMEstimatorBuilder:
 
         # Check if undecided probability is too high
         # High P(undecided) makes sampling inefficient/intractable
-        max_undecided_prob = self.generator_config.get("max_undecided_prob", 0.5)
+        from ssms.config.config_utils import get_nested_config
+
+        max_undecided_prob = get_nested_config(
+            self.generator_config, "estimator", "max_undecided_prob", default=0.5
+        )
         p_undecided = solution.prob_undecided()
 
         if p_undecided > max_undecided_prob:
@@ -109,7 +113,9 @@ class PyDDMEstimatorBuilder:
             )
 
         # Get interpolation method from config (default to cubic)
-        interpolation = self.generator_config.get("pdf_interpolation", "cubic")
+        interpolation = get_nested_config(
+            self.generator_config, "estimator", "pdf_interpolation", default="cubic"
+        )
 
         # Create estimator (extracts PDFs internally)
         estimator = PyDDMLikelihoodEstimator(

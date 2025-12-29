@@ -88,4 +88,7 @@ def get_lba_angle_3_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.lba_angle,
+        "parameter_sampling_constraints": [
+            {"type": "swap", "param_a": "a", "param_b": "z"}
+        ],
     }

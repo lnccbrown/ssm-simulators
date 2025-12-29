@@ -1,62 +1,64 @@
 """
-Modular theta processor using transformation pipelines.
+Modular parameter simulator adapter using adaptation pipelines.
 
-This module provides the ModularThetaProcessor class which applies registered
-theta transformations in sequence based on model configuration.
+This module provides the ModularParameterSimulatorAdapter class which applies registered
+parameter adaptations in sequence based on model configuration.
 """
 
 from typing import Any
 
 import numpy as np
 
-from ssms.basic_simulators.theta_processor import AbstractThetaProcessor
-from ssms.basic_simulators.theta_transforms import (
+from ssms.basic_simulators.parameter_simulator_adapter import (
+    AbstractParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_adapters import (
     ApplyMapping,
     ColumnStackParameters,
     DeleteParameters,
     ExpandDimension,
-    LambdaTransformation,
+    LambdaAdaptation,
     RenameParameter,
     SetZeroArray,
-    ThetaProcessorRegistry,
+    ParameterAdapterRegistry,
 )
 
 
-class ModularThetaProcessor(AbstractThetaProcessor):
-    """Modular theta processor using transformation pipelines.
+class ModularParameterSimulatorAdapter(AbstractParameterSimulatorAdapter):
+    """Modular parameter simulator adapter using adaptation pipelines.
 
-    This processor applies a sequence of theta transformations based on the
-    model name. Transformations are registered in a ThetaProcessorRegistry
-    which maps model names (and model families) to transformation pipelines.
+    This adapter applies a sequence of parameter adaptations based on the
+    model name. Adaptations are registered in a ParameterAdapterRegistry
+    which maps model names (and model families) to adaptation pipelines.
 
-    The processor can be customized by providing a custom registry or by
-    adding additional transformations after initialization.
+    The adapter can be customized by providing a custom registry or by
+    adding additional adaptations after initialization.
 
     Parameters
     ----------
-    registry : ThetaProcessorRegistry or None, optional
-        Registry containing model → transformations mappings.
+    registry : ParameterAdapterRegistry or None, optional
+        Registry containing model → adaptations mappings.
         If None, uses the default registry with all built-in models.
 
     Examples
     --------
     >>> # Use default registry
-    >>> processor = ModularThetaProcessor()
-    >>> theta = processor.process_theta(theta, model_config, n_trials)
+    >>> adapter = ModularParameterSimulatorAdapter()
+    >>> theta = adapter.adapt_parameters(theta, model_config, n_trials)
     >>>
     >>> # Use custom registry
-    >>> custom_registry = ThetaProcessorRegistry()
+    >>> custom_registry = ParameterAdapterRegistry()
     >>> custom_registry.register_model("my_model", [...])
-    >>> processor = ModularThetaProcessor(registry=custom_registry)
+    >>> adapter = ModularParameterSimulatorAdapter(registry=custom_registry)
     """
 
-    def __init__(self, registry: ThetaProcessorRegistry | None = None):
-        """Initialize processor with registry."""
+    def __init__(self, registry: ParameterAdapterRegistry | None = None):
+        """Initialize adapter with registry."""
         self.registry = (
             registry if registry is not None else self._build_default_registry()
         )
 
-    def process_theta(
+    def adapt_parameters(
         self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
     ) -> dict[str, Any]:
         """Process theta by applying registered transformations.
@@ -85,19 +87,19 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         return theta
 
     @staticmethod
-    def _build_default_registry() -> ThetaProcessorRegistry:
-        """Build registry with all default model transformations.
+    def _build_default_registry() -> ParameterAdapterRegistry:
+        """Build registry with all default model adaptations.
 
-        This method creates a registry populated with transformation pipelines
+        This method creates a registry populated with adaptation pipelines
         for all built-in models. It's called automatically if no registry is
         provided to __init__.
 
         Returns
         -------
-        ThetaProcessorRegistry
+        ParameterAdapterRegistry
             Registry with all default model registrations
         """
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
 
         # ================================================================
         # SINGLE-PARTICLE MODELS (No transformations needed)
@@ -171,7 +173,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             "ddm_st",
             [
                 # Fixed parameters from config
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update(
                         {
                             "z_dist": cfg["simulator_fixed_params"]["z_dist"],
@@ -189,7 +191,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         registry.register_model(
             "ddm_rayleight",
             [
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update(
                         {
                             "z_dist": cfg["simulator_fixed_params"]["z_dist"],
@@ -209,7 +211,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         registry.register_model(
             "ddm_truncnormt",
             [
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update(
                         {
                             "z_dist": cfg["simulator_fixed_params"]["z_dist"],
@@ -227,7 +229,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         registry.register_model(
             "ddm_sdv",
             [
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update(
                         {
                             "z_dist": cfg["simulator_fixed_params"]["z_dist"],
@@ -255,7 +257,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         # ================================================================
 
         # Helper for setting t to zeros
-        set_zero_t = LambdaTransformation(
+        set_zero_t = LambdaAdaptation(
             lambda theta, cfg, n: theta.update({"t": np.zeros(n).astype(np.float32)})
             or theta,
             name="set_zero_t",
@@ -264,7 +266,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         registry.register_model(
             "lba2",
             [
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update({"nact": 2}) or theta,
                     name="set_nact_2",
                 ),
@@ -279,7 +281,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         registry.register_model(
             "lba3",
             [
-                LambdaTransformation(
+                LambdaAdaptation(
                     lambda theta, cfg, n: theta.update({"nact": 3}) or theta,
                     name="set_nact_3",
                 ),
@@ -383,7 +385,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(
                 model,
                 [
-                    LambdaTransformation(
+                    LambdaAdaptation(
                         lambda theta, cfg, n: theta.update(
                             {"z": np.column_stack([theta["z"], theta["z"]])}
                         )
@@ -423,7 +425,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(
                 model,
                 [
-                    LambdaTransformation(
+                    LambdaAdaptation(
                         lambda theta, cfg, n: theta.update(
                             {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
                         )
@@ -470,7 +472,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(
                 model,
                 [
-                    LambdaTransformation(
+                    LambdaAdaptation(
                         lambda theta, cfg, n: theta.update(
                             {"z": np.column_stack([theta["z"]] * 4)}
                         )
@@ -514,7 +516,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(
                 model,
                 [
-                    LambdaTransformation(
+                    LambdaAdaptation(
                         lambda theta, cfg, n: theta.update(
                             {"z": np.column_stack([theta["z"]] * 3)}
                         )
@@ -558,7 +560,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(
                 model,
                 [
-                    LambdaTransformation(
+                    LambdaAdaptation(
                         lambda theta, cfg, n: theta.update(
                             {"z": np.column_stack([theta["z"]] * 4)}
                         )
@@ -589,7 +591,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
         # ================================================================
 
         # Common transformations for no-bias variants
-        add_z_defaults = LambdaTransformation(
+        add_z_defaults = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {
@@ -622,7 +624,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(model, [add_z_defaults])
 
         # MIC2 models - adjusted
-        add_mic2_adj_params = LambdaTransformation(
+        add_mic2_adj_params = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {
@@ -648,7 +650,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             registry.register_model(model, [add_z_defaults, add_mic2_adj_params])
 
         # MIC2 Ornstein variants
-        add_ornstein_params = LambdaTransformation(
+        add_ornstein_params = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {
@@ -662,7 +664,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             name="add_ornstein_params",
         )
 
-        add_ornstein_params_no_lowdim = LambdaTransformation(
+        add_ornstein_params_no_lowdim = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {
@@ -697,7 +699,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             )
 
         # MIC2 Leak variants
-        add_leak_params = LambdaTransformation(
+        add_leak_params = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {
@@ -712,7 +714,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             name="add_leak_params",
         )
 
-        add_leak_params_no_lowdim = LambdaTransformation(
+        add_leak_params_no_lowdim = LambdaAdaptation(
             lambda theta, cfg, n: (
                 theta.update(
                     {

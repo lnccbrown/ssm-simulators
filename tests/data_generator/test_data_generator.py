@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 
 from ssms.config import get_lan_config, model_config
-from ssms.dataset_generators.lan_mlp import data_generator
+from ssms.dataset_generators.lan_mlp import DataGenerator
 
 from expected_shapes import get_expected_shapes
-from expected_constrained_param_space import infer_constrained_param_space
+from expected_constrained_param_space import infer_param_bounds_dict
 
 
 N_PARAMETER_SETS = random.randint(2, 10)
@@ -81,7 +81,7 @@ slow_prefixes = (
 
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
-def test_data_generator(model_name, model_conf):
+def test_DataGenerator(model_name, model_conf):
     if model_name in broken_models:
         pytest.skip(f"Skipping broken model: {model_name}")
     if model_name.startswith(slow_prefixes):
@@ -90,7 +90,7 @@ def test_data_generator(model_name, model_conf):
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = model_name
 
-    my_dataset_generator = data_generator(
+    my_dataset_generator = DataGenerator(
         generator_config=generator_config, model_config=model_conf
     )
     training_data = my_dataset_generator.generate_data_training_uniform(save=False)
@@ -106,8 +106,8 @@ def test_data_generator(model_name, model_conf):
     )
 
     assert training_data["model_config"][
-        "constrained_param_space"
-    ] == infer_constrained_param_space(model_config[model_name])
+        "param_bounds_dict"
+    ] == infer_param_bounds_dict(model_config[model_name])
 
 
 def test_data_persistance(tmp_path):
@@ -117,7 +117,7 @@ def test_data_persistance(tmp_path):
     generator_config["output_folder"] = str(tmp_path)
     generator_config["n_subruns"] = 1
 
-    my_dataset_generator = data_generator(
+    my_dataset_generator = DataGenerator(
         generator_config=generator_config, model_config=model_conf
     )
     my_dataset_generator.generate_data_training_uniform(save=True)
@@ -141,10 +141,10 @@ def test_bad_inputs():
     model_conf = model_config["ddm"]
 
     with pytest.raises(ValueError):
-        data_generator(generator_config=gen_config, model_config=None)
+        DataGenerator(generator_config=gen_config, model_config=None)
 
     with pytest.raises(ValueError):
-        data_generator(generator_config=None, model_config=model_conf)
+        DataGenerator(generator_config=None, model_config=model_conf)
 
 
 # ============================================================================
@@ -159,12 +159,12 @@ def test_init_with_deadline_model():
     generator_config["model"] = "ddm_deadline"
     generator_config["dgp_list"] = "ddm_deadline"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     # Check that deadline was added
     assert "deadline" in my_gen.model_config["params"]
-    assert "deadline" in my_gen.model_config["constrained_param_space"]
-    assert my_gen.model_config["constrained_param_space"]["deadline"] == (0.001, 10)
+    assert "deadline" in my_gen.model_config["param_bounds_dict"]
+    assert my_gen.model_config["param_bounds_dict"]["deadline"] == (0.001, 10)
     assert my_gen.model_config["n_params"] == model_conf["n_params"] + 1
     assert my_gen.model_config["name"].endswith("_deadline")
 
@@ -175,7 +175,7 @@ def test_get_simulations_returns_valid_structure():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "ddm"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     theta_dict = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3}
     sim = my_gen.get_simulations(theta=theta_dict, random_seed=42)
@@ -196,7 +196,7 @@ def test_filter_simulations_accepts_valid_data():
     # Use config with increased n_samples to get better statistics
     generator_config["n_samples"] = 1000
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     # Use parameters known to produce good variability
     theta_dict = {"v": 2.0, "a": 1.5, "z": 0.5, "t": 0.2}
@@ -215,7 +215,7 @@ def test_filter_simulations_rejects_pathological_data():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "ddm"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     # Create fake simulation with all identical RTs (high mode count)
     fake_sim = {
@@ -234,7 +234,7 @@ def test_filter_simulations_raises_on_none():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "ddm"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     with pytest.raises(ValueError, match="No simulations provided"):
         my_gen._filter_simulations(simulations=None)
@@ -247,7 +247,7 @@ def test_make_kde_data_returns_correct_shape():
     generator_config["dgp_list"] = "ddm"
     generator_config["n_training_samples_by_parameter_set"] = 10
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     # _make_kde_data expects theta_dict values to be arrays, not scalars
     theta_dict = {
@@ -272,7 +272,7 @@ def test_make_kde_data_raises_on_none_simulations():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "ddm"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     theta_dict = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3}
 
@@ -287,7 +287,7 @@ def test_make_kde_data_raises_on_none_theta():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "ddm"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     theta_dict = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3}
     sim = my_gen.get_simulations(theta=theta_dict, random_seed=42)
@@ -302,7 +302,7 @@ def test_parameter_transform_for_lba_angle_3():
     generator_config = deepcopy(gen_config)
     generator_config["dgp_list"] = "lba_angle_3"
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     # Create theta with a < z
     theta_dict = {"v0": 1.0, "v1": 1.2, "v2": 1.1, "a": 0.8, "z": 1.5, "t": 0.3}
@@ -322,7 +322,7 @@ def test_mlp_get_processed_data_for_theta_returns_all_keys():
     generator_config["dgp_list"] = "ddm"
     generator_config["n_training_samples_by_parameter_set"] = 6
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     result = my_gen._mlp_get_processed_data_for_theta((42, 43))
 
@@ -346,50 +346,9 @@ def test_mlp_get_processed_data_for_theta_returns_all_keys():
     assert isinstance(result["theta"], np.ndarray)
 
 
-def test_cpn_get_processed_data_for_theta_returns_cpn_keys():
-    """Test _cpn_get_processed_data_for_theta() returns cpn-specific keys (no lan_data)."""
-    model_conf = model_config["ddm"]
-    generator_config = deepcopy(gen_config)
-    generator_config["dgp_list"] = "ddm"
-
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
-
-    result = my_gen._cpn_get_processed_data_for_theta((42, 43))
-
-    expected_keys = {
-        "cpn_data",
-        "cpn_labels",
-        "cpn_no_omission_data",
-        "cpn_no_omission_labels",
-        "opn_data",
-        "opn_labels",
-        "gonogo_data",
-        "gonogo_labels",
-        "theta",
-    }
-    assert set(result.keys()) == expected_keys
-    assert "lan_data" not in result
-    assert "binned_128" not in result
-
-
-def test_generate_data_training_uniform_cpn_only():
-    """Test generate_data_training_uniform() with cpn_only=True excludes lan_data."""
-    model_conf = model_config["ddm"]
-    generator_config = deepcopy(gen_config)
-    generator_config["dgp_list"] = "ddm"
-    generator_config["n_parameter_sets"] = 2
-    generator_config["n_subruns"] = 1
-    generator_config["n_cpus"] = 1
-
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
-
-    result = my_gen.generate_data_training_uniform(save=False, cpn_only=True)
-
-    assert "cpn_data" in result
-    assert "lan_data" not in result
-    assert "binned_128" not in result
-    assert "generator_config" in result
-    assert "model_config" in result
+# Phase 4 Note: Tests for _cpn_get_processed_data_for_theta() and cpn_only
+# functionality were removed as this functionality was deprecated and removed
+# in Phase 4 refactoring to simplify the interface.
 
 
 def test_generate_data_training_uniform_single_cpu():
@@ -401,7 +360,7 @@ def test_generate_data_training_uniform_single_cpu():
     generator_config["n_subruns"] = 1
     generator_config["n_cpus"] = 1
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     result = my_gen.generate_data_training_uniform(save=False, verbose=False)
 
@@ -420,7 +379,7 @@ def test_generate_data_training_uniform_multi_cpu():
     generator_config["n_subruns"] = 1
     generator_config["n_cpus"] = 2
 
-    my_gen = data_generator(generator_config=generator_config, model_config=model_conf)
+    my_gen = DataGenerator(generator_config=generator_config, model_config=model_conf)
 
     result = my_gen.generate_data_training_uniform(save=False, verbose=False)
 

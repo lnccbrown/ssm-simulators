@@ -38,10 +38,6 @@ class ResampleMixtureStrategy:
     >>> strategy = ResampleMixtureStrategy(generator_config, model_config)
     >>> training_data = strategy.generate(theta, likelihood_estimator)
     >>> assert training_data.shape == (n_training_samples, n_features)
-
-    Notes
-    -----
-    Extracted from lan_mlp.py lines 268-360 as part of Phase 1 refactoring.
     """
 
     def __init__(self, generator_config: dict, model_config: dict):
@@ -52,7 +48,7 @@ class ResampleMixtureStrategy:
         generator_config : dict
             Configuration dictionary containing:
             - 'n_training_samples_by_parameter_set': Total samples to generate
-            - 'kde_data_mixture_probabilities': [p_kde, p_unif_up, p_unif_down]
+            - 'data_mixture_probabilities': [p_estimator, p_unif_up, p_unif_down]
             - 'separate_response_channels': Whether to one-hot encode choices
             - 'negative_rt_cutoff': Log-likelihood value for negative RTs
         model_config : dict
@@ -92,7 +88,7 @@ class ResampleMixtureStrategy:
         """
         # Extract configuration
         n = self.generator_config["n_training_samples_by_parameter_set"]
-        p = self.generator_config["kde_data_mixture_probabilities"]
+        p = self.generator_config["data_mixture_probabilities"]
 
         # Calculate sample counts for each component
         n_kde = int(n * p[0])

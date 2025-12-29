@@ -1,16 +1,16 @@
-"""Define the `AbstractThetaProcessor` and its concrete implementation.
+"""Define the `AbstractParameterSimulatorAdapter` and its concrete implementation.
 
-`SimpleThetaProcessor` for processing theta parameters based on model configurations.
+`SimpleParameterSimulatorAdapter` for adapting parameters for simulator consumption.
 
 Classes:
-    - AbstractThetaProcessor: An abstract base class that defines the interface for
-      processing theta parameters.
-    - SimpleThetaProcessor: A concrete implementation of `AbstractThetaProcessor` that
-      processes theta parameters based on various model configurations.
+    - AbstractParameterSimulatorAdapter: An abstract base class that defines the interface for
+      adapting parameters for simulators.
+    - SimpleParameterSimulatorAdapter: A concrete implementation of `AbstractParameterSimulatorAdapter` that
+      adapts parameters based on various model configurations.
 
-The `SimpleThetaProcessor` class includes methods to handle different models such as
+The `SimpleParameterSimulatorAdapter` class includes methods to handle different models such as
 single particle models, multi-particle models, LBA-based models, and various choice
-models. It modifies the theta parameters according to the specified model configuration
+models. It prepares the parameters according to the specified model configuration
 and number of trials.
 """
 
@@ -20,11 +20,11 @@ from typing import Any
 import numpy as np
 
 
-class AbstractThetaProcessor(ABC):
+class AbstractParameterSimulatorAdapter(ABC):
     """Abstract base class for theta processors."""
 
     @abstractmethod
-    def process_theta(
+    def adapt_parameters(
         self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
     ) -> dict[str, Any]:
         """
@@ -41,8 +41,8 @@ class AbstractThetaProcessor(ABC):
         """
 
 
-class SimpleThetaProcessor(AbstractThetaProcessor):
-    """Simple implementation of the AbstractThetaProcessor.
+class SimpleParameterSimulatorAdapter(AbstractParameterSimulatorAdapter):
+    """Simple implementation of the AbstractParameterSimulatorAdapter.
 
     This class collects functions (for now very simple) that build the bridge between
     the model_config level specification of the model and the theta parameters that are
@@ -72,7 +72,7 @@ class SimpleThetaProcessor(AbstractThetaProcessor):
         "conflict_stimflex_leak2_drift_angle",
     ]
 
-    def process_theta(
+    def adapt_parameters(
         self, theta: dict[str, Any], model_config: dict[str, Any], n_trials: int
     ) -> dict[str, Any]:
         """

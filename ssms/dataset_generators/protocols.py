@@ -4,13 +4,44 @@ This module defines the interfaces (protocols) for:
 - Likelihood estimators: Objects that estimate P(RT, choice | theta)
 - Estimator builders: Objects that create and configure likelihood estimators
 - Training data strategies: Objects that generate training samples from estimators
+- Data generation strategies: Objects that orchestrate the end-to-end workflow
+- Parameter samplers: Objects that sample parameters from parameter spaces
 
 Using protocols allows for dependency injection and clean separation of concerns.
 """
 
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
+
+
+class ParameterSamplerProtocol(Protocol):
+    """Protocol for parameter sampling strategies.
+
+    Parameter samplers generate parameter sets from a parameter space,
+    handling dependencies between parameters and applying transforms.
+    """
+
+    def sample(
+        self, n_samples: int = 1, random_state: np.random.Generator | None = None
+    ) -> dict[str, np.ndarray]:
+        """Sample n_samples parameter sets.
+
+        Args:
+            n_samples: Number of parameter sets to sample
+
+        Returns:
+            Dictionary mapping parameter names to sampled values (arrays)
+        """
+        ...
+
+    def get_param_space(self) -> dict[str, tuple]:
+        """Get the parameter space bounds.
+
+        Returns:
+            Dictionary mapping parameter names to (lower, upper) bound tuples
+        """
+        ...
 
 
 class LikelihoodEstimatorProtocol(Protocol):
@@ -91,7 +122,7 @@ class EstimatorBuilderProtocol(Protocol):
     """Protocol for building likelihood estimators.
 
     Builders encapsulate all the logic for creating and configuring
-    likelihood estimators. This keeps the data_generator class generic
+    likelihood estimators. This keeps the DataGenerator class generic
     and free of type-specific logic.
     """
 
@@ -151,5 +182,69 @@ class TrainingDataStrategyProtocol(Protocol):
             - Column -3: Reaction times
             - Column -2: Choices
             - Column -1: Log-likelihoods
+        """
+        ...
+
+
+@runtime_checkable
+class DataGenerationPipelineProtocol(Protocol):
+    """Protocol for end-to-end data generation workflows.
+
+    Data generation pipelines orchestrate the complete process from parameter
+    sampling to training data generation. Different pipelines handle different
+    workflows:
+    - Simulation-based: Run simulations, filter, build KDE, generate data
+    - Analytical (PyDDM): Skip simulations, solve Fokker-Planck, generate data
+    - Hybrid: Mix simulation and analytical approaches
+    - Other: Custom workflows
+
+    This protocol enables clean separation between simulation-dependent logic
+    (SimulationPipeline) and analytical approaches (PyDDMPipeline),
+    eliminating wasteful computation.
+
+    Attributes
+    ----------
+    generator_config : dict
+        Configuration for data generation (samples, bins, etc.)
+    model_config : dict
+        Model specification (parameters, bounds, transforms, etc.)
+    """
+
+    # Required attributes
+    generator_config: dict
+    model_config: dict
+
+    def generate_for_parameter_set(
+        self,
+        parameter_sampling_seed: int,
+        random_seed: int | None = None,
+    ) -> dict[str, Any]:
+        """Generate training data for one parameter set.
+
+        Arguments
+        ---------
+        parameter_sampling_seed : int
+            Index of parameter set to generate (used to sample from param space)
+        random_seed : int | None
+            Random seed for reproducibility (may be unused for deterministic methods)
+
+        Returns
+        -------
+        result : dict
+            Dictionary with keys:
+            - 'data': np.ndarray of training data (or None if generation failed)
+            - 'theta': dict of parameter values used
+            - 'success': bool indicating whether generation succeeded
+            - 'error': str (optional) error message if success=False
+        """
+        ...
+
+    def get_param_space(self) -> Any:
+        """Get the parameter space object used by this strategy.
+
+        Returns
+        -------
+        param_space : Any
+            Parameter space object for sampling theta values
         """
         ...

@@ -6,10 +6,10 @@ model configurations for use with the Simulator class.
 """
 
 from collections.abc import Callable
-from copy import deepcopy
 
-from ssms.config._modelconfig import get_model_config
-from ssms.config._modelconfig.base import boundary_config, drift_config
+from ssms.config.model_registry import get_model_registry
+from ssms.config.boundary_registry import get_boundary_registry
+from ssms.config.drift_registry import get_drift_registry
 
 
 class ConfigBuilder:
@@ -86,14 +86,15 @@ class ConfigBuilder:
         ...                                     param_bounds=[[-4, 0.3, 0.1, 0],
         ...                                                   [4, 3.0, 0.9, 2.0]])
         """
-        model_config_dict = get_model_config()
-        if model_name not in model_config_dict:
+        registry = get_model_registry()
+        if not registry.has_model(model_name):
+            available = registry.list_models()
             raise ValueError(
-                f"Unknown model '{model_name}'. Available models: "
-                f"{list(model_config_dict.keys())}"
+                f"Unknown model '{model_name}'. "
+                f"Available models: {available[:10]}... ({len(available)} total)"
             )
 
-        config = deepcopy(model_config_dict[model_name])
+        config = registry.get(model_name)  # Already returns a deep copy
         config.update(overrides)
 
         return config
@@ -348,19 +349,20 @@ class ConfigBuilder:
         Examples
         --------
         >>> config = ConfigBuilder.from_model("ddm")
-        >>> config = ConfigBuilder.add_boundary(config, "angle", ["theta"])
+        >>> config = ConfigBuilder.add_boundary(config, "angle")
         """
         if isinstance(boundary, str):
-            if boundary not in boundary_config:
+            registry = get_boundary_registry()
+            if not registry.is_registered(boundary):
+                available = registry.list_boundaries()
                 raise ValueError(
-                    f"Unknown boundary '{boundary}'. Available: {list(boundary_config.keys())}"
+                    f"Unknown boundary '{boundary}'. Available: {available}"
                 )
+            boundary_spec = registry.get(boundary)
             config["boundary_name"] = boundary
-            config["boundary"] = boundary_config[boundary]["fun"]
-            config["boundary_params"] = boundary_config[boundary]["params"]
-            config["boundary_multiplicative"] = boundary_config[boundary][
-                "multiplicative"
-            ]
+            config["boundary"] = boundary_spec["fun"]
+            config["boundary_params"] = boundary_spec["params"]
+            config["boundary_multiplicative"] = boundary_spec["multiplicative"]
         elif callable(boundary):
             if boundary_params is None:
                 raise ValueError(
@@ -404,18 +406,18 @@ class ConfigBuilder:
 
         Examples
         --------
-        >>> config = ConfigBuilder.from_model("ddm_flex")
-        >>> config = ConfigBuilder.add_drift(config, "gamma_drift",
-        ...                                   ["shape", "scale", "c"])
+        >>> config = ConfigBuilder.from_model("ddm")
+        >>> config = ConfigBuilder.add_drift(config, "gamma_drift")
         """
         if isinstance(drift, str):
-            if drift not in drift_config:
-                raise ValueError(
-                    f"Unknown drift '{drift}'. Available: {list(drift_config.keys())}"
-                )
+            registry = get_drift_registry()
+            if not registry.is_registered(drift):
+                available = registry.list_drifts()
+                raise ValueError(f"Unknown drift '{drift}'. Available: {available}")
+            drift_spec = registry.get(drift)
             config["drift_name"] = drift
-            config["drift"] = drift_config[drift]["fun"]
-            config["drift_params"] = drift_config[drift]["params"]
+            config["drift"] = drift_spec["fun"]
+            config["drift_params"] = drift_spec["params"]
         elif callable(drift):
             if drift_params is None:
                 raise ValueError(

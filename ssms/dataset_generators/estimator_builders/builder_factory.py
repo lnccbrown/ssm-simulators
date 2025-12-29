@@ -75,11 +75,15 @@ def create_estimator_builder(
     --------
     KDEEstimatorBuilder : Builder for KDE-based likelihood estimators
     """
-    # Check for explicit estimator type
-    estimator_type = generator_config.get("estimator_type", "kde").lower()
+    # Check for explicit estimator type from nested config
+    from ssms.config.config_utils import get_nested_config
+
+    estimator_type = get_nested_config(
+        generator_config, "estimator", "type", default="kde"
+    ).lower()
 
     # Legacy flag support (for backward compatibility)
-    if generator_config.get("use_pyddm_pdf", False):
+    if get_nested_config(generator_config, "estimator", "use_pyddm_pdf", default=False):
         estimator_type = "pyddm"
 
     if estimator_type == "kde":

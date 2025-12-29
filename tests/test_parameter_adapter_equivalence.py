@@ -1,8 +1,8 @@
 """
-Equivalence tests for ModularThetaProcessor vs SimpleThetaProcessor.
+Equivalence tests for ModularParameterSimulatorAdapter vs SimpleParameterSimulatorAdapter.
 
-These tests verify that the new ModularThetaProcessor produces identical
-results to the legacy SimpleThetaProcessor for all models.
+These tests verify that the new ModularParameterSimulatorAdapter produces identical
+results to the legacy SimpleParameterSimulatorAdapter for all models.
 """
 
 from copy import deepcopy
@@ -10,8 +10,12 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_simulator_adapter import (
+    SimpleParameterSimulatorAdapter,
+)
 from ssms.config import model_config
 
 
@@ -189,17 +193,17 @@ ALL_MODEL_NAMES = list(model_config.keys())
 
 
 class TestProcessorEquivalence:
-    """Test equivalence between SimpleThetaProcessor and ModularThetaProcessor."""
+    """Test equivalence between SimpleParameterSimulatorAdapter and ModularParameterSimulatorAdapter."""
 
     @pytest.fixture
     def simple_processor(self):
-        """Create SimpleThetaProcessor instance."""
-        return SimpleThetaProcessor()
+        """Create SimpleParameterSimulatorAdapter instance."""
+        return SimpleParameterSimulatorAdapter()
 
     @pytest.fixture
     def modular_processor(self):
-        """Create ModularThetaProcessor instance."""
-        return ModularThetaProcessor()
+        """Create ModularParameterSimulatorAdapter instance."""
+        return ModularParameterSimulatorAdapter()
 
     @pytest.mark.parametrize("model_name", ALL_MODEL_NAMES)
     def test_equivalence_single_trial(
@@ -212,10 +216,10 @@ class TestProcessorEquivalence:
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=1)
 
         # Process with both processors
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=1
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=1
         )
 
@@ -233,10 +237,10 @@ class TestProcessorEquivalence:
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=10)
 
         # Process with both processors
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=10
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=10
         )
 
@@ -253,10 +257,10 @@ class TestProcessorEquivalence:
 
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=n_trials)
 
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials
         )
 
@@ -273,10 +277,10 @@ class TestProcessorEquivalence:
 
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=5)
 
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=5
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=5
         )
 
@@ -294,8 +298,8 @@ class TestProcessorEquivalence:
         theta_for_new = deepcopy(theta_input)
 
         # Process
-        simple_processor.process_theta(theta_for_old, model_cfg, n_trials=5)
-        modular_processor.process_theta(theta_for_new, model_cfg, n_trials=5)
+        simple_processor.adapt_parameters(theta_for_old, model_cfg, n_trials=5)
+        modular_processor.adapt_parameters(theta_for_new, model_cfg, n_trials=5)
 
         # Both should modify (or not modify) input identically
         assert_theta_equal(
@@ -308,11 +312,11 @@ class TestEdgeCases:
 
     @pytest.fixture
     def simple_processor(self):
-        return SimpleThetaProcessor()
+        return SimpleParameterSimulatorAdapter()
 
     @pytest.fixture
     def modular_processor(self):
-        return ModularThetaProcessor()
+        return ModularParameterSimulatorAdapter()
 
     def test_empty_theta(self, simple_processor, modular_processor):
         """Test with empty theta dictionary."""
@@ -321,8 +325,8 @@ class TestEdgeCases:
         theta = {}
 
         # Both should handle empty theta (may add defaults)
-        theta_old = simple_processor.process_theta(deepcopy(theta), model_cfg, 1)
-        theta_new = modular_processor.process_theta(deepcopy(theta), model_cfg, 1)
+        theta_old = simple_processor.adapt_parameters(deepcopy(theta), model_cfg, 1)
+        theta_new = modular_processor.adapt_parameters(deepcopy(theta), model_cfg, 1)
 
         # Results should be equivalent
         assert_theta_equal(theta_old, theta_new, f"{model_name}_empty")
@@ -335,14 +339,14 @@ class TestEdgeCases:
         theta = generate_test_theta(model_name, model_cfg, n_trials=3)
         theta["extra_param"] = np.array([999.0, 999.0, 999.0])
 
-        theta_old = simple_processor.process_theta(deepcopy(theta), model_cfg, 3)
-        theta_new = modular_processor.process_theta(deepcopy(theta), model_cfg, 3)
+        theta_old = simple_processor.adapt_parameters(deepcopy(theta), model_cfg, 3)
+        theta_new = modular_processor.adapt_parameters(deepcopy(theta), model_cfg, 3)
 
         assert_theta_equal(theta_old, theta_new, f"{model_name}_extra_params")
 
     @pytest.mark.xfail(
-        reason="Expected difference: ModularThetaProcessor is more robust with missing "
-        "parameters (gracefully skips transformations), while SimpleThetaProcessor "
+        reason="Expected difference: ModularParameterSimulatorAdapter is more robust with missing "
+        "parameters (gracefully skips transformations), while SimpleParameterSimulatorAdapter "
         "raises KeyError. In production, parameters are validated before theta processing."
     )
     @pytest.mark.parametrize("model_name", ["lba2", "race_3", "lca_3"])
@@ -350,8 +354,8 @@ class TestEdgeCases:
         """Test with some parameters missing (should use defaults or fail identically).
 
         NOTE: This test is expected to fail due to intentional difference in error handling.
-        SimpleThetaProcessor raises KeyError for missing required parameters, while
-        ModularThetaProcessor gracefully handles missing parameters by skipping
+        SimpleParameterSimulatorAdapter raises KeyError for missing required parameters, while
+        ModularParameterSimulatorAdapter gracefully handles missing parameters by skipping
         transformations that require them.
         """
         model_cfg = model_config[model_name]
@@ -361,13 +365,15 @@ class TestEdgeCases:
 
         # Both should handle missing params identically
         try:
-            theta_old = simple_processor.process_theta(deepcopy(theta), model_cfg, 2)
-            theta_new = modular_processor.process_theta(deepcopy(theta), model_cfg, 2)
+            theta_old = simple_processor.adapt_parameters(deepcopy(theta), model_cfg, 2)
+            theta_new = modular_processor.adapt_parameters(
+                deepcopy(theta), model_cfg, 2
+            )
             assert_theta_equal(theta_old, theta_new, f"{model_name}_missing_params")
         except Exception as e_old:
             # If old raises exception, new should too
             with pytest.raises(type(e_old)):
-                modular_processor.process_theta(deepcopy(theta), model_cfg, 2)
+                modular_processor.adapt_parameters(deepcopy(theta), model_cfg, 2)
 
 
 class TestSpecificModels:
@@ -375,11 +381,11 @@ class TestSpecificModels:
 
     @pytest.fixture
     def simple_processor(self):
-        return SimpleThetaProcessor()
+        return SimpleParameterSimulatorAdapter()
 
     @pytest.fixture
     def modular_processor(self):
-        return ModularThetaProcessor()
+        return ModularParameterSimulatorAdapter()
 
     @pytest.mark.parametrize(
         "model_name",
@@ -399,10 +405,10 @@ class TestSpecificModels:
 
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=3)
 
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=3
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=3
         )
 
@@ -424,10 +430,10 @@ class TestSpecificModels:
 
         theta_input = generate_test_theta(model_name, model_cfg, n_trials=5)
 
-        theta_old = simple_processor.process_theta(
+        theta_old = simple_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=5
         )
-        theta_new = modular_processor.process_theta(
+        theta_new = modular_processor.adapt_parameters(
             deepcopy(theta_input), model_cfg, n_trials=5
         )
 

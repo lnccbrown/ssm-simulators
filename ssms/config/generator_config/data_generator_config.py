@@ -46,42 +46,6 @@ def get_kde_simulation_filters() -> dict:
     }
 
 
-def get_opn_only_config() -> dict:
-    return {
-        "output_folder": "data/cpn_only/",
-        "model": "ddm",  # should be ['ddm'],
-        "n_samples": 100_000,  # eventually should be {'low': 100000, 'high': 100000},
-        "n_parameter_sets": 10_000,
-        "n_parameter_sets_rejected": 100,
-        "n_training_samples_by_parameter_set": 1_000,
-        "max_t": 20.0,
-        "delta_t": 0.001,
-        "pickleprotocol": 4,
-        "n_cpus": "all",
-        "negative_rt_cutoff": -66.77497,
-        "n_subruns": 10,
-        "smooth_unif": False,
-    }
-
-
-def get_cpn_only_config() -> dict:
-    return {
-        "output_folder": "data/cpn_only/",
-        "model": "ddm",  # should be ['ddm'],
-        "n_samples": 100_000,  # eventually should be {'low': 100000, 'high': 100000},
-        "n_parameter_sets": 10_000,
-        "n_parameter_sets_rejected": 100,
-        "n_training_samples_by_parameter_set": 1_000,
-        "max_t": 20.0,
-        "delta_t": 0.001,
-        "pickleprotocol": 4,
-        "n_cpus": "all",
-        "negative_rt_cutoff": -66.77497,
-        "n_subruns": 10,
-        "smooth_unif": False,
-    }
-
-
 def get_lan_config() -> dict:
     return {
         "output_folder": "data/lan_mlp/",
@@ -95,7 +59,7 @@ def get_lan_config() -> dict:
         "delta_t": 0.001,
         "pickleprotocol": 4,
         "n_cpus": "all",
-        "kde_data_mixture_probabilities": [0.8, 0.1, 0.1],
+        "data_mixture_probabilities": [0.8, 0.1, 0.1],
         "simulation_filters": get_kde_simulation_filters(),
         "negative_rt_cutoff": -66.77497,
         "n_subruns": 10,
@@ -124,7 +88,7 @@ def get_ratio_estimator_config() -> dict:
         "n_cpus": "all",
         "n_subdatasets": 12,
         "n_trials_per_dataset": 10000,  # EVEN NUMBER ! AF-TODO: Saveguard against odd
-        "kde_data_mixture_probabilities": [0.8, 0.1, 0.1],
+        "data_mixture_probabilities": [0.8, 0.1, 0.1],
         "simulation_filters": get_kde_simulation_filters(),
         "negative_rt_cutoff": -66.77497,
         "n_subruns": 10,
@@ -148,7 +112,7 @@ def get_defective_detector_config() -> dict:
         "n_cpus": "all",
         "n_subdatasets": 12,
         "n_trials_per_dataset": 10000,  # EVEN NUMBER ! AF-TODO: Saveguard against odd
-        "kde_data_mixture_probabilities": [0.8, 0.1, 0.1],
+        "data_mixture_probabilities": [0.8, 0.1, 0.1],
         "simulation_filters": get_kde_simulation_filters(),
         "negative_rt_cutoff": -66.77497,
         "n_subruns": 10,
@@ -172,51 +136,106 @@ def get_snpe_config() -> dict:
     }
 
 
-def get_default_generator_config(approach) -> dict:
+def get_default_generator_config(approach: str | None = None) -> dict:
     """
     Dynamically retrieve the data generator configuration for the given approach.
 
+    Returns configuration in nested structure with clear separation of concerns:
+    - 'pipeline': execution settings (n_parameter_sets, n_cpus, etc.)
+    - 'estimator': likelihood estimation settings (type, bandwidth, etc.)
+    - 'training': training data settings (mixture_probabilities, etc.)
+    - 'simulator': simulation settings (delta_t, max_t, etc.)
+    - 'output': output settings (folder, pickle_protocol, etc.)
+
     Parameters
     ----------
-    approach : str
+    approach : str, optional
         The approach corresponding to the desired data generator configuration.
         Valid options include:
-        - "opn_only"
-        - "cpn_only"
         - "lan"
         - "ratio_estimator"
         - "defective_detector"
         - "snpe"
 
+        If None, defaults to "lan".
+
     Returns
     -------
     dict
-        The configuration dictionary for the specified approach.
+        The configuration dictionary in nested structure for the specified approach.
 
     Raises
     ------
     KeyError
         If the approach is not found in the available configurations.
+
+    Examples
+    --------
+    >>> config = get_default_generator_config("lan")
+    >>> config.keys()
+    dict_keys(['pipeline', 'estimator', 'training', 'simulator', 'output', ...])
+    >>> config['pipeline']['n_parameter_sets']
+    10000
+
+    Notes
+    -----
+    Only nested structure is supported. If you have an old flat config,
+    use `convert_flat_to_nested()` to migrate it.
     """
     config_functions = {
-        "opn_only": get_opn_only_config,
-        "cpn_only": get_cpn_only_config,
         "lan": get_lan_config,
         "ratio_estimator": get_ratio_estimator_config,
         "defective_detector": get_defective_detector_config,
         "snpe": get_snpe_config,
     }
 
-    if approach not in config_functions:
+    if approach is None:
+        flat_config = config_functions["lan"]()
+    elif approach not in config_functions:
         raise KeyError(
             f"'{approach}' is not a valid data generator configuration approach."
         )
+    else:
+        flat_config = config_functions[approach]()
 
-    return config_functions[approach]()
+    # Always convert to nested structure
+    from ssms.config.config_utils import convert_flat_to_nested
+
+    return convert_flat_to_nested(flat_config)
+
+
+def get_nested_generator_config(approach: str | None = None) -> dict:
+    """
+    Get generator config in nested structure.
+
+    This is an alias for get_default_generator_config() for clarity.
+    Both functions now always return nested structure.
+
+    Parameters
+    ----------
+    approach : str, optional
+        The approach corresponding to the desired data generator configuration.
+        If None, defaults to "lan".
+
+    Returns
+    -------
+    dict
+        The configuration dictionary in nested structure with sections:
+        'pipeline', 'estimator', 'training', 'simulator', 'output'
+
+    Examples
+    --------
+    >>> config = get_nested_generator_config("lan")
+    >>> config.keys()
+    dict_keys(['pipeline', 'estimator', 'training', 'simulator', 'output', ...])
+    >>> config['pipeline']['n_parameter_sets']
+    10000
+    """
+    return get_default_generator_config(approach=approach)
 
 
 # TODO: Add for compatibility with lanfactory's test_end_to_end.py test. Delete when
 #       lanfactory uses get_default_generator_config.
-data_generator_config = DeprecatedDict(
+DataGenerator_config = DeprecatedDict(
     get_default_generator_config, "get_default_generator_config"
 )

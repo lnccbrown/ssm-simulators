@@ -1,15 +1,17 @@
 """Training data generation strategies.
 
-This module contains strategy classes that generate training data from
-likelihood estimators. Strategies follow the TrainingDataStrategyProtocol
-and implement different approaches to sampling and data augmentation.
+This module contains strategy classes for training data generation:
 
-Available strategies:
-- ResampleMixtureStrategy: Mixture of KDE samples + uniform samples (positive and negative RT)
+- MixtureTrainingStrategy: Mixture of KDE samples + uniform samples
+
+Note: For end-to-end data generation workflows, see the `pipelines` module which
+contains SimulationPipeline and PyDDMPipeline.
 """
 
-from ssms.dataset_generators.strategies.resample_mixture_strategy import (
-    ResampleMixtureStrategy,
+from ssms.dataset_generators.strategies.mixture_training_strategy import (
+    MixtureTrainingStrategy,
 )
 
-__all__ = ["ResampleMixtureStrategy"]
+__all__ = [
+    "MixtureTrainingStrategy",
+]

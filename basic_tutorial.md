@@ -1,9 +1,9 @@
 ### Quick Start
 
-The `ssms` package serves two purposes. 
+The `ssms` package serves two purposes.
 
 1. Easy access to *fast simulators of sequential sampling models*
-   
+
 2. Support infrastructure to construct training data for various approaches to likelihood / posterior amortization
 
 We provide two minimal examples here to illustrate how to use each of the two capabilities.
@@ -27,11 +27,11 @@ import ssms
 
 #### Using the Simulators
 
-Let's start with using the basic simulators. 
+Let's start with using the basic simulators.
 You access the main simulators through the  `ssms.basic_simulators.simulator` function.
 
 To get an idea about the models included in `ssms`, use the `config` module.
-The central dictionary with metadata about included models sits in `ssms.config.model_config`. 
+The central dictionary with metadata about included models sits in `ssms.config.model_config`.
 
 
 ```python
@@ -90,7 +90,7 @@ The `'hddm_include'` key concerns information useful for integration with the [h
 
 ```python
 from ssms.basic_simulators import simulator
-sim_out = simulator(model = 'ddm', 
+sim_out = simulator(model = 'ddm',
                     theta = [0, 1, 0.5, 0.5],
                     n_samples = 1000)
 ```
@@ -107,10 +107,10 @@ The `metadata` includes the named parameters, simulator settings, and more.
 
 The training data generators sit on top of the simulator function to turn raw simulations into usable training data for training machine learning algorithms aimed at posterior or likelihood armortization.
 
-We will use the `data_generator` class from `ssms.dataset_generators`. Initializing the `data_generator` boils down to supplying two configuration dictionaries.
+We will use the `DataGenerator` class from `ssms.dataset_generators`. Initializing the `DataGenerator` boils down to supplying two configuration dictionaries.
 
 1. The `generator_config`, concerns choices as to what kind of training data one wants to generate.
-2. The `model_config` concerns choices with respect to the underlying generative *sequential sampling model*. 
+2. The `model_config` concerns choices with respect to the underlying generative *sequential sampling model*.
 
 We will consider a basic example here, concerning data generation to prepare for training [LANs](https://elifesciences.org/articles/65074).
 
@@ -118,7 +118,7 @@ Let's start by peeking at an example `generator_config`.
 
 
 ```python
-ssms.config.data_generator_config['lan']['mlp']
+ssms.config.DataGenerator_config['lan']['mlp']
 ```
 
 
@@ -155,11 +155,11 @@ An example below.
 ```python
 from copy import deepcopy
 # Initialize the generator config (for MLP LANs)
-generator_config = deepcopy(ssms.config.data_generator_config['lan']['mlp'])
+generator_config = deepcopy(ssms.config.DataGenerator_config['lan']['mlp'])
 # Specify generative model (one from the list of included models mentioned above)
-generator_config['dgp_list'] = 'angle' 
+generator_config['dgp_list'] = 'angle'
 # Specify number of parameter sets to simulate
-generator_config['n_parameter_sets'] = 100 
+generator_config['n_parameter_sets'] = 100
 # Specify how many samples a simulation run should entail
 generator_config['n_samples'] = 1000
 ```
@@ -175,11 +175,11 @@ print(model_config)
     {'name': 'angle', 'params': ['v', 'a', 'z', 't', 'theta'], 'param_bounds': [[-3.0, 0.3, 0.1, 0.001, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]], 'boundary': <function angle at 0x11b2a7c10>, 'n_params': 5, 'default_params': [0.0, 1.0, 0.5, 0.001, 0.0], 'hddm_include': ['z', 'theta'], 'nchoices': 2}
 
 
-We are now ready to initialize a `data_generator`, after which we can generate training data using the `generate_data_training_uniform` function, which will use the hypercube defined by our parameter bounds from the `model_config` to uniformly generate parameter sets and corresponding simulated datasets.
+We are now ready to initialize a `DataGenerator`, after which we can generate training data using the `generate_data_training_uniform` function, which will use the hypercube defined by our parameter bounds from the `model_config` to uniformly generate parameter sets and corresponding simulated datasets.
 
 
 ```python
-my_dataset_generator = ssms.dataset_generators.data_generator(generator_config = generator_config,
+my_dataset_generator = ssms.dataset_generators.DataGenerator(generator_config = generator_config,
                                                               model_config = model_config)
 ```
 

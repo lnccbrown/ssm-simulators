@@ -9,10 +9,14 @@ import numpy as np
 import pytest
 
 from ssms import Simulator
-from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
-from ssms.basic_simulators.theta_transforms import (
-    LambdaTransformation,
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_simulator_adapter import (
+    SimpleParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_adapters import (
+    LambdaAdaptation,
     SetDefaultValue,
 )
 
@@ -21,21 +25,21 @@ class TestThetaProcessorIntegration:
     """Test theta processor integration with Simulator."""
 
     def test_default_uses_modular_processor(self):
-        """Test that Simulator uses ModularThetaProcessor by default."""
+        """Test that Simulator uses ModularParameterSimulatorAdapter by default."""
         sim = Simulator("ddm")
 
-        assert isinstance(sim.theta_processor, ModularThetaProcessor)
+        assert isinstance(sim.parameter_adapter, ModularParameterSimulatorAdapter)
 
     def test_custom_theta_processor(self):
         """Test that custom theta processor can be provided."""
-        custom_processor = SimpleThetaProcessor()
-        sim = Simulator("ddm", theta_processor=custom_processor)
+        custom_processor = SimpleParameterSimulatorAdapter()
+        sim = Simulator("ddm", parameter_adapter=custom_processor)
 
-        assert sim.theta_processor is custom_processor
-        assert isinstance(sim.theta_processor, SimpleThetaProcessor)
+        assert sim.parameter_adapter is custom_processor
+        assert isinstance(sim.parameter_adapter, SimpleParameterSimulatorAdapter)
 
     def test_simulate_with_default_processor(self):
-        """Test simulation with default ModularThetaProcessor."""
+        """Test simulation with default ModularParameterSimulatorAdapter."""
         sim = Simulator("lba2")
 
         theta = {
@@ -53,8 +57,8 @@ class TestThetaProcessorIntegration:
         assert len(result["rts"]) == 10
 
     def test_simulate_with_legacy_processor(self):
-        """Test simulation with legacy SimpleThetaProcessor."""
-        sim = Simulator("lba2", theta_processor=SimpleThetaProcessor())
+        """Test simulation with legacy SimpleParameterSimulatorAdapter."""
+        sim = Simulator("lba2", parameter_adapter=SimpleParameterSimulatorAdapter())
 
         theta = {
             "v0": np.array([0.5]),
@@ -74,7 +78,7 @@ class TestThetaProcessorIntegration:
         """Test adding custom theta transformations."""
         custom_transform = SetDefaultValue("custom_param", 999)
 
-        sim = Simulator("ddm", theta_transforms=[custom_transform])
+        sim = Simulator("ddm", parameter_adaptations=[custom_transform])
 
         theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
 
@@ -90,13 +94,13 @@ class TestThetaProcessorIntegration:
         transforms = [
             SetDefaultValue("param1", 100),
             SetDefaultValue("param2", 200),
-            LambdaTransformation(
+            LambdaAdaptation(
                 lambda theta, cfg, n: theta.update({"param3": 300}) or theta,
                 name="set_param3",
             ),
         ]
 
-        sim = Simulator("ddm", theta_transforms=transforms)
+        sim = Simulator("ddm", parameter_adaptations=transforms)
 
         theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
         result = sim.simulate(theta, n_samples=10, random_state=42)
@@ -106,14 +110,14 @@ class TestThetaProcessorIntegration:
         assert "choices" in result
 
     def test_custom_transforms_only_with_modular_processor(self):
-        """Test that custom transforms are only applied with ModularThetaProcessor."""
-        # With SimpleThetaProcessor, custom transforms should be ignored
+        """Test that custom transforms are only applied with ModularParameterSimulatorAdapter."""
+        # With SimpleParameterSimulatorAdapter, custom transforms should be ignored
         custom_transform = SetDefaultValue("custom_param", 999)
 
         sim = Simulator(
             "ddm",
-            theta_processor=SimpleThetaProcessor(),
-            theta_transforms=[custom_transform],  # Should be ignored
+            parameter_adapter=SimpleParameterSimulatorAdapter(),
+            parameter_adaptations=[custom_transform],  # Should be ignored
         )
 
         theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
@@ -129,7 +133,7 @@ class TestProcessorEquivalence:
 
     @pytest.mark.parametrize("model_name", ["ddm", "angle", "race_3"])
     def test_processor_equivalence_simple_models(self, model_name):
-        """Test that ModularThetaProcessor produces same results as SimpleThetaProcessor."""
+        """Test that ModularParameterSimulatorAdapter produces same results as SimpleParameterSimulatorAdapter."""
         # Generate appropriate theta for each model
         if model_name == "ddm":
             theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
@@ -150,8 +154,10 @@ class TestProcessorEquivalence:
             theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
 
         # Simulate with both processors
-        sim_modular = Simulator(model_name)  # Default ModularThetaProcessor
-        sim_legacy = Simulator(model_name, theta_processor=SimpleThetaProcessor())
+        sim_modular = Simulator(model_name)  # Default ModularParameterSimulatorAdapter
+        sim_legacy = Simulator(
+            model_name, parameter_adapter=SimpleParameterSimulatorAdapter()
+        )
 
         random_state = 42
         result_modular = sim_modular.simulate(
@@ -175,7 +181,9 @@ class TestProcessorEquivalence:
         sim_modular = Simulator("lba2")
         result_modular = sim_modular.simulate(theta, n_samples=100, random_state=42)
 
-        sim_legacy = Simulator("lba2", theta_processor=SimpleThetaProcessor())
+        sim_legacy = Simulator(
+            "lba2", parameter_adapter=SimpleParameterSimulatorAdapter()
+        )
         result_legacy = sim_legacy.simulate(theta, n_samples=100, random_state=42)
 
         # Both should return valid results
@@ -203,15 +211,15 @@ class TestThetaProcessorProperty:
         """Test that theta_processor property returns the processor."""
         sim = Simulator("ddm")
 
-        processor = sim.theta_processor
-        assert isinstance(processor, ModularThetaProcessor)
+        processor = sim.parameter_adapter
+        assert isinstance(processor, ModularParameterSimulatorAdapter)
 
     def test_theta_processor_property_with_custom(self):
         """Test theta_processor property with custom processor."""
-        custom = SimpleThetaProcessor()
-        sim = Simulator("ddm", theta_processor=custom)
+        custom = SimpleParameterSimulatorAdapter()
+        sim = Simulator("ddm", parameter_adapter=custom)
 
-        assert sim.theta_processor is custom
+        assert sim.parameter_adapter is custom
 
 
 class TestBackwardCompatibility:

@@ -80,6 +80,37 @@ If you are using `uv` (see below), you can use the `uv run` command to run `gene
 
 This will generate training data according to your configuration and save it in the specified output directory.
 
+### Key Features
+
+#### Custom Parameter Transforms
+
+Register custom transformations to apply model-specific modifications to sampled parameters:
+
+```python
+from ssms import register_transform_function
+import numpy as np
+
+# Register a custom transform
+def exponential_drift(theta: dict) -> dict:
+    if 'v' in theta:
+        theta['v'] = np.exp(theta['v'])
+    return theta
+
+register_transform_function("exp_v", exponential_drift)
+
+# Use in model configuration
+model_config = {
+    "name": "my_model",
+    "params": ["v", "a", "z", "t"],
+    "param_bounds": [...],
+    "parameter_transforms": [
+        {"type": "exp_v"}  # Your custom transform
+    ]
+}
+```
+
+See [`examples/custom_transforms_example.py`](examples/custom_transforms_example.py) and the [custom transforms guide](docs/custom_transforms.md) for more details.
+
 ### Tutorial
 
 Check the basic tutorial [here](docs/basic_tutorial/basic_tutorial.ipynb).

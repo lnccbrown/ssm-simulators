@@ -8,15 +8,17 @@ the registry system, and the modular processor.
 import numpy as np
 import pytest
 
-from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_transforms import (
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_adapters import (
     ColumnStackParameters,
     DeleteParameters,
     ExpandDimension,
     RenameParameter,
     SetDefaultValue,
     SetZeroArray,
-    ThetaProcessorRegistry,
+    ParameterAdapterRegistry,
     TileArray,
 )
 
@@ -153,7 +155,7 @@ class TestRegistry:
 
     def test_register_and_get_model(self):
         """Test registering and retrieving a model."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         transforms = [SetDefaultValue("nact", 2)]
 
         registry.register_model("test_model", transforms)
@@ -164,7 +166,7 @@ class TestRegistry:
 
     def test_register_family(self):
         """Test family registration and matching."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         transforms = [ExpandDimension(["a"])]
 
         registry.register_family(
@@ -181,7 +183,7 @@ class TestRegistry:
 
     def test_exact_match_priority(self):
         """Test that exact matches take priority over family matches."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
 
         # Register family
         registry.register_family(
@@ -205,14 +207,14 @@ class TestRegistry:
 
     def test_get_processor_no_match(self):
         """Test get_processor with no matching registration."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         result = registry.get_processor("unknown_model")
 
         assert result == []
 
     def test_has_processor(self):
         """Test has_processor method."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         registry.register_model("test_model", [])
 
         assert registry.has_processor("test_model")
@@ -220,7 +222,7 @@ class TestRegistry:
 
     def test_list_registered_models(self):
         """Test listing registered models."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         registry.register_model("model1", [])
         registry.register_model("model2", [])
         registry.register_family("family1", lambda m: True, [])
@@ -232,7 +234,7 @@ class TestRegistry:
 
     def test_list_registered_families(self):
         """Test listing registered families."""
-        registry = ThetaProcessorRegistry()
+        registry = ParameterAdapterRegistry()
         registry.register_model("model1", [])
         registry.register_family("family1", lambda m: True, [])
         registry.register_family("family2", lambda m: True, [])
@@ -243,12 +245,12 @@ class TestRegistry:
         assert "model1" not in families
 
 
-class TestModularThetaProcessor:
-    """Test ModularThetaProcessor."""
+class TestModularParameterSimulatorAdapter:
+    """Test ModularParameterSimulatorAdapter."""
 
     def test_processor_with_default_registry(self):
         """Test processor uses default registry."""
-        processor = ModularThetaProcessor()
+        processor = ModularParameterSimulatorAdapter()
         assert processor.registry is not None
 
         # Should have registered models
@@ -257,17 +259,17 @@ class TestModularThetaProcessor:
 
     def test_processor_with_custom_registry(self):
         """Test processor with custom registry."""
-        custom_registry = ThetaProcessorRegistry()
+        custom_registry = ParameterAdapterRegistry()
         custom_registry.register_model(
             "custom_model", [SetDefaultValue("custom_param", 42)]
         )
 
-        processor = ModularThetaProcessor(registry=custom_registry)
+        processor = ModularParameterSimulatorAdapter(registry=custom_registry)
         assert processor.registry.has_processor("custom_model")
 
     def test_process_theta_lba2(self):
         """Test processing theta for LBA2 model."""
-        processor = ModularThetaProcessor()
+        processor = ModularParameterSimulatorAdapter()
         theta = {
             "v0": np.array([0.5]),
             "v1": np.array([0.6]),
@@ -276,7 +278,7 @@ class TestModularThetaProcessor:
         }
         model_config = {"name": "lba2"}
 
-        result = processor.process_theta(theta, model_config, n_trials=1)
+        result = processor.adapt_parameters(theta, model_config, n_trials=1)
 
         # Should have nact
         assert "nact" in result
@@ -301,7 +303,7 @@ class TestModularThetaProcessor:
 
     def test_process_theta_ddm(self):
         """Test processing theta for DDM (no transformations)."""
-        processor = ModularThetaProcessor()
+        processor = ModularParameterSimulatorAdapter()
         theta = {
             "v": np.array([0.5]),
             "a": np.array([1.0]),
@@ -310,7 +312,7 @@ class TestModularThetaProcessor:
         }
         model_config = {"name": "ddm"}
 
-        result = processor.process_theta(theta, model_config, n_trials=1)
+        result = processor.adapt_parameters(theta, model_config, n_trials=1)
 
         # Should be unchanged
         assert result["v"][0] == 0.5
@@ -320,7 +322,7 @@ class TestModularThetaProcessor:
 
     def test_process_theta_race_3(self):
         """Test processing theta for race_3 model."""
-        processor = ModularThetaProcessor()
+        processor = ModularParameterSimulatorAdapter()
         theta = {
             "v0": np.array([0.5]),
             "v1": np.array([0.6]),
@@ -333,7 +335,7 @@ class TestModularThetaProcessor:
         }
         model_config = {"name": "race_3"}
 
-        result = processor.process_theta(theta, model_config, n_trials=1)
+        result = processor.adapt_parameters(theta, model_config, n_trials=1)
 
         # Should have stacked v and z
         assert "v" in result

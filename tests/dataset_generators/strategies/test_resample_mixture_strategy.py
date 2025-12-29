@@ -41,7 +41,7 @@ def generator_config():
     """Standard generator configuration."""
     return {
         "n_training_samples_by_parameter_set": 100,
-        "kde_data_mixture_probabilities": [0.8, 0.1, 0.1],
+        "data_mixture_probabilities": [0.8, 0.1, 0.1],
         "separate_response_channels": False,
         "negative_rt_cutoff": -1000.0,
         "kde_displace_t": False,
@@ -123,9 +123,7 @@ def test_strategy_mixture_proportions(
     n_negative = np.sum(rt_col < 0)
 
     # Should be approximately 10% (0.1 * 1000)
-    expected_negative = int(
-        1000 * generator_config["kde_data_mixture_probabilities"][2]
-    )
+    expected_negative = int(1000 * generator_config["data_mixture_probabilities"][2])
     assert abs(n_negative - expected_negative) <= 1  # Allow for rounding
 
 
@@ -160,11 +158,11 @@ def test_strategy_positive_rt_range(
     # Get uniform sample indices (KDE samples can exceed max_t due to extrapolation)
     n_kde = int(
         generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["kde_data_mixture_probabilities"][0]
+        * generator_config["data_mixture_probabilities"][0]
     )
     n_unif_up = int(
         generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["kde_data_mixture_probabilities"][1]
+        * generator_config["data_mixture_probabilities"][1]
     )
 
     rt_col = training_data[:, -3]
@@ -241,7 +239,7 @@ def test_strategy_with_separate_response_channels(
     # (Uniform samples don't use one-hot encoding, even with separate_response_channels)
     n_kde = int(
         generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["kde_data_mixture_probabilities"][0]
+        * generator_config["data_mixture_probabilities"][0]
     )
 
     # Extract one-hot columns (between RT and log-lik) for KDE samples only
@@ -262,7 +260,7 @@ def test_strategy_rounding_adjustment(
     """Test that rounding adjustments work correctly."""
     # Set probabilities that will cause rounding issues
     generator_config["n_training_samples_by_parameter_set"] = 100
-    generator_config["kde_data_mixture_probabilities"] = [0.333, 0.333, 0.334]
+    generator_config["data_mixture_probabilities"] = [0.333, 0.333, 0.334]
 
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
@@ -278,7 +276,7 @@ def test_strategy_rounding_error_too_large(
     """Test that strategy raises error if rounding adjustment would make n_kde negative."""
     # Create pathological case
     generator_config["n_training_samples_by_parameter_set"] = 10
-    generator_config["kde_data_mixture_probabilities"] = [0.0, 0.6, 0.6]  # Sums to 1.2!
+    generator_config["data_mixture_probabilities"] = [0.0, 0.6, 0.6]  # Sums to 1.2!
 
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 

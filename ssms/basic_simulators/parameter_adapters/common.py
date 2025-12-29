@@ -1,21 +1,21 @@
 """
-Common theta transformations.
+Common parameter adaptations.
 
-This module provides a library of commonly-used theta transformations that
-can be combined to handle most model parameter processing needs.
+This module provides a library of commonly-used parameter adaptations that
+can be combined to handle most model parameter preparation needs.
 """
 
 from collections.abc import Callable
 
 import numpy as np
 
-from .base import ThetaTransformation
+from .base import ParameterAdaptation
 
 
-class SetDefaultValue(ThetaTransformation):
+class SetDefaultValue(ParameterAdaptation):
     """Set a parameter to a default value if not present.
 
-    This transformation adds a parameter with a default value if it doesn't
+    This adaptation adds a parameter with a default value if it doesn't
     already exist in theta. The value is automatically tiled to match n_trials.
 
     Parameters
@@ -61,7 +61,7 @@ class SetDefaultValue(ThetaTransformation):
         return theta
 
 
-class ExpandDimension(ThetaTransformation):
+class ExpandDimension(ParameterAdaptation):
     """Expand dimensions of specified parameters.
 
     Converts 1D arrays of shape (n_trials,) to shape (n_trials, 1) by adding
@@ -92,7 +92,7 @@ class ExpandDimension(ThetaTransformation):
         return theta
 
 
-class ColumnStackParameters(ThetaTransformation):
+class ColumnStackParameters(ParameterAdaptation):
     """Stack multiple parameters into a single multi-column array.
 
     Takes individual parameters (e.g., v0, v1, v2) and stacks them column-wise
@@ -140,7 +140,7 @@ class ColumnStackParameters(ThetaTransformation):
         return theta
 
 
-class RenameParameter(ThetaTransformation):
+class RenameParameter(ParameterAdaptation):
     """Rename a parameter and optionally transform its value.
 
     Changes the name of a parameter in theta. Can optionally apply a
@@ -192,7 +192,7 @@ class RenameParameter(ThetaTransformation):
         return theta
 
 
-class DeleteParameters(ThetaTransformation):
+class DeleteParameters(ParameterAdaptation):
     """Delete specified parameters from theta.
 
     Removes parameters from the theta dictionary. Silently ignores parameters
@@ -223,7 +223,7 @@ class DeleteParameters(ThetaTransformation):
         return theta
 
 
-class SetZeroArray(ThetaTransformation):
+class SetZeroArray(ParameterAdaptation):
     """Set a parameter to an array of zeros.
 
     Creates a zero-filled array with specified shape. Commonly used for
@@ -271,7 +271,7 @@ class SetZeroArray(ThetaTransformation):
         return theta
 
 
-class TileArray(ThetaTransformation):
+class TileArray(ParameterAdaptation):
     """Tile a constant value across trials.
 
     Creates an array by tiling a constant value n_trials times.
@@ -321,7 +321,7 @@ class TileArray(ThetaTransformation):
         return theta
 
 
-class ApplyMapping(ThetaTransformation):
+class ApplyMapping(ParameterAdaptation):
     """Apply a mapping function to transform a parameter.
 
     Uses a mapping from model_config to transform a parameter value.
@@ -391,7 +391,7 @@ class ApplyMapping(ThetaTransformation):
         return theta
 
 
-class ConditionalTransform(ThetaTransformation):
+class ConditionalAdaptation(ParameterAdaptation):
     """Apply a transformation only if a condition is met.
 
     Wraps another transformation and only applies it if the condition
@@ -401,13 +401,13 @@ class ConditionalTransform(ThetaTransformation):
     ----------
     condition : Callable
         Function that takes (theta, model_config, n_trials) and returns bool
-    transformation : ThetaTransformation
+    transformation : ParameterAdaptation
         Transformation to apply if condition is True
 
     Examples
     --------
     >>> # Only expand dimension if parameter exists
-    >>> transform = ConditionalTransform(
+    >>> transform = ConditionalAdaptation(
     ...     condition=lambda theta, cfg, n: "a" in theta,
     ...     transformation=ExpandDimension(["a"])
     ... )
@@ -416,7 +416,7 @@ class ConditionalTransform(ThetaTransformation):
     def __init__(
         self,
         condition: Callable[[dict, dict, int], bool],
-        transformation: ThetaTransformation,
+        transformation: ParameterAdaptation,
     ):
         self.condition = condition
         self.transformation = transformation
@@ -429,10 +429,10 @@ class ConditionalTransform(ThetaTransformation):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"ConditionalTransform({self.transformation})"
+        return f"ConditionalAdaptation({self.transformation})"
 
 
-class LambdaTransformation(ThetaTransformation):
+class LambdaAdaptation(ParameterAdaptation):
     """Wrap a lambda or callable function as a transformation.
 
     This allows using simple lambda functions in transformation pipelines
@@ -448,12 +448,12 @@ class LambdaTransformation(ThetaTransformation):
     Examples
     --------
     >>> # Simple lambda
-    >>> transform = LambdaTransformation(
+    >>> transform = LambdaAdaptation(
     ...     lambda theta, cfg, n: theta.update({"t": np.zeros(n)}) or theta
     ... )
     >>>
     >>> # Named lambda for clarity
-    >>> transform = LambdaTransformation(
+    >>> transform = LambdaAdaptation(
     ...     lambda theta, cfg, n: theta.update({"nact": 3}) or theta,
     ...     name="set_nact_to_3"
     ... )
@@ -471,4 +471,4 @@ class LambdaTransformation(ThetaTransformation):
 
     def __repr__(self) -> str:
         """String representation."""
-        return f"LambdaTransformation(name='{self.name}')"
+        return f"LambdaAdaptation(name='{self.name}')"

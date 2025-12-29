@@ -50,14 +50,18 @@ class KDEEstimatorBuilder:
         Arguments
         ---------
         generator_config : dict
-            Configuration dictionary containing:
-            - 'kde_displace_t' (optional): Whether to displace time by t parameter.
+            Configuration dictionary in nested structure containing:
+            - estimator.displace_t (optional): Whether to displace time by t parameter.
               Defaults to False if not specified.
         """
         self.generator_config = generator_config
 
-        # Extract and cache the displace_t parameter
-        self.displace_t = generator_config.get("kde_displace_t", False)
+        # Extract and cache the displace_t parameter from nested config
+        from ssms.config.config_utils import get_nested_config
+
+        self.displace_t = get_nested_config(
+            generator_config, "estimator", "displace_t", default=False
+        )
 
     def build(
         self, theta: Dict[str, Any], simulations: Dict[str, Any] | None = None
