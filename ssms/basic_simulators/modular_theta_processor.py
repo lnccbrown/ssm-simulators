@@ -497,7 +497,7 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             )
 
         # ================================================================
-        # LCA MODELS
+        # POISSON RACE MODELS
         # ================================================================
 
         # Poisson race (2-choice, Poisson finishing times)
@@ -509,6 +509,9 @@ class ModularThetaProcessor(AbstractThetaProcessor):
                 ExpandDimension(["t"]),
             ],
         )
+        # ================================================================
+        # LCA MODELS
+        # ================================================================
 
         # LCA 3-choice
         registry.register_model(
