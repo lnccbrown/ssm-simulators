@@ -121,6 +121,7 @@ from .race import (
     get_race_no_z_angle_2_config,
     get_race_no_z_angle_3_config,
     get_race_no_z_angle_4_config,
+    get_poisson_race_config,
 )
 from .shrink import (
     get_shrink_spot_config,
@@ -223,6 +224,7 @@ def get_model_config():
         "race_no_z_4": get_race_no_z_4_config(),
         "race_no_bias_angle_4": get_race_no_bias_angle_4_config(),
         "race_no_z_angle_4": get_race_no_z_angle_4_config(),
+        "poisson_race": get_poisson_race_config(),
         "dev_rlwm_lba_pw_v1": get_dev_rlwm_lba_pw_v1_config(),
         "dev_rlwm_lba_race_v1": get_dev_rlwm_lba_race_v1_config(),
         "dev_rlwm_lba_race_v2": get_dev_rlwm_lba_race_v2_config(),
@@ -290,6 +292,7 @@ __all__ = [
     "get_ddm_mic2_multinoise_conflict_gamma_no_bias_config",
     "get_ddm_mic2_multinoise_angle_no_bias_config",
     "get_ddm_mic2_multinoise_weibull_no_bias_config",
+    "get_poisson_race_config",
 ]
 
 # Validate

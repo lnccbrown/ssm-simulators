@@ -497,6 +497,19 @@ class ModularThetaProcessor(AbstractThetaProcessor):
             )
 
         # ================================================================
+        # POISSON RACE MODELS
+        # ================================================================
+
+        # Poisson race (2-choice, Poisson finishing times)
+        registry.register_model(
+            "poisson_race",
+            [
+                ColumnStackParameters(["r0", "r1"], "r", delete_sources=False),
+                ColumnStackParameters(["k0", "k1"], "k", delete_sources=False),
+                ExpandDimension(["t"]),
+            ],
+        )
+        # ================================================================
         # LCA MODELS
         # ================================================================
 
