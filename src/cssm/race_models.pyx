@@ -248,9 +248,27 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
     # -------------------------------------------------------------------------------------------------
+
 # @cython.boundscheck(False)
 # @cython.wraparound(False)
-def poisson_race(**kwargs):
+def poisson_race(
+    r,  # rate parameters
+    k,  # shape parameters
+    t,  # non-decision times
+    s = None,               # unused, kept for interface compatibility
+    deadline = None,        # deadline per trial
+    float delta_t = 0.001,  # time-step size in simulator
+    float max_t = 20.0,     # maximal time
+    int n_samples = 2000,   # number of samples to produce
+    int n_trials = 1,       # number of trials
+    boundary_fun = None,    # unused, kept for interface compatibility
+    boundary_multiplicative = True,
+    boundary_params = {},
+    random_state = None,
+    return_option = 'full',
+    smooth_unif = False,
+    **kwargs
+):
     """
     Simulate response times and choices for a 2-choice Poisson race model.
 
@@ -261,20 +279,6 @@ def poisson_race(**kwargs):
     Notes:
         The ``s`` parameter is unused and only present for interface compatibility.
     """
-
-    # Extract required inputs from kwargs 
-    cdef object r = kwargs.get('r', None)
-    cdef object k = kwargs.get('k', None)
-    cdef object t = kwargs.get('t', None)
-    cdef object s = kwargs.get('s', None)  
-    cdef object deadline = kwargs.get('deadline', None)
-    cdef float delta_t = kwargs.get('delta_t', 0.001)
-    cdef float max_t = kwargs.get('max_t', 20.0)
-    cdef int n_samples = kwargs.get('n_samples', 2000)
-    cdef int n_trials = kwargs.get('n_trials', 1)
-    cdef object random_state = kwargs.get('random_state', None)
-    cdef object return_option = kwargs.get('return_option', 'full')
-    cdef bint smooth_unif = kwargs.get('smooth_unif', False)
 
     if r is None or k is None or t is None or deadline is None:
         raise ValueError("poisson_race requires r, k, t, and deadline.")
