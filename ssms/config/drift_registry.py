@@ -15,10 +15,10 @@ Register a custom drift:
 >>>
 >>> register_drift("sinusoidal", sinusoidal_drift, ["frequency", "amplitude", "baseline"])
 >>>
->>> # Use with ConfigBuilder
->>> from ssms.config import ConfigBuilder
->>> config = ConfigBuilder.from_model("ddm")
->>> config = ConfigBuilder.add_drift(config, "sinusoidal")
+>>> # Use with ModelConfigBuilder
+>>> from ssms.config import ModelConfigBuilder
+>>> config = ModelConfigBuilder.from_model("ddm")
+>>> config = ModelConfigBuilder.add_drift(config, "sinusoidal")
 
 List available drifts:
 
@@ -174,7 +174,7 @@ def register_drift(
     """Register a drift function globally.
 
     This is the main entry point for registering custom drift functions.
-    Once registered, drifts can be used with ConfigBuilder.add_drift()
+    Once registered, drifts can be used with ModelConfigBuilder.add_drift()
     just like built-in drifts.
 
     Parameters
@@ -207,10 +207,10 @@ def register_drift(
     ...     params=["frequency", "amplitude", "baseline"]
     ... )
     >>>
-    >>> # Now use it with ConfigBuilder
-    >>> from ssms.config import ConfigBuilder
-    >>> config = ConfigBuilder.from_model("ddm")
-    >>> config = ConfigBuilder.add_drift(config, "sinusoidal")
+    >>> # Now use it with ModelConfigBuilder
+    >>> from ssms.config import ModelConfigBuilder
+    >>> config = ModelConfigBuilder.from_model("ddm")
+    >>> config = ModelConfigBuilder.add_drift(config, "sinusoidal")
 
     Register a time-varying drift:
 

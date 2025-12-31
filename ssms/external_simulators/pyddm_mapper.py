@@ -228,42 +228,30 @@ class SSMSToPyDDMMapper:
                     # Registry lookup (standard path for all predefined models)
                     boundary_info = boundary_registry.get(boundary_name)
                     boundary_params = boundary_info["params"]
-                    is_multiplicative = boundary_info["multiplicative"]
                 else:
                     # Fallback for custom boundaries defined at runtime
                     boundary_params = model_config.get("boundary_params", [])
-                    is_multiplicative = model_config.get(
-                        "boundary_multiplicative", True
-                    )
 
                 # Assemble boundary configuration
                 boundary_cfg = {
                     "fun": boundary_fn,
                     "params": boundary_params,
-                    "multiplicative": is_multiplicative,
                 }
 
         # If custom boundary specified
         if boundary_cfg is not None and boundary_cfg != "constant":
             boundary_fn = boundary_cfg["fun"]
             boundary_params = boundary_cfg["params"]
-            is_multiplicative = boundary_cfg.get("multiplicative", True)
 
             def pyddm_boundary(t: float, **theta: Any) -> float:
-                # Extract boundary params
+                # Extract boundary params (including 'a')
                 boundary_kwargs = {p: theta[p] for p in boundary_params if p in theta}
-                a = theta["a"]
 
-                # ssms boundary functions expect array input
+                # ssms boundary functions expect array input and return final boundary value
                 result = boundary_fn(np.array([t]), **boundary_kwargs)
 
-                if is_multiplicative:
-                    # Multiplicative: boundary(t) = a * f(t)
-                    return float(a * result[0])
-                else:
-                    # Additive: boundary(t) = a + f(t)
-                    # (f(t) is typically negative for collapsing bounds)
-                    return float(a + result[0])
+                # Boundary function now returns the final value directly
+                return float(result[0])
 
             return pyddm_boundary
 

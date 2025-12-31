@@ -25,8 +25,8 @@ from ssms.config import KDE_NO_DISPLACE_T
 logger = logging.getLogger(__name__)
 
 
-class DataGenerator:  # noqa: N801
-    """The DataGenerator() class is used to generate training data
+class TrainingDataGenerator:  # noqa: N801
+    """The TrainingDataGenerator() class is used to generate training data
       for various likelihood approximators.
 
     Attributes
@@ -50,7 +50,7 @@ class DataGenerator:  # noqa: N801
 
     Returns
     -------
-        DataGenerator object
+        TrainingDataGenerator object
 
     Notes
     -----
@@ -72,7 +72,7 @@ class DataGenerator:  # noqa: N801
         config: dict or DataGenerationPipelineProtocol
             Either:
             - A dictionary with generator configuration (e.g., from
-              ssms.config.get_default_generator_config()). The DataGenerator
+              ssms.config.get_default_generator_config()). The TrainingDataGenerator
               will auto-create the appropriate strategy.
             - A DataGenerationPipelineProtocol instance for complete custom
               control over the data generation workflow.
@@ -93,12 +93,12 @@ class DataGenerator:  # noqa: N801
 
         Returns
         -------
-        DataGenerator object
+        TrainingDataGenerator object
 
         Notes
         -----
         **Simple Usage**:
-        Pass a generator_config dict as the first argument. The DataGenerator
+        Pass a generator_config dict as the first argument. The TrainingDataGenerator
         will auto-create the appropriate strategy based on 'estimator_type'
         in the config ('kde' for simulation-based, 'pyddm' for analytical).
 
@@ -113,13 +113,13 @@ class DataGenerator:  # noqa: N801
         - Likelihood estimation (KDE, PyDDM analytical)
         - Training data structuring (ResampleMixture, etc.)
 
-        For custom drift/boundary functions, use ConfigBuilder to create
-        a custom model_config before passing it to DataGenerator.
+        For custom drift/boundary functions, use ModelConfigBuilder to create
+        a custom model_config before passing it to TrainingDataGenerator.
 
         Examples
         --------
         Simple (dict config):
-            >>> gen = DataGenerator(generator_config, model_config)
+            >>> gen = TrainingDataGenerator(generator_config, model_config)
             >>> data = gen.generate_data_training()
 
         Advanced (custom pipeline, model_config from pipeline):
@@ -129,7 +129,7 @@ class DataGenerator:  # noqa: N801
             ...     estimator_builder=MyCustomBuilder(...),
             ...     training_strategy=MyCustomStrategy(...),
             ... )
-            >>> gen = DataGenerator(custom_pipeline)  # model_config optional!
+            >>> gen = TrainingDataGenerator(custom_pipeline)  # model_config optional!
             >>> data = gen.generate_data_training()
         """
         # INIT -----------------------------------------

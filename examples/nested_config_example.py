@@ -4,7 +4,7 @@ This example demonstrates how to use the new nested config structure
 for clearer organization and better maintainability.
 """
 
-from ssms.dataset_generators.lan_mlp import DataGenerator
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
     get_nested_generator_config,
@@ -28,11 +28,11 @@ def example_1_nested_config_from_helper():
             for key, value in nested_config[section].items():
                 print(f"  {key}: {value}")
 
-    # Use with DataGenerator
+    # Use with TrainingDataGenerator
     model_config = get_default_model_config("ddm")
-    gen = DataGenerator(nested_config, model_config)
+    _gen = TrainingDataGenerator(nested_config, model_config)
 
-    print("\n✅ DataGenerator created successfully with nested config!")
+    print("\n✅ TrainingDataGenerator created successfully with nested config!")
     print("   (No deprecation warning)")
 
 
@@ -83,11 +83,11 @@ def example_2_manual_nested_config():
         f"  Training: {custom_nested_config['training']['n_samples_per_param']} samples/param"
     )
 
-    # Use with DataGenerator
+    # Use with TrainingDataGenerator
     model_config = get_default_model_config("ddm")
-    gen = DataGenerator(custom_nested_config, model_config)
+    _gen = TrainingDataGenerator(custom_nested_config, model_config)
 
-    print("\n✅ DataGenerator created successfully with custom nested config!")
+    print("\n✅ TrainingDataGenerator created successfully with custom nested config!")
 
 
 def example_3_legacy_flat_config():
@@ -104,14 +104,14 @@ def example_3_legacy_flat_config():
         if key in flat_config:
             print(f"  {key}: {flat_config[key]}")
 
-    # Use with DataGenerator (will trigger deprecation warning)
+    # Use with TrainingDataGenerator (will trigger deprecation warning)
     model_config = get_default_model_config("ddm")
 
     import warnings
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        gen = DataGenerator(flat_config, model_config)
+        _gen = TrainingDataGenerator(flat_config, model_config)
 
         if w:
             print("\n⚠️  Deprecation warning triggered:")
@@ -167,15 +167,15 @@ def example_5_both_structures_work():
     flat_config = get_default_generator_config("lan", nested=False)
     nested_config = get_default_generator_config("lan", nested=True)
 
-    # Create DataGenerators with both
+    # Create TrainingDataGenerators with both
     model_config = get_default_model_config("ddm")
 
     import warnings
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # Suppress warnings for this demo
-        gen_flat = DataGenerator(flat_config, model_config)
-        gen_nested = DataGenerator(nested_config, model_config)
+        _gen_flat = TrainingDataGenerator(flat_config, model_config)
+        _gen_nested = TrainingDataGenerator(nested_config, model_config)
 
     print("\n✅ Both flat and nested configs work!")
     print("   Flat: Uses legacy structure (with deprecation warning)")

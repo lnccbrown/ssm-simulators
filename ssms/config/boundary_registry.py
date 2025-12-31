@@ -10,15 +10,15 @@ Register a custom boundary:
 
 >>> from ssms.config import register_boundary
 >>>
->>> def my_boundary(t, decay=0.1):
-...     return np.exp(-decay * t)
+>>> def my_boundary(t, a=1.0, decay=0.1):
+...     return a * np.exp(-decay * t)
 >>>
->>> register_boundary("exponential", my_boundary, ["decay"], multiplicative=True)
+>>> register_boundary("exponential", my_boundary, ["a", "decay"])
 >>>
->>> # Use with ConfigBuilder
->>> from ssms.config import ConfigBuilder
->>> config = ConfigBuilder.from_model("ddm")
->>> config = ConfigBuilder.add_boundary(config, "exponential")
+>>> # Use with ModelConfigBuilder
+>>> from ssms.config import ModelConfigBuilder
+>>> config = ModelConfigBuilder.from_model("ddm")
+>>> config = ModelConfigBuilder.add_boundary(config, "exponential")
 
 List available boundaries:
 
@@ -33,11 +33,10 @@ class BoundaryRegistry:
     """Global registry for boundary functions.
 
     This registry maintains a mapping of boundary names to their configuration,
-    including the function, parameters, and whether they are multiplicative or additive.
+    including the function and parameters.
 
-    Boundaries can be either:
-    - Multiplicative: scaled by the 'a' parameter (e.g., boundary(t) * a)
-    - Additive: shifted by the 'a' parameter (e.g., a + boundary(t))
+    All boundary functions accept 'a' as an explicit parameter and return the final
+    boundary value directly.
     """
 
     def __init__(self):
@@ -49,7 +48,6 @@ class BoundaryRegistry:
         name: str,
         function: Callable,
         params: list[str],
-        multiplicative: bool = True,
     ) -> None:
         """Register a boundary function.
 
@@ -59,11 +57,9 @@ class BoundaryRegistry:
             Unique name for the boundary (e.g., "angle", "weibull_cdf")
         function : Callable
             Boundary function with signature (t, **params) -> float or array
-            where t is time and params are boundary-specific parameters
+            where t is time and params are boundary-specific parameters (including 'a')
         params : list[str]
-            List of parameter names the function expects (e.g., ["theta"] for angle)
-        multiplicative : bool, default=True
-            Whether boundary is multiplicative (scaled by 'a') or additive (shifted by 'a')
+            List of parameter names the function expects (e.g., ["a", "theta"] for angle)
 
         Raises
         ------
@@ -72,11 +68,11 @@ class BoundaryRegistry:
 
         Examples
         --------
-        >>> def exponential_decay(t, rate=0.1):
-        ...     return np.exp(-rate * t)
+        >>> def exponential_decay(t, a=1.0, rate=0.1):
+        ...     return a * np.exp(-rate * t)
         >>>
         >>> registry = BoundaryRegistry()
-        >>> registry.register("exp_decay", exponential_decay, ["rate"], multiplicative=True)
+        >>> registry.register("exp_decay", exponential_decay, ["a", "rate"])
         """
         if name in self._boundaries:
             raise ValueError(
@@ -87,7 +83,6 @@ class BoundaryRegistry:
         self._boundaries[name] = {
             "fun": function,
             "params": params,
-            "multiplicative": multiplicative,
         }
 
     def get(self, name: str) -> dict[str, Any]:
@@ -103,8 +98,7 @@ class BoundaryRegistry:
         dict
             Dictionary containing:
             - 'fun': The boundary function
-            - 'params': List of parameter names
-            - 'multiplicative': Whether boundary is multiplicative
+            - 'params': List of parameter names (including 'a')
 
         Raises
         ------
@@ -180,12 +174,11 @@ def register_boundary(
     name: str,
     function: Callable,
     params: list[str],
-    multiplicative: bool = True,
 ) -> None:
     """Register a boundary function globally.
 
     This is the main entry point for registering custom boundary functions.
-    Once registered, boundaries can be used with ConfigBuilder.add_boundary()
+    Once registered, boundaries can be used with ModelConfigBuilder.add_boundary()
     just like built-in boundaries.
 
     Parameters
@@ -195,9 +188,7 @@ def register_boundary(
     function : Callable
         Boundary function with signature (t, **params) -> float or array
     params : list[str]
-        List of parameter names the function expects
-    multiplicative : bool, default=True
-        Whether boundary is multiplicative (scaled by 'a') or additive
+        List of parameter names the function expects (must include 'a')
 
     Raises
     ------
@@ -211,29 +202,28 @@ def register_boundary(
     >>> import numpy as np
     >>> from ssms.config import register_boundary
     >>>
-    >>> def exponential_decay(t, rate=0.1, offset=0.0):
-    ...     return np.exp(-rate * t) + offset
+    >>> def exponential_decay(t, a=1.0, rate=0.1):
+    ...     return a * np.exp(-rate * t)
     >>>
     >>> register_boundary(
     ...     name="exponential_decay",
     ...     function=exponential_decay,
-    ...     params=["rate", "offset"],
-    ...     multiplicative=True
+    ...     params=["a", "rate"]
     ... )
     >>>
-    >>> # Now use it with ConfigBuilder
-    >>> from ssms.config import ConfigBuilder
-    >>> config = ConfigBuilder.from_model("ddm")
-    >>> config = ConfigBuilder.add_boundary(config, "exponential_decay")
+    >>> # Now use it with ModelConfigBuilder
+    >>> from ssms.config import ModelConfigBuilder
+    >>> config = ModelConfigBuilder.from_model("ddm")
+    >>> config = ModelConfigBuilder.add_boundary(config, "exponential_decay")
 
     Register a collapsing boundary:
 
-    >>> def linear_collapse(t, slope=-0.5):
-    ...     return 1.0 + slope * t
+    >>> def linear_collapse(t, a=1.0, slope=-0.5):
+    ...     return a + slope * t
     >>>
-    >>> register_boundary("linear_collapse", linear_collapse, ["slope"])
+    >>> register_boundary("linear_collapse", linear_collapse, ["a", "slope"])
     """
-    _GLOBAL_BOUNDARY_REGISTRY.register(name, function, params, multiplicative)
+    _GLOBAL_BOUNDARY_REGISTRY.register(name, function, params)
 
 
 def get_boundary_registry() -> BoundaryRegistry:
@@ -273,5 +263,4 @@ for boundary_name, boundary_spec in boundary_config.items():
         name=boundary_name,
         function=boundary_spec["fun"],
         params=boundary_spec["params"],
-        multiplicative=boundary_spec["multiplicative"],
     )

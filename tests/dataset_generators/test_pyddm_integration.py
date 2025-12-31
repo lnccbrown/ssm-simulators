@@ -6,8 +6,12 @@ import numpy as np
 # Skip all tests if pyddm not installed
 pytest.importorskip("pyddm")
 
-from ssms.config import model_config, get_lan_config
-from ssms.dataset_generators.lan_mlp import DataGenerator
+from ssms.config import model_config
+from ssms.config.generator_config.data_generator_config import (
+    get_default_generator_config,
+    get_lan_config,
+)
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.estimator_builders.builder_factory import (
     create_estimator_builder,
 )
@@ -18,46 +22,50 @@ from ssms.dataset_generators.estimator_builders.pyddm_builder import (
 
 @pytest.fixture
 def base_generator_config():
-    """Base configuration for data generation."""
-    config = get_lan_config()
-    config.update(
-        {
-            "n_samples": 2000,
-            "n_parameter_sets": 20,  # Increased to ensure enough pass filters
-            "n_training_samples_by_parameter_set": 200,
-            "delta_t": 0.001,
-            "max_t": 10.0,
-            "data_mixture_probabilities": [0.8, 0.1, 0.1],
-            "simulation_filters": {
-                "mode": 20,
-                "choice_cnt": 0,
-                "mean_rt": 17,
-                "std": 0,
-                "mode_cnt_rel": 0.95,
-            },
-        }
+    """Base configuration for data generation with nested structure."""
+    config = get_default_generator_config("lan")
+
+    # Update nested structure properly
+    config["simulator"]["n_samples"] = 2000
+    config["simulator"]["delta_t"] = 0.001
+    config["simulator"]["max_t"] = 10.0
+
+    config["pipeline"]["n_parameter_sets"] = (
+        20  # Increased to ensure enough pass filters
     )
+
+    config["training"]["n_samples_per_param"] = 200
+    config["training"]["mixture_probabilities"] = [0.8, 0.1, 0.1]
+
+    config["pipeline"]["simulation_filters"] = {
+        "mode": 20,
+        "choice_cnt": 0,
+        "mean_rt": 17,
+        "std": 0,
+        "mode_cnt_rel": 0.95,
+    }
+
     return config
 
 
-class TestPyDDMDataGeneratorIntegration:
-    """Test PyDDM estimator integration with DataGenerator."""
+class TestPyDDMTrainingDataGeneratorIntegration:
+    """Test PyDDM estimator integration with TrainingDataGenerator."""
 
-    def test_DataGenerator_with_pyddm_ddm(self, base_generator_config):
-        """Test DataGenerator with PyDDM estimator for DDM."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-            "pdf_interpolation": "cubic",
-        }
+    def test_TrainingDataGenerator_with_pyddm_ddm(self, base_generator_config):
+        """Test TrainingDataGenerator with PyDDM estimator for DDM."""
+        from copy import deepcopy
 
-        gen = DataGenerator(
-            generator_config=generator_config,
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
+        generator_config["estimator"]["pdf_interpolation"] = "cubic"
+
+        gen = TrainingDataGenerator(
+            config=generator_config,
             model_config=model_config["ddm"],
         )
 
         # Generate training data
-        training_data_dict = gen.generate_data_training_uniform(save=False)
+        training_data_dict = gen.generate_data_training(save=False)
 
         # Verify data was created
         assert "lan_data" in training_data_dict
@@ -87,17 +95,17 @@ class TestPyDDMDataGeneratorIntegration:
 
     def test_pyddm_training_data_structure(self, base_generator_config):
         """Test that PyDDM generates properly structured training data."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-        }
+        from copy import deepcopy
 
-        gen = DataGenerator(
-            generator_config=generator_config,
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
+
+        gen = TrainingDataGenerator(
+            config=generator_config,
             model_config=model_config["ddm"],
         )
 
-        training_data_dict = gen.generate_data_training_uniform(save=False)
+        training_data_dict = gen.generate_data_training(save=False)
 
         # Check structure
         data = training_data_dict["lan_data"]
@@ -122,17 +130,17 @@ class TestPyDDMDataGeneratorIntegration:
 
     def test_pyddm_with_ornstein(self, base_generator_config):
         """Test PyDDM with position-dependent drift (Ornstein)."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-        }
+        from copy import deepcopy
 
-        gen = DataGenerator(
-            generator_config=generator_config,
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
+
+        gen = TrainingDataGenerator(
+            config=generator_config,
             model_config=model_config["ornstein"],
         )
 
-        training_data_dict = gen.generate_data_training_uniform(save=False)
+        training_data_dict = gen.generate_data_training(save=False)
         lan_data = training_data_dict["lan_data"]
 
         assert lan_data.shape[0] > 0
@@ -140,15 +148,15 @@ class TestPyDDMDataGeneratorIntegration:
 
     def test_pyddm_incompatible_model_fails(self, base_generator_config):
         """Test that incompatible models raise clear errors."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-        }
+        from copy import deepcopy
+
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
 
         # Race model should fail
         with pytest.raises(ValueError, match="not compatible with PyDDM"):
-            DataGenerator(
-                generator_config=generator_config,
+            TrainingDataGenerator(
+                config=generator_config,
                 model_config=model_config["race_3"],
             )
 
@@ -164,21 +172,25 @@ class TestPyDDMVsKDEComparison:
         uses analytical solutions. We allow for substantial differences (up to 250% relative error)
         since the KDE approximation quality depends on simulation parameters.
         """
+        from copy import deepcopy
+
         # Generate with KDE
-        kde_config = {**base_generator_config, "estimator_type": "kde"}
-        kde_gen = DataGenerator(
-            generator_config=kde_config,
+        kde_config = deepcopy(base_generator_config)
+        kde_config["estimator"]["type"] = "kde"
+        kde_gen = TrainingDataGenerator(
+            config=kde_config,
             model_config=model_config["ddm"],
         )
-        kde_data_dict = kde_gen.generate_data_training_uniform(save=False)
+        kde_data_dict = kde_gen.generate_data_training(save=False)
 
         # Generate with PyDDM
-        pyddm_config = {**base_generator_config, "estimator_type": "pyddm"}
-        pyddm_gen = DataGenerator(
-            generator_config=pyddm_config,
+        pyddm_config = deepcopy(base_generator_config)
+        pyddm_config["estimator"]["type"] = "pyddm"
+        pyddm_gen = TrainingDataGenerator(
+            config=pyddm_config,
             model_config=model_config["ddm"],
         )
-        pyddm_data_dict = pyddm_gen.generate_data_training_uniform(save=False)
+        pyddm_data_dict = pyddm_gen.generate_data_training(save=False)
 
         # Both should produce data
         kde_data = kde_data_dict["lan_data"]
@@ -208,44 +220,45 @@ class TestPyDDMVsKDEComparison:
     def test_pyddm_faster_than_kde_for_many_parameter_sets(self):
         """Test that PyDDM is faster than KDE for generating many parameter sets."""
         import time
+        from copy import deepcopy
 
-        config_many_params = get_lan_config()
-        config_many_params.update(
-            {
-                "n_samples": 2000,
-                "n_parameter_sets": 30,  # More parameter sets to ensure enough pass filters
-                "n_training_samples_by_parameter_set": 100,
-                "delta_t": 0.001,
-                "max_t": 5.0,
-                "data_mixture_probabilities": [0.8, 0.1, 0.1],
-                "simulation_filters": {
-                    "mode": 20,
-                    "choice_cnt": 0,
-                    "mean_rt": 17,
-                    "std": 0,
-                    "mode_cnt_rel": 0.95,
-                },
-            }
+        config_many_params = get_default_generator_config("lan")
+        config_many_params["simulator"]["n_samples"] = 2000
+        config_many_params["simulator"]["delta_t"] = 0.001
+        config_many_params["simulator"]["max_t"] = 5.0
+        config_many_params["pipeline"]["n_parameter_sets"] = (
+            30  # More parameter sets to ensure enough pass filters
         )
+        config_many_params["training"]["n_samples_per_param"] = 100
+        config_many_params["training"]["mixture_probabilities"] = [0.8, 0.1, 0.1]
+        config_many_params["pipeline"]["simulation_filters"] = {
+            "mode": 20,
+            "choice_cnt": 0,
+            "mean_rt": 17,
+            "std": 0,
+            "mode_cnt_rel": 0.95,
+        }
 
         # Time KDE
-        kde_config = {**config_many_params, "estimator_type": "kde"}
-        kde_gen = DataGenerator(
-            generator_config=kde_config,
+        kde_config = deepcopy(config_many_params)
+        kde_config["estimator"]["type"] = "kde"
+        kde_gen = TrainingDataGenerator(
+            config=kde_config,
             model_config=model_config["ddm"],
         )
         start_kde = time.time()
-        kde_gen.generate_data_training_uniform(save=False)
+        kde_gen.generate_data_training(save=False)
         time_kde = time.time() - start_kde
 
         # Time PyDDM
-        pyddm_config = {**config_many_params, "estimator_type": "pyddm"}
-        pyddm_gen = DataGenerator(
-            generator_config=pyddm_config,
+        pyddm_config = deepcopy(config_many_params)
+        pyddm_config["estimator"]["type"] = "pyddm"
+        pyddm_gen = TrainingDataGenerator(
+            config=pyddm_config,
             model_config=model_config["ddm"],
         )
         start_pyddm = time.time()
-        pyddm_gen.generate_data_training_uniform(save=False)
+        pyddm_gen.generate_data_training(save=False)
         time_pyddm = time.time() - start_pyddm
 
         # PyDDM should be faster (or at least not much slower)
@@ -260,7 +273,10 @@ class TestPyDDMBuilderFactory:
 
     def test_factory_creates_pyddm_builder(self, base_generator_config):
         """Test that factory creates PyDDM builder."""
-        config = {**base_generator_config, "estimator_type": "pyddm"}
+        from copy import deepcopy
+
+        config = deepcopy(base_generator_config)
+        config["estimator"]["type"] = "pyddm"
 
         builder = create_estimator_builder(config, model_config["ddm"])
 
@@ -268,7 +284,10 @@ class TestPyDDMBuilderFactory:
 
     def test_factory_legacy_flag_creates_pyddm_builder(self, base_generator_config):
         """Test that legacy use_pyddm_pdf flag works."""
-        config = {**base_generator_config, "use_pyddm_pdf": True}
+        from copy import deepcopy
+
+        config = deepcopy(base_generator_config)
+        config["estimator"]["use_pyddm_pdf"] = True
 
         builder = create_estimator_builder(config, model_config["ddm"])
 
@@ -276,12 +295,14 @@ class TestPyDDMBuilderFactory:
 
     def test_pyddm_via_cli_config_structure(self, base_generator_config):
         """Test PyDDM works with CLI-style configuration."""
+        from copy import deepcopy
+
+        data_config = deepcopy(base_generator_config)
+        data_config["model"] = "ddm"
+        data_config["estimator"]["type"] = "pyddm"
+
         config_dict = {
-            "data_config": {
-                **base_generator_config,
-                "model": "ddm",
-                "estimator_type": "pyddm",
-            },
+            "data_config": data_config,
             "model_config": model_config["ddm"],
         }
 
@@ -297,34 +318,34 @@ class TestPyDDMInterpolationOptions:
 
     def test_cubic_interpolation(self, base_generator_config):
         """Test that cubic interpolation works."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-            "pdf_interpolation": "cubic",
-        }
+        from copy import deepcopy
 
-        gen = DataGenerator(
-            generator_config=generator_config,
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
+        generator_config["estimator"]["pdf_interpolation"] = "cubic"
+
+        gen = TrainingDataGenerator(
+            config=generator_config,
             model_config=model_config["ddm"],
         )
 
-        training_data_dict = gen.generate_data_training_uniform(save=False)
+        training_data_dict = gen.generate_data_training(save=False)
         assert training_data_dict["lan_data"].shape[0] > 0
 
     def test_linear_interpolation(self, base_generator_config):
         """Test that linear interpolation works."""
-        generator_config = {
-            **base_generator_config,
-            "estimator_type": "pyddm",
-            "pdf_interpolation": "linear",
-        }
+        from copy import deepcopy
 
-        gen = DataGenerator(
-            generator_config=generator_config,
+        generator_config = deepcopy(base_generator_config)
+        generator_config["estimator"]["type"] = "pyddm"
+        generator_config["estimator"]["pdf_interpolation"] = "linear"
+
+        gen = TrainingDataGenerator(
+            config=generator_config,
             model_config=model_config["ddm"],
         )
 
-        training_data_dict = gen.generate_data_training_uniform(save=False)
+        training_data_dict = gen.generate_data_training(save=False)
         assert training_data_dict["lan_data"].shape[0] > 0
 
 
@@ -338,7 +359,8 @@ class TestPyDDMAccuracy:
         )
 
         config = get_lan_config()
-        config.update({"delta_t": 0.001, "max_t": 10.0})
+        config["simulator"]["delta_t"] = 0.001
+        config["simulator"]["max_t"] = 10.0
 
         builder = PyDDMEstimatorBuilder(config, model_config["ddm"])
 
@@ -364,7 +386,8 @@ class TestPyDDMAccuracy:
         )
 
         config = get_lan_config()
-        config.update({"delta_t": 0.001, "max_t": 10.0})
+        config["simulator"]["delta_t"] = 0.001
+        config["simulator"]["max_t"] = 10.0
 
         builder = PyDDMEstimatorBuilder(config, model_config["ddm"])
 

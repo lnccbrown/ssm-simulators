@@ -21,7 +21,7 @@ from .model_registry import (
 from ssms.config._modelconfig import get_model_config
 
 from .generator_config.data_generator_config import (
-    DataGenerator_config,  # TODO: remove from interface in v1.0.0
+    TrainingDataGenerator_config,  # TODO: remove from interface in v1.0.0
     get_default_generator_config,
     get_defective_detector_config,
     get_kde_simulation_filters,
@@ -29,7 +29,7 @@ from .generator_config.data_generator_config import (
     get_ratio_estimator_config,
 )
 from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
-from .config_builder import ConfigBuilder
+from .model_config_builder import ModelConfigBuilder
 
 
 def boundary_config_to_function_params(config: dict) -> dict:
@@ -68,7 +68,7 @@ __all__ = [
     "register_model_config",
     "register_model_config_factory",
     "get_model_registry",
-    "ConfigBuilder",
+    "ModelConfigBuilder",
     # Legacy access (kept for convenience)
     "model_config",
     "boundary_config_to_function_params",
@@ -78,5 +78,5 @@ __all__ = [
     "get_defective_detector_config",
     "get_ratio_estimator_config",
     "get_default_generator_config",
-    "DataGenerator_config",  # TODO: remove from interface in v1.0.0
+    "TrainingDataGenerator_config",  # TODO: remove from interface in v1.0.0
 ]

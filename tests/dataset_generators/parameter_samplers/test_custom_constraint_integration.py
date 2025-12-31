@@ -143,7 +143,7 @@ class TestCustomTransformWithSampler:
 
         sampler = UniformParameterSampler(
             param_space=param_space,
-            transforms=transforms,
+            constraints=transforms,
         )
 
         # Sample and verify transform was applied
@@ -182,7 +182,7 @@ class TestCustomTransformWithSampler:
 
         sampler = UniformParameterSampler(
             param_space=param_space,
-            transforms=transforms,
+            constraints=transforms,
         )
 
         # Sample and verify transform was applied
@@ -225,7 +225,7 @@ class TestCustomTransformWithSampler:
 
         sampler = UniformParameterSampler(
             param_space=param_space,
-            transforms=transforms,
+            constraints=transforms,
         )
 
         # Sample and verify transforms were applied in order
@@ -262,7 +262,7 @@ class TestCustomTransformWithSampler:
 
         sampler = UniformParameterSampler(
             param_space=param_space,
-            transforms=transforms,
+            constraints=transforms,
         )
 
         # Sample and verify both transforms work
@@ -328,7 +328,7 @@ class TestEndToEndCustomTransformWorkflow:
         transforms = get_constraints_from_model_config(model_config)
         sampler = UniformParameterSampler(
             param_space=model_config["param_bounds_dict"],
-            transforms=transforms,
+            constraints=transforms,
         )
 
         # Step 4: Sample and verify

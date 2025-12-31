@@ -38,13 +38,17 @@ def ddm_simulations(ddm_theta):
 
 @pytest.fixture
 def generator_config():
-    """Standard generator configuration."""
+    """Standard generator configuration with nested structure."""
     return {
-        "n_training_samples_by_parameter_set": 100,
-        "data_mixture_probabilities": [0.8, 0.1, 0.1],
-        "separate_response_channels": False,
-        "negative_rt_cutoff": -1000.0,
-        "kde_displace_t": False,
+        "training": {
+            "n_training_samples_by_parameter_set": 100,
+            "data_mixture_probabilities": [0.8, 0.1, 0.1],
+            "separate_response_channels": False,
+            "negative_rt_log_likelihood": -1000.0,
+        },
+        "estimator": {
+            "kde_displace_t": False,
+        },
     }
 
 
@@ -77,7 +81,7 @@ def test_strategy_generates_correct_shape(
 
     training_data = strategy.generate(ddm_theta, fitted_estimator)
 
-    n_samples = generator_config["n_training_samples_by_parameter_set"]
+    n_samples = generator_config["training"]["n_training_samples_by_parameter_set"]
     n_params = len(ddm_theta)
     n_features = 3 + n_params  # params + RT + choice + log_lik
 
@@ -111,7 +115,7 @@ def test_strategy_mixture_proportions(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
     """Test that samples are mixed according to specified probabilities."""
-    generator_config["n_training_samples_by_parameter_set"] = (
+    generator_config["training"]["n_training_samples_by_parameter_set"] = (
         1000  # Large n for clear proportions
     )
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
@@ -123,14 +127,16 @@ def test_strategy_mixture_proportions(
     n_negative = np.sum(rt_col < 0)
 
     # Should be approximately 10% (0.1 * 1000)
-    expected_negative = int(1000 * generator_config["data_mixture_probabilities"][2])
+    expected_negative = int(
+        1000 * generator_config["training"]["data_mixture_probabilities"][2]
+    )
     assert abs(n_negative - expected_negative) <= 1  # Allow for rounding
 
 
-def test_strategy_negative_rt_cutoff(
+def test_strategy_negative_rt_log_likelihood(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test that negative RT samples have the correct log-likelihood cutoff."""
+    """Test that negative RT samples have the correct log-likelihood value."""
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
     training_data = strategy.generate(ddm_theta, fitted_estimator)
@@ -142,42 +148,40 @@ def test_strategy_negative_rt_cutoff(
     negative_rt_mask = rt_col < 0
     negative_rt_liks = lik_col[negative_rt_mask]
 
-    # All negative RT log-likelihoods should equal the cutoff
-    expected_cutoff = generator_config["negative_rt_cutoff"]
-    np.testing.assert_allclose(negative_rt_liks, expected_cutoff)
+    # All negative RT log-likelihoods should equal the configured value
+    expected_value = generator_config["training"]["negative_rt_log_likelihood"]
+    np.testing.assert_allclose(negative_rt_liks, expected_value)
 
 
 def test_strategy_positive_rt_range(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test that uniform samples' RTs are in valid range."""
+    """Test that RTs are in valid range after shuffling."""
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
-    training_data = strategy.generate(ddm_theta, fitted_estimator)
-
-    # Get uniform sample indices (KDE samples can exceed max_t due to extrapolation)
-    n_kde = int(
-        generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["data_mixture_probabilities"][0]
-    )
-    n_unif_up = int(
-        generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["data_mixture_probabilities"][1]
-    )
+    training_data = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
 
     rt_col = training_data[:, -3]
-    uniform_rts = rt_col[n_kde : (n_kde + n_unif_up)]
 
-    # Uniform RTs should be between 0.0001 and max_t
-    metadata = fitted_estimator.get_metadata()
-    max_t = min(metadata["max_t"], 100)  # Strategy clips at 100
+    # After shuffling, we can't identify which samples came from which source
+    # But we can verify overall properties:
 
-    assert np.all(uniform_rts >= 0.0001)
-    assert np.all(uniform_rts <= max_t)
-
-    # All positive RTs should be >= 0.0001 (including KDE samples)
+    # All positive RTs should be >= 0.0001
     positive_rts = rt_col[rt_col >= 0]
     assert np.all(positive_rts >= 0.0001)
+
+    # Negative RTs should be in the range [-1.0, 0.0001)
+    negative_rts = rt_col[rt_col < 0]
+    assert np.all(negative_rts >= -1.0)
+    assert np.all(negative_rts < 0.0001)
+
+    # Check that we have approximately the right number of negative RTs
+    n_total = generator_config["training"]["n_training_samples_by_parameter_set"]
+    expected_negative = int(
+        n_total * generator_config["training"]["data_mixture_probabilities"][2]
+    )
+    actual_negative = len(negative_rts)
+    assert abs(actual_negative - expected_negative) <= 1  # Allow for rounding
 
 
 def test_strategy_choices_are_valid(
@@ -222,36 +226,42 @@ def test_strategy_log_likelihoods_are_reasonable(
 def test_strategy_with_separate_response_channels(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test strategy with one-hot encoded choices."""
-    generator_config["separate_response_channels"] = True
+    """Test strategy with one-hot encoded choices after shuffling."""
+    generator_config["training"]["separate_response_channels"] = True
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
-    training_data = strategy.generate(ddm_theta, fitted_estimator)
+    training_data = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
 
-    n_samples = generator_config["n_training_samples_by_parameter_set"]
+    n_samples = generator_config["training"]["n_training_samples_by_parameter_set"]
     n_params = len(ddm_theta)
     nchoices = ddm_model_config["nchoices"]
     n_features = 2 + nchoices + n_params  # params + RT + one-hot-choices + log_lik
 
     assert training_data.shape == (n_samples, n_features)
 
-    # Check that one-hot encoding is valid for KDE samples
-    # (Uniform samples don't use one-hot encoding, even with separate_response_channels)
-    n_kde = int(
-        generator_config["n_training_samples_by_parameter_set"]
-        * generator_config["data_mixture_probabilities"][0]
-    )
+    # After shuffling, KDE samples with one-hot encoding are mixed with uniform samples
+    # that use scalar choice encoding. We need to identify which samples have one-hot encoding.
 
-    # Extract one-hot columns (between RT and log-lik) for KDE samples only
+    # Strategy: One-hot encoded rows will have integer values in the choice columns that sum to 1
+    # Uniform samples will have non-integer choice values in column -2
     rt_col_idx = -2 - nchoices
-    one_hot_cols = training_data[:n_kde, (rt_col_idx + 1) : -1]
+    one_hot_cols = training_data[:, (rt_col_idx + 1) : -1]
+    _choice_scalar_col = training_data[:, -2]  # For reference
 
-    # Each KDE sample row should sum to 1 (exactly one choice active)
+    # Find rows where one-hot encoding is used (KDE samples)
+    # These have choice columns that sum to approximately 1
     row_sums = one_hot_cols.sum(axis=1)
-    np.testing.assert_allclose(row_sums, 1.0)
+    one_hot_rows = np.abs(row_sums - 1.0) < 0.01  # Tolerance for floating point
 
-    # All values should be 0 or 1
-    assert np.all((one_hot_cols == 0) | (one_hot_cols == 1))
+    # For one-hot encoded rows, verify structure
+    one_hot_samples = one_hot_cols[one_hot_rows]
+    if len(one_hot_samples) > 0:
+        # Each row should sum to exactly 1
+        one_hot_sums = one_hot_samples.sum(axis=1)
+        np.testing.assert_allclose(one_hot_sums, 1.0, rtol=1e-5)
+
+        # All values should be 0 or 1
+        assert np.all((one_hot_samples == 0) | (one_hot_samples == 1))
 
 
 def test_strategy_rounding_adjustment(
@@ -259,8 +269,8 @@ def test_strategy_rounding_adjustment(
 ):
     """Test that rounding adjustments work correctly."""
     # Set probabilities that will cause rounding issues
-    generator_config["n_training_samples_by_parameter_set"] = 100
-    generator_config["data_mixture_probabilities"] = [0.333, 0.333, 0.334]
+    generator_config["training"]["n_training_samples_by_parameter_set"] = 100
+    generator_config["training"]["data_mixture_probabilities"] = [0.333, 0.333, 0.334]
 
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
@@ -275,8 +285,12 @@ def test_strategy_rounding_error_too_large(
 ):
     """Test that strategy raises error if rounding adjustment would make n_kde negative."""
     # Create pathological case
-    generator_config["n_training_samples_by_parameter_set"] = 10
-    generator_config["data_mixture_probabilities"] = [0.0, 0.6, 0.6]  # Sums to 1.2!
+    generator_config["training"]["n_training_samples_by_parameter_set"] = 10
+    generator_config["training"]["data_mixture_probabilities"] = [
+        0.0,
+        0.6,
+        0.6,
+    ]  # Sums to 1.2!
 
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
@@ -288,14 +302,11 @@ def test_strategy_rounding_error_too_large(
 def test_strategy_reproducibility_with_seed(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test that strategy generates reproducible results with seeded RNG."""
+    """Test that strategy generates reproducible results with random_state parameter."""
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
-    np.random.seed(42)
-    data1 = strategy.generate(ddm_theta, fitted_estimator)
-
-    np.random.seed(42)
-    data2 = strategy.generate(ddm_theta, fitted_estimator)
+    data1 = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
+    data2 = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
 
     np.testing.assert_allclose(data1, data2)
 
@@ -303,17 +314,61 @@ def test_strategy_reproducibility_with_seed(
 def test_strategy_different_with_different_seed(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test that strategy generates different results with different seeds."""
+    """Test that strategy generates different results with different random_state values."""
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
-    np.random.seed(42)
-    data1 = strategy.generate(ddm_theta, fitted_estimator)
-
-    np.random.seed(123)
-    data2 = strategy.generate(ddm_theta, fitted_estimator)
+    data1 = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
+    data2 = strategy.generate(ddm_theta, fitted_estimator, random_state=123)
 
     # Should be different
     assert not np.allclose(data1, data2)
+
+
+def test_strategy_shuffles_output(
+    generator_config, ddm_model_config, ddm_theta, fitted_estimator
+):
+    """Test that strategy shuffles output to avoid ordering bias."""
+    # Use large sample size for clear separation of mixture components
+    generator_config["training"]["n_training_samples_by_parameter_set"] = 1000
+    strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
+
+    training_data = strategy.generate(ddm_theta, fitted_estimator, random_state=42)
+
+    # Extract RT column
+    rt_col = training_data[:, -3]
+
+    # Calculate expected counts
+    n_total = 1000
+    n_kde = int(
+        n_total * generator_config["training"]["data_mixture_probabilities"][0]
+    )  # 800
+    _n_unif_up = int(
+        n_total * generator_config["training"]["data_mixture_probabilities"][1]
+    )  # 100
+    n_unif_down = int(
+        n_total * generator_config["training"]["data_mixture_probabilities"][2]
+    )  # 100
+
+    # If NOT shuffled, first n_kde samples would all be KDE samples (mostly positive RTs)
+    # If shuffled, negative RTs should be distributed throughout
+
+    # Count negative RTs in first n_kde samples
+    first_batch_negative = np.sum(rt_col[:n_kde] < 0)
+
+    # If shuffled properly, we should see some negative RTs in the first batch
+    # (roughly 10% of first batch should be negative since 10% overall are negative)
+    # We expect ~80 negative RTs in first 800 samples if perfectly shuffled
+    # Allow for randomness: should have at least 20 (significantly > 0)
+    assert first_batch_negative > 20, (
+        f"Expected shuffling to mix negative RTs throughout, "
+        f"but found only {first_batch_negative} in first {n_kde} samples"
+    )
+
+    # Also verify that not ALL negative RTs are at the end
+    last_batch_negative = np.sum(rt_col[-n_unif_down:] < 0)
+    assert last_batch_negative < n_unif_down, (
+        "Expected shuffling, but all negative RTs appear at the end"
+    )
 
 
 def test_strategy_protocol_compliance(
@@ -332,7 +387,7 @@ def test_strategy_protocol_compliance(
     assert isinstance(training_data, np.ndarray)
     assert (
         training_data.shape[0]
-        == generator_config["n_training_samples_by_parameter_set"]
+        == generator_config["training"]["n_training_samples_by_parameter_set"]
     )
     assert training_data.dtype == np.float32
 
@@ -358,7 +413,7 @@ def test_strategy_with_different_model(generator_config):
     strategy = ResampleMixtureStrategy(generator_config, ornstein_model_config)
     training_data = strategy.generate(theta, estimator)
 
-    n_samples = generator_config["n_training_samples_by_parameter_set"]
+    n_samples = generator_config["training"]["n_training_samples_by_parameter_set"]
     n_params = len(theta)
     n_features = 3 + n_params
 

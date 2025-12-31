@@ -42,7 +42,7 @@ def create_data_generation_strategy(
     Note:
         The same model_config can be used for both simulation-based (KDE) and
         analytical (PyDDM) strategies. Custom boundaries and drift functions
-        should be configured through the model_config or using ConfigBuilder.
+        should be configured through the model_config or using ModelConfigBuilder.
 
     Example:
         >>> strategy = create_data_generation_strategy(

@@ -31,6 +31,7 @@ from ssms.basic_simulators.parameter_simulator_adapter import (
 )
 from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
 from ssms.config import model_config, get_boundary_registry, get_drift_registry
+from ssms.config.model_registry import get_model_registry
 
 
 class Simulator:
@@ -194,11 +195,19 @@ class Simulator:
         elif isinstance(model, str):
             # Handle deadline models by stripping the suffix for lookup
             model_lookup = model.replace("_deadline", "")
-            if model_lookup not in model_config:
+
+            # Check custom registry first, then built-in models
+            registry = get_model_registry()
+            if registry.has_model(model_lookup):
+                config = deepcopy(registry.get(model_lookup))
+            elif model_lookup in model_config:
+                config = deepcopy(model_config[model_lookup])
+            else:
                 raise ValueError(
-                    f"Unknown model '{model_lookup}'. Available models: {list(model_config.keys())}"
+                    f"Unknown model '{model_lookup}'. Available models: "
+                    f"{list(model_config.keys()) + registry.list_models()}"
                 )
-            config = deepcopy(model_config[model_lookup])
+
             # Preserve the original name with _deadline if it was provided
             if "_deadline" in model:
                 config["name"] = model

@@ -53,13 +53,23 @@ dev = [
     "marimo[recommended]",
     "pyddm>=0.9.0",
 ]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-jupyter>=0.24.0",
+    "mkdocstrings[python]>=0.24.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/lnccbrown/ssm-simulators"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
 
 [tool.setuptools.packages.find]
-include = ["ssms", "ssms.*"]
+where = [".", "src"]
+include = ["ssms*", "cssm"]
+
+[tool.setuptools.package-dir]
+cssm = "src/cssm"
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -174,3 +184,4 @@ generate = "ssms.cli.generate:app"
 
 [tool.setuptools.package-data]
 "ssms.cli" = ["config_network_training_lan.yaml"]
+"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd"]

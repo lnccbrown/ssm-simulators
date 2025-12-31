@@ -19,9 +19,9 @@ Register a custom model configuration:
 >>>
 >>> register_model_config("my_ddm", my_config)
 >>>
->>> # Now use it with ConfigBuilder
->>> from ssms.config import ConfigBuilder
->>> config = ConfigBuilder.from_model("my_ddm")
+>>> # Now use it with ModelConfigBuilder
+>>> from ssms.config import ModelConfigBuilder
+>>> config = ModelConfigBuilder.from_model("my_ddm")
 
 Register using a factory function:
 
@@ -226,7 +226,7 @@ def register_model_config(name: str, config: dict) -> None:
     """Register a model configuration globally.
 
     This is the main entry point for registering custom model configurations.
-    Once registered, models can be used with ConfigBuilder.from_model()
+    Once registered, models can be used with ModelConfigBuilder.from_model()
     just like built-in models.
 
     Parameters
@@ -260,8 +260,8 @@ def register_model_config(name: str, config: dict) -> None:
     >>> register_model_config("my_custom_ddm", my_model)
     >>>
     >>> # Now use it like any built-in model
-    >>> from ssms.config import ConfigBuilder
-    >>> config = ConfigBuilder.from_model("my_custom_ddm")
+    >>> from ssms.config import ModelConfigBuilder
+    >>> config = ModelConfigBuilder.from_model("my_custom_ddm")
     >>>
     >>> # Or with Simulator
     >>> from ssms.basic_simulators import Simulator
@@ -323,7 +323,7 @@ def register_model_config_factory(name: str, factory: Callable[[], dict]) -> Non
     >>> register_model_config_factory("my_model", get_my_model)
     >>>
     >>> # Factory is called only when accessing the model
-    >>> config = ConfigBuilder.from_model("my_model")
+    >>> config = ModelConfigBuilder.from_model("my_model")
     """
     _GLOBAL_MODEL_REGISTRY.register_factory(name, factory)
 

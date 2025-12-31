@@ -94,16 +94,16 @@ class TestFlatConfigRejection:
         assert has_nested_structure(nested_config) is True
 
     def test_flat_config_rejected_in_practice(self):
-        """Test that flat configs are rejected by DataGenerator."""
+        """Test that flat configs are rejected by TrainingDataGenerator."""
         from ssms.config import model_config
-        from ssms.dataset_generators.lan_mlp import DataGenerator
+        from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
         flat_config = {"n_parameter_sets": 10, "estimator_type": "kde"}
 
         with pytest.raises(
             ValueError, match="Flat generator_config structure is no longer supported"
         ):
-            DataGenerator(flat_config, model_config["ddm"])
+            TrainingDataGenerator(flat_config, model_config["ddm"])
 
 
 class TestFlatToNestedConversion:
@@ -207,10 +207,10 @@ class TestGeneratorConfigFunctions:
         assert "simulator" in config
         assert "output" in config
 
-    def test_get_default_generator_config_rejects_flat_in_datagenerator(self):
-        """Test that DataGenerator rejects flat configs."""
+    def test_get_default_generator_config_rejects_flat_in_TrainingDataGenerator(self):
+        """Test that TrainingDataGenerator rejects flat configs."""
         from ssms.config import model_config
-        from ssms.dataset_generators.lan_mlp import DataGenerator
+        from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
         # Create a flat config
         flat_config = {
@@ -223,7 +223,7 @@ class TestGeneratorConfigFunctions:
         with pytest.raises(
             ValueError, match="Flat generator_config structure is no longer supported"
         ):
-            DataGenerator(flat_config, model_config["ddm"])
+            TrainingDataGenerator(flat_config, model_config["ddm"])
 
     def test_get_nested_generator_config(self):
         """Test convenience function for nested config."""
@@ -255,10 +255,10 @@ class TestNestedOnlyPolicy:
         assert "pipeline" in config
         assert config["pipeline"]["n_parameter_sets"] == 10000
 
-    def test_flat_config_rejected_by_datagenerator(self):
-        """Test that DataGenerator rejects flat configs."""
+    def test_flat_config_rejected_by_TrainingDataGenerator(self):
+        """Test that TrainingDataGenerator rejects flat configs."""
         from ssms.config import model_config
-        from ssms.dataset_generators.lan_mlp import DataGenerator
+        from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
         flat_config = {
             "n_parameter_sets": 100,
@@ -271,7 +271,7 @@ class TestNestedOnlyPolicy:
         with pytest.raises(
             ValueError, match="Flat generator_config structure is no longer supported"
         ):
-            DataGenerator(flat_config, model_config["ddm"])
+            TrainingDataGenerator(flat_config, model_config["ddm"])
 
     def test_conversion_utility_still_available(self):
         """Test that convert_flat_to_nested is available for migration."""

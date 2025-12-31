@@ -121,10 +121,11 @@ class SimulationBasedGenerationStrategy:
 
         # Extract CPN and other labels
         if len(simulations["metadata"]["possible_choices"]) == 2:
-            cpn_labels = np.expand_dims(simulations["choice_p"][0, 1], axis=0)
-            cpn_no_omission_labels = np.expand_dims(
-                simulations["choice_p_no_omission"][0, 1], axis=0
-            )
+            # For 2-choice models, extract probability of choice 1 and reshape to (1, 1)
+            cpn_labels = simulations["choice_p"][0, 1:2].reshape(1, 1)
+            cpn_no_omission_labels = simulations["choice_p_no_omission"][
+                0, 1:2
+            ].reshape(1, 1)
         else:
             cpn_labels = simulations["choice_p"]
             cpn_no_omission_labels = simulations["choice_p_no_omission"]

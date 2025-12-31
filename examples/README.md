@@ -12,7 +12,7 @@ Comprehensive demonstration of the custom parameter transform system, including:
 - **Class-based transforms**: Configurable transformations with parameters
 - **Transform factories**: Programmatically creating multiple similar transforms
 - **Multi-parameter transforms**: Enforcing constraints between parameters
-- **Integration with DataGenerator**: Complete workflow from registration to data generation
+- **Integration with TrainingDataGenerator**: Complete workflow from registration to data generation
 
 **Run the example:**
 
@@ -22,7 +22,7 @@ python custom_transforms_example.py
 ```
 
 **Key takeaways:**
-- Register transforms before creating `DataGenerator`
+- Register transforms before creating `TrainingDataGenerator`
 - Use descriptive names for clarity
 - Mix custom and built-in transforms freely
 - Transforms work automatically with array inputs
@@ -54,8 +54,8 @@ model_config = {
 }
 
 # 3. Generate data as usual
-from ssms.dataset_generators.lan_mlp import DataGenerator
-generator = DataGenerator(model_config=model_config, ...)
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+generator = TrainingDataGenerator(model_config=model_config, ...)
 data = generator.generate_data_training_uniform(n_training_samples=1000)
 ```
 

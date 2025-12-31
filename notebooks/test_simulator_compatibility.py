@@ -6,7 +6,7 @@ This script tests all available models to ensure that:
 2. The class-based interface is solid and production-ready
 3. An adapter can seamlessly bridge the two APIs
 
-Run this before transitioning DataGenerator to use the class-based Simulator.
+Run this before transitioning TrainingDataGenerator to use the class-based Simulator.
 """
 
 import numpy as np
@@ -27,7 +27,7 @@ def simulator_to_function(simulator_instance: Simulator):
     """Convert a Simulator instance to function-based API.
 
     This adapter allows a class-based Simulator to be used wherever
-    the function-based simulator() API is expected (e.g., in DataGenerator).
+    the function-based simulator() API is expected (e.g., in TrainingDataGenerator).
 
     Args:
         simulator_instance: Configured Simulator instance
@@ -486,7 +486,7 @@ def run_full_test_suite():
         print("  - High compatibility with function-based API")
         print("  - Adapter function works correctly")
         print("  - Performance overhead is acceptable")
-        print("\n  → Safe to transition DataGenerator to class-based Simulator")
+        print("\n  → Safe to transition TrainingDataGenerator to class-based Simulator")
     else:
         print("\n⚠ Additional work needed before transition:")
         if pass_rate < 95:

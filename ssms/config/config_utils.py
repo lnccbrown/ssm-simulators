@@ -128,8 +128,15 @@ def convert_flat_to_nested(flat_config: dict) -> dict:
         nested["training"]["separate_response_channels"] = flat_config[
             "separate_response_channels"
         ]
+    if "negative_rt_log_likelihood" in flat_config:
+        nested["training"]["negative_rt_log_likelihood"] = flat_config[
+            "negative_rt_log_likelihood"
+        ]
+    # Backward compatibility: support old name
     if "negative_rt_cutoff" in flat_config:
-        nested["training"]["negative_rt_cutoff"] = flat_config["negative_rt_cutoff"]
+        nested["training"]["negative_rt_log_likelihood"] = flat_config[
+            "negative_rt_cutoff"
+        ]
 
     # Additional training settings
     if "n_subdatasets" in flat_config:

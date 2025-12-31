@@ -7,7 +7,7 @@ model-specific modifications to sampled parameters.
 
 import numpy as np
 from ssms import register_transform_class, register_transform_function
-from ssms.dataset_generators.lan_mlp import DataGenerator
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
 
 # ============================================================================
@@ -215,15 +215,15 @@ def main():
     print(f"   Parameters: {model_config['params']}")
     print(f"   Transforms: {[t['type'] for t in model_config['parameter_transforms']]}")
 
-    # Step 3: Create a DataGenerator
+    # Step 3: Create a TrainingDataGenerator
     # Note: We're using a small sample size for demonstration
-    generator = DataGenerator(
+    generator = TrainingDataGenerator(
         model_config=model_config,
         n_samples=100,  # Small for demo
         n_trials=128,
     )
 
-    print("\n3. DataGenerator created successfully")
+    print("\n3. TrainingDataGenerator created successfully")
 
     # Step 4: Generate training data
     print("\n4. Generating training data...")
@@ -244,7 +244,7 @@ def main():
 
     print("\n✅ Custom transform workflow complete!")
     print("\nKey takeaways:")
-    print("  - Register transforms before creating DataGenerator")
+    print("  - Register transforms before creating TrainingDataGenerator")
     print("  - Use transform names in model config 'parameter_transforms'")
     print("  - Transforms are applied automatically during sampling")
     print("  - Mix custom and built-in transforms freely")

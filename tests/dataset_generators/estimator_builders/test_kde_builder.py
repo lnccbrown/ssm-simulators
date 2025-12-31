@@ -46,7 +46,7 @@ def test_kde_builder_initialization_default():
 
 def test_kde_builder_initialization_with_displace_t():
     """Test builder extracts displace_t from config."""
-    config = {"kde_displace_t": True, "n_samples": 1000}
+    config = {"estimator": {"displace_t": True}, "simulator": {"n_samples": 1000}}
     builder = KDEEstimatorBuilder(config)
 
     assert builder.displace_t is True
@@ -54,7 +54,7 @@ def test_kde_builder_initialization_with_displace_t():
 
 def test_kde_builder_builds_fitted_estimator(theta, ddm_simulations):
     """Test that build() returns a fitted estimator."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
 
     estimator = builder.build(theta, ddm_simulations)
@@ -70,7 +70,7 @@ def test_kde_builder_builds_fitted_estimator(theta, ddm_simulations):
 def test_kde_builder_builds_with_correct_displace_t(theta, ddm_simulations):
     """Test that builder passes displace_t to estimator correctly."""
     # Test with displace_t=True
-    config_with_displace = {"kde_displace_t": True}
+    config_with_displace = {"estimator": {"displace_t": True}}
     builder_with_displace = KDEEstimatorBuilder(config_with_displace)
     estimator_with_displace = builder_with_displace.build(theta, ddm_simulations)
 
@@ -86,7 +86,7 @@ def test_kde_builder_builds_with_correct_displace_t(theta, ddm_simulations):
 
 def test_kde_builder_requires_simulations(theta):
     """Test that build() raises error when simulations=None."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
 
     with pytest.raises(ValueError, match="KDE estimator requires simulations"):
@@ -95,7 +95,7 @@ def test_kde_builder_requires_simulations(theta):
 
 def test_kde_builder_estimator_can_evaluate(theta, ddm_simulations):
     """Test that built estimator can evaluate log-likelihoods."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
     estimator = builder.build(theta, ddm_simulations)
 
@@ -112,7 +112,7 @@ def test_kde_builder_estimator_can_evaluate(theta, ddm_simulations):
 
 def test_kde_builder_estimator_can_sample(theta, ddm_simulations):
     """Test that built estimator can sample."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
     estimator = builder.build(theta, ddm_simulations)
 
@@ -127,7 +127,7 @@ def test_kde_builder_estimator_can_sample(theta, ddm_simulations):
 
 def test_kde_builder_estimator_has_metadata(theta, ddm_simulations):
     """Test that built estimator has metadata."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
     estimator = builder.build(theta, ddm_simulations)
 
@@ -140,7 +140,7 @@ def test_kde_builder_estimator_has_metadata(theta, ddm_simulations):
 
 def test_kde_builder_multiple_builds(theta, ddm_simulations):
     """Test that builder can be reused to build multiple estimators."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
 
     # Build first estimator
@@ -170,7 +170,7 @@ def test_kde_builder_multiple_builds(theta, ddm_simulations):
 
 def test_kde_builder_protocol_compliance(theta, ddm_simulations):
     """Test that KDEEstimatorBuilder implements EstimatorBuilderProtocol."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
 
     # Verify required method exists and is callable
@@ -192,11 +192,10 @@ def test_kde_builder_with_complex_config():
     """Test that builder only extracts what it needs from config."""
     # Config with many unrelated fields
     complex_config = {
-        "kde_displace_t": True,
-        "n_samples": 2000,
-        "max_t": 10.0,
-        "n_parameter_sets": 100,
-        "output_folder": "/tmp/data",
+        "estimator": {"displace_t": True},
+        "simulator": {"n_samples": 2000, "max_t": 10.0},
+        "pipeline": {"n_parameter_sets": 100},
+        "output": {"folder": "/tmp/data"},
         "model": "ddm",
         "some_other_field": "irrelevant",
     }
@@ -212,14 +211,16 @@ def test_kde_builder_with_complex_config():
 
 def test_kde_builder_config_isolation():
     """Test that modifying config after builder creation doesn't affect builder."""
-    config = {"kde_displace_t": False}
+    config = {"estimator": {"displace_t": False}}
     builder = KDEEstimatorBuilder(config)
 
     # Modify the original config
-    config["kde_displace_t"] = True
+    config["estimator"]["displace_t"] = True
 
     # Builder should still have the original value
     # Note: This test may fail if builder doesn't copy config
     # That's okay - we can decide if we want defensive copying
-    assert builder.generator_config["kde_displace_t"] is True  # References same dict
+    assert (
+        builder.generator_config["estimator"]["displace_t"] is True
+    )  # References same dict
     assert builder.displace_t is False  # But cached value unchanged

@@ -39,7 +39,7 @@ def test_factory_defaults_to_kde(ddm_model_config):
 
 def test_factory_explicit_kde(ddm_model_config):
     """Test that factory creates KDE builder when explicitly requested."""
-    generator_config = {"estimator_type": "kde"}
+    generator_config = {"estimator": {"type": "kde"}}
 
     builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -49,7 +49,7 @@ def test_factory_explicit_kde(ddm_model_config):
 def test_factory_kde_case_insensitive(ddm_model_config):
     """Test that estimator_type is case-insensitive."""
     for variant in ["kde", "KDE", "Kde", "kDe"]:
-        generator_config = {"estimator_type": variant}
+        generator_config = {"estimator": {"type": variant}}
 
         builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -60,7 +60,7 @@ def test_factory_pyddm_creates_builder(ddm_model_config):
     """Test that PyDDM estimator builder is created when pyddm is installed."""
     pytest.importorskip("pyddm")  # Skip if pyddm not installed
 
-    generator_config = {"estimator_type": "pyddm"}
+    generator_config = {"estimator": {"type": "pyddm"}}
 
     builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -75,7 +75,7 @@ def test_factory_legacy_pyddm_flag(ddm_model_config):
     """Test that legacy use_pyddm_pdf flag is recognized."""
     pytest.importorskip("pyddm")  # Skip if pyddm not installed
 
-    generator_config = {"use_pyddm_pdf": True}
+    generator_config = {"estimator": {"use_pyddm_pdf": True}}
 
     builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -90,7 +90,7 @@ def test_factory_legacy_flag_overrides_explicit_kde(ddm_model_config):
     """Test that use_pyddm_pdf=True overrides estimator_type='kde'."""
     pytest.importorskip("pyddm")  # Skip if pyddm not installed
 
-    generator_config = {"estimator_type": "kde", "use_pyddm_pdf": True}
+    generator_config = {"estimator": {"type": "kde", "use_pyddm_pdf": True}}
 
     # Legacy flag takes precedence
     builder = create_estimator_builder(generator_config, ddm_model_config)
@@ -104,7 +104,7 @@ def test_factory_legacy_flag_overrides_explicit_kde(ddm_model_config):
 
 def test_factory_legacy_flag_false_uses_kde(ddm_model_config):
     """Test that use_pyddm_pdf=False doesn't override kde."""
-    generator_config = {"estimator_type": "kde", "use_pyddm_pdf": False}
+    generator_config = {"estimator": {"type": "kde", "use_pyddm_pdf": False}}
 
     builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -113,7 +113,7 @@ def test_factory_legacy_flag_false_uses_kde(ddm_model_config):
 
 def test_factory_unknown_estimator_type(ddm_model_config):
     """Test that unknown estimator_type raises ValueError."""
-    generator_config = {"estimator_type": "unknown"}
+    generator_config = {"estimator": {"type": "unknown"}}
 
     with pytest.raises(ValueError, match="Unknown estimator_type: 'unknown'"):
         create_estimator_builder(generator_config, ddm_model_config)
@@ -121,7 +121,7 @@ def test_factory_unknown_estimator_type(ddm_model_config):
 
 def test_factory_error_message_helpful(ddm_model_config):
     """Test that error messages are helpful and informative."""
-    generator_config = {"estimator_type": "analytical"}
+    generator_config = {"estimator": {"type": "analytical"}}
 
     with pytest.raises(ValueError) as exc_info:
         create_estimator_builder(generator_config, ddm_model_config)
@@ -136,7 +136,7 @@ def test_factory_pyddm_incompatible_model_fails(race_model_config):
     """Test that PyDDM with incompatible model raises ValueError."""
     pytest.importorskip("pyddm")  # Skip if pyddm not installed
 
-    generator_config = {"estimator_type": "pyddm"}
+    generator_config = {"estimator": {"type": "pyddm"}}
 
     # Race model is incompatible with PyDDM
     with pytest.raises(ValueError, match="not compatible with PyDDM"):
@@ -147,7 +147,7 @@ def test_factory_pyddm_error_suggests_kde(race_model_config):
     """Test that PyDDM incompatibility error suggests using KDE."""
     pytest.importorskip("pyddm")  # Skip if pyddm not installed
 
-    generator_config = {"estimator_type": "pyddm"}
+    generator_config = {"estimator": {"type": "pyddm"}}
 
     with pytest.raises(ValueError) as exc_info:
         create_estimator_builder(generator_config, race_model_config)
@@ -159,7 +159,7 @@ def test_factory_pyddm_error_suggests_kde(race_model_config):
 
 def test_factory_with_kde_specific_config(ddm_model_config):
     """Test that factory passes config to KDE builder correctly."""
-    generator_config = {"estimator_type": "kde", "kde_displace_t": True}
+    generator_config = {"estimator": {"type": "kde", "displace_t": True}}
 
     builder = create_estimator_builder(generator_config, ddm_model_config)
 
@@ -169,7 +169,7 @@ def test_factory_with_kde_specific_config(ddm_model_config):
 
 def test_factory_preserves_generator_config(ddm_model_config):
     """Test that factory doesn't modify the original config."""
-    original_config = {"estimator_type": "kde", "n_samples": 1000}
+    original_config = {"estimator": {"type": "kde"}, "simulator": {"n_samples": 1000}}
     config_copy = original_config.copy()
 
     builder = create_estimator_builder(original_config, ddm_model_config)
@@ -192,7 +192,7 @@ def test_factory_with_empty_config(ddm_model_config):
 
 def test_factory_integration_with_different_models(ddm_model_config):
     """Test that factory works with different model configs."""
-    generator_config = {"estimator_type": "kde"}
+    generator_config = {"estimator": {"type": "kde"}}
 
     # Test with DDM
     ddm_builder = create_estimator_builder(generator_config, ddm_model_config)

@@ -140,15 +140,20 @@ class PyDDMGenerationStrategy:
 
         # PyDDM strategy generates LAN data + all auxiliary labels analytically
         # Only binned histograms are None (require trajectory data)
+        # For 2-choice models, extract probability of choice 1 (index 1) for consistency
         result = {
             "lan_data": training_data[:, :-1],
             "lan_labels": training_data[:, -1],
             "theta": theta_array,
             # Auxiliary labels computed analytically from PyDDM solution
             "cpn_data": theta_array,
-            "cpn_labels": auxiliary_labels["choice_p"],
+            "cpn_labels": auxiliary_labels["choice_p"][
+                :, 1:2
+            ],  # Extract P(choice=1), shape (1,1)
             "cpn_no_omission_data": theta_array,
-            "cpn_no_omission_labels": auxiliary_labels["choice_p_no_omission"],
+            "cpn_no_omission_labels": auxiliary_labels["choice_p_no_omission"][
+                :, 1:2
+            ],  # Shape (1,1)
             "opn_data": theta_array,
             "opn_labels": auxiliary_labels["omission_p"],
             "gonogo_data": theta_array,
@@ -210,7 +215,7 @@ class PyDDMGenerationStrategy:
             choice_p_no_omission[0, 1] = choice_p[0, 1]
 
             nogo_p = choice_p[0, 0]
-            go_p = choice_p[0, 1]
+            _go_p = choice_p[0, 1]  # Calculated for potential future use
 
             omission_p = 0.0
         else:
@@ -255,7 +260,7 @@ class PyDDMGenerationStrategy:
             # Nogo probability: error boundary OR post-deadline correct
             # (matching simulation logic: not choosing max choice OR omission)
             nogo_p = choice_p_post_deadline[0, 1] + choice_p[0, 0]
-            go_p = 1 - nogo_p
+            _go_p = 1 - nogo_p  # Calculated for potential future use
 
             # Omission probability: any response beyond deadline
             omission_p = choice_p_post_deadline[0, 0] + choice_p_post_deadline[0, 1]

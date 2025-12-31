@@ -111,13 +111,16 @@ class PyDDMLikelihoodEstimator:
 
         return np.log(pdf_values)
 
-    def sample(self, n_samples: int) -> dict[str, np.ndarray]:
+    def sample(
+        self, n_samples: int, random_state: int | None = None
+    ) -> dict[str, np.ndarray]:
         """Sample (RT, choice) pairs from the analytical distribution.
 
         Uses PyDDM's built-in sampling method for efficient sampling.
 
         Args:
             n_samples: Number of samples to generate
+            random_state: Random seed for reproducibility. If None, uses non-reproducible random behavior.
 
         Returns:
             Dictionary with keys:
@@ -167,7 +170,7 @@ class PyDDMLikelihoodEstimator:
         # PyDDM's DataFrame has structure: [undecided as NaN | all upper boundary | all lower boundary]
         # We shuffle to provide a consistent interface with the rest of ssm-simulators
         df = df.sample(
-            n=min(n_samples, len(df)), replace=False, random_state=None
+            n=min(n_samples, len(df)), replace=False, random_state=random_state
         ).reset_index(drop=True)
 
         # Extract data

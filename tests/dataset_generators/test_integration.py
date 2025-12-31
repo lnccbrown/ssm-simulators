@@ -1,6 +1,6 @@
-"""Phase 1 Integration Tests for Refactored DataGenerator.
+"""Phase 1 Integration Tests for Refactored TrainingDataGenerator.
 
-These tests verify that the refactored DataGenerator with builder injection:
+These tests verify that the refactored TrainingDataGenerator with builder injection:
 1. Maintains backward compatibility (default KDE behavior)
 2. Accepts injected builders and strategies
 3. Produces identical output to the original implementation
@@ -14,7 +14,7 @@ from ssms.config import model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
-from ssms.dataset_generators.lan_mlp import DataGenerator
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
 from ssms.dataset_generators.strategies import MixtureTrainingStrategy
 
@@ -48,11 +48,11 @@ def ddm_configs():
 
 
 def test_backward_compatibility_default_components(ddm_configs):
-    """Test that DataGenerator works without explicit pipeline injection."""
+    """Test that TrainingDataGenerator works without explicit pipeline injection."""
     gen_config, model_conf = ddm_configs
 
     # Create generator with config dict (auto-creates strategy)
-    my_gen = DataGenerator(gen_config, model_conf)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     # Verify default pipeline was created
     assert my_gen._generation_pipeline is not None
@@ -87,8 +87,8 @@ def test_explicit_strategy_injection(ddm_configs):
         training_strategy=training_strategy,
     )
 
-    # Inject into DataGenerator (pass strategy as first arg)
-    my_gen = DataGenerator(custom_pipeline, model_conf)
+    # Inject into TrainingDataGenerator (pass strategy as first arg)
+    my_gen = TrainingDataGenerator(custom_pipeline, model_conf)
 
     # Verify injected strategy is used
     assert my_gen._generation_pipeline is custom_pipeline
@@ -107,7 +107,7 @@ def test_generate_training_data_method(ddm_configs):
     """Test the new _generate_training_data method directly."""
     gen_config, model_conf = ddm_configs
 
-    my_gen = DataGenerator(gen_config, model_conf)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     # Generate simulations
     theta = {"v": 1.0, "a": 2.0, "z": 0.5, "t": 0.3}
@@ -130,7 +130,7 @@ def test_make_kde_data_deprecated_wrapper(ddm_configs):
     """Test that _make_kde_data still works as a deprecated wrapper."""
     gen_config, model_conf = ddm_configs
 
-    my_gen = DataGenerator(gen_config, model_conf)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     # Generate simulations
     theta = {"v": 1.0, "a": 2.0, "z": 0.5, "t": 0.3}
@@ -155,7 +155,7 @@ def test_output_consistency_across_methods(ddm_configs):
     """Test that _make_kde_data and _generate_training_data produce identical output."""
     gen_config, model_conf = ddm_configs
 
-    my_gen = DataGenerator(gen_config, model_conf)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     # Generate simulations with fixed seed
     theta = {"v": 1.0, "a": 2.0, "z": 0.5, "t": 0.3}
@@ -200,7 +200,7 @@ def test_strategy_mixture_probabilities(ddm_configs):
     gen_config["data_mixture_probabilities"] = [0.7, 0.2, 0.1]
     gen_config["n_training_samples_by_parameter_set"] = 1000
 
-    my_gen = DataGenerator(gen_config, model_conf)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     theta = {"v": 1.0, "a": 2.0, "z": 0.5, "t": 0.3}
     simulations = my_gen.get_simulations(theta=theta, random_seed=42)
@@ -237,8 +237,8 @@ def test_different_models_with_injection(ddm_configs):
         training_strategy=training_strategy,
     )
 
-    # Inject into DataGenerator
-    my_gen = DataGenerator(custom_pipeline, ornstein_conf)
+    # Inject into TrainingDataGenerator
+    my_gen = TrainingDataGenerator(custom_pipeline, ornstein_conf)
 
     # Verify data generation works
     data = my_gen.generate_data_training(save=False, verbose=False)
@@ -267,7 +267,7 @@ def test_separate_response_channels_with_injection(ddm_configs):
         training_strategy=training_strategy,
     )
 
-    my_gen = DataGenerator(custom_pipeline, model_conf)
+    my_gen = TrainingDataGenerator(custom_pipeline, model_conf)
 
     # Test with actual data generation (methods commented out)
     data = my_gen.generate_data_training(save=False, verbose=False)
@@ -296,8 +296,8 @@ def test_end_to_end_with_custom_components(ddm_configs):
         training_strategy=training_strategy,
     )
 
-    # Create DataGenerator with injection
-    my_gen = DataGenerator(custom_pipeline, model_conf)
+    # Create TrainingDataGenerator with injection
+    my_gen = TrainingDataGenerator(custom_pipeline, model_conf)
 
     # Generate full training dataset
     data = my_gen.generate_data_training(save=False, verbose=False)
@@ -338,7 +338,7 @@ def test_ready_for_pyddm_pattern(ddm_configs):
         training_strategy=training_strategy,
     )
 
-    my_gen = DataGenerator(custom_pipeline, model_conf)
+    my_gen = TrainingDataGenerator(custom_pipeline, model_conf)
 
     # Verify the generator uses the injected strategy
     assert my_gen._generation_pipeline is custom_pipeline
@@ -360,8 +360,8 @@ def test_pyddm_pattern_actually_works(ddm_configs):
     # Set estimator_type to pyddm - factory will create PyDDMPipeline
     gen_config["estimator_type"] = "pyddm"
 
-    # Test with DataGenerator (auto-creates PyDDM strategy)
-    my_gen = DataGenerator(gen_config, model_conf)
+    # Test with TrainingDataGenerator (auto-creates PyDDM strategy)
+    my_gen = TrainingDataGenerator(gen_config, model_conf)
 
     # Verify PyDDM strategy was created
     from ssms.dataset_generators.pipelines import PyDDMPipeline

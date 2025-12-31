@@ -56,7 +56,7 @@ def try_gen_folder(
 def make_data_generator_configs(
     model="ddm",
     generator_approach="lan",
-    data_generator_arg_dict={},
+    data_generator_nested_dict={},
     model_config_arg_dict={},
     save_name=None,
     save_folder="",
@@ -65,10 +65,17 @@ def make_data_generator_configs(
     _no_deadline_model = model.split("_deadline")[0]
     model_config = deepcopy(_model_config[_no_deadline_model])
 
-    # Load data_generator_config dicts
+    # Load data_generator_config dicts (already nested)
     data_config = get_default_generator_config(generator_approach)
     data_config["model"] = model
-    data_config.update(data_generator_arg_dict)
+
+    # Deep merge nested config sections
+    for section, values in data_generator_nested_dict.items():
+        if section in data_config and isinstance(values, dict):
+            data_config[section].update(values)
+        else:
+            data_config[section] = values
+
     model_config.update(model_config_arg_dict)
 
     config_dict = {"model_config": model_config, "data_config": data_config}
@@ -84,8 +91,19 @@ def make_data_generator_configs(
 
 
 def parse_dict_as_namedtuple(d: dict, to_lowercase: bool = True):
-    """Convert a dictionary to a named tuple."""
-    d = {k.lower() if to_lowercase else k: v for k, v in d.items()}
+    """Convert a dictionary to a named tuple, handling nested dicts."""
+
+    def convert_value(v):
+        if isinstance(v, dict):
+            # Recursively convert nested dicts to namedtuples
+            v = {
+                k.lower() if to_lowercase else k: convert_value(val)
+                for k, val in v.items()
+            }
+            return namedtuple("Config", v.keys())(**v)
+        return v
+
+    d = {k.lower() if to_lowercase else k: convert_value(v) for k, v in d.items()}
     return namedtuple("Config", d.keys())(**d)
 
 
@@ -94,7 +112,7 @@ def _make_data_folder_path(base_path: str | Path, basic_config: namedtuple) -> P
         Path(base_path)
         / "data/training_data"
         / basic_config.generator_approach
-        / f"training_data_n_samples_{basic_config.n_samples}_dt_{basic_config.delta_t}"
+        / f"training_data_n_samples_{basic_config.simulator.n_samples}_dt_{basic_config.simulator.delta_t}"
         / basic_config.model
     )
 
@@ -121,30 +139,48 @@ def get_basic_config_from_yaml(
 def collect_data_generator_config(
     yaml_config_path=None, base_path=None, extra_configs={}
 ):
-    """Get the data generator configuration from a YAML file."""
+    """Get the data generator configuration from a YAML file with nested structure."""
     bc, training_data_folder = get_basic_config_from_yaml(
         yaml_config_path, base_path=base_path
     )
 
-    data_generator_arg_dict = {
-        "output_folder": training_data_folder,
+    # Build nested config from YAML sections
+    data_generator_nested_dict = {
+        "output": {"folder": str(training_data_folder)},
         "model": bc.model,
-        "n_samples": bc.n_samples,
-        "n_parameter_sets": bc.n_parameter_sets,
-        "delta_t": bc.delta_t,
-        "n_training_samples_by_parameter_set": bc.n_training_samples_by_parameter_set,
-        "n_subruns": bc.n_subruns,
         "cpn_only": True if (bc.generator_approach == "cpn") else False,
     }
 
-    # Phase 2: Add estimator_type if present in YAML
-    if hasattr(bc, "estimator_type"):
-        data_generator_arg_dict["estimator_type"] = bc.estimator_type.lower()
+    # Add pipeline config
+    if hasattr(bc, "pipeline"):
+        data_generator_nested_dict["pipeline"] = {
+            "n_parameter_sets": bc.pipeline.n_parameter_sets,
+            "n_subruns": bc.pipeline.n_subruns,
+        }
+
+    # Add simulator config
+    if hasattr(bc, "simulator"):
+        data_generator_nested_dict["simulator"] = {
+            "n_samples": bc.simulator.n_samples,
+            "delta_t": bc.simulator.delta_t,
+        }
+
+    # Add training config
+    if hasattr(bc, "training"):
+        data_generator_nested_dict["training"] = {
+            "n_samples_per_param": bc.training.n_samples_per_param,
+        }
+
+    # Add estimator config
+    if hasattr(bc, "estimator"):
+        data_generator_nested_dict["estimator"] = {
+            "type": bc.estimator.type.lower(),
+        }
 
     config_dict = make_data_generator_configs(
-        model=bc.model,  # TODO: model is already set in data_generator_arg_dict
+        model=bc.model,
         generator_approach=bc.generator_approach,
-        data_generator_arg_dict=data_generator_arg_dict,
+        data_generator_nested_dict=data_generator_nested_dict,
         model_config_arg_dict=extra_configs,
         save_name=None,
         save_folder=None,
@@ -241,18 +277,15 @@ def main(  # pragma: no cover
         raise typer.Exit(code=1)
 
     # Make the generator with injected builder
-    my_dataset_generator = ssms.dataset_generators.lan_mlp.data_generator(
-        generator_config=config_dict["data_config"],
+    my_dataset_generator = ssms.dataset_generators.lan_mlp.TrainingDataGenerator(
+        config=config_dict["data_config"],
         model_config=config_dict["model_config"],
-        estimator_builder=estimator_builder,  # Phase 2: Inject builder
     )
-
-    is_cpn = config_dict["data_config"].get("cpn_only", False)
 
     for i in tqdm.tqdm(
         range(n_files), desc="Generating simulated data files", unit="file"
     ):
-        my_dataset_generator.generate_data_training_uniform(save=True, cpn_only=is_cpn)
+        my_dataset_generator.generate_data_training(save=True)
 
     logger.info("Data generation finished")
 

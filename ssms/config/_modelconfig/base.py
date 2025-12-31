@@ -7,28 +7,23 @@ from ssms.basic_simulators import drift_functions as df
 boundary_config = {
     "constant": {
         "fun": bf.constant,
-        "params": [],
-        "multiplicative": True,
+        "params": ["a"],
     },
     "angle": {
         "fun": bf.angle,
-        "params": ["theta"],
-        "multiplicative": False,
+        "params": ["a", "theta"],
     },
     "weibull_cdf": {
         "fun": bf.weibull_cdf,
-        "params": ["alpha", "beta"],
-        "multiplicative": True,
+        "params": ["a", "alpha", "beta"],
     },
     "generalized_logistic": {
         "fun": bf.generalized_logistic,
-        "params": ["B", "M", "v"],
-        "multiplicative": True,
+        "params": ["a", "B", "M", "v"],
     },
     "conflict_gamma": {
         "fun": bf.conflict_gamma,
-        "params": ["theta", "scale", "alphaGamma", "scaleGamma"],
-        "multiplicative": False,
+        "params": ["a", "theta", "scale", "alphaGamma", "scaleGamma"],
     },
 }
 

@@ -50,7 +50,7 @@ class MixtureTrainingStrategy:
             - 'n_training_samples_by_parameter_set': Total samples to generate
             - 'data_mixture_probabilities': [p_estimator, p_unif_up, p_unif_down]
             - 'separate_response_channels': Whether to one-hot encode choices
-            - 'negative_rt_cutoff': Log-likelihood value for negative RTs
+            - 'negative_rt_log_likelihood': Log-likelihood value for negative RTs
         model_config : dict
             Model configuration containing:
             - 'params': List of parameter names
@@ -59,7 +59,12 @@ class MixtureTrainingStrategy:
         self.generator_config = generator_config
         self.model_config = model_config
 
-    def generate(self, theta: Dict[str, Any], likelihood_estimator) -> np.ndarray:
+    def generate(
+        self,
+        theta: Dict[str, Any],
+        likelihood_estimator,
+        random_state: int | None = None,
+    ) -> np.ndarray:
         """Generate training data using mixture strategy.
 
         Arguments
@@ -68,6 +73,9 @@ class MixtureTrainingStrategy:
             Parameter dictionary (e.g., {'v': 1.0, 'a': 2.0, ...})
         likelihood_estimator : LikelihoodEstimatorProtocol
             Fitted likelihood estimator (must support sample() and evaluate())
+        random_state : int | None, optional
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
+            Controls all random operations including sampling from estimator and shuffling output.
 
         Returns
         -------
@@ -76,6 +84,8 @@ class MixtureTrainingStrategy:
             - First columns: theta parameters
             - Middle columns: RT and choice (possibly one-hot encoded)
             - Last column: log-likelihood
+
+            Note: Rows are shuffled to avoid ordering bias in training batches.
 
         Raises
         ------
@@ -86,6 +96,8 @@ class MixtureTrainingStrategy:
         -----
         Extracted from lan_mlp.py lines 268-360
         """
+        # Create seeded random generator for reproducibility
+        rng = np.random.default_rng(random_state)
         # Extract configuration from nested structure
         n = self.generator_config["training"]["n_samples_per_param"]
         p = self.generator_config["training"]["mixture_probabilities"]
@@ -140,7 +152,9 @@ class MixtureTrainingStrategy:
         )
 
         # === 1. KDE/Estimator samples ===
-        samples_kde = likelihood_estimator.sample(n_samples=n_kde)
+        samples_kde = likelihood_estimator.sample(
+            n_samples=n_kde, random_state=random_state
+        )
         likelihoods_kde = likelihood_estimator.evaluate(
             samples_kde["rts"], samples_kde["choices"]
         )
@@ -163,14 +177,12 @@ class MixtureTrainingStrategy:
         out[:n_kde, -1] = likelihoods_kde
 
         # === 2. Positive uniform samples ===
-        choice_tmp = np.random.choice(metadata["possible_choices"], size=n_unif_up)
+        choice_tmp = rng.choice(metadata["possible_choices"], size=n_unif_up)
 
         if metadata["max_t"] < 100:
-            rt_tmp = np.random.uniform(
-                low=0.0001, high=metadata["max_t"], size=n_unif_up
-            )
+            rt_tmp = rng.uniform(low=0.0001, high=metadata["max_t"], size=n_unif_up)
         else:
-            rt_tmp = np.random.uniform(low=0.0001, high=100, size=n_unif_up)
+            rt_tmp = rng.uniform(low=0.0001, high=100, size=n_unif_up)
 
         likelihoods_unif = likelihood_estimator.evaluate(rt_tmp, choice_tmp)
 
@@ -182,14 +194,17 @@ class MixtureTrainingStrategy:
         out[n_kde : (n_kde + n_unif_up), -1] = likelihoods_unif
 
         # === 3. Negative uniform samples ===
-        choice_tmp = np.random.choice(metadata["possible_choices"], size=n_unif_down)
+        choice_tmp = rng.choice(metadata["possible_choices"], size=n_unif_down)
 
-        rt_tmp = np.random.uniform(low=-1.0, high=0.0001, size=n_unif_down)
+        rt_tmp = rng.uniform(low=-1.0, high=0.0001, size=n_unif_down)
 
         out[(n_kde + n_unif_up) :, -3] = rt_tmp
         out[(n_kde + n_unif_up) :, -2] = choice_tmp
         out[(n_kde + n_unif_up) :, -1] = self.generator_config.get("training", {}).get(
-            "negative_rt_cutoff", -66.77497
+            "negative_rt_log_likelihood", -66.77497
         )
+
+        # Shuffle rows to avoid ordering bias in training batches
+        rng.shuffle(out)
 
         return out.astype(np.float32)

@@ -241,7 +241,7 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
 
     This function extracts boundary-related parameters from the input theta dictionary,
     based on the boundary configuration specified in the config. It also retrieves
-    the appropriate boundary function and multiplicative flag from the boundary registry.
+    the appropriate boundary function from the boundary registry.
 
     Args:
         config (dict): A dictionary containing model configuration, including the boundary name.
@@ -249,9 +249,8 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
 
     Returns:
         dict: A dictionary containing:
-            - boundary_params (dict): Extracted boundary-related parameters.
+            - boundary_params (dict): Extracted boundary-related parameters (including 'a').
             - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
-            - boundary_multiplicative (bool): Flag indicating if the boundary is multiplicative.
 
     """
     boundary_name = config["boundary_name"]
@@ -265,11 +264,9 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
     }
 
     boundary_fun = boundary_info["fun"]
-    boundary_multiplicative = boundary_info["multiplicative"]
     boundary_dict = {
         "boundary_params": boundary_params,
         "boundary_fun": boundary_fun,
-        "boundary_multiplicative": boundary_multiplicative,
     }
     return boundary_dict
 

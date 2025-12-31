@@ -330,6 +330,7 @@ class LogKDE:
         n_samples: int = 2000,
         use_empirical_choice_p: bool = True,
         alternate_choice_p: np.ndarray | float = 0.0,
+        random_state: int | None = None,
     ) -> dict[str, np.ndarray | dict]:
         """
         Samples from a given kde.
@@ -345,6 +346,8 @@ class LogKDE:
         alternate_choice_p: np.ndarray | float
             Array of choice proportions to use, default is 0. (Note 'alternate' here refers to 'alternative'
             to the 'empirical' choice proportions)
+        random_state: int | None
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
 
         Returns:
         --------
@@ -355,6 +358,8 @@ class LogKDE:
             - 'choices': np.ndarray - Choices made
             - 'metadata': dict - Simulator information
         """
+        # Create seeded RNG for reproducibility
+        rng = np.random.default_rng(random_state)
 
         rts = np.zeros((n_samples, 1))
         choices = np.zeros((n_samples, 1))
@@ -385,7 +390,7 @@ class LogKDE:
             n_by_choice[np.argmax(n_by_choice)] -= 1
         elif sum(n_by_choice) < n_samples:
             n_by_choice[np.argmax(n_by_choice)] += 1
-            choices[n_samples - 1, 0] = np.random.choice(self.data["choices"])
+            choices[n_samples - 1, 0] = rng.choice(self.data["choices"])
 
         # Get samples
         cnt_low = 0
@@ -395,10 +400,12 @@ class LogKDE:
 
                 if self.base_kdes[i] != "no_base_data":
                     rts[cnt_low:cnt_high] = np.exp(
-                        self.base_kdes[i].sample(n_samples=n_by_choice[i])
+                        self.base_kdes[i].sample(
+                            n_samples=n_by_choice[i], random_state=random_state
+                        )
                     )
                 else:
-                    rts[cnt_low:cnt_high, 0] = np.random.uniform(
+                    rts[cnt_low:cnt_high, 0] = rng.uniform(
                         low=0, high=self.simulator_info["max_t"], size=n_by_choice[i]
                     )
 

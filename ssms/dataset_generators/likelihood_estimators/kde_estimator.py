@@ -102,13 +102,17 @@ class KDELikelihoodEstimator:
 
         return self._kde.kde_eval(data={"rts": rts, "choices": choices}).ravel()
 
-    def sample(self, n_samples: int) -> dict[str, np.ndarray]:
+    def sample(
+        self, n_samples: int, random_state: int | None = None
+    ) -> dict[str, np.ndarray]:
         """Sample (RT, choice) pairs from the KDE.
 
         Arguments
         ---------
         n_samples : int
             Number of samples to generate
+        random_state : int | None, optional
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
 
         Returns
         -------
@@ -129,7 +133,7 @@ class KDELikelihoodEstimator:
         if self._kde is None:
             raise ValueError("Must call fit() before sample()")
 
-        samples = self._kde.kde_sample(n_samples=n_samples)
+        samples = self._kde.kde_sample(n_samples=n_samples, random_state=random_state)
 
         # Flatten arrays to ensure shape (n_samples,) instead of (n_samples, 1)
         return {

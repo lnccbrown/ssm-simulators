@@ -19,7 +19,7 @@ from ssms.config import (
     register_model_config,
     register_model_config_factory,
     get_model_registry,
-    ConfigBuilder,
+    ModelConfigBuilder,
 )
 from ssms.basic_simulators.parameter_adapters import (
     register_adapter_to_model,
@@ -47,15 +47,14 @@ class TestBoundaryRegistry:
     def test_register_custom_boundary(self):
         """Test registering a custom boundary function."""
 
-        def custom_boundary(t, rate=1.0):
-            return np.exp(-rate * t)
+        def custom_boundary(t, a, rate=1.0):
+            return a * np.exp(-rate * t)
 
         # Register the boundary
         register_boundary(
             name="test_custom_boundary",
             function=custom_boundary,
-            params=["rate"],
-            multiplicative=True,
+            params=["a", "rate"],
         )
 
         # Verify registration
@@ -65,8 +64,7 @@ class TestBoundaryRegistry:
         # Verify retrieval
         info = registry.get("test_custom_boundary")
         assert info["fun"] == custom_boundary
-        assert info["params"] == ["rate"]
-        assert info["multiplicative"] is True
+        assert info["params"] == ["a", "rate"]
 
     def test_get_nonexistent_boundary_raises_error(self):
         """Test that getting a nonexistent boundary raises KeyError."""
@@ -78,15 +76,14 @@ class TestBoundaryRegistry:
     def test_register_duplicate_boundary_raises_error(self):
         """Test that registering a duplicate boundary raises ValueError."""
 
-        def boundary_v1(t):
-            return 1.0
+        def boundary_v1(t, a):
+            return a
 
         # Register first version
         register_boundary(
             name="test_duplicate_boundary_v2",
             function=boundary_v1,
-            params=[],
-            multiplicative=True,
+            params=["a"],
         )
 
         # Attempt to register duplicate should raise ValueError
@@ -94,31 +91,30 @@ class TestBoundaryRegistry:
             register_boundary(
                 name="test_duplicate_boundary_v2",
                 function=boundary_v1,
-                params=[],
-                multiplicative=False,
+                params=["a"],
             )
 
     def test_use_custom_boundary_in_config_builder(self):
-        """Test that a custom registered boundary works with ConfigBuilder."""
+        """Test that a custom registered boundary works with ModelConfigBuilder."""
 
-        def linear_decay(t, slope=0.1):
-            return 1.0 - slope * t
+        def linear_decay(t, a, slope=0.1):
+            return a * (1.0 - slope * t)
 
         # Register the boundary
         register_boundary(
             name="test_linear_decay",
             function=linear_decay,
-            params=["slope"],
-            multiplicative=True,
+            params=["a", "slope"],
         )
 
-        # Use with ConfigBuilder
-        config = ConfigBuilder.from_model("ddm")
-        config = ConfigBuilder.add_boundary(config, "test_linear_decay")
+        # Use with ModelConfigBuilder
+        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.add_boundary(config, "test_linear_decay")
 
         assert config["boundary_name"] == "test_linear_decay"
         assert config["boundary"] == linear_decay
         assert "slope" in config["boundary_params"]
+        assert "a" in config["boundary_params"]
 
 
 class TestDriftRegistry:
@@ -177,7 +173,7 @@ class TestDriftRegistry:
             register_drift(name="test_duplicate_drift_v2", function=drift_v1, params=[])
 
     def test_use_custom_drift_in_config_builder(self):
-        """Test that a custom registered drift works with ConfigBuilder."""
+        """Test that a custom registered drift works with ModelConfigBuilder."""
 
         def exp_drift(t, rate=0.5):
             return np.exp(-rate * t)
@@ -185,9 +181,9 @@ class TestDriftRegistry:
         # Register the drift
         register_drift(name="test_exp_drift", function=exp_drift, params=["rate"])
 
-        # Use with ConfigBuilder
-        config = ConfigBuilder.from_model("ddm")
-        config = ConfigBuilder.add_drift(config, "test_exp_drift")
+        # Use with ModelConfigBuilder
+        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.add_drift(config, "test_exp_drift")
 
         assert config["drift_name"] == "test_exp_drift"
         assert config["drift"] == exp_drift
@@ -268,7 +264,7 @@ class TestModelConfigRegistry:
             registry.get("nonexistent_model")
 
     def test_use_custom_model_in_config_builder(self):
-        """Test that a custom registered model works with ConfigBuilder."""
+        """Test that a custom registered model works with ModelConfigBuilder."""
         custom_config = {
             "name": "test_builder_model",
             "params": ["v", "a", "z", "t"],
@@ -284,8 +280,8 @@ class TestModelConfigRegistry:
         # Register the model
         register_model_config("test_builder_model", custom_config)
 
-        # Use with ConfigBuilder
-        config = ConfigBuilder.from_model("test_builder_model")
+        # Use with ModelConfigBuilder
+        config = ModelConfigBuilder.from_model("test_builder_model")
 
         assert config["name"] == "test_builder_model"
         assert len(config["params"]) == 4
@@ -376,14 +372,13 @@ class TestRegistryIntegration:
         """Test a complete pipeline with custom components across all registries."""
 
         # 1. Register custom boundary
-        def custom_integration_boundary(t, rate=0.1):
-            return 1.0 - rate * t
+        def custom_integration_boundary(t, a, rate=0.1):
+            return a + (1.0 - rate * t)
 
         register_boundary(
             name="test_integration_boundary",
             function=custom_integration_boundary,
-            params=["rate"],
-            multiplicative=False,
+            params=["a", "rate"],
         )
 
         # 2. Register custom drift
@@ -418,10 +413,10 @@ class TestRegistryIntegration:
         # 4. Register custom parameter adaptation
         register_adapter_to_model("test_integration_model", [SetDefaultValue("z", 0.5)])
 
-        # 5. Build configuration using ConfigBuilder
-        config = ConfigBuilder.from_model("test_integration_model")
-        config = ConfigBuilder.add_boundary(config, "test_integration_boundary")
-        config = ConfigBuilder.add_drift(config, "test_integration_drift")
+        # 5. Build configuration using ModelConfigBuilder
+        config = ModelConfigBuilder.from_model("test_integration_model")
+        config = ModelConfigBuilder.add_boundary(config, "test_integration_boundary")
+        config = ModelConfigBuilder.add_drift(config, "test_integration_drift")
 
         # Verify everything is wired up correctly
         assert config["name"] == "test_integration_model"
@@ -440,14 +435,13 @@ class TestRegistryIntegration:
         """Test that registries are independent and don't interfere with each other."""
 
         # Register items with same name in different registries
-        def same_name_func(t):
-            return 1.0
+        def same_name_func(t, a):
+            return a
 
         register_boundary(
             name="test_isolation",
             function=same_name_func,
-            params=[],
-            multiplicative=True,
+            params=["a"],
         )
 
         register_drift(name="test_isolation", function=same_name_func, params=[])
@@ -476,6 +470,6 @@ class TestRegistryIntegration:
         drift_info = drift_registry.get("test_isolation")
         model_info = model_registry.get("test_isolation")
 
-        assert "multiplicative" in boundary_info
-        assert "multiplicative" not in drift_info
-        assert "params" in model_info
+        assert "fun" in boundary_info  # Boundary has 'fun' key
+        assert "fun" in drift_info  # Drift also has 'fun' key
+        assert "params" in model_info  # Model has 'params' key

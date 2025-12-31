@@ -87,13 +87,17 @@ class LikelihoodEstimatorProtocol(Protocol):
         """
         ...
 
-    def sample(self, n_samples: int) -> dict[str, np.ndarray]:
+    def sample(
+        self, n_samples: int, random_state: int | None = None
+    ) -> dict[str, np.ndarray]:
         """Sample (RT, choice) pairs from the estimated likelihood.
 
         Arguments
         ---------
         n_samples : int
             Number of samples to generate
+        random_state : int | None, optional
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
 
         Returns
         -------
@@ -122,7 +126,7 @@ class EstimatorBuilderProtocol(Protocol):
     """Protocol for building likelihood estimators.
 
     Builders encapsulate all the logic for creating and configuring
-    likelihood estimators. This keeps the DataGenerator class generic
+    likelihood estimators. This keeps the TrainingDataGenerator class generic
     and free of type-specific logic.
     """
 
@@ -163,7 +167,10 @@ class TrainingDataStrategyProtocol(Protocol):
     """
 
     def generate(
-        self, theta: dict[str, Any], likelihood_estimator: LikelihoodEstimatorProtocol
+        self,
+        theta: dict[str, Any],
+        likelihood_estimator: LikelihoodEstimatorProtocol,
+        random_state: int | None = None,
     ) -> np.ndarray:
         """Generate training data array.
 
@@ -173,6 +180,9 @@ class TrainingDataStrategyProtocol(Protocol):
             Model parameters
         likelihood_estimator : LikelihoodEstimatorProtocol
             Fitted likelihood estimator
+        random_state : int | None, optional
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
+            Controls all random operations including sampling and row shuffling.
 
         Returns
         -------
@@ -182,6 +192,8 @@ class TrainingDataStrategyProtocol(Protocol):
             - Column -3: Reaction times
             - Column -2: Choices
             - Column -1: Log-likelihoods
+
+            Note: Rows are shuffled to avoid ordering bias in training batches.
         """
         ...
 

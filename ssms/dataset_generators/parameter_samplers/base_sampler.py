@@ -22,18 +22,18 @@ class AbstractParameterSampler(ABC):
     def __init__(
         self,
         param_space: dict[str, tuple[Any, Any]],
-        transforms: list | None = None,
+        constraints: list | None = None,
     ):
         """Initialize the parameter sampler.
 
         Args:
             param_space: Dictionary mapping parameter names to (lower, upper) bounds.
                         Bounds can be numeric or strings (for dependencies).
-            transforms: List of transform objects (must have apply() method).
-                       Applied after sampling in the order provided.
+            constraints: List of constraint objects (must have apply() method).
+                        Applied after sampling in the order provided.
         """
         self.param_space = param_space
-        self.transforms = transforms or []
+        self.constraints = constraints or []
 
         # Build dependency graph and sampling order once at initialization
         self._dependency_graph = self._build_dependency_graph()
@@ -109,9 +109,9 @@ class AbstractParameterSampler(ABC):
             # Sample using strategy-specific method with provided RNG
             samples[param] = self._sample_parameter(param, lower, upper, n_samples, rng)
 
-        # Apply transforms (each transform modifies the dict in place or returns modified dict)
-        for transform in self.transforms:
-            samples = transform.apply(samples)
+        # Apply constraints (each constraint modifies the dict in place or returns modified dict)
+        for constraint in self.constraints:
+            samples = constraint.apply(samples)
 
         return samples
 

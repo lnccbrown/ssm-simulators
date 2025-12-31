@@ -59,8 +59,8 @@ class PyDDMPipeline:
 
         # Smart instantiation: accept class OR instance
         if isinstance(estimator_builder, type):
-            # It's a class - instantiate with generator_config
-            self.estimator_builder = estimator_builder(generator_config)
+            # It's a class - instantiate with generator_config and model_config
+            self.estimator_builder = estimator_builder(generator_config, model_config)
         else:
             # It's an instance - use as-is
             self.estimator_builder = estimator_builder
@@ -143,7 +143,9 @@ class PyDDMPipeline:
 
         # 4. Generate training data
         try:
-            training_data = self.training_strategy.generate(theta_dict, estimator)
+            training_data = self.training_strategy.generate(
+                theta_dict, estimator, random_state=random_seed
+            )
         except Exception as e:
             return {
                 "data": None,
@@ -157,15 +159,20 @@ class PyDDMPipeline:
 
         # PyDDM pipeline generates LAN data + all auxiliary labels analytically
         # Only binned histograms are None (require trajectory data)
+        # For 2-choice models, extract probability of choice 1 (index 1) for consistency
         result = {
             "lan_data": training_data[:, :-1],
             "lan_labels": training_data[:, -1],
             "theta": theta_array,
             # Auxiliary labels computed analytically from PyDDM solution
             "cpn_data": theta_array,
-            "cpn_labels": auxiliary_labels["choice_p"],
+            "cpn_labels": auxiliary_labels["choice_p"][
+                :, 1:2
+            ],  # Extract P(choice=1), shape (1,1)
             "cpn_no_omission_data": theta_array,
-            "cpn_no_omission_labels": auxiliary_labels["choice_p_no_omission"],
+            "cpn_no_omission_labels": auxiliary_labels["choice_p_no_omission"][
+                :, 1:2
+            ],  # Shape (1,1)
             "opn_data": theta_array,
             "opn_labels": auxiliary_labels["omission_p"],
             "gonogo_data": theta_array,
@@ -227,7 +234,7 @@ class PyDDMPipeline:
             choice_p_no_omission[0, 1] = choice_p[0, 1]
 
             nogo_p = choice_p[0, 0]
-            go_p = choice_p[0, 1]
+            _go_p = choice_p[0, 1]  # Calculated for potential future use
 
             omission_p = 0.0
         else:
@@ -272,7 +279,7 @@ class PyDDMPipeline:
             # Nogo probability: error boundary OR post-deadline correct
             # (matching simulation logic: not choosing max choice OR omission)
             nogo_p = choice_p_post_deadline[0, 1] + choice_p[0, 0]
-            go_p = 1 - nogo_p
+            _go_p = 1 - nogo_p  # Calculated for potential future use
 
             # Omission probability: any response beyond deadline
             omission_p = choice_p_post_deadline[0, 0] + choice_p_post_deadline[0, 1]
