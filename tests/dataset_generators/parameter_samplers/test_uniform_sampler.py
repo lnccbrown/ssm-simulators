@@ -107,7 +107,7 @@ class TestUniformParameterSampler:
         }
 
         with pytest.raises(ValueError, match="Circular dependency"):
-            sampler = UniformParameterSampler(param_space)
+            _ = UniformParameterSampler(param_space)
 
     def test_missing_dependency(self):
         """Test that missing dependencies are detected."""
@@ -117,7 +117,7 @@ class TestUniformParameterSampler:
         }
 
         with pytest.raises(ValueError, match="not defined in param_space"):
-            sampler = UniformParameterSampler(param_space)
+            _ = UniformParameterSampler(param_space)
 
     def test_dtype_consistency(self):
         """Test that sampled values have consistent dtype (float32)."""

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 try:
-    import pyddm
+    import pyddm  # noqa: F401
 
     PYDDM_AVAILABLE = True
 except ImportError:
