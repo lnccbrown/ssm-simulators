@@ -30,7 +30,7 @@ def create_data_generation_strategy(
     specifications, parameter bounds, and transformations.
 
     Args:
-        generator_config: Configuration dict with 'estimator_type' key
+        generator_config: Configuration dict with 'estimator.type' key
         model_config: Model specification (must contain 'param_bounds_dict')
 
     Returns:
@@ -56,15 +56,14 @@ def create_data_generation_strategy(
         create_estimator_builder,
     )
     from ssms.dataset_generators.strategies import ResampleMixtureStrategy
+    from ssms.config.config_utils import get_nested_config
 
     estimator_builder = create_estimator_builder(generator_config, model_config)
     training_strategy = ResampleMixtureStrategy(generator_config, model_config)
 
-    estimator_type = generator_config.get("estimator_type", "kde").lower()
-
-    # Legacy flag support (backward compatibility)
-    if generator_config.get("use_pyddm_pdf", False):
-        estimator_type = "pyddm"
+    estimator_type = get_nested_config(
+        generator_config, "estimator", "type", default="kde"
+    ).lower()
 
     if estimator_type == "kde":
         return SimulationBasedGenerationStrategy(

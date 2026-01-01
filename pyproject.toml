@@ -167,7 +167,15 @@ module = ["bambi"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
-omit = ["*/setup.py", "*/__init__.py", "tests/*"]
+omit = [
+    "*/setup.py",
+    "*/__init__.py",
+    "tests/*",
+    # Optional PyDDM dependency - exclude from coverage
+    "ssms/dataset_generators/pipelines/pyddm_pipeline.py",
+    "ssms/dataset_generators/strategies/pyddm_strategy.py",
+    "ssms/external_simulators/pyddm_mapper.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [

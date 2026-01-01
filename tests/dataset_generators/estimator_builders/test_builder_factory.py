@@ -53,3 +53,14 @@ class TestEstimatorBuilderFactory:
         assert isinstance(builder, KDEEstimatorBuilder)
         # Verify builder has access to config
         assert hasattr(builder, "generator_config")
+
+    def test_create_estimator_builder_default_type(self):
+        """Test that default estimator type is KDE when not specified."""
+        config = get_lan_config()
+        # Remove estimator type to test default
+        if "type" in config.get("estimator", {}):
+            del config["estimator"]["type"]
+
+        builder = create_estimator_builder(config, model_config["ddm"])
+
+        assert isinstance(builder, KDEEstimatorBuilder)

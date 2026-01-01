@@ -20,22 +20,20 @@ def create_estimator_builder(
     """Create appropriate estimator builder based on configuration.
 
     This factory function examines the generator_config and returns the
-    appropriate builder for likelihood estimation. It supports both explicit
-    'estimator_type' specification and legacy 'use_pyddm_pdf' flag.
+    appropriate builder for likelihood estimation.
 
     Arguments
     ---------
     generator_config : dict
         Configuration dictionary containing:
-        - 'estimator_type' (str, optional): Explicit estimator type ('kde' or 'pyddm')
-        - 'use_pyddm_pdf' (bool, optional): Legacy flag for PyDDM (if True, uses 'pyddm')
+        - 'estimator.type' (str): Estimator type ('kde' or 'pyddm')
     model_config : dict
-        Model configuration dictionary (used for PyDDM builder in Phase 3)
+        Model configuration dictionary (used for PyDDM builder)
 
     Returns
     -------
     EstimatorBuilderProtocol
-        An estimator builder instance (KDEEstimatorBuilder in Phase 2)
+        An estimator builder instance
 
     Raises
     ------
@@ -52,13 +50,13 @@ def create_estimator_builder(
     True
 
     >>> # Explicit KDE
-    >>> config = {"estimator_type": "kde"}
+    >>> config = {"estimator": {"type": "kde"}}
     >>> builder = create_estimator_builder(config, {})
     >>> isinstance(builder, KDEEstimatorBuilder)
     True
 
     >>> # PyDDM estimator (requires pyddm package)
-    >>> config = {"estimator_type": "pyddm"}
+    >>> config = {"estimator": {"type": "pyddm"}}
     >>> builder = create_estimator_builder(config, model_config["ddm"])
     >>> isinstance(builder, PyDDMEstimatorBuilder)
     True
@@ -81,10 +79,6 @@ def create_estimator_builder(
     estimator_type = get_nested_config(
         generator_config, "estimator", "type", default="kde"
     ).lower()
-
-    # Legacy flag support (for backward compatibility)
-    if get_nested_config(generator_config, "estimator", "use_pyddm_pdf", default=False):
-        estimator_type = "pyddm"
 
     if estimator_type == "kde":
         return KDEEstimatorBuilder(generator_config)

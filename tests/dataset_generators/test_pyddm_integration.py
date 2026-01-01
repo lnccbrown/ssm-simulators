@@ -282,17 +282,6 @@ class TestPyDDMBuilderFactory:
 
         assert isinstance(builder, PyDDMEstimatorBuilder)
 
-    def test_factory_legacy_flag_creates_pyddm_builder(self, base_generator_config):
-        """Test that legacy use_pyddm_pdf flag works."""
-        from copy import deepcopy
-
-        config = deepcopy(base_generator_config)
-        config["estimator"]["use_pyddm_pdf"] = True
-
-        builder = create_estimator_builder(config, model_config["ddm"])
-
-        assert isinstance(builder, PyDDMEstimatorBuilder)
-
     def test_pyddm_via_cli_config_structure(self, base_generator_config):
         """Test PyDDM works with CLI-style configuration."""
         from copy import deepcopy

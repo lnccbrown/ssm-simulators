@@ -24,7 +24,7 @@ class ParameterSamplerProtocol(Protocol):
 
     def sample(
         self, n_samples: int = 1, random_state: np.random.Generator | None = None
-    ) -> dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:  # pragma: no cover
         """Sample n_samples parameter sets.
 
         Args:
@@ -35,7 +35,7 @@ class ParameterSamplerProtocol(Protocol):
         """
         ...
 
-    def get_param_space(self) -> dict[str, tuple]:
+    def get_param_space(self) -> dict[str, tuple]:  # pragma: no cover
         """Get the parameter space bounds.
 
         Returns:
@@ -54,7 +54,7 @@ class LikelihoodEstimatorProtocol(Protocol):
     - Other: Custom methods
     """
 
-    def fit(self, simulations: dict[str, Any]) -> None:
+    def fit(self, simulations: dict[str, Any]) -> None:  # pragma: no cover
         """Fit estimator to simulation data.
 
         For KDE: Builds the kernel density estimate.
@@ -70,7 +70,9 @@ class LikelihoodEstimatorProtocol(Protocol):
         """
         ...
 
-    def evaluate(self, rts: np.ndarray, choices: np.ndarray) -> np.ndarray:
+    def evaluate(
+        self, rts: np.ndarray, choices: np.ndarray
+    ) -> np.ndarray:  # pragma: no cover
         """Evaluate log-likelihood at given (RT, choice) pairs.
 
         Arguments
@@ -89,7 +91,7 @@ class LikelihoodEstimatorProtocol(Protocol):
 
     def sample(
         self, n_samples: int, random_state: int | None = None
-    ) -> dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:  # pragma: no cover
         """Sample (RT, choice) pairs from the estimated likelihood.
 
         Arguments
@@ -108,7 +110,7 @@ class LikelihoodEstimatorProtocol(Protocol):
         """
         ...
 
-    def get_metadata(self) -> dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:  # pragma: no cover
         """Return metadata about the estimator.
 
         Returns
@@ -132,7 +134,7 @@ class EstimatorBuilderProtocol(Protocol):
 
     def build(
         self, theta: dict[str, Any], simulations: dict[str, Any] | None = None
-    ) -> LikelihoodEstimatorProtocol:
+    ) -> LikelihoodEstimatorProtocol:  # pragma: no cover
         """Build and return a fitted likelihood estimator for given theta.
 
         Arguments
@@ -171,7 +173,7 @@ class TrainingDataStrategyProtocol(Protocol):
         theta: dict[str, Any],
         likelihood_estimator: LikelihoodEstimatorProtocol,
         random_state: int | None = None,
-    ) -> np.ndarray:
+    ) -> np.ndarray:  # pragma: no cover
         """Generate training data array.
 
         Arguments
@@ -230,7 +232,7 @@ class DataGenerationPipelineProtocol(Protocol):
         self,
         parameter_sampling_seed: int,
         random_seed: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any]:  # pragma: no cover
         """Generate training data for one parameter set.
 
         Arguments
@@ -251,7 +253,7 @@ class DataGenerationPipelineProtocol(Protocol):
         """
         ...
 
-    def get_param_space(self) -> Any:
+    def get_param_space(self) -> Any:  # pragma: no cover
         """Get the parameter space object used by this strategy.
 
         Returns

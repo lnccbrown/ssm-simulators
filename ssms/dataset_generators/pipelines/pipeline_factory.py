@@ -26,7 +26,7 @@ def create_data_generation_pipeline(
     specifications, parameter bounds, and transformations.
 
     Args:
-        generator_config: Configuration dict with 'estimator_type' key
+        generator_config: Configuration dict with 'estimator.type' key
         model_config: Model specification (must contain 'param_bounds_dict')
 
     Returns:
@@ -58,10 +58,6 @@ def create_data_generation_pipeline(
     estimator_type = get_nested_config(
         generator_config, "estimator", "type", default="kde"
     ).lower()
-
-    # Legacy flag support (backward compatibility)
-    if get_nested_config(generator_config, "estimator", "use_pyddm_pdf", default=False):
-        estimator_type = "pyddm"
 
     if estimator_type == "kde":
         # Pass classes - pipeline will instantiate with its configs
