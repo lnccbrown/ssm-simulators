@@ -156,7 +156,7 @@ class DriftRegistry:
         """
         return sorted(self._drifts.keys())
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """String representation of registry."""
         n_drifts = len(self._drifts)
         return f"DriftRegistry({n_drifts} drifts registered)"

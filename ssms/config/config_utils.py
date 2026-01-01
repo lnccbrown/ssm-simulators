@@ -1,7 +1,7 @@
 """Utilities for handling generator config with nested structure.
 
 This module provides utilities for working with the nested generator_config
-structure and converting legacy flat configs to the new format.
+structure.
 
 Nested structure (REQUIRED):
     {
@@ -12,8 +12,7 @@ Nested structure (REQUIRED):
         "output": {"folder": "...", "pickle_protocol": 4, ...},
     }
 
-Note: Flat configs are no longer supported. Use convert_flat_to_nested()
-to migrate legacy configs.
+Note: Only nested configs are supported. Flat configs are no longer accepted.
 """
 
 from typing import Any
@@ -58,116 +57,8 @@ def has_nested_structure(config: dict) -> bool:
         True if config has nested sections (required format), False otherwise
 
     Note:
-        Flat configs are no longer supported. This function is used to validate
-        that configs have the correct nested structure.
+        Only nested configs are supported. This function validates that configs
+        have the correct structure with at least one of the required sections.
     """
     nested_sections = {"pipeline", "estimator", "training", "simulator", "output"}
     return any(section in config for section in nested_sections)
-
-
-def convert_flat_to_nested(flat_config: dict) -> dict:
-    """Convert a flat config structure to nested structure.
-
-    Args:
-        flat_config: Generator configuration using flat structure
-
-    Returns:
-        Generator configuration using nested structure
-
-    Example:
-        >>> flat = {"n_parameter_sets": 100, "estimator_type": "kde"}
-        >>> nested = convert_flat_to_nested(flat)
-        >>> nested
-        {"pipeline": {"n_parameter_sets": 100}, "estimator": {"type": "kde"}}
-    """
-    nested = {
-        "pipeline": {},
-        "estimator": {},
-        "training": {},
-        "simulator": {},
-        "output": {},
-    }
-
-    # Pipeline settings
-    pipeline_keys = [
-        "n_parameter_sets",
-        "n_subruns",
-        "n_cpus",
-        "n_parameter_sets_rejected",
-    ]
-    for key in pipeline_keys:
-        if key in flat_config:
-            nested["pipeline"][key] = flat_config[key]
-
-    # Estimator settings
-    if "estimator_type" in flat_config:
-        nested["estimator"]["type"] = flat_config["estimator_type"]
-    if "kde_bandwidth" in flat_config:
-        nested["estimator"]["bandwidth"] = flat_config["kde_bandwidth"]
-    if "kde_displace_t" in flat_config:
-        nested["estimator"]["displace_t"] = flat_config["kde_displace_t"]
-    if "use_pyddm_pdf" in flat_config:
-        nested["estimator"]["use_pyddm_pdf"] = flat_config["use_pyddm_pdf"]
-
-    # Training settings
-    # Handle both kde_data_mixture_probabilities and data_mixture_probabilities
-    if "data_mixture_probabilities" in flat_config:
-        nested["training"]["mixture_probabilities"] = flat_config[
-            "data_mixture_probabilities"
-        ]
-    elif "data_mixture_probabilities" in flat_config:
-        nested["training"]["mixture_probabilities"] = flat_config[
-            "data_mixture_probabilities"
-        ]
-
-    if "n_training_samples_by_parameter_set" in flat_config:
-        nested["training"]["n_samples_per_param"] = flat_config[
-            "n_training_samples_by_parameter_set"
-        ]
-    if "separate_response_channels" in flat_config:
-        nested["training"]["separate_response_channels"] = flat_config[
-            "separate_response_channels"
-        ]
-    if "negative_rt_log_likelihood" in flat_config:
-        nested["training"]["negative_rt_log_likelihood"] = flat_config[
-            "negative_rt_log_likelihood"
-        ]
-    # Backward compatibility: support old name
-    if "negative_rt_cutoff" in flat_config:
-        nested["training"]["negative_rt_log_likelihood"] = flat_config[
-            "negative_rt_cutoff"
-        ]
-
-    # Additional training settings
-    if "n_subdatasets" in flat_config:
-        nested["training"]["n_subdatasets"] = flat_config["n_subdatasets"]
-    if "n_trials_per_dataset" in flat_config:
-        nested["training"]["n_trials_per_dataset"] = flat_config["n_trials_per_dataset"]
-
-    # Simulator settings
-    simulator_keys = ["delta_t", "max_t", "n_samples", "smooth_unif"]
-    for key in simulator_keys:
-        if key in flat_config:
-            nested["simulator"][key] = flat_config[key]
-
-    # Simulation filters
-    if "simulation_filters" in flat_config:
-        nested["simulator"]["filters"] = flat_config["simulation_filters"]
-
-    # Output settings
-    if "output_folder" in flat_config:
-        nested["output"]["folder"] = flat_config["output_folder"]
-    if "pickleprotocol" in flat_config:
-        nested["output"]["pickle_protocol"] = flat_config["pickleprotocol"]
-    if "nbins" in flat_config:
-        nested["output"]["nbins"] = flat_config["nbins"]
-
-    # Model name (keep at top level)
-    if "model" in flat_config:
-        nested["model"] = flat_config["model"]
-
-    # Bin settings (keep at top level for now)
-    if "bin_pointwise" in flat_config:
-        nested["bin_pointwise"] = flat_config["bin_pointwise"]
-
-    return nested

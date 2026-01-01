@@ -203,8 +203,7 @@ def get_default_generator_config(approach: str | None = None) -> dict:
 
     Notes
     -----
-    Only nested structure is supported. If you have an old flat config,
-    use `convert_flat_to_nested()` to migrate it.
+    Only nested structure is supported. Flat configs are no longer accepted.
     """
     config_functions = {
         "lan": get_lan_config,

@@ -210,7 +210,7 @@ class ModelConfigRegistry:
         """
         return sorted(list(self._configs.keys()) + list(self._factories.keys()))
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """String representation of registry."""
         n_configs = len(self._configs)
         n_factories = len(self._factories)

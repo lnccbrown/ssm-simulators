@@ -97,6 +97,14 @@ class ModelConfigBuilder:
         config = registry.get(model_name)  # Already returns a deep copy
         config.update(overrides)
 
+        # If param_bounds was overridden, update param_bounds_dict accordingly
+        if "param_bounds" in overrides:
+            from ssms.config._modelconfig import _normalize_param_bounds
+
+            # Remove old param_bounds_dict to force re-normalization
+            config.pop("param_bounds_dict", None)
+            config = _normalize_param_bounds(config)
+
         return config
 
     @staticmethod

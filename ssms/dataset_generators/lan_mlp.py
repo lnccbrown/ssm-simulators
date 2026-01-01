@@ -155,12 +155,9 @@ class TrainingDataGenerator:  # noqa: N801
                     "Flat generator_config structure is no longer supported. "
                     "Please use the nested structure with 'pipeline', 'estimator', "
                     "'training', 'simulator', and 'output' sections.\n\n"
-                    "To migrate, use:\n"
-                    "  from ssms.config.config_utils import convert_flat_to_nested\n"
-                    "  nested_config = convert_flat_to_nested(old_flat_config)\n\n"
-                    "Or get a nested config directly:\n"
+                    "Get a nested config using:\n"
                     "  from ssms.config.generator_config import get_default_generator_config\n"
-                    "  config = get_default_generator_config('lan')  # Always nested now"
+                    "  config = get_default_generator_config('lan')  # Returns nested structure"
                 )
 
             self.generator_config = deepcopy(config)

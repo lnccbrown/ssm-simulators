@@ -160,7 +160,7 @@ class BoundaryRegistry:
         """
         return sorted(self._boundaries.keys())
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """String representation of registry."""
         n_boundaries = len(self._boundaries)
         return f"BoundaryRegistry({n_boundaries} boundaries registered)"
