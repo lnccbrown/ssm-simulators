@@ -283,16 +283,16 @@ class PyDDMGenerationStrategy:
             Parameter sampler configured with model transforms
         """
         from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
-        from ssms.dataset_generators.parameter_samplers.transforms.factory import (
-            get_transforms_from_model_config,
+        from ssms.dataset_generators.parameter_samplers.constraints.factory import (
+            get_constraints_from_model_config,
         )
 
-        # Extract transforms from model config (empty list if none defined)
-        transforms = get_transforms_from_model_config(self.model_config)
+        # Extract constraints from model config (empty list if none defined)
+        constraints = get_constraints_from_model_config(self.model_config)
 
         return UniformParameterSampler(
             param_space=self.model_config["param_bounds_dict"],
-            transforms=transforms,
+            constraints=constraints,
         )
 
     def get_param_space(self) -> Any:

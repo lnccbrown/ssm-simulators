@@ -358,7 +358,7 @@ def test_pyddm_pattern_actually_works(ddm_configs):
     gen_config, model_conf = ddm_configs
 
     # Set estimator_type to pyddm - factory will create PyDDMPipeline
-    gen_config["estimator_type"] = "pyddm"
+    gen_config["estimator"]["type"] = "pyddm"
 
     # Test with TrainingDataGenerator (auto-creates PyDDM strategy)
     my_gen = TrainingDataGenerator(gen_config, model_conf)

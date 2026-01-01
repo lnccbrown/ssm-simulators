@@ -47,10 +47,10 @@ class ResampleMixtureStrategy:
         ---------
         generator_config : dict
             Configuration dictionary containing:
-            - 'n_training_samples_by_parameter_set': Total samples to generate
-            - 'data_mixture_probabilities': [p_estimator, p_unif_up, p_unif_down]
-            - 'separate_response_channels': Whether to one-hot encode choices
-            - 'negative_rt_log_likelihood': Log-likelihood value for negative RTs
+            - ['training']['n_samples_per_param']: Total samples to generate
+            - ['training']['mixture_probabilities']: [p_estimator, p_unif_up, p_unif_down]
+            - ['training']['separate_response_channels']: Whether to one-hot encode choices
+            - ['training']['negative_rt_log_likelihood']: Log-likelihood value for negative RTs
         model_config : dict
             Model configuration containing:
             - 'params': List of parameter names
@@ -100,8 +100,14 @@ class ResampleMixtureStrategy:
         rng = np.random.default_rng(random_state)
         # Extract configuration from nested structure
         training_config = self.generator_config.get("training", self.generator_config)
-        n = training_config["n_training_samples_by_parameter_set"]
-        p = training_config["data_mixture_probabilities"]
+
+        # Use nested config keys with backward compatibility
+        n = training_config.get("n_samples_per_param") or training_config.get(
+            "n_training_samples_by_parameter_set", 1000
+        )
+        p = training_config.get("mixture_probabilities") or training_config.get(
+            "data_mixture_probabilities", [0.8, 0.1, 0.1]
+        )
 
         # Calculate sample counts for each component
         n_kde = int(n * p[0])

@@ -47,10 +47,10 @@ class MixtureTrainingStrategy:
         ---------
         generator_config : dict
             Configuration dictionary containing:
-            - 'n_training_samples_by_parameter_set': Total samples to generate
-            - 'data_mixture_probabilities': [p_estimator, p_unif_up, p_unif_down]
-            - 'separate_response_channels': Whether to one-hot encode choices
-            - 'negative_rt_log_likelihood': Log-likelihood value for negative RTs
+            - ['training']['n_samples_per_param']: Total samples to generate
+            - ['training']['mixture_probabilities']: [p_estimator, p_unif_up, p_unif_down]
+            - ['training']['separate_response_channels']: Whether to one-hot encode choices
+            - ['training']['negative_rt_log_likelihood']: Log-likelihood value for negative RTs
         model_config : dict
             Model configuration containing:
             - 'params': List of parameter names
