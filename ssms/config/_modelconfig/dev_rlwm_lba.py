@@ -30,6 +30,9 @@ def get_dev_rlwm_lba_pw_v1_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_pw_v1,
+        "parameter_sampling_constraints": [
+            {"type": "swap", "param_a": "a", "param_b": "z"}
+        ],
     }
 
 
@@ -60,6 +63,11 @@ def get_dev_rlwm_lba_race_v1_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_race,
+        "parameter_sampling_constraints": [
+            {"type": "normalize", "param_names": ["vRL0", "vRL1", "vRL2"]},
+            {"type": "normalize", "param_names": ["vWM0", "vWM1", "vWM2"]},
+            {"type": "swap", "param_a": "a", "param_b": "z"},
+        ],
     }
 
 
@@ -89,4 +97,7 @@ def get_dev_rlwm_lba_race_v2_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_race,
+        "parameter_sampling_constraints": [
+            {"type": "swap", "param_a": "a", "param_b": "z"}
+        ],
     }

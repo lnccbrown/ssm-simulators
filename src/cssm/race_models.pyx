@@ -76,17 +76,15 @@ cdef bint check_finished(float[:] particles, float boundary, int n):
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
 def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column of floats
-               np.ndarray[float, ndim = 2] a, # initial boundary separation
                np.ndarray[float, ndim = 2] z, # np.array expected, one column of floats
                np.ndarray[float, ndim = 2] t, # for now we we don't allow t by choice
                np.ndarray[float, ndim = 2] s, # np.array expected, one column of floats
                np.ndarray[float, ndim = 1] deadline,
                float delta_t = 0.001, # time increment step
                float max_t = 20, # maximum rt allowed
-               int n_samples = 2000, 
+               int n_samples = 2000,
                int n_trials = 1,
                boundary_fun = None,
-               boundary_multiplicative = True,
                boundary_params = {},
                random_state = None,
                return_option = 'full',
@@ -107,7 +105,6 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         n_samples (int): Number of samples to simulate per trial (default: 2000).
         n_trials (int): Number of trials to simulate (default: 1).
         boundary_fun (callable): Function defining the shape of the boundary over time.
-        boundary_multiplicative (bool): If True, boundary function is multiplicative; if False, additive.
         boundary_params (dict): Parameters for the boundary function.
         random_state (int or None): Seed for random number generator (default: None).
         return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
@@ -126,7 +123,6 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     # Param views
     cdef float[:, :] v_view = v
     cdef float[:, :] z_view = z
-    cdef float[:, :] a_view = a
     cdef float[:, :] t_view = t
     cdef float[:, :] s_view = s
     cdef float[:] deadline_view = deadline
@@ -140,14 +136,14 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     cdef float[:, :, :] rts_view = rts
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     particles = np.zeros((n_particles), dtype = DTYPE)
     cdef float [:] particles_view = particles
 
     # TD: Add Trajectory
     traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
-    traj[:, :] = -999 
-    cdef float[:, :] traj_view = traj    
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
 
     # Boundary storage
     cdef int num_steps = int((max_t / delta_t) + 1)
@@ -156,7 +152,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
 
-    # Initialize variables needed for for loop 
+    # Initialize variables needed for for loop
     cdef float t_particle, smooth_u, deadline_tmp
     cdef Py_ssize_t n, ix, j, k
     cdef Py_ssize_t m = 0
@@ -168,16 +164,15 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
-        # Precompute boundary evaluations
-        compute_boundary(boundary, t_s, a_view[k, 0], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k, 0])
         # Loop over samples
         for n in range(n_samples):
             for j in range(n_particles):
                 particles_view[j] = z_view[k, j] * boundary_view[0] # Reset particle starting points
-            
+
             t_particle = 0.0 # reset time
             ix = 0
 
@@ -209,7 +204,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
             #rts_view[n, 0] = t + t[choices_view[n, 0]]
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
-            
+
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -219,17 +214,17 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     if return_option == 'full':
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-        
+
         # Update possible_choices for full (n_particles-specific)
         minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
-        
+
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
-        params = {'a': a, 't': t, 'deadline': deadline, 's': s}
+        params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -241,10 +236,10 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
             extra_params={**v_dict, **z_dict}
         )
         return build_return_dict(rts, choices, full_meta)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
     # -------------------------------------------------------------------------------------------------
@@ -253,7 +248,6 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
 
 # Simulate (rt, choice) tuples from: Leaky Competing Accumulator Model -----------------------------
 def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one column of floats)
-        np.ndarray[float, ndim = 2] a, # criterion height
         np.ndarray[float, ndim = 2] z, # initial bias parameters (np.array expect: one column of floats)
         np.ndarray[float, ndim = 2] g, # decay parameter
         np.ndarray[float, ndim = 2] b, # inhibition parameter
@@ -265,7 +259,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         int n_samples = 2000, # number of samples to produce
         int n_trials = 1,
         boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-        boundary_multiplicative = True,
         boundary_params = {},
         random_state = None,
         return_option = 'full',
@@ -302,8 +295,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         Number of trials to simulate (default: 1).
     boundary_fun : callable, optional
         Boundary function that takes time as input (default: None).
-    boundary_multiplicative : bool, optional
-        If True, the boundary function is multiplicative; if False, it's additive (default: True).
     boundary_params : dict, optional
         Parameters for the boundary function (default: {}).
     random_state : int or None, optional
@@ -323,7 +314,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     set_seed(random_state)
     # Param views
     cdef float[:, :] v_view = v
-    cdef float[:, :] a_view = a
     cdef float[:, :] z_view = z
     cdef float[:, :] g_view = g
     cdef float[:, :] b_view = b
@@ -334,30 +324,30 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     # Trajectory
     cdef int n_particles = v.shape[1]
     traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
 
     particles = np.zeros(n_particles, dtype = DTYPE)
     cdef float[:] particles_view = particles
-    
+
     particles_reduced_sum = np.zeros(n_particles, dtype = DTYPE)
     cdef float[:] particles_reduced_sum_view = particles_reduced_sum
-    
+
     cdef float delta_t_sqrt = sqrt(delta_t)
     sqrt_st = s * delta_t_sqrt
     cdef float[:, :] sqrt_st_view = sqrt_st
-    
+
     cdef Py_ssize_t n, i, ix, k
     cdef Py_ssize_t m = 0
     cdef float t_par, particles_sum, smooth_u, deadline_tmp
-    
-    # Boundary storage                                                             
+
+    # Boundary storage
     cdef int num_steps = int((max_t / delta_t) + 2)
 
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
@@ -372,17 +362,14 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
         # Precompute boundary evaluations
-        if boundary_multiplicative:
-            boundary[:] = np.multiply(a_view[k, 0], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
-        else:
-            boundary[:] = np.add(a_view[k, 0], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
+        compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
 
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k, 0])
         for n in range(n_samples):
             # Reset particle starting points
             for i in range(n_particles):
                 particles_view[i] = z_view[k, i] * boundary_view[0]
-            
+
             t_particle = 0.0 # reset time
             ix = 0 # reset boundary index
 
@@ -394,8 +381,8 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
             while not check_finished(particles_view, boundary_view[ix], n_particles) and t_particle <= deadline_tmp:
                 # calculate current sum over particle positions
                 particles_sum = csum(particles_view)
-                
-                # update particle positions 
+
+                # update particle positions
                 for i in range(n_particles):
                     particles_reduced_sum_view[i] = (- 1) * particles_view[i] + particles_sum
                     particles_view[i] += ((v_view[k, i] - (g_view[k, 0] * particles_view[i]) - \
@@ -406,7 +393,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
                     if m == num_draws:
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
-                
+
                 t_particle += delta_t # increment time
                 ix += 1 # increment boundary index
 
@@ -416,12 +403,12 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
                             traj_view[ix, i] = particles[i]
 
             smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
-        
+
             choices_view[n, k, 0] = np.argmax(particles) # store choices for sample n
             rts_view[n, k, 0] = t_particle + t_view[k, 0] + smooth_u # t[choices_view[n, 0]] # store reaction time for sample n
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
-        
+
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='lca',
@@ -430,17 +417,17 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     if return_option == 'full':
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-        
+
         # Update possible_choices for full (n_particles-specific)
         minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
-        
+
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
-        params = {'a': a, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
+        params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -452,10 +439,10 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
             extra_params={**v_dict, **z_dict}
         )
         return build_return_dict(rts, choices, full_meta)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------

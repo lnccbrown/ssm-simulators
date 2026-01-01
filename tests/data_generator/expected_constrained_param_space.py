@@ -1,10 +1,10 @@
 """
-This file contains the expected constrained parameter space for various models.
+This file contains the expected param_bounds_dict for various models.
 """
 
 
-def infer_constrained_param_space(conf: dict) -> dict:
-    """Infer a conservative constrained parameter space from a model config.
+def infer_param_bounds_dict(conf: dict) -> dict:
+    """Infer the param_bounds_dict from a model config.
 
     Supports two formats for ``param_bounds``:
     1. ``[[low_1, ...], [high_1, ...]]`` aligned with ``params`` order.

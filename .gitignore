@@ -4,7 +4,6 @@ data/
 ssm_simulators.egg-info/
 .vscode/
 #.ruff_cache/
-src/cssm.cpp
 sysconfig.sh
 .cursor/
 __marimo__/
@@ -32,6 +31,8 @@ __pycache__/
 
 # C extensions
 *.so
+# Specifically ignore root-level cssm artifacts
+/cssm.*.so
 
 # Distribution / packaging
 .Python
