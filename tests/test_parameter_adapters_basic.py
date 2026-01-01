@@ -244,6 +244,73 @@ class TestRegistry:
         assert "family2" in families
         assert "model1" not in families
 
+    def test_registry_describe_exact_match(self):
+        """Test describe method for exact match."""
+        registry = ParameterAdapterRegistry()
+        registry.register_model(
+            "test_model", [SetDefaultValue("param1", 1.0), ExpandDimension(["param2"])]
+        )
+
+        description = registry.describe("test_model")
+        assert "test_model" in description
+        assert "exact match" in description
+        assert "SetDefaultValue" in description
+        assert "ExpandDimension" in description
+
+    def test_registry_describe_family_match(self):
+        """Test describe method for family match."""
+        registry = ParameterAdapterRegistry()
+        registry.register_family(
+            "test_family",
+            lambda m: m.startswith("test_"),
+            [SetDefaultValue("param1", 1.0)],
+        )
+
+        description = registry.describe("test_model")
+        assert "test_model" in description
+        assert "family match" in description
+        assert "SetDefaultValue" in description
+
+    def test_registry_describe_no_match(self):
+        """Test describe method when no match found."""
+        registry = ParameterAdapterRegistry()
+
+        description = registry.describe("unknown_model")
+        assert "unknown_model" in description
+        assert "No adaptations registered" in description
+
+    def test_registry_repr(self):
+        """Test __repr__ method."""
+        registry = ParameterAdapterRegistry()
+        registry.register_model("model1", [])
+        registry.register_model("model2", [])
+        registry.register_family("family1", lambda m: True, [])
+
+        repr_str = repr(registry)
+        assert "ParameterAdapterRegistry" in repr_str
+        assert "2 models" in repr_str
+        assert "1 families" in repr_str
+
+    def test_base_parameter_adaptation_repr(self):
+        """Test __repr__ for parameter adaptation classes."""
+        # Test SetDefaultValue
+        adaptation = SetDefaultValue("test_param", 42.0)
+        repr_str = repr(adaptation)
+        assert "SetDefaultValue" in repr_str
+        assert "test_param" in repr_str
+        assert "42" in repr_str
+
+        # Test with long value (truncation)
+        long_str = "a" * 100
+        adaptation2 = RenameParameter(long_str, "short")
+        repr_str2 = repr(adaptation2)
+        assert "..." in repr_str2  # Should be truncated
+
+    def test_base_parameter_adaptation_str(self):
+        """Test __str__ method calls __repr__."""
+        adaptation = ExpandDimension(["param1", "param2"])
+        assert str(adaptation) == repr(adaptation)
+
 
 class TestModularParameterSimulatorAdapter:
     """Test ModularParameterSimulatorAdapter."""
