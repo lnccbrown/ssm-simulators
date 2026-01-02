@@ -36,6 +36,29 @@ classifiers = [
 [project.optional-dependencies]
 mlflow = ["mlflow>=3.6.0"]
 pyddm = ["pyddm>=0.9.0"]
+dev = [
+    "pytest",
+    "mypy",
+    "black",
+    "ruff",
+    "pre-commit",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
+    "ipykernel>=6.29.5",
+    "nbconvert>=7.16.6",
+    "nb-clean>=4.0.1",
+    "pytest-timer>=1.0.0",
+    "pytest-rerunfailures>=16.0.1",
+    "mlflow>=3.6.0",
+    "marimo[recommended]",
+    "pyddm>=0.9.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-jupyter>=0.24.0",
+    "mkdocstrings[python]>=0.24.0",
+]
 
 [dependency-groups]
 dev = [
