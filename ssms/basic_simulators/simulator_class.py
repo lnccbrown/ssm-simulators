@@ -23,10 +23,15 @@ from ssms.basic_simulators.simulator import (
     make_noise_vec,
     validate_ssm_parameters,
 )
-from ssms.basic_simulators.modular_theta_processor import ModularThetaProcessor
-from ssms.basic_simulators.theta_processor import AbstractThetaProcessor
-from ssms.basic_simulators.theta_transforms import ThetaTransformation
-from ssms.config import boundary_config, drift_config, model_config
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_simulator_adapter import (
+    AbstractParameterSimulatorAdapter,
+)
+from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
+from ssms.config import model_config, get_boundary_registry, get_drift_registry
+from ssms.config.model_registry import get_model_registry
 
 
 class Simulator:
@@ -77,8 +82,8 @@ class Simulator:
         boundary: str | Callable | None = None,
         drift: str | Callable | None = None,
         simulator_function: Callable | None = None,
-        theta_processor: AbstractThetaProcessor | None = None,
-        theta_transforms: list[ThetaTransformation] | None = None,
+        parameter_adapter: AbstractParameterSimulatorAdapter | None = None,
+        parameter_adaptations: list[ParameterAdaptation] | None = None,
         **config_overrides,
     ):
         """Initialize a Simulator instance.
@@ -90,25 +95,25 @@ class Simulator:
             or None if providing a custom simulator_function.
         boundary : str, Callable, or None
             Boundary function. Can be:
-            - A string name from boundary_config (e.g., "angle", "weibull_cdf")
+            - A string name from the boundary registry (e.g., "angle", "weibull_cdf")
             - A callable function with signature: func(t, **params) -> np.ndarray
             - None to use the model's default boundary
         drift : str, Callable, or None
             Drift function. Can be:
-            - A string name from drift_config (e.g., "constant", "gamma_drift")
+            - A string name from the drift registry (e.g., "constant", "gamma_drift")
             - A callable function with signature: func(t, **params) -> np.ndarray
             - None to use the model's default drift (if applicable)
         simulator_function : Callable or None
             Custom simulator function. If provided, this overrides the model's
             default simulator. Must follow the simulator interface contract.
-        theta_processor : AbstractThetaProcessor or None
-            Custom theta processor for parameter transformations. If None, uses
-            ModularThetaProcessor with default transformations for the model.
-            Pass SimpleThetaProcessor() for legacy behavior.
-        theta_transforms : list[ThetaTransformation] or None
-            Additional theta transformations to apply AFTER the model's default
-            transformations. Useful for adding custom parameter processing without
-            replacing the entire processor. Only used if theta_processor is None.
+        parameter_adapter : AbstractParameterSimulatorAdapter or None
+            Custom parameter adapter for preparing parameters for simulators. If None, uses
+            ModularParameterSimulatorAdapter with default adaptations for the model.
+            Pass SimpleParameterSimulatorAdapter() for legacy behavior.
+        parameter_adaptations : list[ParameterAdaptation] or None
+            Additional parameter adaptations to apply AFTER the model's default
+            adaptations. Useful for adding custom parameter preparation without
+            replacing the entire adapter. Only used if parameter_adapter is None.
         **config_overrides
             Additional configuration parameters to override. Common options:
             - params : list[str] - Parameter names (required if simulator_function provided)
@@ -126,23 +131,25 @@ class Simulator:
 
         Examples
         --------
-        Use default modular processor:
+        Use default modular adapter:
 
         >>> sim = Simulator("lba2")
         >>> results = sim.simulate(theta={'v0': 0.5, 'v1': 0.6, 'A': 0.5, 'b': 1.0})
 
-        Add custom transformations:
+        Add custom adaptations:
 
-        >>> from ssms.basic_simulators.theta_transforms import SetDefaultValue
-        >>> sim = Simulator("ddm", theta_transforms=[SetDefaultValue("custom_param", 42)])
+        >>> from ssms.basic_simulators.parameter_adapters import SetDefaultValue
+        >>> sim = Simulator("ddm", parameter_adaptations=[SetDefaultValue("custom_param", 42)])
 
-        Use legacy processor:
+        Use legacy adapter:
 
-        >>> sim = Simulator("ddm", theta_processor=SimpleThetaProcessor())
+        >>> sim = Simulator("ddm", parameter_adapter=SimpleParameterSimulatorAdapter())
         """
-        # Set theta processor (default to modular)
-        self._theta_processor = theta_processor or ModularThetaProcessor()
-        self._custom_transforms = theta_transforms or []
+        # Set parameter adapter (default to modular)
+        self._parameter_adapter = (
+            parameter_adapter or ModularParameterSimulatorAdapter()
+        )
+        self._custom_adaptations = parameter_adaptations or []
 
         self._config = self._build_config(
             model, boundary, drift, simulator_function, config_overrides
@@ -186,11 +193,24 @@ class Simulator:
             config = deepcopy(model)
         # Case 2: Model name provided
         elif isinstance(model, str):
-            if model not in model_config:
+            # Handle deadline models by stripping the suffix for lookup
+            model_lookup = model.replace("_deadline", "")
+
+            # Check custom registry first, then built-in models
+            registry = get_model_registry()
+            if registry.has_model(model_lookup):
+                config = deepcopy(registry.get(model_lookup))
+            elif model_lookup in model_config:
+                config = deepcopy(model_config[model_lookup])
+            else:
                 raise ValueError(
-                    f"Unknown model '{model}'. Available models: {list(model_config.keys())}"
+                    f"Unknown model '{model_lookup}'. Available models: "
+                    f"{list(model_config.keys()) + registry.list_models()}"
                 )
-            config = deepcopy(model_config[model])
+
+            # Preserve the original name with _deadline if it was provided
+            if "_deadline" in model:
+                config["name"] = model
         # Case 3: Custom simulator without base model
         elif model is None and simulator_function is not None:
             config = self._create_minimal_config(simulator_function, config_overrides)
@@ -370,15 +390,17 @@ class Simulator:
         """
         if isinstance(boundary, str):
             # Look up boundary by name
-            if boundary not in boundary_config:
+            boundary_registry = get_boundary_registry()
+            if not boundary_registry.is_registered(boundary):
                 raise ValueError(
                     f"Unknown boundary '{boundary}'. Available boundaries: "
-                    f"{list(boundary_config.keys())}"
+                    f"{boundary_registry.list_boundaries()}"
                 )
+            boundary_info = boundary_registry.get(boundary)
             config["boundary_name"] = boundary
-            config["boundary"] = boundary_config[boundary]["fun"]
+            config["boundary"] = boundary_info["fun"]
             if "boundary_params" not in config:
-                config["boundary_params"] = boundary_config[boundary]["params"]
+                config["boundary_params"] = boundary_info["params"]
         elif callable(boundary):
             # Custom boundary function
             self._validate_boundary_function(boundary)
@@ -412,15 +434,17 @@ class Simulator:
         """
         if isinstance(drift, str):
             # Look up drift by name
-            if drift not in drift_config:
+            drift_registry = get_drift_registry()
+            if not drift_registry.is_registered(drift):
                 raise ValueError(
                     f"Unknown drift '{drift}'. Available drifts: "
-                    f"{list(drift_config.keys())}"
+                    f"{drift_registry.list_drifts()}"
                 )
+            drift_info = drift_registry.get(drift)
             config["drift_name"] = drift
-            config["drift"] = drift_config[drift]["fun"]
+            config["drift"] = drift_info["fun"]
             if "drift_params" not in config:
-                config["drift_params"] = drift_config[drift]["params"]
+                config["drift_params"] = drift_info["params"]
         elif callable(drift):
             # Custom drift function
             self._validate_drift_function(drift)
@@ -613,15 +637,17 @@ class Simulator:
         else:
             theta["s"] = noise_vec
 
-        # Process theta with configured processor
-        theta = self._theta_processor.process_theta(theta, model_config_local, n_trials)
+        # Adapt parameters with configured adapter
+        theta = self._parameter_adapter.adapt_parameters(
+            theta, model_config_local, n_trials
+        )
 
-        # Apply custom transformations (if using ModularThetaProcessor and custom transforms provided)
-        if self._custom_transforms and isinstance(
-            self._theta_processor, ModularThetaProcessor
+        # Apply custom adaptations (if using ModularParameterSimulatorAdapter and custom adaptations provided)
+        if self._custom_adaptations and isinstance(
+            self._parameter_adapter, ModularParameterSimulatorAdapter
         ):
-            for transform in self._custom_transforms:
-                theta = transform.apply(theta, model_config_local, n_trials)
+            for adaptation in self._custom_adaptations:
+                theta = adaptation.apply(theta, model_config_local, n_trials)
 
         # Make boundary and drift dictionaries (if applicable)
         boundary_dict = {}
@@ -686,12 +712,12 @@ class Simulator:
         return deepcopy(self._config)
 
     @property
-    def theta_processor(self) -> AbstractThetaProcessor:
-        """Get the configured theta processor.
+    def parameter_adapter(self) -> AbstractParameterSimulatorAdapter:
+        """Get the configured parameter adapter.
 
         Returns
         -------
-        AbstractThetaProcessor
-            The theta processor instance used for parameter transformations
+        AbstractParameterSimulatorAdapter
+            The parameter adapter instance used for parameter preparation
         """
-        return self._theta_processor
+        return self._parameter_adapter

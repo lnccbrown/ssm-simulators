@@ -12,9 +12,11 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 
-from ssms.basic_simulators.theta_processor import SimpleThetaProcessor
+from ssms.basic_simulators.parameter_simulator_adapter import (
+    SimpleParameterSimulatorAdapter,
+)
 from ssms.config import model_config
-from ssms.config._modelconfig.base import boundary_config, drift_config
+from ssms.config import get_boundary_registry, get_drift_registry
 
 _global_rng = default_rng()
 _rng_lock = Lock()
@@ -239,7 +241,7 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
 
     This function extracts boundary-related parameters from the input theta dictionary,
     based on the boundary configuration specified in the config. It also retrieves
-    the appropriate boundary function and multiplicative flag from the boundary_config.
+    the appropriate boundary function from the boundary registry.
 
     Args:
         config (dict): A dictionary containing model configuration, including the boundary name.
@@ -247,24 +249,24 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
 
     Returns:
         dict: A dictionary containing:
-            - boundary_params (dict): Extracted boundary-related parameters.
+            - boundary_params (dict): Extracted boundary-related parameters (including 'a').
             - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
-            - boundary_multiplicative (bool): Flag indicating if the boundary is multiplicative.
 
     """
     boundary_name = config["boundary_name"]
+    boundary_registry = get_boundary_registry()
+    boundary_info = boundary_registry.get(boundary_name)
+
     boundary_params = {
         param_name: value
         for param_name, value in theta.items()
-        if param_name in boundary_config[boundary_name]["params"]
+        if param_name in boundary_info["params"]
     }
 
-    boundary_fun = boundary_config[boundary_name]["fun"]
-    boundary_multiplicative = boundary_config[boundary_name]["multiplicative"]
+    boundary_fun = boundary_info["fun"]
     boundary_dict = {
         "boundary_params": boundary_params,
         "boundary_fun": boundary_fun,
-        "boundary_multiplicative": boundary_multiplicative,
     }
     return boundary_dict
 
@@ -275,7 +277,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
 
     This function extracts drift-related parameters from the input theta dictionary,
     based on the drift configuration specified in the config. It also retrieves
-    the appropriate drift function from the drift_config.
+    the appropriate drift function from the drift registry.
 
     Args:
         config (dict): A dictionary containing model configuration, including the drift name.
@@ -289,12 +291,15 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
     """
     if "drift_name" in config:
         drift_name = config["drift_name"]
+        drift_registry = get_drift_registry()
+        drift_info = drift_registry.get(drift_name)
+
         drift_params = {
             param_name: value
             for param_name, value in theta.items()
-            if param_name in drift_config[drift_name]["params"]
+            if param_name in drift_info["params"]
         }
-        drift_fun = drift_config[drift_name]["fun"]
+        drift_fun = drift_info["fun"]
         drift_dict = {"drift_fun": drift_fun, "drift_params": drift_params}
     else:
         drift_dict = {}
@@ -663,8 +668,10 @@ def simulator(
     else:
         theta["s"] = noise_vec
 
-    # Process theta
-    theta = SimpleThetaProcessor().process_theta(theta, model_config_local, n_trials)
+    # Adapt parameters
+    theta = SimpleParameterSimulatorAdapter().adapt_parameters(
+        theta, model_config_local, n_trials
+    )
 
     # Make boundary dictionary
     boundary_dict = make_boundary_dict(model_config_local, theta)

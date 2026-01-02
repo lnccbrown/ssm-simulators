@@ -4,7 +4,7 @@
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
 ![PyPI_dl](https://img.shields.io/pypi/dm/ssm-simulators)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/lnccbrown/ssm-simulators)](https://github.com/lnccbrown/ssm-simulators/pulls)
-![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
+![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 [![Run tests](https://img.shields.io/github/actions/workflow/status/lnccbrown/ssm-simulators/run_tests.yml?branch=main&label=tests)](https://github.com/lnccbrown/ssm-simulators/actions/workflows/run_tests.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -45,34 +45,62 @@ The package exposes a command-line tool, `generate`, for creating training data 
 generate --config-path <path/to/config.yaml> --output <output/directory> [--log-level INFO]
 ```
 
-- `--config-path`: Path to your YAML configuration file (required).
+- `--config-path`: Path to your YAML configuration file (optional, uses default if not provided).
 - `--output`: Directory where generated data will be saved (required).
 - `--n-files`: (Optional) Number of data files to generate. Default is `1` file.
+- `--estimator-type`: (Optional) Likelihood estimator type (`kde` or `pyddm`). Overrides YAML config if specified.
 - `--log-level`: (Optional) Set the logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Default is `WARNING`.
 
 Below is a sample YAML configuration you can use with the `generate` command:
 
 ```yaml
 MODEL: 'ddm'
-N_SAMPLES: 2000
-N_PARAMETER_SETS: 100
-DELTA_T: 0.001
-N_TRAINING_SAMPLES_BY_PARAMETER_SET: 200
-N_SUBRUNS: 20
 GENERATOR_APPROACH: 'lan'
+
+PIPELINE:
+  N_PARAMETER_SETS: 100
+  N_SUBRUNS: 20
+
+SIMULATOR:
+  N_SAMPLES: 2000
+  DELTA_T: 0.001
+
+TRAINING:
+  N_SAMPLES_PER_PARAM: 200
+
+ESTIMATOR:
+  TYPE: 'kde'  # Options: 'kde' (default) or 'pyddm'
 ```
 
 Configuration file parameter details follow.
 
+**Top-Level Parameters:**
 | Option | Definition |
 | ------ | ---------- |
-| `MODEL` | The type of model you want to simulate |
-| `N_SAMPLES` | Number of samples a simulation run should entail for a given parameter set|
+| `MODEL` | The type of model you want to simulate (e.g., `ddm`, `angle`, `levy`) |
+| `GENERATOR_APPROACH` | Type of generator used to generate data (`lan` or `cpn`) |
+
+**PIPELINE Section:**
+| Option | Definition |
+| ------ | ---------- |
 | `N_PARAMETER_SETS` | Number of parameter vectors that are used for training |
-| `DELTA_T` | Time discretization step used in numerical simulation of the model. Interval between updates of evidence-accumulation. |
-| `N_TRAINING_SAMPLES_BY_PARAMETER_SET` | Number of times the kernal density estimate (KDE) is evaluated after creating the KDE from simulations of each set of model parameters. |
 | `N_SUBRUNS` | Number of repetitions of each call to generate data |
-| `GENERATOR_APPROACH` | Type of generator used to generate data |
+
+**SIMULATOR Section:**
+| Option | Definition |
+| ------ | ---------- |
+| `N_SAMPLES` | Number of samples a simulation run should entail for a given parameter set |
+| `DELTA_T` | Time discretization step used in numerical simulation of the model. Interval between updates of evidence-accumulation. |
+
+**TRAINING Section:**
+| Option | Definition |
+| ------ | ---------- |
+| `N_SAMPLES_PER_PARAM` | Number of times the kernel density estimate (KDE) is evaluated after creating the KDE from simulations of each set of model parameters |
+
+**ESTIMATOR Section:**
+| Option | Definition |
+| ------ | ---------- |
+| `TYPE` | Likelihood estimator type: `kde` (default) or `pyddm` |
 
 To make your own configuration file, you can copy the example above into a new `.yaml` file and modify it with your preferences.
 
@@ -80,9 +108,38 @@ If you are using `uv` (see below), you can use the `uv run` command to run `gene
 
 This will generate training data according to your configuration and save it in the specified output directory.
 
+### Key Features
+
+#### Custom Parameter Transforms
+
+Register custom transformations to apply model-specific modifications to sampled parameters:
+
+```python
+from ssms import register_transform_function
+import numpy as np
+
+# Register a custom transform
+def exponential_drift(theta: dict) -> dict:
+    if 'v' in theta:
+        theta['v'] = np.exp(theta['v'])
+    return theta
+
+register_transform_function("exp_v", exponential_drift)
+
+# Use in model configuration
+model_config = {
+    "name": "my_model",
+    "params": ["v", "a", "z", "t"],
+    "param_bounds": [...],
+    "parameter_transforms": [
+        {"type": "exp_v"}  # Your custom transform
+    ]
+}
+```
+
 ### Tutorial
 
-Check the basic tutorial [here](docs/basic_tutorial/basic_tutorial.ipynb).
+Check the [basic tutorial](https://lnccbrown.github.io/ssm-simulators/basic_tutorial/basic_tutorial/) in our documentation.
 
 ### Advanced: Dependency Management with uv
 
@@ -97,6 +154,28 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```bash
 uv sync --all-groups  # Installs all dependency groups
 ```
+
+### Contributing
+
+We welcome contributions from the community! Whether you want to add a new model, improve documentation, or fix bugs, your help is appreciated.
+
+#### Contributing New Models
+
+Want to add your own sequential sampling model to the package? Check out our comprehensive guide:
+
+**[📖 Contributing New Models Tutorial](https://lnccbrown.github.io/ssm-simulators/contributing/add_models/)**
+
+This guide walks you through three levels of contribution:
+- **Level 1**: Add boundary/drift variants (~15 min)
+- **Level 2**: Implement Python simulators (~20 min)
+- **Level 3**: Create high-performance Cython implementations (~30 min)
+
+#### Other Contributions
+
+For bug reports, feature requests, or general questions:
+- Open an issue on [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues)
+- Check existing issues to avoid duplicates
+- Provide clear descriptions and reproducible examples
 
 ### Cite `ssm-simulators`
 

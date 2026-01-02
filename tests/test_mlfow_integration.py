@@ -5,10 +5,12 @@ import shutil
 from pathlib import Path
 
 import pytest
-import mlflow
+
+# Try to import mlflow, skip all tests if not available
+mlflow = pytest.importorskip("mlflow")
 
 from ssms.cli.generate import make_data_generator_configs
-from ssms.dataset_generators.lan_mlp import data_generator
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
 
 def set_experiment_with_artifact_location(experiment_name, artifact_location):
@@ -77,13 +79,21 @@ def minimal_config(tmp_path):
     config = make_data_generator_configs(
         model="ddm",
         generator_approach="lan",
-        data_generator_arg_dict={
-            "n_samples": 100,  # Small for speed
-            "n_parameter_sets": 2,
-            "n_training_samples_by_parameter_set": 10,
-            "n_subruns": 1,
-            "n_cpus": 1,
-            "output_folder": str(output_dir),
+        data_generator_nested_dict={
+            "simulator": {
+                "n_samples": 100,  # Small for speed
+            },
+            "pipeline": {
+                "n_parameter_sets": 2,
+                "n_subruns": 1,
+                "n_cpus": 1,  # Avoid psutil issues
+            },
+            "training": {
+                "n_samples_per_param": 10,
+            },
+            "output": {
+                "folder": str(output_dir),
+            },
         },
     )
     return config
@@ -103,20 +113,20 @@ class TestMLflowIntegration:
 
     def test_data_generation_without_mlflow(self, minimal_config):
         """Test that data generation works without MLflow (baseline)."""
-        gen = data_generator(
-            generator_config=minimal_config["data_config"],
+        gen = TrainingDataGenerator(
+            config=minimal_config["data_config"],
             model_config=minimal_config["model_config"],
         )
 
-        data = gen.generate_data_training_uniform(save=True, verbose=False)
+        data = gen.generate_data_training(save=True, verbose=False)
 
         # Verify data structure
         assert isinstance(data, dict)
-        assert "thetas" in data
+        assert "theta" in data  # Updated key name
         assert "lan_data" in data
 
         # Verify file was created
-        output_folder = Path(minimal_config["data_config"]["output_folder"])
+        output_folder = Path(minimal_config["data_config"]["output"]["folder"])
         pickle_files = list(output_folder.rglob("*.pickle"))
         assert len(pickle_files) == 1, "Expected exactly one pickle file"
 
@@ -149,7 +159,7 @@ class TestMLflowIntegration:
         set_experiment_with_artifact_location("test-experiment", artifact_location)
 
         # Get output directory from config
-        test_output_dir = Path(minimal_config["data_config"]["output_folder"])
+        test_output_dir = Path(minimal_config["data_config"]["output"]["folder"])
 
         # Track files before generation
         existing_files = set(test_output_dir.rglob("*.pickle"))
@@ -164,11 +174,11 @@ class TestMLflowIntegration:
             mlflow.log_param("data_output_folder", str(test_output_dir))
 
             # Generate data
-            gen = data_generator(
-                generator_config=minimal_config["data_config"],
+            gen = TrainingDataGenerator(
+                config=minimal_config["data_config"],
                 model_config=minimal_config["model_config"],
             )
-            gen.generate_data_training_uniform(save=True, verbose=False)
+            gen.generate_data_training(save=True, verbose=False)
 
             # Find newly generated files
             current_files = set(test_output_dir.rglob("*.pickle"))
@@ -222,11 +232,11 @@ class TestMLflowIntegration:
         with mlflow.start_run(run_name="test-retrieval") as run:
             run_id = run.info.run_id
 
-            gen = data_generator(
-                generator_config=minimal_config["data_config"],
+            gen = TrainingDataGenerator(
+                config=minimal_config["data_config"],
                 model_config=minimal_config["model_config"],
             )
-            gen.generate_data_training_uniform(save=True, verbose=False)
+            gen.generate_data_training(save=True, verbose=False)
 
             # Log a simple inventory
             file_inventory = {
@@ -251,20 +261,20 @@ class TestMLflowIntegration:
     def test_file_inventory_accuracy(self, minimal_config):
         """Test that file inventory accurately tracks generated files."""
         # Get output directory from config
-        test_output_dir = Path(minimal_config["data_config"]["output_folder"])
+        test_output_dir = Path(minimal_config["data_config"]["output"]["folder"])
 
         # Track before
         existing_files = set(test_output_dir.rglob("*.pickle"))
 
         # Generate multiple files
-        gen = data_generator(
-            generator_config=minimal_config["data_config"],
+        gen = TrainingDataGenerator(
+            config=minimal_config["data_config"],
             model_config=minimal_config["model_config"],
         )
 
         n_files = 3
         for _ in range(n_files):
-            gen.generate_data_training_uniform(save=True, verbose=False)
+            gen.generate_data_training(save=True, verbose=False)
 
         # Track after
         current_files = set(test_output_dir.rglob("*.pickle"))
@@ -369,22 +379,30 @@ def test_full_cli_workflow_simulation(tmp_path):
         config = make_data_generator_configs(
             model="ddm",
             generator_approach="lan",
-            data_generator_arg_dict={
-                "n_samples": 50,
-                "n_parameter_sets": 1,
-                "n_training_samples_by_parameter_set": 5,
-                "n_subruns": 1,
-                "n_cpus": 1,
-                "output_folder": str(output_dir),
+            data_generator_nested_dict={
+                "simulator": {
+                    "n_samples": 50,
+                },
+                "pipeline": {
+                    "n_parameter_sets": 1,
+                    "n_subruns": 1,
+                    "n_cpus": 1,
+                },
+                "training": {
+                    "n_samples_per_param": 5,
+                },
+                "output": {
+                    "folder": str(output_dir),
+                },
             },
         )
 
         # Generate data
-        gen = data_generator(
-            generator_config=config["data_config"],
+        gen = TrainingDataGenerator(
+            config=config["data_config"],
             model_config=config["model_config"],
         )
-        gen.generate_data_training_uniform(save=True, verbose=False)
+        gen.generate_data_training(save=True, verbose=False)
 
         # Log as CLI would
         mlflow.log_param("data_output_folder", str(output_dir))

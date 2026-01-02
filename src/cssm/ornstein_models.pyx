@@ -37,7 +37,6 @@ from cssm._utils import (
 DTYPE = np.float32
 
 def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
-                       np.ndarray[float, ndim = 1] a, # initial boundary separation
                        np.ndarray[float, ndim = 1] z, # starting point bias
                        np.ndarray[float, ndim = 1] g, # decay parameter
                        np.ndarray[float, ndim = 1] t,
@@ -48,7 +47,6 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                        int n_samples = 20000, # number of samples from process
                        int n_trials = 1,
                        boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                       boundary_multiplicative = True,
                        boundary_params = {},
                        random_state = None,
                        return_option = 'full',
@@ -70,7 +68,6 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
         n_samples (int): Number of samples to simulate per trial (default: 20000).
         n_trials (int): Number of trials to simulate (default: 1).
         boundary_fun (callable): Function defining the shape of the boundary over time.
-        boundary_multiplicative (bool): If True, boundary function is multiplicative; if False, additive.
         boundary_params (dict): Parameters for the boundary function.
         random_state (int or None): Seed for random number generator (default: None).
         return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
@@ -86,7 +83,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     """
 
     setup = setup_simulation(n_samples, n_trials, max_t, delta_t, random_state)
-    
+
     # Extract arrays and create memory views for C-level performance
     traj = setup['traj']
     rts = setup['rts']
@@ -98,16 +95,15 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    
+
     # Param views
     cdef float[:] v_view  = v
-    cdef float[:] a_view = a
     cdef float[:] z_view = z
     cdef float[:] g_view = g
     cdef float[:] t_view = t
     cdef float[:] deadline_view = deadline
     cdef float[:] s_view = s
-    
+
     # Boundary storage for the upper bound
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -119,9 +115,9 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -164,11 +160,11 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
-            'v': v, 'a': a, 'z': z, 'g': g, 't': t,
+            'v': v, 'z': z, 'g': g, 't': t,
             'deadline': deadline, 's': s
         }
         full_meta = build_full_metadata(
@@ -181,10 +177,9 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
-

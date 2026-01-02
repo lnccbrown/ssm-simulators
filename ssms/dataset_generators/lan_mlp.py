@@ -8,29 +8,25 @@ import logging
 import uuid
 import warnings
 from copy import deepcopy
-from functools import partial
 from pathlib import Path
+from typing import Optional, Union
+
+from ssms.dataset_generators.protocols import (
+    DataGenerationPipelineProtocol,
+)
 
 import pickle
 import numpy as np
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
-from scipy.stats import mode
 
-from ssms.basic_simulators.simulator import (
-    _theta_dict_to_array,
-    simulator,  # , bin_simulator_output
-)
 from ssms.config import KDE_NO_DISPLACE_T
-from ssms.support_utils import kde_class
-from ssms.support_utils.utils import sample_parameters_from_constraints
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: #77 rew Class name `data_generator` should use CapWords convention  # noqa: FIX002
-class data_generator:  # noqa: N801
-    """The data_generator() class is used to generate training data
+class TrainingDataGenerator:  # noqa: N801
+    """The TrainingDataGenerator() class is used to generate training data
       for various likelihood approximators.
 
     Attributes
@@ -41,65 +37,171 @@ class data_generator:  # noqa: N801
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
+        _generation_pipeline: DataGenerationPipelineProtocol
+            Strategy for orchestrating the complete data generation workflow.
+
     Methods
     -------
-        generate_data_training_uniform(save=False, verbose=True, cpn_only=False)
+        generate_data_training_uniform(save=False, verbose=True)
             Generates training data for LANs.
-        get_simulations(theta=None, random_seed=None)
-            Generates simulations for a given parameter set.
-        _filter_simulations(simulations=None)
-            Filters simulations according to the criteria
-            specified in the generator_config.
-        _make_kde_data(simulations=None, theta=None)
-            Generates KDE data from simulations.
-        _mlp_get_processed_data_for_theta(random_seed_tuple)
-            Helper function for generating training data for MLPs.
-        _cpn_get_processed_data_for_theta(random_seed_tuple)
-            Helper function for generating training data for CPNs.
-        _build_simulator()
-            Builds simulator function for LANs.
         _get_ncpus()
             Helper function for determining the number of
             cpus to use for parallelization.
 
     Returns
     -------
-        data_generator object
+        TrainingDataGenerator object
+
+    Notes
+    -----
+    The class supports dependency injection of generation_pipeline, enabling
+    complete customization of the data generation workflow. By default, it
+    auto-creates the appropriate strategy based on generator_config settings
+    (KDE-based simulation or PyDDM analytical methods).
     """
 
     def __init__(
-        self, generator_config: dict | None = None, model_config: dict | None = None
+        self,
+        config: Union[dict, DataGenerationPipelineProtocol, None] = None,
+        model_config: Optional[dict] = None,
     ):
         """Initialize data generator class.
 
         Arguments
         ---------
-        generator_config: dict
-            Configuration dictionary for the data generator.
-            (For an example load ssms.config.get_lan_config())
-        model_config: dict
+        config: dict or DataGenerationPipelineProtocol
+            Either:
+            - A dictionary with generator configuration (e.g., from
+              ssms.config.get_default_generator_config()). The TrainingDataGenerator
+              will auto-create the appropriate strategy.
+            - A DataGenerationPipelineProtocol instance for complete custom
+              control over the data generation workflow.
+        model_config: dict, optional
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
+            This serves as the single source of truth for model specifications,
+            parameter bounds, transforms, and custom drift/boundary functions.
+
+            **Required** when config is a dict (generator_config).
+            **Optional** when config is a pipeline (extracted from pipeline if not provided).
 
         Raises
         ------
         ValueError
-            If no generator_config or model_config is specified.
+            If config is None, or if model_config is None when config is a dict,
+            or if model_config cannot be extracted from a pipeline.
 
         Returns
         -------
-        data_generator object
+        TrainingDataGenerator object
+
+        Notes
+        -----
+        **Simple Usage**:
+        Pass a generator_config dict as the first argument. The TrainingDataGenerator
+        will auto-create the appropriate strategy based on 'estimator_type'
+        in the config ('kde' for simulation-based, 'pyddm' for analytical).
+
+        **Advanced Usage**:
+        Pass a custom DataGenerationPipelineProtocol instance to completely
+        control the workflow (parameter sampling, simulation, estimation, etc.).
+        In this case, model_config can be omitted (will use pipeline's config).
+
+        The pipeline internally manages:
+        - Parameter sampling (uniform, Sobol, custom)
+        - Simulation or analytical PDF computation
+        - Likelihood estimation (KDE, PyDDM analytical)
+        - Training data structuring (ResampleMixture, etc.)
+
+        For custom drift/boundary functions, use ModelConfigBuilder to create
+        a custom model_config before passing it to TrainingDataGenerator.
+
+        Examples
+        --------
+        Simple (dict config):
+            >>> gen = TrainingDataGenerator(generator_config, model_config)
+            >>> data = gen.generate_data_training()
+
+        Advanced (custom pipeline, model_config from pipeline):
+            >>> from ssms.dataset_generators.pipelines import SimulationPipeline
+            >>> custom_pipeline = SimulationPipeline(
+            ...     generator_config, model_config,
+            ...     estimator_builder=MyCustomBuilder(...),
+            ...     training_strategy=MyCustomStrategy(...),
+            ... )
+            >>> gen = TrainingDataGenerator(custom_pipeline)  # model_config optional!
+            >>> data = gen.generate_data_training()
         """
         # INIT -----------------------------------------
-        if generator_config is None:
-            raise ValueError("No generator_config specified")
-        elif model_config is None:
-            raise ValueError("No model_config specified")
-        else:
-            self.generator_config = deepcopy(generator_config)
-            self.model_config = deepcopy(model_config)
+        # Check if config is a dict (generator_config) or a pipeline object
+        if config is None:
+            raise ValueError("No config specified")
 
+        # Determine if config is a dict or a pipeline
+        if isinstance(config, dict):
+            # Config is a dictionary - treat as generator_config
+            # In this case, model_config is REQUIRED
+            if model_config is None:
+                raise ValueError(
+                    "model_config is required when config is a dictionary. "
+                    "Pass both generator_config and model_config."
+                )
+
+            # Validate that config uses nested structure
+            from ssms.config.config_utils import has_nested_structure
+
+            if not has_nested_structure(config):
+                raise ValueError(
+                    "Flat generator_config structure is no longer supported. "
+                    "Please use the nested structure with 'pipeline', 'estimator', "
+                    "'training', 'simulator', and 'output' sections.\n\n"
+                    "Get a nested config using:\n"
+                    "  from ssms.config.generator_config import get_default_generator_config\n"
+                    "  config = get_default_generator_config('lan')  # Returns nested structure"
+                )
+
+            self.generator_config = deepcopy(config)
+            self.model_config = deepcopy(model_config)
+            generation_pipeline = None  # Will auto-create later
+        else:
+            # Config is a pipeline object
+            generation_pipeline = config
+
+            # model_config is OPTIONAL when passing a pipeline
+            # Extract from pipeline if not provided
+            if model_config is None:
+                # Use pipeline's model_config
+                if not hasattr(generation_pipeline, "model_config"):
+                    raise ValueError(
+                        "Pipeline object must have 'model_config' attribute, "
+                        "or model_config must be provided as argument."
+                    )
+                self.model_config = deepcopy(generation_pipeline.model_config)
+            else:
+                # Both provided - warn and use pipeline's
+                if (
+                    hasattr(generation_pipeline, "model_config")
+                    and generation_pipeline.model_config is not None
+                ):
+                    logger.warning(
+                        "model_config argument provided along with a custom pipeline. "
+                        "The pipeline's model_config will be used, and the argument will be ignored."
+                    )
+                    self.model_config = deepcopy(generation_pipeline.model_config)
+                else:
+                    # Pipeline doesn't have model_config, use the provided one
+                    self.model_config = deepcopy(model_config)
+
+            # Extract generator_config from pipeline
+            self.generator_config = getattr(
+                generation_pipeline, "generator_config", None
+            )
+
+        # Handle config-specific setup only if we have generator_config dict
+        if isinstance(config, dict):
             # Account for deadline if in model name
+            # Note: This mutates the model_config - ideally this should be handled
+            # at config creation time, but kept for backward compatibility
             if "deadline" in self.generator_config["model"]:
                 self.model_config["params"].append("deadline")
                 if isinstance(self.model_config["param_bounds"], list):
@@ -108,411 +210,104 @@ class data_generator:  # noqa: N801
                     self.model_config["default_params"].append(10)
                     self.model_config["name"] += "_deadline"
                     self.model_config["n_params"] += 1
+                    # Update param_bounds_dict to include deadline
+                    self.model_config["param_bounds_dict"]["deadline"] = (0.001, 10)
                 elif isinstance(self.model_config["param_bounds"], dict):
                     self.model_config["param_bounds"]["deadline"] = (0.001, 10)
                     self.model_config["default_params"].append(10)
                     self.model_config["name"] += "_deadline"
                     self.model_config["n_params"] += 1
+                    # Update param_bounds_dict to match
+                    self.model_config["param_bounds_dict"]["deadline"] = (0.001, 10)
 
-            if "kde_displace_t" not in self.generator_config:
-                self.generator_config["kde_displace_t"] = False
+            # Ensure estimator section exists and set default displace_t
+            if "estimator" not in self.generator_config:
+                self.generator_config["estimator"] = {}
+            if "displace_t" not in self.generator_config["estimator"]:
+                self.generator_config["estimator"]["displace_t"] = False
 
             if (
-                self.generator_config["kde_displace_t"]
+                self.generator_config["estimator"]["displace_t"]
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
             ):
                 warnings.warn(
-                    f"kde_displace_t is True, but model is in {KDE_NO_DISPLACE_T}."
+                    f"displace_t is True, but model is in {KDE_NO_DISPLACE_T}."
                     " Overriding setting to False",
                     stacklevel=2,
                 )
-                self.generator_config["kde_displace_t"] = False
+                self.generator_config["estimator"]["displace_t"] = False
 
-            # Define constrained parameter space as dictionary
-            # and add to internal model config
-            # AF-COMMENT: This will eventually be replaced so that
-            # configs always have dictionary format for parameter
-            # bounds
-            # print(self.model_config)
-            # print(type(self.model_config))
-            if isinstance(self.model_config["param_bounds"], list):
-                bounds_tmp = self.model_config["param_bounds"]
-                names_tmp = self.model_config["params"]
-                self.model_config["constrained_param_space"] = {
-                    names_tmp[i]: (bounds_tmp[0][i], bounds_tmp[1][i])
-                    for i in range(len(names_tmp))
-                }
-            elif isinstance(self.model_config["param_bounds"], dict):
-                self.model_config["constrained_param_space"] = self.model_config[
-                    "param_bounds"
-                ]
-            else:
-                raise ValueError("param_bounds must be a list or a dictionary")
+            # self._build_simulator()
 
-            # print(self.model_config)
-
-            self._build_simulator()
+        # Always call _get_ncpus if we have generator_config (from dict or strategy)
+        if self.generator_config is not None:
             self._get_ncpus()
 
-        # Make output folder if not already present
-        output_folder = Path(self.generator_config["output_folder"])
-        output_folder.mkdir(parents=True, exist_ok=True)
+        # Set up generation pipeline
+        if generation_pipeline is not None:
+            # Strategy was passed directly
+            self._generation_pipeline = generation_pipeline
+        else:
+            # Auto-create strategy from configs
+            from ssms.dataset_generators.pipelines.pipeline_factory import (
+                create_data_generation_pipeline,
+            )
+
+            # Factory creates strategy with all required components internally
+            # (estimator builder, training strategy, parameter sampler, etc.)
+            self._generation_pipeline = create_data_generation_pipeline(
+                generator_config=self.generator_config,
+                model_config=self.model_config,
+            )
+
+        # Make output folder if not already present (only if we have generator_config)
+        if self.generator_config is not None:
+            output_folder = Path(self.generator_config["output"]["folder"])
+            output_folder.mkdir(parents=True, exist_ok=True)
 
     def _get_ncpus(self):
         """Get the number cpus to use for parallelization."""
-        # Get number of cpus
-        if self.generator_config["n_cpus"] == "all":
+        from ssms.config.config_utils import get_nested_config
+
+        # Get number of cpus from nested config
+        n_cpus_config = get_nested_config(
+            self.generator_config, "pipeline", "n_cpus", default="all"
+        )
+
+        if n_cpus_config == "all":
             n_cpus = psutil.cpu_count(logical=False)
         else:
-            n_cpus = self.generator_config["n_cpus"]
+            n_cpus = n_cpus_config
 
-        self.generator_config["n_cpus"] = n_cpus
+        # Update nested config
+        if "pipeline" not in self.generator_config:
+            self.generator_config["pipeline"] = {}
+        self.generator_config["pipeline"]["n_cpus"] = n_cpus
 
-    def _build_simulator(self):
-        """Build simulator function for LANs."""
-        self.simulator = partial(
-            simulator,
-            n_samples=self.generator_config["n_samples"],
-            max_t=self.generator_config["max_t"],
-            delta_t=self.generator_config["delta_t"],
-            smooth_unif=self.generator_config["smooth_unif"],
-        )
+    def _save_training_data(self, data: dict) -> None:
+        """Save training data to disk as pickle file.
 
-    def get_simulations(
-        self, theta: dict | None = None, random_seed: int | None = None
-    ):
-        """Generates simulations for a given parameter set."""
-        out = self.simulator(
-            theta=theta,
-            model=self.model_config["name"],
-            random_state=random_seed,
-        )
-        return out
+        Args:
+            data: Dictionary containing training data to save
 
-    def _filter_simulations(
-        self,
-        simulations: dict | None = None,
-    ):
-        """Filters simulations according to the criteria
-        specified in the generator_config."""
-        if simulations is None:
-            raise ValueError("No simulations provided")
-
-        keep = 1
-        n_sim = simulations["rts"].shape[0]
-        for choice_tmp in simulations["metadata"]["possible_choices"]:
-            tmp_rts = simulations["rts"][
-                (simulations["choices"] == choice_tmp) & (simulations["rts"] != -999)
-            ]
-
-            tmp_n_c = len(tmp_rts)
-            if tmp_n_c > 0:
-                mode_, mode_cnt_ = mode(tmp_rts, keepdims=False)
-                std_ = np.std(tmp_rts)
-                mean_ = np.mean(tmp_rts)
-                if tmp_n_c < 5:
-                    mode_cnt_rel_ = 0
-                else:
-                    mode_cnt_rel_ = mode_cnt_ / tmp_n_c
-
-            else:
-                mode_ = -1
-                mode_cnt_ = 0
-                mean_ = -1
-                std_ = 1
-                mode_cnt_rel_ = 0
-
-            # AF-TODO: More flexible way with list of
-            # filter objects that provides for each filter
-            #  1. Function to compute statistic (e.g. mode)
-            #  2. Comparison operator (e.g. <=, != , etc.)
-            #  3. Comparator (number to test against)
-
-            keep = (
-                keep
-                & (mode_ < self.generator_config["simulation_filters"]["mode"])
-                & (mean_ <= self.generator_config["simulation_filters"]["mean_rt"])
-                & (std_ > self.generator_config["simulation_filters"]["std"])
-                & (
-                    mode_cnt_rel_
-                    <= self.generator_config["simulation_filters"]["mode_cnt_rel"]
-                )
-                & (tmp_n_c > self.generator_config["simulation_filters"]["choice_cnt"])
-            )
-        return keep, np.array(
-            [mode_, mean_, std_, mode_cnt_rel_, tmp_n_c, n_sim], dtype=np.float32
-        )
-
-    def _make_kde_data(
-        self, simulations: dict | None = None, theta: dict | None = None
-    ):
-        """Generates KDE data from simulations.
-
-        Arguments
-        ---------
-        simulations: dict
-            Dictionary containing the simulations.
-        theta: dict
-            Dictionary containing the parameters.
-
-        Returns
-        -------
-        out: np.array
-            Array containing the KDE data.
+        Notes:
+            Creates output folder if it doesn't exist. Filename includes
+            a unique UUID to prevent overwriting.
         """
-        if simulations is None:
-            raise ValueError("No simulations provided")
-        if theta is None:
-            raise ValueError("No theta provided")
+        output_folder = Path(self.generator_config["output"]["folder"])
+        output_folder.mkdir(parents=True, exist_ok=True)
+        full_file_name = output_folder / f"training_data_{uuid.uuid1().hex}.pickle"
+        logger.info("Writing to file: %s", full_file_name)
 
-        n = self.generator_config["n_training_samples_by_parameter_set"]
-        p = self.generator_config["kde_data_mixture_probabilities"]
-
-        # Initial sample distribution
-        n_kde = int(n * p[0])
-        n_unif_up = int(n * p[1])
-        n_unif_down = int(n * p[2])
-
-        total = n_kde + n_unif_up + n_unif_down
-        if total != n:
-            # Adjust n_kde to make up the difference
-            n_kde += n - total
-            # Safety check: ensure n_kde doesn't become negative
-            if n_kde < 0:
-                raise ValueError(
-                    f"Rounding error too large: cannot adjust n_kde to {n_kde}. "
-                    f"n={n}, p={p}, "
-                    f"n_kde={n_kde - (n - total)}"
-                    f", n_unif_up={n_unif_up}"
-                    f", n_unif_down={n_unif_down}"
-                )
-
-        if self.generator_config["separate_response_channels"]:
-            out = np.zeros(
-                (
-                    n_kde + n_unif_up + n_unif_down,
-                    2 + self.model_config["nchoices"] + len(theta.items()),
-                )
+        with full_file_name.open("wb") as file:
+            pickle.dump(
+                data,
+                file,
+                protocol=self.generator_config["output"]["pickle_protocol"],
             )
-        else:
-            out = np.zeros((n_kde + n_unif_up + n_unif_down, 3 + len(theta.items())))
+        logger.info("Data saved successfully")
 
-        out[:, : len(theta.items())] = np.tile(
-            np.stack([theta[key_] for key_ in self.model_config["params"]], axis=1),
-            (n_kde + n_unif_up + n_unif_down, 1),
-        )
-
-        tmp_kde = kde_class.LogKDE(
-            simulations,
-            displace_t=self.generator_config["kde_displace_t"],
-        )
-
-        # Get kde part
-        samples_kde = tmp_kde.kde_sample(n_samples=n_kde)
-        likelihoods_kde = tmp_kde.kde_eval(data=samples_kde).ravel()
-
-        if self.generator_config["separate_response_channels"]:
-            out[:n_kde, (-2 - self.model_config["nchoices"])] = samples_kde[0].ravel()
-
-            r_cnt = 0
-            choices = samples_kde[1].ravel()
-            for response in simulations["metadata"]["possible_choices"]:
-                out[:n_kde, ((-1 - self.model_config["nchoices"]) + r_cnt)] = (
-                    choices == response
-                ).astype(int)
-                r_cnt += 1
-        else:
-            out[:n_kde, -3] = samples_kde["rts"].ravel()
-            out[:n_kde, -2] = samples_kde["choices"].ravel()
-
-        out[:n_kde, -1] = likelihoods_kde
-
-        # Get positive uniform part:
-        choice_tmp = np.random.choice(
-            simulations["metadata"]["possible_choices"], size=n_unif_up
-        )
-
-        if simulations["metadata"]["max_t"] < 100:
-            rt_tmp = np.random.uniform(
-                low=0.0001, high=simulations["metadata"]["max_t"], size=n_unif_up
-            )
-        else:
-            rt_tmp = np.random.uniform(low=0.0001, high=100, size=n_unif_up)
-
-        likelihoods_unif = tmp_kde.kde_eval(
-            data={"rts": rt_tmp, "choices": choice_tmp}
-        ).ravel()
-
-        out[n_kde : (n_kde + n_unif_up), -3] = rt_tmp
-        out[n_kde : (n_kde + n_unif_up), -2] = choice_tmp
-        out[n_kde : (n_kde + n_unif_up), -1] = likelihoods_unif
-
-        # Get negative uniform part:
-        choice_tmp = np.random.choice(
-            simulations["metadata"]["possible_choices"], size=n_unif_down
-        )
-
-        rt_tmp = np.random.uniform(low=-1.0, high=0.0001, size=n_unif_down)
-
-        out[(n_kde + n_unif_up) :, -3] = rt_tmp
-        out[(n_kde + n_unif_up) :, -2] = choice_tmp
-        out[(n_kde + n_unif_up) :, -1] = self.generator_config["negative_rt_cutoff"]
-        return out.astype(np.float32)
-
-    # This should be handled by theta-processors?
-    def parameter_transform_for_data_gen(self, theta: dict):
-        """
-        Function to impose constraints on the parameters for data generation.
-
-        Arguments
-        ---------
-            theta: dict
-                Dictionary containing the parameters.
-
-        Returns
-        -------
-            theta: dict
-                Dictionary containing the transformed parameters.
-        """
-
-        # TODO: This is kind of not the right place for these model specific transformations
-        # We should figure out how to make this part of generic model properties than can be drawn upon here
-        # systematically without model specific custom code in this function
-        if self.model_config["name"] in ["lba_angle_3"]:
-            # ensure that a is always greater than z
-            if theta["a"] <= theta["z"]:
-                tmp = theta["a"]
-                theta["a"] = theta["z"]
-                theta["z"] = tmp
-
-        if self.model_config["name"] == "dev_rlwm_lba_pw_v1":
-            # ensure that a is always greater than z
-            if theta["a"] <= theta["z"]:
-                tmp = theta["a"]
-                theta["a"] = theta["z"]
-                theta["z"] = tmp
-
-        # For LBA-based models, we need to ensure that the drift rates sum to 1
-        if self.model_config["name"] == "dev_rlwm_lba_race_v1":
-            # normalize the RL drift rates
-            v_rl_sum = (
-                np.sum([theta["vRL0"], theta["vRL1"], theta["vRL2"]]).astype(np.float32)
-                + 1e-20
-            )
-            theta["vRL0"] = (theta["vRL0"] + (1e-20 / 3)) / v_rl_sum
-            theta["vRL1"] = (theta["vRL1"] + (1e-20 / 3)) / v_rl_sum
-            theta["vRL2"] = (theta["vRL2"] + (1e-20 / 3)) / v_rl_sum
-
-            # theta[0:3] = theta[0:3] / np.sum(theta[0:3])
-
-            # normalize the WM drift rates
-            v_wm_sum = (
-                np.sum([theta["vWM0"], theta["vWM1"], theta["vWM2"]]).astype(np.float32)
-                + 1e-20
-            )
-            theta["vWM0"] = (theta["vWM0"] + (1e-20 / 3)) / v_wm_sum
-            theta["vWM1"] = (theta["vWM1"] + (1e-20 / 3)) / v_wm_sum
-            theta["vWM2"] = (theta["vWM2"] + (1e-20 / 3)) / v_wm_sum
-
-            # theta[3:6] = theta[3:6] / np.sum(theta[3:6])
-
-            # ensure that a is always greater than z
-            # if not true switch position between a and z
-            # AF-COMMENT: Is this keeping the uniform on hypercube in tact?
-            if theta["a"] <= theta["z"]:
-                tmp = theta["a"]
-                theta["a"] = theta["z"]
-                theta["z"] = tmp
-        return theta
-
-    def _mlp_get_processed_data_for_theta(self, random_seed_tuple: tuple | list):
-        np.random.seed(random_seed_tuple[0])
-        keep = 0
-        # Keep simulating until we are happy with data
-        while not keep:
-            theta_dict = sample_parameters_from_constraints(
-                self.model_config["constrained_param_space"], 1
-            )
-            # Run extra checks on parameters
-            # (currently used only for very specific RLWM model)
-            theta_dict = self.parameter_transform_for_data_gen(theta_dict)
-
-            # Run simulations
-            simulations = self.get_simulations(
-                theta=deepcopy(theta_dict), random_seed=random_seed_tuple[1]
-            )
-            # Check if simulations pass filter
-            keep, stats = self._filter_simulations(simulations)
-
-        # Now that we are happy with data
-        # construct KDEs
-        kde_data = self._make_kde_data(simulations=simulations, theta=theta_dict)
-
-        if len(simulations["metadata"]["possible_choices"]) == 2:
-            cpn_labels = np.expand_dims(simulations["choice_p"][0, 1], axis=0)
-            cpn_no_omission_labels = np.expand_dims(
-                simulations["choice_p_no_omission"][0, 1], axis=0
-            )
-        else:
-            cpn_labels = simulations["choice_p"]
-            cpn_no_omission_labels = simulations["choice_p_no_omission"]
-
-        # Make theta array
-        theta_array = _theta_dict_to_array(theta_dict, self.model_config["params"])
-        return {
-            "lan_data": kde_data[:, :-1],
-            "lan_labels": kde_data[:, -1],
-            "cpn_data": theta_array,  # np.expand_dims(theta, axis=0),
-            "cpn_labels": cpn_labels,
-            "cpn_no_omission_data": theta_array,
-            "cpn_no_omission_labels": cpn_no_omission_labels,
-            "opn_data": theta_array,
-            "opn_labels": simulations["omission_p"],
-            "gonogo_data": theta_array,
-            "gonogo_labels": simulations["nogo_p"],
-            "binned_128": simulations["binned_128"],
-            "binned_256": simulations["binned_256"],
-            "theta": theta_array,
-        }
-
-    def _cpn_get_processed_data_for_theta(self, random_seed_tuple: tuple | list):
-        np.random.seed(random_seed_tuple[0])
-        theta_dict = sample_parameters_from_constraints(
-            self.model_config["constrained_param_space"], 1
-        )
-
-        # Run the simulator
-        simulations = self.get_simulations(
-            theta=deepcopy(theta_dict), random_seed=random_seed_tuple[1]
-        )
-
-        if len(simulations["metadata"]["possible_choices"]) == 2:
-            cpn_labels = np.expand_dims(simulations["choice_p"][0, 1], axis=0)
-            cpn_no_omission_labels = np.expand_dims(
-                simulations["choice_p_no_omission"][0, 1], axis=0
-            )
-        else:
-            cpn_labels = simulations["choice_p"]
-            cpn_no_omission_labels = simulations["choice_p_no_omission"]
-
-        # Make theta array
-        theta_array = _theta_dict_to_array(theta_dict, self.model_config["params"])
-
-        return {
-            "cpn_data": theta_array,
-            "cpn_labels": cpn_labels,
-            "cpn_no_omission_data": theta_array,
-            "cpn_no_omission_labels": cpn_no_omission_labels,
-            "opn_data": theta_array,
-            "opn_labels": simulations["omission_p"],
-            "gonogo_data": theta_array,
-            "gonogo_labels": simulations["nogo_p"],
-            "theta": theta_array,
-        }
-
-    def generate_data_training_uniform(
-        self, save: bool = False, verbose: bool = True, cpn_only: bool = False
-    ):
+    def generate_data_training(self, save: bool = False, verbose: bool = False):
         """Generates training data for LANs.
 
         Arguments
@@ -521,107 +316,132 @@ class data_generator:  # noqa: N801
                 If True, the generated data is saved to disk.
             verbose: bool
                 If True, progress is printed to the console.
-            cpn_only: bool
-                If True, only choice probabilities are computed.
-                This is useful for training CPNs.
 
         Returns
         -------
             data: dict
                 Dictionary containing the generated data.
+
+        Notes
+        -----
+            Phase 4 refactoring: This method now delegates to the
+            generation_pipeline, which handles the complete workflow from
+            parameter sampling to training data generation. This eliminates
+            wasteful simulations for analytical methods (PyDDM) and provides
+            a clean, modular architecture.
         """
-        seeds_1 = np.random.choice(
-            400000000, size=self.generator_config["n_parameter_sets"]
-        )
+        # Phase 4: Always use generation pipeline
+        return self._generate_mlp_data_via_strategy(save, verbose)
+
+    def _generate_mlp_data_via_strategy(
+        self, save: bool = False, verbose: bool = False
+    ) -> dict:
+        """Generate MLP training data using injected generation pipeline.
+
+        This method implements Phase 4 refactoring: it delegates to the
+        generation_pipeline for orchestrating the complete workflow. The strategy
+        handles simulation (if needed), filtering, likelihood estimation, and
+        training data generation.
+
+        Args:
+            save: Whether to save generated data to disk
+            verbose: Whether to log progress
+
+        Returns:
+            Dictionary containing generated training data
+
+        Notes:
+            This is the Phase 4 implementation that provides:
+            - Clean separation between simulation-based and analytical workflows
+            - No wasteful simulations for PyDDM
+            - Common parallelization wrapper for all strategies
+        """
+        # Generate seeds for each parameter set
         seeds_2 = np.random.choice(
-            400000000, size=self.generator_config["n_parameter_sets"]
+            400000000, size=self.generator_config["pipeline"]["n_parameter_sets"]
         )
-        seed_args = [(seeds_1[i], seeds_2[i]) for i in range(seeds_1.shape[0])]
 
         # Inits
         subrun_n = (
-            self.generator_config["n_parameter_sets"]
-            // self.generator_config["n_subruns"]
+            self.generator_config["pipeline"]["n_parameter_sets"]
+            // self.generator_config["pipeline"]["n_subruns"]
         )
 
-        # Get Simulations
+        # Common parallelization wrapper (works for all strategies)
         out_list = []
-        for i in range(self.generator_config["n_subruns"]):
+        for i in range(self.generator_config["pipeline"]["n_subruns"]):
             if verbose:
                 logger.debug(
-                    "simulation round: %d of %d",
+                    "generation round: %d of %d",
                     i + 1,
-                    self.generator_config["n_subruns"],
+                    self.generator_config["pipeline"]["n_subruns"],
                 )
-            if self.generator_config["n_cpus"] > 1:
-                if cpn_only:
-                    with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
-                        out_list += pool.map(
-                            self._cpn_get_processed_data_for_theta,
-                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
-                        )
-                else:
-                    with Pool(processes=self.generator_config["n_cpus"] - 1) as pool:
-                        out_list += pool.map(
-                            self._mlp_get_processed_data_for_theta,
-                            list(seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]),
-                        )
+
+            start_idx = i * subrun_n
+            end_idx = (i + 1) * subrun_n
+
+            if self.generator_config["pipeline"]["n_cpus"] > 1:
+                with Pool(
+                    processes=self.generator_config["pipeline"]["n_cpus"] - 1
+                ) as pool:
+                    # Map strategy.generate_for_parameter_set over parameter indices
+                    results = pool.map(
+                        self._generation_pipeline.generate_for_parameter_set,
+                        list(range(start_idx, end_idx)),
+                        list(seeds_2[start_idx:end_idx]),
+                    )
+                    out_list += results
             else:
-                logger.info("No Multiprocessing, since only one cpu requested!")
-                if cpn_only:
-                    for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
-                        out_list.append(self._cpn_get_processed_data_for_theta(k))
-                else:
-                    for k in seed_args[(i * subrun_n) : ((i + 1) * subrun_n)]:
-                        out_list.append(self._mlp_get_processed_data_for_theta(k))
+                if verbose:
+                    logger.info("No Multiprocessing, since only one cpu requested!")
+                for parameter_sampling_seed, seed in zip(
+                    range(start_idx, end_idx), seeds_2[start_idx:end_idx]
+                ):
+                    result = self._generation_pipeline.generate_for_parameter_set(
+                        parameter_sampling_seed, seed
+                    )
+                    out_list.append(result)
+
+        # Filter successful results
+        successful_results = [r for r in out_list if r["success"]]
+
+        if len(successful_results) == 0:
+            raise ValueError(
+                "No valid training data generated. All parameter sets were rejected."
+            )
+
+        if verbose and len(successful_results) < len(out_list):
+            logger.warning(
+                "Rejected %d/%d parameter sets",
+                len(out_list) - len(successful_results),
+                len(out_list),
+            )
+
+        # Extract data from successful results
+        # Note: Some fields may be None for PyDDM strategy
+        # (e.g., cpn_labels, binned data)
         data = {}
 
-        # Choice probabilities and theta are always needed
-        data["cpn_data"] = np.concatenate(
-            [out_list[k]["cpn_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_labels"] = np.concatenate(
-            [out_list[k]["cpn_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_no_omission_data"] = np.concatenate(
-            [out_list[k]["cpn_no_omission_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["cpn_no_omission_labels"] = np.concatenate(
-            [out_list[k]["cpn_no_omission_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["opn_data"] = np.concatenate(
-            [out_list[k]["opn_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["opn_labels"] = np.concatenate(
-            [out_list[k]["opn_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["gonogo_data"] = np.concatenate(
-            [out_list[k]["gonogo_data"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["gonogo_labels"] = np.concatenate(
-            [out_list[k]["gonogo_labels"] for k in range(len(out_list))]
-        ).astype(np.float32)
-        data["thetas"] = np.concatenate(
-            [out_list[k]["theta"] for k in range(len(out_list))]
-        ).astype(np.float32)
+        # Helper function to safely concatenate arrays (skip None values)
+        def safe_concatenate(key):
+            arrays = [
+                r["data"][key] for r in successful_results if r["data"][key] is not None
+            ]
+            if len(arrays) == 0:
+                return None
+            return np.concatenate(arrays).astype(np.float32)
 
-        # Only if not cpn_only, do we need the rest of the data
-        # (which is not computed if cpn_only is selected)
-        if not cpn_only:
-            data["lan_data"] = np.concatenate(
-                [out_list[k]["lan_data"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["lan_labels"] = np.concatenate(
-                [out_list[k]["lan_labels"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["binned_128"] = np.concatenate(
-                [out_list[k]["binned_128"] for k in range(len(out_list))]
-            ).astype(np.float32)
-            data["binned_256"] = np.concatenate(
-                [out_list[k]["binned_256"] for k in range(len(out_list))]
-            ).astype(np.float32)
+        # Extract all unique keys from successful results
+        # This makes the code future-proof for new pipeline outputs
+        all_keys = set()
+        for result in successful_results:
+            all_keys.update(result["data"].keys())
 
-        # Add metadata to training_data
+        # Concatenate all data arrays
+        for key in all_keys:
+            data[key] = safe_concatenate(key)
+
+        # Add metadata
         data.update(
             {
                 "generator_config": self.generator_config,
@@ -630,56 +450,5 @@ class data_generator:  # noqa: N801
         )
 
         if save:
-            output_folder = Path(self.generator_config["output_folder"])
-            output_folder.mkdir(parents=True, exist_ok=True)
-            full_file_name = output_folder / f"training_data_{uuid.uuid1().hex}.pickle"
-            logger.info("Writing to file: %s", full_file_name)
-
-            with full_file_name.open("wb") as file:
-                pickle.dump(
-                    data,
-                    file,
-                    protocol=self.generator_config["pickleprotocol"],
-                )
-            logger.info("Data saved successfully")
-
+            self._save_training_data(data)
         return data
-
-    # TODO: Add parallelized version of this function as well
-    # TODO: This also might need some modification concerning parameter transformations (we want to
-    # keep this but it wasn't used in a while)
-    def _training_defective_simulations_get_preprocessed(
-        self, seed
-    ):  # pragma: no cover
-        np.random.seed(seed)
-        rejected_thetas = []
-        accepted_thetas = []
-        stats_rej = []
-        stats_acc = []
-        cnt_max = self.generator_config["n_samples"] // 2
-        keep = 1
-        rej_cnt = 0
-        acc_cnt = 0
-        while rej_cnt < cnt_max or acc_cnt < cnt_max:
-            theta = np.float32(
-                np.random.uniform(
-                    low=self.model_config["param_bounds"][0],
-                    high=self.model_config["param_bounds"][1],
-                )
-            )
-            simulations = self.get_simulations(theta=theta)
-            keep, stats = self._filter_simulations(simulations)
-
-            if keep == 0 and rej_cnt < cnt_max:
-                logger.debug("simulation rejected")
-                logger.debug("stats: %s", stats)
-                logger.debug("theta: %s", theta)
-                rejected_thetas.append(theta)
-                stats_rej.append(stats)
-                rej_cnt += 1
-            elif acc_cnt < cnt_max and keep == 1:
-                accepted_thetas.append(theta)
-                stats_acc.append(stats)
-                acc_cnt += 1
-
-        return rejected_thetas, accepted_thetas

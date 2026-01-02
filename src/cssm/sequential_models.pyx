@@ -40,7 +40,6 @@ DTYPE = np.float32
 def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                        np.ndarray[float, ndim = 1] vl1,
                        np.ndarray[float, ndim = 1] vl2,
-                       np.ndarray[float, ndim = 1] a,
                        np.ndarray[float, ndim = 1] zh,
                        np.ndarray[float, ndim = 1] zl1,
                        np.ndarray[float, ndim = 1] zl2,
@@ -53,7 +52,6 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                        int n_trials = 1,
                        print_info = True,
                        boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                       boundary_multiplicative = True,
                        boundary_params = {},
                        random_state = None,
                        return_option = 'full',
@@ -92,8 +90,6 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
         Whether to print information during the simulation (default: True).
     boundary_fun : callable, optional
         Function that determines the decision boundary over time (default: None).
-    boundary_multiplicative : bool, optional
-        If True, the boundary function is multiplicative; if False, it's additive (default: True).
     boundary_params : dict, optional
         Parameters for the boundary function (default: {}).
     random_state : int or None, optional
@@ -115,7 +111,6 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
     cdef float[:] vh_view = vh
     cdef float[:] vl1_view = vl1
     cdef float[:] vl2_view = vl2
-    cdef float[:] a_view = a
     cdef float[:] zh_view = zh
     cdef float[:] zl1_view = zl1
     cdef float[:] zl2_view = zl2
@@ -131,7 +126,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
 
     # TD: Add Trajectory
     traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     cdef float delta_t_sqrt = sqrt(delta_t) # correct scalar so we can use standard normal samples for the brownian motion
@@ -152,9 +147,9 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -164,8 +159,8 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             ix = 0 # reset boundary index
 
             # Random walker 1 (high dimensional)
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))  # reset starting position 
-            
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))  # reset starting position
+
             if n == 0:
                 if k == 0:
                     traj_view[0, 0] = y_h
@@ -175,7 +170,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 t_particle += delta_t
                 ix += 1
                 m += 1
-                
+
                 if m == num_draws:
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
@@ -213,13 +208,13 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                     choices_view[n, k, 0] += 2
 
                 y_l1 = (-1) * boundary_view[ix] + (zl1_view[k] * 2 * (boundary_view[ix]))
-                y_l2 = (-1) * boundary_view[ix] + (zl2_view[k] * 2 * (boundary_view[ix])) 
-                
+                y_l2 = (-1) * boundary_view[ix] + (zl2_view[k] * 2 * (boundary_view[ix]))
+
                 ix1 = ix
                 t_particle1 = t_particle
                 ix2 = ix
                 t_particle2 = t_particle
-                
+
                 # Figure out negative bound for low level
                 if choices_view[n, k, 0] == 0:
                     # In case boundary is negative already, we flip a coin with bias determined by w_l_ parameter
@@ -227,7 +222,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                         if random_uniform() < zl1_view[k]:
                             choices_view[n, k, 0] += 1
                         decision_taken = 1
-                    
+
                     if n == 0:
                         if k == 0:
                             traj_view[ix, 1] = y_l1
@@ -272,7 +267,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                             if k == 0:
                                 traj_view[ix2, 2] = y_l2
 
-                # Get back to single t_particle 
+                # Get back to single t_particle
                 if (choices_view[n, k, 0] == 0):
                     t_particle = t_particle1
                     ix = ix1
@@ -293,7 +288,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add one deterministically
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
-            
+
             # If boundary is negative (or 0) already, we flip a coin
             if not decision_taken:
                 if boundary_view[ix] <= 0:
@@ -311,12 +306,12 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
-            'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
+            'zh': zh, 'zl1': zl1, 'zl2': zl2,
             't': t, 'deadline': deadline, 's': s
         }
         full_meta = build_full_metadata(
@@ -329,10 +324,10 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------
@@ -340,7 +335,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                        np.ndarray[float, ndim = 1] vl1,
                        np.ndarray[float, ndim = 1] vl2,
                        np.ndarray[float, ndim = 1] a,
@@ -356,7 +351,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                        int n_trials = 1,
                        print_info = True,
                        boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                       boundary_multiplicative = True,
                        boundary_params = {},
                        random_state = None,
                        return_option = 'full',
@@ -395,8 +389,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         Whether to print information during simulation. Default is True.
     boundary_fun : callable, optional
         Function defining the decision boundary over time.
-    boundary_multiplicative : bool, optional
-        If True, boundary function is multiplied by 'a'. If False, it's added. Default is True.
     boundary_params : dict, optional
         Additional parameters for the boundary function.
     random_state : int or None, optional
@@ -429,7 +421,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     # TD: Add trajectory --> Tricky here because the simulator is optimized to include only two instead of three particles (high dimension choice determines which low dimension choice will matter for ultimate choice)
     # TD: Add Trajectory
     traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
@@ -462,11 +454,8 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
         # Precompute boundary evaluations
-        if boundary_multiplicative:
-            boundary[:] = np.multiply(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
-        else:
-            boundary[:] = np.add(a_view[k], boundary_fun(t = t_s, **boundary_params_tmp)).astype(DTYPE)
-        
+        compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -478,7 +467,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             ix = 0 # reset boundary index
 
             # Initialize walkers
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
 
             if n == 0:
                 if k == 0:
@@ -502,7 +491,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             # y at upper bound --> choices_view[n, k, 0] add 2 deterministically (correct)
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically (mistake)
 
-            # if boundary is negative (or 0) already, we flip a coin 
+            # if boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
                 if random_uniform() <= 0.5:
                     choices_view[n, k, 0] += 2
@@ -511,8 +500,8 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 choices_view[n, k, 0] += 2
 
             # Initialize lower level walkers
-            y_l1 = (-1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0])) 
-            y_l2 = (-1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0])) 
+            y_l1 = (-1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
+            y_l2 = (-1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
 
             # Random walker lower level (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
@@ -555,7 +544,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 t_l = t_l2
                 y_l = y_l2
                 ix = ix2
-            
+
             smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k] + smooth_u
@@ -565,7 +554,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add one deterministically
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
-            
+
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
                 if random_uniform() <= 0.5:
@@ -584,10 +573,10 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_low': rts_low, 'rts_high': rts_high}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
@@ -605,10 +594,10 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------
@@ -616,7 +605,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
                                 np.ndarray[float, ndim = 1] vl1,
                                 np.ndarray[float, ndim = 1] vl2,
                                 np.ndarray[float, ndim = 1] a,
@@ -635,7 +624,6 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
                                 int n_trials = 1,
                                 print_info = True,
                                 boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                                boundary_multiplicative = True,
                                 boundary_params = {},
                                 random_state = None,
                                 return_option = 'full',
@@ -676,8 +664,6 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
         Whether to print information during simulation (default: True).
     boundary_fun : callable, optional
         Boundary function of t and potentially other parameters (default: None).
-    boundary_multiplicative : bool, optional
-        Whether the boundary function is multiplicative (default: True).
     boundary_params : dict, optional
         Parameters for the boundary function (default: {}).
     random_state : int or None, optional
@@ -721,7 +707,7 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
     cdef int[:, :, :] choices_view = choices
 
     traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     cdef float delta_t_sqrt = sqrt(delta_t) # correct scalar so we can use standard normal samples for the brownian motion
@@ -749,9 +735,9 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -767,7 +753,7 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
 
             # Initialize walkers
             # Particle
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
             # Relative particle position (used as resource allocator for low dim choice)
             bias_trace_l2_view[0] = ((y_h + boundary_view[0]) / (2 * boundary_view[0]))
             bias_trace_l1_view[0] = 1.0 - bias_trace_l2_view[0]
@@ -806,7 +792,7 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
 
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
-            
+
             if choices_view[n, k, 0] == 0:
                  # Fill bias tracea until max_rt reached
                 ix1_tmp = ix + 1
@@ -830,14 +816,14 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
                         # add gaussian displacement
-                        y_l1 += (sqrt_st * gaussian_values[m]) * s_pre_high_level_choice_view[k] 
+                        y_l1 += (sqrt_st * gaussian_values[m]) * s_pre_high_level_choice_view[k]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l1 += (vl1_view[k] * delta_t)
                         # add gaussian displacement
                         y_l1 += (sqrt_st * gaussian_values[m])
-                    
-                    
+
+
                     # propagate time and indices
                     t_l1 += delta_t
                     ix1 += 1
@@ -857,13 +843,13 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
                         # add gaussian displacement
-                        y_l2 += (sqrt_st * gaussian_values[m]) * s_pre_high_level_choice_view[k] 
+                        y_l2 += (sqrt_st * gaussian_values[m]) * s_pre_high_level_choice_view[k]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l2 += (vl2_view[k] * delta_t)
                         # add gaussian displacement
                         y_l2 += (sqrt_st * gaussian_values[m])
-                    
+
                     # propagate time and indices
                     t_l2 += delta_t
                     ix2 += 1
@@ -914,10 +900,10 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
@@ -937,17 +923,17 @@ def ddm_flexbound_mic2_ornstein(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                                   np.ndarray[float, ndim = 1] vl1,
                                   np.ndarray[float, ndim = 1] vl2,
                                   np.ndarray[float, ndim = 1] a,
@@ -964,7 +950,6 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                                   int n_trials = 1,
                                   print_info = True,
                                   boundary_fun = None,
-                                  boundary_multiplicative = True,
                                   boundary_params = {},
                                   random_state = None,
                                   return_option = 'full',
@@ -1001,8 +986,6 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
         Whether to print information during simulation (default: True).
     boundary_fun : callable, optional
         Function defining the decision boundary (default: None).
-    boundary_multiplicative : bool, optional
-        Whether the boundary function is multiplicative (default: True).
     boundary_params : dict, optional
         Parameters for the boundary function (default: {}).
     random_state : int or None, optional
@@ -1056,7 +1039,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef int[:, :, :] choices_view = choices
 
     traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     cdef float delta_t_sqrt = sqrt(delta_t) # correct scalar so we can use standard normal samples for the brownian motion
@@ -1084,9 +1067,9 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -1102,7 +1085,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # Initialize walkers
             # Particle
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
             # Relative particle position (used as resource allocator for low dim choice)
             bias_trace_l2_view[0] = ((y_h + boundary_view[0]) / (2 * boundary_view[0]))
             bias_trace_l1_view[0] = 1.0 - bias_trace_l2_view[0]
@@ -1172,8 +1155,8 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                         y_l1 += (vl1_view[k] * delta_t)
                         # add gaussian displacement
                         y_l1 += (sqrt_st * gaussian_values[m])
-                    
-                    
+
+
                     # propagate time and indices
                     t_l1 += delta_t
                     ix1 += 1
@@ -1200,8 +1183,8 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                         y_l2 += (vl2_view[k] * delta_t)
                         # add gaussian displacement
                         y_l2 += (sqrt_st * gaussian_values[m])
-                    
-                    
+
+
                     # propagate time and indices
                     t_l2 += delta_t
                     ix2 += 1
@@ -1252,10 +1235,10 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
@@ -1273,10 +1256,10 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # ----------------------------------------------------------------------------------------------------
@@ -1284,7 +1267,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                                            np.ndarray[float, ndim = 1] vl1,
                                            np.ndarray[float, ndim = 1] vl2,
                                            np.ndarray[float, ndim = 1] a,
@@ -1302,7 +1285,6 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                                            int n_trials = 1,
                                            print_info = True,
                                            boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                                           boundary_multiplicative = True,
                                            boundary_params = {},
                                            random_state = None,
                                            return_option = 'full',
@@ -1344,8 +1326,6 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
         Whether to print simulation information (default is True).
     boundary_fun : callable, optional
         Function defining the decision boundary over time.
-    boundary_multiplicative : bool, optional
-        Whether the boundary function is multiplicative (default is True).
     boundary_params : dict, optional
         Parameters for the boundary function.
     random_state : int or None, optional
@@ -1415,7 +1395,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef float[:] bias_trace_l2_view = bias_trace_l2
 
     cdef float y_h, y_l, y_l1, y_l2
-    cdef float v_l, v_l1, v_l2, 
+    cdef float v_l, v_l1, v_l2,
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
@@ -1424,9 +1404,9 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -1442,7 +1422,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # Initialize walkers
             # Particle
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
             # Relative particle position (used as resource allocator for low dim choice)
             bias_trace_l2_view[0] = ((y_h + boundary_view[0]) / (2 * boundary_view[0]))
             bias_trace_l1_view[0] = 1.0 - bias_trace_l2_view[0]
@@ -1474,10 +1454,10 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
             # Otherwise, apply rule from above
             elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
-           
+
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
-            
+
             if choices_view[n, k, 0] == 0:
                  # Fill bias tracea until max_rt reached
                 ix1_tmp = ix + 1
@@ -1501,14 +1481,14 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
                         # add gaussian displacement
-                        y_l1 += (sqrt_st * gaussian_values[m]) * bias_trace_l1_view[ix1] 
+                        y_l1 += (sqrt_st * gaussian_values[m]) * bias_trace_l1_view[ix1]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l1 += (vl1_view[k] * delta_t)
                         # add gaussian displacement
                         y_l1 += (sqrt_st * gaussian_values[m])
-                    
-                    
+
+
                     # propagate time and indices
                     t_l1 += delta_t
                     ix1 += 1
@@ -1528,13 +1508,13 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
                         # add gaussian displacement
-                        y_l2 += (sqrt_st * gaussian_values[m]) * bias_trace_l2_view[ix2] 
+                        y_l2 += (sqrt_st * gaussian_values[m]) * bias_trace_l2_view[ix2]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l2 += (vl2_view[k] * delta_t)
                         # add gaussian displacement
                         y_l2 += (sqrt_st * gaussian_values[m])
-                    
+
                     # propagate time and indices
                     t_l2 += delta_t
                     ix2 += 1
@@ -1585,10 +1565,10 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
@@ -1606,19 +1586,19 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # ----------------------------------------------------------------------------------------------------
 
 
 # Simulate (rt, choice) tuples from: Vanilla LBA Model without ndt -----------------------------
-def lba_vanilla(np.ndarray[float, ndim = 2] v, 
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z, 
+def lba_vanilla(np.ndarray[float, ndim = 2] v,
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 1] deadline,
         np.ndarray[float, ndim = 2] sd, # noise sigma
         np.ndarray[float, ndim = 1] t, # non-decision time
@@ -1675,29 +1655,29 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact)
 
             vs = np.abs(np.random.normal(v_view[k], sd_view[k])) # np.abs() to avoid negative vs
 
             x_t = ([a_view[k]]*nact - zs)/vs
-        
+
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k]  # store reaction time for sample n
 
             # If the rt exceeds the deadline, set rt to -999
             enforce_deadline(rts_view, deadline_view, n, k, 0)
-        
 
-    v_dict = {}    
+
+    v_dict = {}
     for i in range(nact):
         v_dict['v_' + str(i)] = v[:, i]
 
@@ -1716,9 +1696,9 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
 
 
 # Simulate (rt, choice) tuples from: Collapsing bound angle LBA Model -----------------------------
-def lba_angle(np.ndarray[float, ndim = 2] v, 
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z,  
+def lba_angle(np.ndarray[float, ndim = 2] v,
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 2] theta,
         np.ndarray[float, ndim = 1] deadline,
         np.ndarray[float, ndim = 2] sd, # noise sigma
@@ -1778,19 +1758,19 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact)
-            
+
             vs = np.abs(np.random.normal(v_view[k], sd_view[k])) # np.abs() to avoid negative vs
             x_t = ([a_view[k]]*nact - zs)/(vs + np.tan(theta_view[k, 0]))
-        
+
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k] # store reaction time for sample n
 
@@ -1799,8 +1779,8 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
             # if np.min(x_t) <= 0:
             #     print("\n ssms sim error: ", a[k], zs, vs, np.tan(theta[k]))
-    
-    v_dict = {}  
+
+    v_dict = {}
     for i in range(nact):
         v_dict['v_' + str(i)] = v[:, i]
 
@@ -1819,13 +1799,13 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
 
 # Simulate (rt, choice) tuples from LBA piece-wise model  -----------------------------
-def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL, 
+def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
         np.ndarray[float, ndim = 2] vWM,
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z,  
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 2] tWM,
         np.ndarray[float, ndim = 1] deadline,
-        np.ndarray[float, ndim = 2] sd, # std dev 
+        np.ndarray[float, ndim = 2] sd, # std dev
         np.ndarray[float, ndim = 1] t, # ndt is supposed to be 0 by default because of parameter identifiability issues
         int nact = 3,
         int n_samples = 2000,
@@ -1853,14 +1833,14 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact).astype(DTYPE)
 
@@ -1877,12 +1857,12 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
 
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k] # store reaction time for sample n
-            
+
             # If the rt exceeds the deadline, set rt to -999
             enforce_deadline(rts_view, deadline_view, n, k, 0)
-        
 
-    v_dict = {}    
+
+    v_dict = {}
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
@@ -1968,14 +1948,14 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact).astype(DTYPE)
 
@@ -1990,13 +1970,13 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
                 choices_view[n, k, 0] = np.argmin(x_t_RL) # store choices for sample n
             else:
                 rts_view[n, k, 0] = np.min(x_t_WM) + t_view[k]  # store reaction time for sample n
-                choices_view[n, k, 0] = np.argmin(x_t_WM) # store choices for sample n  
-            
+                choices_view[n, k, 0] = np.argmin(x_t_WM) # store choices for sample n
+
             # If the rt exceeds the deadline, set rt to -999
             enforce_deadline(rts_view, deadline_view, n, k, 0)
-        
 
-    v_dict = {}    
+
+    v_dict = {}
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
@@ -2018,7 +1998,7 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
 # Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
-def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                                                         np.ndarray[float, ndim = 1] vl1,
                                                         np.ndarray[float, ndim = 1] vl2,
                                                         np.ndarray[float, ndim = 1] a,
@@ -2036,7 +2016,6 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                                                         int n_trials = 1,
                                                         print_info = True,
                                                         boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                                                        boundary_multiplicative = True,
                                                         boundary_params = {},
                                                         random_state = None,
                                                         return_option = 'full',
@@ -2079,8 +2058,6 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
         Whether to print simulation information (default: True).
     boundary_fun : callable, optional
         Function defining the decision boundary over time.
-    boundary_multiplicative : bool, optional
-        If True, boundary function is multiplicative; if False, additive (default: True).
     boundary_params : dict, optional
         Parameters for the boundary function.
     random_state : int or None, optional
@@ -2148,7 +2125,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     cdef float[:] bias_trace_l2_view = bias_trace_l2
 
     cdef float y_h, y_l, y_l1, y_l2
-    cdef float v_l, v_l1, v_l2, 
+    cdef float v_l, v_l1, v_l2,
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
@@ -2157,9 +2134,9 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-    
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -2175,7 +2152,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
 
             # Initialize walkers
             # Particle
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
             # Relative particle position (used as resource allocator for low dim choice)
             bias_trace_l2_view[0] = ((y_h + boundary_view[0]) / (2))
             bias_trace_l1_view[0] = boundary_view[0] - bias_trace_l2_view[0]
@@ -2207,10 +2184,10 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
             # Otherwise, apply rule from above
             elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
-           
+
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
-            
+
             if choices_view[n, k, 0] == 0:
                  # Fill bias trace a until max_rt reached
                 ix1_tmp = ix + 1
@@ -2234,13 +2211,13 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
                         # add gaussian displacement
-                        y_l1 += (sqrt_st * gaussian_values[m]) * bias_trace_l1_view[ix1] 
+                        y_l1 += (sqrt_st * gaussian_values[m]) * bias_trace_l1_view[ix1]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l1 += (vl1_view[k] * delta_t)
                         # add gaussian displacement
                         y_l1 += (sqrt_st * gaussian_values[m])
-                    
+
                     # propagate time and indices
                     t_l1 += delta_t
                     ix1 += 1
@@ -2260,13 +2237,13 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
                         # add gaussian displacement
-                        y_l2 += (sqrt_st * gaussian_values[m]) * bias_trace_l2_view[ix2] 
+                        y_l2 += (sqrt_st * gaussian_values[m]) * bias_trace_l2_view[ix2]
                     else:
                         # main propagation if bias_trace is not between 0 and 1 (high level choice is already made)
                         y_l2 += (vl2_view[k] * delta_t)
                         # add gaussian displacement
                         y_l2 += (sqrt_st * gaussian_values[m])
-                    
+
                     # propagate time and indices
                     t_l2 += delta_t
                     ix2 += 1
@@ -2317,10 +2294,10 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
@@ -2338,10 +2315,10 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # ----------------------------------------------------------------------------------------------------
