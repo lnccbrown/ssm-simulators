@@ -32,6 +32,7 @@ def _make_gen_config(
         "pipeline": {
             "n_parameter_sets": n_parameter_sets,
             "n_subruns": n_subruns,
+            "n_cpus": 1,  # Avoid psutil issues in sandboxed tests
         },
         "training": {
             "n_samples_per_param": n_training_samples_by_parameter_set,
@@ -129,7 +130,8 @@ def test_data_persistance(tmp_path):
     generator_config = deepcopy(gen_config)
     generator_config["model"] = "ddm"
     generator_config["output"]["folder"] = str(tmp_path)
-    generator_config["n_subruns"] = 1
+    generator_config["pipeline"]["n_subruns"] = 1
+    generator_config["pipeline"]["n_cpus"] = 1  # Avoid psutil issues
 
     my_dataset_generator = TrainingDataGenerator(
         config=generator_config, model_config=model_conf
@@ -171,7 +173,7 @@ def test_init_with_deadline_model():
     model_conf = deepcopy(model_config["ddm"])
     generator_config = deepcopy(gen_config)
     generator_config["model"] = "ddm_deadline"
-    generator_config["model"] = "ddm_deadline"
+    generator_config["pipeline"]["n_cpus"] = 1  # Avoid psutil issues
 
     my_gen = TrainingDataGenerator(config=generator_config, model_config=model_conf)
 
@@ -181,24 +183,3 @@ def test_init_with_deadline_model():
     assert my_gen.model_config["param_bounds_dict"]["deadline"] == (0.001, 10)
     assert my_gen.model_config["n_params"] == model_conf["n_params"] + 1
     assert my_gen.model_config["name"].endswith("_deadline")
-
-
-# ============================================================================
-# REMOVED TESTS: Tests for deprecated internal methods were removed
-# ============================================================================
-# The following tests were removed as they test internal implementation methods
-# that were refactored/removed during the pipeline redesign:
-# - test_get_simulations_returns_valid_structure
-# - test_filter_simulations_accepts_valid_data
-# - test_filter_simulations_rejects_pathological_data
-# - test_filter_simulations_raises_on_none
-# - test_make_kde_data_returns_correct_shape
-# - test_make_kde_data_raises_on_none_simulations
-# - test_make_kde_data_raises_on_none_theta
-# - test_parameter_transform_for_lba_angle_3
-# - test_mlp_get_processed_data_for_theta_returns_all_keys
-# - test_generate_data_training_single_cpu
-# - test_generate_data_training_multi_cpu
-#
-# The public API (generate_data_training()) is thoroughly tested by the
-# parametrized test_TrainingDataGenerator test which runs for all models.

@@ -16,6 +16,7 @@ nav:
       - Data Generators: core_tutorials/tutorial_data_generators.ipynb
       - KDE Class: core_tutorials/kde_class.ipynb
       - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
+      - Using MLflow: core_tutorials/using_mlflow.md
   - Contributing:
       - Contribute New Models: contributing/add_models.md
       - Contribute Parameter Adapters: contributing/add_parameter_adapters.md

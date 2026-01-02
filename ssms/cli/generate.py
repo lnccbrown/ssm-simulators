@@ -1,8 +1,8 @@
 #!/usr/bin/env -S uv run --script
 
 import logging
+import os
 import pickle
-import warnings
 from collections import namedtuple
 from copy import deepcopy
 from importlib.resources import files, as_file
@@ -17,40 +17,6 @@ import ssms
 from ssms.config import get_default_generator_config, model_config as _model_config
 
 app = typer.Typer(add_completion=False)
-
-
-def try_gen_folder(
-    folder: str | Path | None = None, allow_abs_path_folder_generation: bool = True
-) -> None:
-    """Function to generate a folder from a string. If the folder already exists, it will not be generated.
-
-    Arguments
-    ---------
-        folder (str):
-            The folder string to generate.
-        allow_abs_path_folder_generation (bool):
-            If True, the folder string is treated as an absolute path.
-            If False, the folder string is treated as a relative path.
-    """
-    if not folder:
-        raise ValueError("Folder path cannot be None or empty.")
-
-    folder_path = Path(folder)
-
-    # Check if the path is absolute and if absolute path generation is allowed
-    if folder_path.is_absolute() and not allow_abs_path_folder_generation:
-        warnings.warn(
-            "Absolute folder path provided, but allow_abs_path_folder_generation is False. "
-            "No folders will be generated."
-        )
-        return
-
-    try:
-        # Create the folder and any necessary parent directories
-        folder_path.mkdir(parents=True, exist_ok=True)
-        logging.info("Folder %s created or already exists.", folder_path)
-    except Exception as e:
-        logging.error("Error creating folder '%s': %s", folder, e)
 
 
 def make_data_generator_configs(
@@ -81,7 +47,7 @@ def make_data_generator_configs(
     config_dict = {"model_config": model_config, "data_config": data_config}
 
     if save_name:
-        try_gen_folder(save_folder)
+        Path(save_folder).mkdir(parents=True, exist_ok=True)
         output_file = Path(save_folder) / save_name
         logging.info("Saving config to: %s", output_file)
         with open(output_file, "wb") as f:
@@ -203,6 +169,270 @@ log_level_option = typer.Option(
 epilog = "Example: `generate --config-path myconfig.yaml --output ./output --n-files 10 --log-level INFO`"
 
 
+def setup_mlflow(  # pragma: no cover
+    mlflow_run_name: str,
+    mlflow_experiment_name: str,
+    mlflow_tracking_uri: str,
+    mlflow_artifact_location: str,
+    logger: logging.Logger,
+) -> bool:
+    """
+    Setup MLflow tracking and start a run.
+
+    Returns:
+        bool: True if MLflow is active, False otherwise.
+    """
+    if not mlflow_run_name:
+        return False
+
+    try:
+        import mlflow
+
+        # Set tracking URI with priority: CLI arg > env var > default
+        if mlflow_tracking_uri:
+            tracking_uri = mlflow_tracking_uri
+        else:
+            tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+
+        mlflow.set_tracking_uri(tracking_uri)
+        logger.info("MLflow tracking URI: %s", tracking_uri)
+
+        # Set experiment with optional artifact location
+        if mlflow_experiment_name:
+            # Determine artifact location with priority: CLI arg > env var > default
+            if mlflow_artifact_location:
+                artifact_location = mlflow_artifact_location
+            else:
+                artifact_location = os.getenv("MLFLOW_ARTIFACT_LOCATION", None)
+
+            if artifact_location:
+                # Ensure artifact location is absolute path
+                artifact_location = str(Path(artifact_location).absolute())
+
+                # Try to get existing experiment, or create new one with artifact location
+                try:
+                    experiment = mlflow.get_experiment_by_name(mlflow_experiment_name)
+                    if experiment is None:
+                        # Create new experiment with artifact location
+                        mlflow.create_experiment(
+                            mlflow_experiment_name,
+                            artifact_location=artifact_location,
+                        )
+                        logger.info(
+                            "Created MLflow experiment: %s (artifacts: %s)",
+                            mlflow_experiment_name,
+                            artifact_location,
+                        )
+                    mlflow.set_experiment(mlflow_experiment_name)
+                except Exception as e:
+                    logger.warning(
+                        "Could not set artifact location: %s. Using default.", e
+                    )
+                    mlflow.set_experiment(mlflow_experiment_name)
+            else:
+                mlflow.set_experiment(mlflow_experiment_name)
+                logger.info(
+                    "Set MLflow experiment: %s (default artifact location)",
+                    mlflow_experiment_name,
+                )
+
+        mlflow.start_run(run_name=mlflow_run_name)
+        logger.info("Started new MLflow run: %s", mlflow_run_name)
+        logger.info("MLflow run ID: %s", mlflow.active_run().info.run_id)
+        return True
+    except ImportError as e:
+        logger.warning(
+            "MLflow package not installed but --mlflow-run-name provided. Ignoring --mlflow-run-name. Error: %s",
+            e,
+        )
+        return False
+
+
+def load_config(  # pragma: no cover
+    config_path: Path,
+    output: Path,
+    estimator_type: str,
+    logger: logging.Logger,
+) -> dict:
+    """
+    Load and prepare the generator configuration.
+
+    Returns:
+        dict: Configuration dictionary with 'data_config' and 'model_config' keys.
+    """
+    if config_path is None:
+        logger.warning("No config path provided, using default configuration.")
+        with as_file(
+            files("ssms.cli") / "config_data_generation.yaml"
+        ) as default_config:
+            config_path = default_config
+
+    config_dict = collect_data_generator_config(
+        yaml_config_path=config_path, base_path=output
+    )
+
+    # Override estimator_type if specified via CLI
+    if estimator_type is not None:
+        logger.info(f"Overriding estimator_type from CLI: {estimator_type}")
+        config_dict["data_config"]["estimator_type"] = estimator_type.lower()
+
+    logger.debug("GENERATOR CONFIG")
+    logger.debug(pformat(config_dict["data_config"]))
+
+    logger.debug("MODEL CONFIG")
+    logger.debug(pformat(config_dict["model_config"]))
+
+    return config_dict
+
+
+def create_estimator(  # pragma: no cover
+    config_dict: dict,
+    logger: logging.Logger,
+):
+    """
+    Create the estimator builder based on the configuration.
+
+    Returns:
+        EstimatorBuilder: The configured estimator builder.
+
+    Raises:
+        typer.Exit: If estimator creation fails.
+    """
+    from ssms.dataset_generators.estimator_builders import create_estimator_builder
+
+    try:
+        estimator_builder = create_estimator_builder(
+            config_dict["data_config"], config_dict["model_config"]
+        )
+        logger.info(f"Using estimator: {type(estimator_builder).__name__}")
+        return estimator_builder
+    except (NotImplementedError, ImportError, ValueError) as e:
+        logger.error(str(e))
+        raise typer.Exit(code=1)
+
+
+def generate_data(  # pragma: no cover
+    config_dict: dict,
+    n_files: int,
+    dry_run: bool,
+    logger: logging.Logger,
+) -> tuple[list[Path], Path]:
+    """
+    Generate training data files.
+
+    Args:
+        config_dict: Configuration dictionary
+        n_files: Number of files to generate
+        dry_run: If True, validate setup but don't save files
+        logger: Logger instance
+
+    Returns:
+        tuple: (newly_generated_files, output_folder)
+    """
+    # Make the generator with the new API
+    my_dataset_generator = ssms.dataset_generators.lan_mlp.TrainingDataGenerator(
+        config=config_dict["data_config"],
+        model_config=config_dict["model_config"],
+    )
+
+    # Capture existing files before generation (for MLflow tracking)
+    output_folder = Path(config_dict["data_config"]["output"]["folder"])
+    existing_files = set()
+    if output_folder.exists():
+        existing_files = set(output_folder.rglob("*.pickle"))
+        logger.info("Existing files before generation: %d", len(existing_files))
+
+    if dry_run:
+        logger.info("DRY RUN: Validating data generation pipeline...")
+        # Generate one dataset without saving to validate the pipeline
+        try:
+            _ = my_dataset_generator.generate_data_training(save=False)
+            logger.info("✓ DRY RUN: Pipeline validation successful!")
+            logger.info(
+                "✓ DRY RUN: Would generate %d file(s) to: %s", n_files, output_folder
+            )
+            return [], output_folder
+        except Exception as e:
+            logger.error("✗ DRY RUN: Pipeline validation failed: %s", e)
+            raise typer.Exit(code=1)
+
+    # Generate data (normal mode)
+    for _ in tqdm.tqdm(
+        range(n_files), desc="Generating simulated data files", unit="file"
+    ):
+        my_dataset_generator.generate_data_training(save=True)
+
+    # After generation loop, find new files
+    newly_generated_files = []
+    if output_folder.exists():
+        current_files = set(output_folder.rglob("*.pickle"))
+        new_files = current_files - existing_files  # Set difference
+        newly_generated_files = sorted(new_files)
+        logger.info("Newly generated files: %d", len(newly_generated_files))
+    else:
+        logger.warning(
+            "Output folder does not exist: %s. "
+            "Something went wrong with generation, please check the logs",
+            output_folder,
+        )
+
+    return newly_generated_files, output_folder
+
+
+def log_to_mlflow(  # pragma: no cover
+    config_dict: dict,
+    newly_generated_files: list[Path],
+    output_folder: Path,
+    logger: logging.Logger,
+):
+    """
+    Log generation results to MLflow.
+
+    Args:
+        config_dict: Configuration dictionary
+        newly_generated_files: List of newly generated file paths
+        output_folder: Output folder path
+        logger: Logger instance
+    """
+    import mlflow
+
+    # Log the output folder path
+    mlflow.log_param("data_output_folder", str(output_folder))
+
+    # Capture the list of generated files
+    generated_files = []
+    if output_folder.exists():
+        # Get all pickle files in the training data directory
+        generated_files = [
+            {
+                "filename": f.name,
+                "relative_path": str(output_folder / str(f.name)),
+                "size_bytes": f.stat().st_size,
+                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+            }
+            for f in newly_generated_files
+        ]
+    else:
+        logger.warning("No generated files found in output folder: %s", output_folder)
+
+    # Log file inventory as a JSON artifact
+    file_inventory = {
+        "num_files": len(generated_files),
+        "total_size_mb": round(sum(f["size_mb"] for f in generated_files), 2),
+        "files": generated_files,
+    }
+    mlflow.log_dict(file_inventory, "generated_files_inventory.json")
+
+    # Log summary metrics
+    mlflow.log_metric("num_files_generated", len(generated_files))
+    mlflow.log_metric("total_data_size_mb", file_inventory["total_size_mb"])
+
+    # Log configuration files for reproducibility
+    mlflow.log_dict(config_dict["data_config"], "data_config.json")
+    mlflow.log_dict(config_dict["model_config"], "model_config.json")
+    logger.info("Logged %d files to MLflow inventory", len(generated_files))
+
+
 @app.command(epilog=epilog)
 def main(  # pragma: no cover
     config_path: Path = typer.Option(None, help="Path to the YAML configuration file."),
@@ -214,6 +444,36 @@ def main(  # pragma: no cover
         help="Number of files to generate.",
         min=1,
         show_default=True,
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate the pipeline without saving any data. Useful for testing configurations.",
+        is_flag=True,
+    ),
+    mlflow_run_name: str = typer.Option(
+        None,
+        "--mlflow-run-name",
+        help="MLflow Run ID to resume. "
+        "If provided, metrics and artifacts will be logged to this run.",
+    ),
+    mlflow_experiment_name: str = typer.Option(
+        None,
+        "--mlflow-experiment-name",
+        help="MLflow Experiment Name to log to. "
+        "If provided, metrics and artifacts will be logged to this experiment.",
+    ),
+    mlflow_tracking_uri: str = typer.Option(
+        None,
+        "--mlflow-tracking-uri",
+        help="MLflow tracking URI (e.g., 'sqlite:///path/to/mlflow.db' or 'http://mlflow-server:5000'). "
+        "Defaults to MLFLOW_TRACKING_URI env var, then 'sqlite:///mlflow.db'.",
+    ),
+    mlflow_artifact_location: str = typer.Option(
+        None,
+        "--mlflow-artifact-location",
+        help="Root directory for MLflow artifacts. "
+        "Defaults to MLFLOW_ARTIFACT_LOCATION env var, then './mlruns'.",
     ),
     estimator_type: str = typer.Option(
         None,
@@ -242,52 +502,55 @@ def main(  # pragma: no cover
     )
     logger = logging.getLogger(__name__)
 
-    if config_path is None:
-        logger.warning("No config path provided, using default configuration.")
-        with as_file(
-            files("ssms.cli") / "config_data_generation.yaml"
-        ) as default_config:
-            config_path = default_config
-
-    config_dict = collect_data_generator_config(
-        yaml_config_path=config_path, base_path=output
+    # Setup MLflow
+    mlflow_active = setup_mlflow(
+        mlflow_run_name,
+        mlflow_experiment_name,
+        mlflow_tracking_uri,
+        mlflow_artifact_location,
+        logger,
     )
 
-    # Phase 2: Override estimator_type if specified via CLI
-    if estimator_type is not None:
-        logger.info(f"Overriding estimator_type from CLI: {estimator_type}")
-        config_dict["data_config"]["estimator_type"] = estimator_type.lower()
+    # Load and prepare configuration
+    config_dict = load_config(config_path, output, estimator_type, logger)
 
-    logger.debug("GENERATOR CONFIG")
-    logger.debug(pformat(config_dict["data_config"]))
+    # Log initial config to MLflow
+    if mlflow_active:
+        import mlflow
 
-    logger.debug("MODEL CONFIG")
-    logger.debug(pformat(config_dict["model_config"]))
-
-    # Phase 2: Create estimator builder based on config
-    from ssms.dataset_generators.estimator_builders import create_estimator_builder
-
-    try:
-        estimator_builder = create_estimator_builder(
-            config_dict["data_config"], config_dict["model_config"]
+        mlflow.log_params(
+            {f"data_{k}": v for k, v in config_dict["data_config"].items()}
         )
-        logger.info(f"Using estimator: {type(estimator_builder).__name__}")
-    except NotImplementedError as e:
-        logger.error(str(e))
-        raise typer.Exit(code=1)
+        mlflow.log_dict(config_dict["model_config"], "model_config.json")
+        if dry_run:
+            mlflow.log_param("dry_run", True)
 
-    # Make the generator with injected builder
-    my_dataset_generator = ssms.dataset_generators.lan_mlp.TrainingDataGenerator(
-        config=config_dict["data_config"],
-        model_config=config_dict["model_config"],
+    # Create and validate estimator
+    estimator_builder = create_estimator(config_dict, logger)
+
+    if mlflow_active:
+        import mlflow
+
+        mlflow.log_param("estimator_type", type(estimator_builder).__name__)
+
+    # Generate data
+    newly_generated_files, output_folder = generate_data(
+        config_dict, n_files, dry_run, logger
     )
 
-    for i in tqdm.tqdm(
-        range(n_files), desc="Generating simulated data files", unit="file"
-    ):
-        my_dataset_generator.generate_data_training(save=True)
+    # Log results to MLflow (skip in dry-run mode)
+    if mlflow_active and not dry_run:
+        log_to_mlflow(config_dict, newly_generated_files, output_folder, logger)
 
-    logger.info("Data generation finished")
+    if mlflow_active:
+        import mlflow
+
+        mlflow.end_run()
+
+    if dry_run:
+        logger.info("DRY RUN complete - no data was saved")
+    else:
+        logger.info("Data generation finished")
 
 
 if __name__ == "__main__":
