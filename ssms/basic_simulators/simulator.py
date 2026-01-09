@@ -17,6 +17,21 @@ from ssms.basic_simulators.modular_parameter_simulator_adapter import (
 )
 from ssms.config import get_boundary_registry, get_drift_registry
 
+# Sentinel value indicating an omission (no response within deadline/max_t).
+# When a simulated trial exceeds the maximum time (max_t) or deadline parameter,
+# both the RT and choice are set to this value to indicate no valid response.
+#
+# This value is set by the low-level Cython simulators (in src/cssm/*.pyx) and
+# is used throughout the codebase for:
+#   - Filtering out omissions when computing choice probabilities
+#   - Computing omission rates (proportion of trials with RT == OMISSION_SENTINEL)
+#   - Distinguishing valid responses from timeouts in downstream analyses
+#
+# Example usage:
+#   valid_rts = rts[rts != OMISSION_SENTINEL]
+#   omission_rate = (rts == OMISSION_SENTINEL).mean()
+OMISSION_SENTINEL: float = -999.0
+
 _global_rng = default_rng()
 _rng_lock = Lock()
 
@@ -711,20 +726,24 @@ def simulator(
     # TODO: #79 vectorize this  # noqa: FIX002
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
-        out_len_no_omission = x["rts"][:, k, :][x["rts"][:, k, :] != -999].shape[0]
+        out_len_no_omission = x["rts"][:, k, :][
+            x["rts"][:, k, :] != OMISSION_SENTINEL
+        ].shape[0]
 
         for n, choice in enumerate(x["metadata"]["possible_choices"]):
             x["choice_p"][k, n] = (x["choices"][:, k, :] == choice).sum() / out_len
             if out_len_no_omission > 0:
                 x["choice_p_no_omission"][k, n] = (
-                    x["choices"][:, k, :][x["rts"][:, k, :] != -999] == choice
+                    x["choices"][:, k, :][x["rts"][:, k, :] != OMISSION_SENTINEL]
+                    == choice
                 ).sum() / out_len_no_omission
             else:
-                # AF-TODO: Don't get why -999 is used here
-                x["choice_p_no_omission"][k, n] = -999
+                # All trials were omissions, so choice probability is undefined.
+                # We use OMISSION_SENTINEL to signal this to downstream code.
+                x["choice_p_no_omission"][k, n] = OMISSION_SENTINEL
 
         # Omission Probability (deadline)
-        x["omission_p"][k, 0] = (x["rts"][:, k, :] == -999).sum() / out_len
+        x["omission_p"][k, 0] = (x["rts"][:, k, :] == OMISSION_SENTINEL).sum() / out_len
 
         # Nogo Probability
         # NOTE: If deadline is set in simulator --> this is the nogo probability
@@ -733,7 +752,7 @@ def simulator(
             # AF-TODO: This should rather have a designated no-go choice
             # instead of `max`
             (x["choices"][:, k, :] != max(x["metadata"]["possible_choices"]))
-            | (x["rts"][:, k, :] == -999)
+            | (x["rts"][:, k, :] == OMISSION_SENTINEL)
         ).sum() / out_len
         x["go_p"][k, 0] = 1 - x["nogo_p"][k, 0]
 

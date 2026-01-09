@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from ssms import OMISSION_SENTINEL
 from ssms.config import model_config, get_lan_config
 from ssms.dataset_generators.pipelines import SimulationPipeline
 from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
@@ -31,10 +32,10 @@ class TestSimulationPipelineErrorHandling:
 
     def test_compute_auxiliary_labels_all_omissions(self, pipeline):
         """Test _compute_auxiliary_labels when all responses are omissions."""
-        # Create simulations with all omissions (choice = -999)
+        # Create simulations with all omissions (RT and choice = OMISSION_SENTINEL)
         simulations = {
-            "rts": np.array([-999, -999, -999, -999, -999]),
-            "choices": np.array([-999, -999, -999, -999, -999]),
+            "rts": np.array([OMISSION_SENTINEL] * 5),
+            "choices": np.array([OMISSION_SENTINEL] * 5),
             "metadata": {
                 "possible_choices": [-1, 1],
                 "max_t": 20.0,
@@ -81,8 +82,8 @@ class TestSimulationPipelineErrorHandling:
         """Test _compute_auxiliary_labels with mixed choices and omissions."""
         # 3 correct (choice=1), 2 error (choice=-1), 1 omission
         simulations = {
-            "rts": np.array([0.5, 0.6, 0.7, 0.8, 0.9, -999]),
-            "choices": np.array([1, 1, 1, -1, -1, -999]),
+            "rts": np.array([0.5, 0.6, 0.7, 0.8, 0.9, OMISSION_SENTINEL]),
+            "choices": np.array([1, 1, 1, -1, -1, OMISSION_SENTINEL]),
             "metadata": {
                 "possible_choices": [-1, 1],
                 "max_t": 20.0,
@@ -133,9 +134,9 @@ class TestSimulationPipelineErrorHandling:
     def test_compute_auxiliary_labels_excludes_omissions_from_histograms(
         self, pipeline
     ):
-        """Test that omissions (RT=-999) are excluded from RT histograms."""
+        """Test that omissions (RT=OMISSION_SENTINEL) are excluded from RT histograms."""
         simulations = {
-            "rts": np.array([0.5, 0.6, -999, -999]),
+            "rts": np.array([0.5, 0.6, OMISSION_SENTINEL, OMISSION_SENTINEL]),
             "choices": np.array([1, -1, 1, -1]),
             "metadata": {
                 "possible_choices": [-1, 1],

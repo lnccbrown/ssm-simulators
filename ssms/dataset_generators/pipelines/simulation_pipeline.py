@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Any
 from scipy.stats import mode
 
-from ssms.basic_simulators.simulator import _theta_dict_to_array
+from ssms.basic_simulators.simulator import _theta_dict_to_array, OMISSION_SENTINEL
 from ssms.basic_simulators.simulator_class import Simulator
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
@@ -220,7 +220,8 @@ class SimulationPipeline:
 
         for choice_tmp in simulations["metadata"]["possible_choices"]:
             tmp_rts = simulations["rts"][
-                (simulations["choices"] == choice_tmp) & (simulations["rts"] != -999)
+                (simulations["choices"] == choice_tmp)
+                & (simulations["rts"] != OMISSION_SENTINEL)
             ]
 
             tmp_n_c = len(tmp_rts)
@@ -296,7 +297,7 @@ class SimulationPipeline:
             choice_p[0, i] = np.sum(choices == choice) / n_samples
 
         # Compute choice probabilities excluding omissions
-        non_omitted = choices != -999
+        non_omitted = choices != OMISSION_SENTINEL
         if np.any(non_omitted):
             choices_no_omission = choices[non_omitted]
             n_no_omission = len(choices_no_omission)
@@ -309,12 +310,14 @@ class SimulationPipeline:
             choice_p_no_omission[0, :] = 1.0 / len(possible_choices)
 
         # Compute omission probability
-        omission_p[0, 0] = np.sum(choices == -999) / n_samples
+        omission_p[0, 0] = np.sum(choices == OMISSION_SENTINEL) / n_samples
 
         # Compute go/nogo probabilities
         # nogo = not choosing max choice OR omission
         max_choice = max(possible_choices)
-        nogo_p[0, 0] = np.sum((choices != max_choice) | (rts == -999)) / n_samples
+        nogo_p[0, 0] = (
+            np.sum((choices != max_choice) | (rts == OMISSION_SENTINEL)) / n_samples
+        )
         go_p[0, 0] = 1 - nogo_p[0, 0]
 
         # Compute RT histograms (separated by choice)
@@ -330,8 +333,8 @@ class SimulationPipeline:
         for i, choice in enumerate(possible_choices):
             choice_mask = choices == choice
             rts_for_choice = rts[choice_mask]
-            # Exclude omissions (RT == -999)
-            rts_for_choice = rts_for_choice[rts_for_choice != -999]
+            # Exclude omissions
+            rts_for_choice = rts_for_choice[rts_for_choice != OMISSION_SENTINEL]
 
             if len(rts_for_choice) > 0:
                 binned_128[0, :, i], _ = np.histogram(rts_for_choice, bins=bins_128)

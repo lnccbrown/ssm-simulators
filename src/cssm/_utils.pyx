@@ -502,7 +502,11 @@ cpdef void enforce_deadline(
     int k,
     int idx=0
 ):
-    """Set RT to -999 if it exceeds deadline or deadline is invalid."""
+    """Set RT to OMISSION_SENTINEL (-999) if it exceeds deadline or deadline is invalid.
+
+    The value -999 is the sentinel indicating an omission (no response within deadline).
+    This corresponds to ssms.OMISSION_SENTINEL in the Python API.
+    """
     if (rts_view[n, k, idx] >= deadline_view[k]) or (deadline_view[k] <= 0):
         rts_view[n, k, idx] = -999
 
