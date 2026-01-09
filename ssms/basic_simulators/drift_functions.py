@@ -1,4 +1,8 @@
-"""Define a collection of drift functions for the simulators in the package."""
+"""Define a collection of drift functions for the simulators in the package.
+
+All drift functions accept `v` as a parameter and return the FINAL drift value,
+consistent with boundary functions that accept `a` and return the final boundary value.
+"""
 
 # External
 from collections.abc import Callable
@@ -9,7 +13,10 @@ from scipy.stats import norm
 
 
 # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
-def constant(t: np.ndarray = np.arange(0, 20, 0.1)) -> np.ndarray:  # noqa: B008
+def constant(
+    t: np.ndarray = np.arange(0, 20, 0.1),  # noqa: B008
+    v: float = 0.0,
+) -> np.ndarray:
     """Constant drift function.
 
     Arguments
@@ -17,29 +24,36 @@ def constant(t: np.ndarray = np.arange(0, 20, 0.1)) -> np.ndarray:  # noqa: B008
         t: np.ndarray, optional
             Timepoints at which to evaluate the drift. Defaults to
             np.arange(0, 20, 0.1).
+        v: float, optional
+            Drift rate. Defaults to 0.0.
 
     Returns
     -------
-        np.ndarray: Array of drift values, same length as t
+        np.ndarray: Array of constant drift values = v, same length as t
     """
-    return np.zeros(t.shape[0])
+    return np.full(t.shape[0], v, dtype=np.float32)
 
 
 def gamma_drift(
     t: np.ndarray = np.arange(  # noqa: B008
         0, 20, 0.1
     ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    v: float = 0.0,
     shape: float = 2,
     scale: float = 0.01,
     c: float = 1.5,
 ) -> np.ndarray:
     """Drift function that follows a scaled gamma distribution.
 
+    The final drift is v + (scaled gamma component).
+
     Arguments
     ---------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate. Defaults to 0.0.
         shape: float
             Shape parameter of the gamma distribution
         scale: float
@@ -53,7 +67,7 @@ def gamma_drift(
     Return
     ------
         np.ndarray
-            The gamma drift evaluated at the supplied timepoints t.
+            The final drift (v + gamma component) evaluated at the supplied timepoints t.
     """
     num_ = np.power(t, shape - 1) * np.exp(np.divide(-t, scale))
     div_ = (
@@ -61,7 +75,8 @@ def gamma_drift(
         * np.power(scale, shape - 1)
         * np.exp(-(shape - 1))
     )
-    return c * np.divide(num_, div_)
+    gamma_component = c * np.divide(num_, div_)
+    return v + gamma_component
 
 
 def ds_support_analytic(
@@ -101,6 +116,7 @@ def ds_support_analytic(
 
 def conflict_ds_drift(
     t: np.ndarray | None,
+    v: float = 0.0,
     tinit: float = 0,
     dinit: float = 0,
     tslope: float = 1,
@@ -118,11 +134,15 @@ def conflict_ds_drift(
        Each timecourse follows a dynamical system as described
        in the ds_support_analytic() function.
 
+       The final drift is v + (combined drift timecourse).
+
     Arguments
     ---------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate (typically 0 for conflict models). Defaults to 0.0.
         tinit: float
             Initial condition of target drift timecourse
         dinit: float
@@ -148,15 +168,16 @@ def conflict_ds_drift(
 
     w_d = ds_support_analytic(t=t, init_p=dinit, fix_point=0, slope=dslope)
 
-    v_t = (w_t * tcoh) + (w_d * dcoh)
+    drift_component = (w_t * tcoh) + (w_d * dcoh)
 
-    return v_t  # , w_t, w_d
+    return v + drift_component
 
 
 def attend_drift(
     t: np.ndarray = np.arange(  # noqa: B008
         0, 20, 0.1
     ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    v: float = 0.0,
     ptarget: float = -0.3,
     pouter: float = -0.3,
     pinner: float = 0.3,
@@ -166,11 +187,15 @@ def attend_drift(
     """Shrink spotlight model, which involves a time varying
     function dependent on a linearly decreasing standard deviation of attention.
 
+    The final drift is v + (attention-weighted drift component).
+
     Arguments
     --------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate (typically 0 for shrink_spot models). Defaults to 0.0.
         pouter: float
             perceptual input for outer flankers
         pinner: float
@@ -184,7 +209,7 @@ def attend_drift(
     Return
     ------
     np.ndarray
-        Drift evaluated at timepoints t
+        Final drift evaluated at timepoints t
     """  # noqa: D205
     new_sda = np.maximum(sda - r * t, 0.001)
 
@@ -194,15 +219,18 @@ def attend_drift(
         -0.5, loc=0, scale=new_sda
     )
 
-    v_t = (2 * pouter * a_outer) + (2 * pinner * a_inner) + (ptarget * a_target)
+    drift_component = (
+        (2 * pouter * a_outer) + (2 * pinner * a_inner) + (ptarget * a_target)
+    )
 
-    return v_t
+    return v + drift_component
 
 
 def attend_drift_simple(
     t: np.ndarray = np.arange(  # noqa: B008
         0, 20, 0.1
     ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    v: float = 0.0,
     ptarget: float = -0.3,
     pouter: float = -0.3,
     r: float = 0.5,
@@ -211,11 +239,15 @@ def attend_drift_simple(
     """Drift function for shrinking spotlight model, which involves a time varying
     function dependent on a linearly decreasing standard deviation of attention.
 
+    The final drift is v + (attention-weighted drift component).
+
     Arguments
     --------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate (typically 0 for shrink_spot models). Defaults to 0.0.
         pouter: float
             perceptual input for outer flankers
         ptarget: float
@@ -227,7 +259,7 @@ def attend_drift_simple(
     Return
     ------
     np.ndarray
-        Drift evaluated at timepoints t
+        Final drift evaluated at timepoints t
     """  # noqa: D205
     new_sda = np.maximum(sda - r * t, 0.001)
     a_outer = 1.0 - norm.cdf(
@@ -235,9 +267,9 @@ def attend_drift_simple(
     )  # equivalent to norm.sf(0.5, loc=0, scale=new_sda)
     a_target = norm.cdf(0.5, loc=0, scale=new_sda) - 0.5
 
-    v_t = (2 * pouter * a_outer) + (2 * ptarget * a_target)
+    drift_component = (2 * pouter * a_outer) + (2 * ptarget * a_target)
 
-    return v_t
+    return v + drift_component
 
 
 def stimflex_support(
@@ -268,6 +300,7 @@ def stimflex_support(
 
 def conflict_dsstimflex_drift(
     t: np.ndarray | None,
+    v: float = 0.0,
     tinit: float = 0,
     dinit: float = 0,
     tslope: float = 1,
@@ -281,11 +314,15 @@ def conflict_dsstimflex_drift(
 ) -> np.ndarray:
     """Drift function for conflict task with stimuli with potentially variable onset.
 
+    The final drift is v + (combined drift timecourse).
+
     Arguments:
     ---------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate (typically 0 for conflict models). Defaults to 0.0.
         tcoh: float
             Coherence of the target stimulus when 'on'.
         dcoh: float
@@ -322,13 +359,14 @@ def conflict_dsstimflex_drift(
 
     w_t = ds_support_analytic(t=t, init_p=tinit, fix_point=tfixedp, slope=tslope)
     w_d = ds_support_analytic(t=t, init_p=dinit, fix_point=0, slope=dslope)
-    v_t = (w_t * tcohs) + (w_d * dcohs)
+    drift_component = (w_t * tcohs) + (w_d * dcohs)
 
-    return v_t
+    return v + drift_component
 
 
 def conflict_stimflex_drift(
     t: np.ndarray | None,
+    v: float = 0.0,
     vt: float = 0,
     vd: float = 0,
     tcoh: float = 1.0,
@@ -342,11 +380,17 @@ def conflict_stimflex_drift(
 ) -> np.ndarray:
     """Drift function for conflict task with stimuli with potentially variable onset and duration.
 
+    The final drift is v + (combined drift timecourse) when sum_drifts=True.
+    When sum_drifts=False, returns 2D array for dual-drift models (v not added).
+
     Arguments:
     ---------
         t: np.ndarray
             Timepoints at which to evaluate the drift.
             Usually np.arange() of some sort.
+        v: float
+            Base drift rate (typically 0 for conflict models). Defaults to 0.0.
+            Only used when sum_drifts=True.
         tcoh: float
             Coherence of the target stimulus when 'on'.
         dcoh: float
@@ -371,7 +415,7 @@ def conflict_stimflex_drift(
             If True, the drift contributions from target and distractor
             are summed to produce a single drift timecourse. If False,
             a 2D array is returned with separate columns for target
-            and distractor drift timecourses.
+            and distractor drift timecourses (for dual-drift models).
     Returns
     -------
         np.ndarray: Array of drift values, same length as t. If sum_drifts
@@ -390,8 +434,10 @@ def conflict_stimflex_drift(
     tcohs = stimflex_support(t, tonset, toffset, tcoh)
     dcohs = stimflex_support(t, donset, doffset, dcoh)
     if sum_drifts:
-        return vt * tcohs + vd * dcohs
+        drift_component = vt * tcohs + vd * dcohs
+        return v + drift_component
     else:
+        # Dual-drift mode: return 2D array (v not added - handled differently)
         return np.column_stack((vt * tcohs, vd * dcohs))
 
 

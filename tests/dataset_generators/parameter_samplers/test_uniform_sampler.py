@@ -86,9 +86,7 @@ class TestUniformParameterSampler:
 
     def test_with_constraints(self):
         """Test sampler with constraints applied."""
-        from ssms.dataset_generators.parameter_samplers.constraints.swap import (
-            SwapIfLessConstraint,
-        )
+        from ssms.transforms import SwapIfLessConstraint
 
         param_space = {"a": (0.1, 1.1), "z": (0.0, 0.5)}
         constraints = [SwapIfLessConstraint("a", "z")]

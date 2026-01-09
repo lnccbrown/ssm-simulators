@@ -3,38 +3,6 @@
 Convenience functions for getting default configurations for data generation.
 """
 
-import warnings
-
-
-class DeprecatedDict(dict):
-    """
-    A pseudo-dictionary that raises a DeprecationWarning when accessed.
-    This is used to indicate that the configuration dictionary is deprecated
-    and should not be used directly.
-
-    Parameters
-    ----------
-    lookup_func : callable, optional
-        A function that takes a key and returns the corresponding value.
-    alternative : str, optional
-        A string indicating the alternative method to use instead of this
-        configuration dictionary."""
-
-    def __init__(self, lookup_func=None, alternative="get_default_generator_config"):
-        self._lookup_func = lookup_func
-        self._alternative = alternative
-
-    def __getitem__(self, key):
-        message = f"Accessing this configuration dict is deprecated and will be removed in a future version. Use `{self._alternative}` instead."
-        warnings.warn(
-            message,
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if self._lookup_func is None or not callable(self._lookup_func):
-            raise ValueError("A valid callable lookup_func must be provided.")
-        return self._lookup_func(key)
-
 
 def get_kde_simulation_filters() -> dict:
     return {
@@ -46,7 +14,7 @@ def get_kde_simulation_filters() -> dict:
     }
 
 
-def get_lan_config() -> dict:
+def get_lan_config(model: str = "ddm") -> dict:
     """Get LAN configuration in nested structure.
 
     Returns configuration with clear separation of concerns:
@@ -55,6 +23,13 @@ def get_lan_config() -> dict:
     - 'training': training data settings (mixture_probabilities, etc.)
     - 'simulator': simulation settings (delta_t, max_t, etc.)
     - 'output': output settings (folder, pickle_protocol, etc.)
+    - 'model': model name (e.g., "ddm", "ddm_deadline", "angle")
+
+    Parameters
+    ----------
+    model : str, default="ddm"
+        Model name, optionally with variant suffixes like "_deadline".
+        Examples: "ddm", "ddm_deadline", "angle", "angle_deadline"
 
     Returns
     -------
@@ -63,7 +38,7 @@ def get_lan_config() -> dict:
     """
     return {
         "pipeline": {
-            "n_parameter_sets": 10_000,
+            "n_parameter_sets": 1_000,
             "n_parameter_sets_rejected": 100,
             "n_subruns": 10,
             "n_cpus": "all",
@@ -82,7 +57,7 @@ def get_lan_config() -> dict:
             "negative_rt_log_likelihood": -66.77497,
         },
         "simulator": {
-            "n_samples": 100_000,
+            "n_samples": 1_000,
             "delta_t": 0.001,
             "max_t": 20.0,
             "smooth_unif": True,
@@ -93,14 +68,14 @@ def get_lan_config() -> dict:
             "pickle_protocol": 4,
             "bin_pointwise": False,
         },
-        "model": "ddm",  # Model name (for backward compatibility with some tests)
+        "model": model,
     }
 
 
-def get_ratio_estimator_config() -> dict:
+def get_ratio_estimator_config(model: str = "ddm") -> dict:
     return {
         "output_folder": "data/ratio/",
-        "model": "ddm",
+        "model": model,
         "nbins": 0,
         "n_samples": {"low": 100000, "high": 100000},
         "n_parameter_sets": 100000,
@@ -121,10 +96,10 @@ def get_ratio_estimator_config() -> dict:
     }
 
 
-def get_defective_detector_config() -> dict:
+def get_defective_detector_config(model: str = "ddm") -> dict:
     return {
         "output_folder": "data/defective_detector/",
-        "model": "ddm",
+        "model": model,
         "nbins": 0,
         "n_samples": {"low": 100_000, "high": 100_000},
         "n_parameter_sets": 100_000,
@@ -145,10 +120,10 @@ def get_defective_detector_config() -> dict:
     }
 
 
-def get_snpe_config() -> dict:
+def get_snpe_config(model: str = "ddm") -> dict:
     return {
         "output_folder": "data/snpe_training/",
-        "model": "ddm",  # should be ['ddm'],
+        "model": model,
         "n_samples": 5000,  # eventually should be {'low': 100000, 'high': 100000},
         "n_parameter_sets": 10000,
         "max_t": 20.0,
@@ -160,7 +135,9 @@ def get_snpe_config() -> dict:
     }
 
 
-def get_default_generator_config(approach: str | None = None) -> dict:
+def get_default_generator_config(
+    approach: str | None = None, model: str = "ddm"
+) -> dict:
     """
     Dynamically retrieve the data generator configuration for the given approach.
 
@@ -170,6 +147,7 @@ def get_default_generator_config(approach: str | None = None) -> dict:
     - 'training': training data settings (mixture_probabilities, etc.)
     - 'simulator': simulation settings (delta_t, max_t, etc.)
     - 'output': output settings (folder, pickle_protocol, etc.)
+    - 'model': model name
 
     Parameters
     ----------
@@ -182,6 +160,10 @@ def get_default_generator_config(approach: str | None = None) -> dict:
         - "snpe"
 
         If None, defaults to "lan".
+
+    model : str, default="ddm"
+        Model name, optionally with variant suffixes like "_deadline".
+        Examples: "ddm", "ddm_deadline", "angle", "angle_deadline"
 
     Returns
     -------
@@ -201,6 +183,10 @@ def get_default_generator_config(approach: str | None = None) -> dict:
     >>> config['pipeline']['n_parameter_sets']
     10000
 
+    >>> config = get_default_generator_config("lan", model="ddm_deadline")
+    >>> config['model']
+    'ddm_deadline'
+
     Notes
     -----
     Only nested structure is supported. Flat configs are no longer accepted.
@@ -213,16 +199,18 @@ def get_default_generator_config(approach: str | None = None) -> dict:
     }
 
     if approach is None:
-        return config_functions["lan"]()
+        return config_functions["lan"](model=model)
     elif approach not in config_functions:
         raise KeyError(
             f"'{approach}' is not a valid data generator configuration approach."
         )
     else:
-        return config_functions[approach]()
+        return config_functions[approach](model=model)
 
 
-def get_nested_generator_config(approach: str | None = None) -> dict:
+def get_nested_generator_config(
+    approach: str | None = None, model: str = "ddm"
+) -> dict:
     """
     Get generator config in nested structure.
 
@@ -235,11 +223,15 @@ def get_nested_generator_config(approach: str | None = None) -> dict:
         The approach corresponding to the desired data generator configuration.
         If None, defaults to "lan".
 
+    model : str, default="ddm"
+        Model name, optionally with variant suffixes like "_deadline".
+        Examples: "ddm", "ddm_deadline", "angle", "angle_deadline"
+
     Returns
     -------
     dict
         The configuration dictionary in nested structure with sections:
-        'pipeline', 'estimator', 'training', 'simulator', 'output'
+        'pipeline', 'estimator', 'training', 'simulator', 'output', 'model'
 
     Examples
     --------
@@ -249,11 +241,4 @@ def get_nested_generator_config(approach: str | None = None) -> dict:
     >>> config['pipeline']['n_parameter_sets']
     10000
     """
-    return get_default_generator_config(approach=approach)
-
-
-# TODO: Add for compatibility with lanfactory's test_end_to_end.py test. Delete when
-#       lanfactory uses get_default_generator_config.
-TrainingDataGenerator_config = DeprecatedDict(
-    get_default_generator_config, "get_default_generator_config"
-)
+    return get_default_generator_config(approach=approach, model=model)

@@ -5,6 +5,7 @@ import scipy.stats as sps  # type: ignore
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import ApplyMapping
 
 
 def get_full_ddm_config():
@@ -24,6 +25,10 @@ def get_full_ddm_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.full_ddm,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -62,5 +67,13 @@ def get_full_ddm_rv_config():
             "z_dist": lambda sz: functools.partial(
                 sps.uniform.rvs, loc=(-1) * sz, scale=2 * sz
             ),
+        },
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                ApplyMapping("sz", "z_dist", "z_dist"),
+                ApplyMapping("st", "t_dist", "t_dist"),
+                ApplyMapping("sv", "v_dist", "v_dist"),
+            ],
         },
     }

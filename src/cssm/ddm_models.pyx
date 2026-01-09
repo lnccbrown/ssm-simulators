@@ -592,9 +592,9 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     for k in range(n_trials):
         # Precompute boundary evaluations and drift evaluations
 
-        # Drift
+        # Drift - drift functions now return final drift value (v is included in drift_params)
         drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-        drift[:] = np.add(v_view[k], drift_fun(t = t_s, **drift_params_tmp)).astype(DTYPE)
+        drift[:] = drift_fun(t = t_s, **drift_params_tmp).astype(DTYPE)
 
         # Boundary
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
@@ -777,9 +777,9 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     for k in range(n_trials):
         # Precompute boundary evaluations and drift evaluations
 
-        # Drift
+        # Drift - drift functions now return final drift value (v is included in drift_params)
         drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-        drift[:] = np.add(v_view[k], drift_fun(t = t_s, **drift_params_tmp)).astype(DTYPE)
+        drift[:] = drift_fun(t = t_s, **drift_params_tmp).astype(DTYPE)
 
         # Boundary
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}

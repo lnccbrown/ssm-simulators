@@ -357,12 +357,10 @@ class SimulationPipeline:
             Parameter sampler configured with model transforms
         """
         from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
-        from ssms.dataset_generators.parameter_samplers.constraints.factory import (
-            get_constraints_from_model_config,
-        )
+        from ssms.config import ModelConfigBuilder
 
-        # Extract constraints from model config (empty list if none defined)
-        constraints = get_constraints_from_model_config(self.model_config)
+        # Extract sampling transforms from model config (empty list if none defined)
+        constraints = ModelConfigBuilder.get_sampling_transforms(self.model_config)
 
         return UniformParameterSampler(
             param_space=self.model_config["param_bounds_dict"],

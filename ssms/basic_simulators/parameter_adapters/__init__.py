@@ -6,7 +6,7 @@ before they are passed to simulators. Adaptations are small, focused
 classes that can be combined to handle complex parameter preparation logic.
 
 Main Components:
-    - ParameterAdaptation: Base class for all adaptations
+    - ParameterAdaptation: Alias for ParameterTransform (backward compatibility)
     - Common adaptations: SetDefaultValue, ExpandDimension, etc.
     - ParameterAdapterRegistry: Maps models to adaptation pipelines
     - ModularParameterSimulatorAdapter: Applies adaptations in sequence
@@ -23,10 +23,17 @@ Example:
     >>>
     >>> for adaptation in adaptations:
     ...     theta = adaptation.apply(theta, model_config, n_trials)
+
+Note:
+    New code should import directly from ssms.transforms.simulation for the
+    common adaptation classes. This module re-exports them for backward
+    compatibility.
 """
 
 from .base import ParameterAdaptation
-from .common import (
+
+# Re-export common adaptations from transforms module (single source of truth)
+from ssms.transforms.simulation.common import (
     SetDefaultValue,
     ExpandDimension,
     ColumnStackParameters,
@@ -48,7 +55,7 @@ from .registry import (
 __all__ = [
     # Base class
     "ParameterAdaptation",
-    # Common adaptations
+    # Common adaptations (re-exported from transforms.simulation)
     "SetDefaultValue",
     "ExpandDimension",
     "ColumnStackParameters",

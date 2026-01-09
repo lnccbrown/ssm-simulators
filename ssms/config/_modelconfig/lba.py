@@ -1,7 +1,76 @@
 """LBA (Linear Ballistic Accumulator) model configurations."""
 
+import numpy as np
+
 from ssms.basic_simulators import boundary_functions as bf
 import cssm
+
+from ssms.transforms import (
+    # Sampling transforms
+    SwapIfLessConstraint,
+    # Simulation transforms
+    ColumnStackParameters,
+    ExpandDimension,
+    RenameParameter,
+    DeleteParameters,
+    LambdaAdaptation,
+)
+
+
+# ============================================================================
+# Shared simulation transforms for LBA models
+# ============================================================================
+
+# Helper for setting t to zeros (LBA models don't use t parameter)
+_SET_ZERO_T = LambdaAdaptation(
+    lambda theta, cfg, n: theta.update({"t": np.zeros(n).astype(np.float32)}) or theta,
+    name="set_zero_t",
+)
+
+# LBA2 simulation transforms
+_LBA2_SIMULATION_TRANSFORMS = [
+    LambdaAdaptation(
+        lambda theta, cfg, n: theta.update({"nact": 2}) or theta,
+        name="set_nact_2",
+    ),
+    ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+    RenameParameter("A", "z", lambda x: np.expand_dims(x, axis=1)),
+    RenameParameter("b", "a", lambda x: np.expand_dims(x, axis=1)),
+    DeleteParameters(["A", "b"]),
+    _SET_ZERO_T,
+]
+
+# LBA3 simulation transforms
+_LBA3_SIMULATION_TRANSFORMS = [
+    LambdaAdaptation(
+        lambda theta, cfg, n: theta.update({"nact": 3}) or theta,
+        name="set_nact_3",
+    ),
+    ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+    RenameParameter("A", "z", lambda x: np.expand_dims(x, axis=1)),
+    RenameParameter("b", "a", lambda x: np.expand_dims(x, axis=1)),
+    DeleteParameters(["A", "b"]),
+    _SET_ZERO_T,
+]
+
+# LBA 3-choice with vs constraint simulation transforms (non-angle)
+_LBA_3_VS_CONSTRAINT_SIMULATION_TRANSFORMS = [
+    ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+    ExpandDimension(["a", "z"]),
+    _SET_ZERO_T,
+]
+
+# LBA 3-choice with angle simulation transforms
+_LBA_ANGLE_3_SIMULATION_TRANSFORMS = [
+    ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+    ExpandDimension(["a", "z", "theta"]),
+    _SET_ZERO_T,
+]
+
+
+# ============================================================================
+# Model configuration functions
+# ============================================================================
 
 
 def get_lba2_config():
@@ -18,6 +87,10 @@ def get_lba2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.lba_vanilla,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": _LBA2_SIMULATION_TRANSFORMS,
+        },
     }
 
 
@@ -35,6 +108,10 @@ def get_lba3_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.lba_vanilla,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": _LBA3_SIMULATION_TRANSFORMS,
+        },
     }
 
 
@@ -53,6 +130,10 @@ def get_lba_3_vs_constraint_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.lba_vanilla,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": _LBA_3_VS_CONSTRAINT_SIMULATION_TRANSFORMS,
+        },
     }
 
 
@@ -71,6 +152,10 @@ def get_lba_angle_3_vs_constraint_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.lba_angle,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": _LBA_ANGLE_3_SIMULATION_TRANSFORMS,
+        },
     }
 
 
@@ -88,7 +173,11 @@ def get_lba_angle_3_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.lba_angle,
-        "parameter_sampling_constraints": [
-            {"type": "swap", "param_a": "a", "param_b": "z"}
-        ],
+        # Unified parameter_transforms - both sampling and simulation in one place
+        "parameter_transforms": {
+            "sampling": [
+                SwapIfLessConstraint("a", "z"),
+            ],
+            "simulation": _LBA_ANGLE_3_SIMULATION_TRANSFORMS,
+        },
     }

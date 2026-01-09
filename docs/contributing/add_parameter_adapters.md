@@ -1,34 +1,57 @@
-# Custom Parameter Adaptations
+# Custom Parameter Transforms
 
 ## Overview
 
-Parameter adaptations transform user-provided parameters into simulator-ready format. This guide shows you how to create custom adaptations for your models.
+Parameter transforms prepare user-provided parameters for simulation. They're defined directly in your model configuration under the `parameter_transforms` field.
 
 ---
 
 ## Quick Start
 
-### Using Built-in Adaptations
+### The Unified Pattern
+
+All parameter transforms are defined in the model config:
 
 ```python
-from ssms import Simulator
-from ssms.basic_simulators.parameter_adapters import SetDefaultValue
+my_model_config = {
+    "name": "my_model",
+    "params": ["v0", "v1", "v2", "a", "z", "t"],
+    # ... other config fields ...
 
-sim = Simulator(
-    "ddm",
-    parameter_adaptations=[
-        SetDefaultValue("custom_param", 0.5)
-    ]
-)
-
-result = sim.simulate(
-    theta={'v': 1.0, 'a': 1.5, 'z': 0.5, 't': 0.3},
-    n_samples=1000
-)
-# theta now includes custom_param=0.5
+    # Both transform types defined together
+    "parameter_transforms": {
+        "sampling": [
+            # Applied during training data generation
+            SwapIfLessConstraint("a", "z"),  # Ensure a > z
+        ],
+        "simulation": [
+            # Applied when using Simulator class
+            ColumnStackParameters(["v0", "v1", "v2"], "v"),
+            ExpandDimension(["a", "z", "t"]),
+        ],
+    },
+}
 ```
 
-### Creating a Custom Adaptation
+### Using Built-in Transforms
+
+```python
+from ssms.basic_simulators.parameter_adapters import (
+    SetDefaultValue,
+    ExpandDimension,
+    ColumnStackParameters,
+    SetZeroArray,
+)
+from ssms.transforms import SwapIfLessConstraint, NormalizeToSumConstraint
+
+# Import transforms and use them directly in your config
+my_config["parameter_transforms"] = {
+    "sampling": [SwapIfLessConstraint("a", "z")],
+    "simulation": [ExpandDimension(["a", "z", "t"])],
+}
+```
+
+### Creating a Custom Transform
 
 ```python
 from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
@@ -46,15 +69,15 @@ class ScaleParameter(ParameterAdaptation):
             theta[self.param_name] = theta[self.param_name] * self.scale
         return theta
 
-# Use it
-sim = Simulator("ddm", parameter_adaptations=[ScaleParameter("v", 2.0)])
+# Use it in your model config
+my_config["parameter_transforms"]["simulation"].append(ScaleParameter("v", 2.0))
 ```
 
 ---
 
 ## The ParameterAdaptation Interface
 
-All adaptations inherit from `ParameterAdaptation` and implement one method:
+All transforms inherit from `ParameterAdaptation` and implement one method:
 
 ```python
 from abc import ABC, abstractmethod
@@ -62,7 +85,7 @@ from abc import ABC, abstractmethod
 class ParameterAdaptation(ABC):
     @abstractmethod
     def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
-        """Apply adaptation to theta parameters.
+        """Apply transform to theta parameters.
 
         Parameters
         ----------
@@ -90,18 +113,32 @@ class ParameterAdaptation(ABC):
 
 ---
 
-## Built-in Adaptations
+## Built-in Transforms
 
-Common adaptations you can use immediately:
+### Simulation Transforms
+
+Common transforms for preparing parameters for simulators:
 
 ```python
 from ssms.basic_simulators.parameter_adapters import (
-    SetDefaultValue,      # Set parameter if not present
-    ExpandDimension,      # (n,) → (n, 1)
-    ColumnStackParameters,# Stack v0, v1, v2 → v
-    RenameParameter,      # Rename param (e.g., A → z)
-    DeleteParameters,     # Remove parameters
-    LambdaAdaptation,     # Quick custom function
+    SetDefaultValue,       # Set parameter if not present
+    ExpandDimension,       # (n,) → (n, 1) for array shapes
+    ColumnStackParameters, # Stack v0, v1, v2 → v
+    RenameParameter,       # Rename param (e.g., A → z)
+    DeleteParameters,      # Remove parameters
+    SetZeroArray,          # Set param to zeros
+    LambdaAdaptation,      # Quick custom function
+)
+```
+
+### Sampling Transforms
+
+Transforms for parameter constraints during training data generation:
+
+```python
+from ssms.transforms import (
+    SwapIfLessConstraint,     # Ensure param_a > param_b
+    NormalizeToSumConstraint, # Normalize params to sum to 1
 )
 ```
 
@@ -151,12 +188,24 @@ class TimeVaryingDrift(ParameterAdaptation):
 
         return theta
 
-# Usage
-sim = Simulator(
-    "ddm",
-    parameter_adaptations=[TimeVaryingDrift(n_steps=100)]
-)
+# Usage: Define in your model config
+time_varying_ddm_config = {
+    "name": "time_varying_ddm",
+    "params": ["v_start", "v_end", "a", "z", "t"],
+    "param_bounds": [
+        [0.0, 0.0, 0.3, 0.1, 0.0],
+        [3.0, 3.0, 2.5, 0.9, 2.0],
+    ],
+    # ... other config fields ...
+    "parameter_transforms": {
+        "sampling": [],
+        "simulation": [TimeVaryingDrift(n_steps=100)],
+    },
+}
 
+# Then use with Simulator
+from ssms import Simulator
+sim = Simulator(model=time_varying_ddm_config)
 result = sim.simulate(
     theta={'v_start': 0.5, 'v_end': 2.0, 'a': 1.5, 'z': 0.5, 't': 0.3},
     n_samples=1000
@@ -209,8 +258,28 @@ def test_time_varying_drift():
 
 ---
 
+## Summary: The Simplified Pattern
+
+The key insight is that **all parameter transforms are defined directly in the model config**:
+
+```python
+"parameter_transforms": {
+    "sampling": [...],   # For training data generation
+    "simulation": [...], # For Simulator class
+}
+```
+
+**Benefits:**
+- All transform logic is co-located with the model definition
+- No separate registration step needed
+- Easy to see what transforms a model uses
+- Supports custom transforms alongside built-in ones
+
+---
+
 ## Resources
 
 - [Adding Models Tutorial](add_models.md): How to contribute new models
 - [API Reference](../../api/): Complete API documentation
-- Built-in adaptations: `ssms/basic_simulators/parameter_adapters/common.py`
+- Built-in simulation transforms: `ssms/basic_simulators/parameter_adapters/`
+- Built-in sampling transforms: `ssms/transforms/sampling/`

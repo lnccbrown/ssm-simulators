@@ -1,6 +1,6 @@
 """Tests for PyDDM auxiliary label computation.
 
-This module tests that PyDDMGenerationStrategy correctly computes
+This module tests that PyDDMPipeline correctly computes
 auxiliary labels (choice_p, omission_p, nogo_p) analytically.
 """
 
@@ -15,20 +15,16 @@ except ImportError:
     PYDDM_AVAILABLE = False
 
 from ssms.config import model_config, get_lan_config
-from ssms.dataset_generators.estimator_builders.builder_factory import (
-    create_estimator_builder,
+from ssms.dataset_generators.pipelines import PyDDMPipeline
+from ssms.dataset_generators.estimator_builders.pyddm_builder import (
+    PyDDMEstimatorBuilder,
 )
-from ssms.dataset_generators.strategies.resample_mixture_strategy import (
-    ResampleMixtureStrategy,
-)
-from ssms.dataset_generators.strategies.pyddm_strategy import (
-    PyDDMGenerationStrategy,
-)
+from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
 
 @pytest.mark.skipif(not PYDDM_AVAILABLE, reason="PyDDM not installed")
 class TestPyDDMAuxiliaryLabels:
-    """Test auxiliary label computation in PyDDM strategy."""
+    """Test auxiliary label computation in PyDDM pipeline."""
 
     def test_auxiliary_labels_exist(self):
         """Test that all auxiliary label fields are present and not None."""
@@ -36,17 +32,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
 
@@ -86,17 +79,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
@@ -117,17 +107,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
@@ -155,17 +142,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
@@ -184,17 +168,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
@@ -219,17 +200,14 @@ class TestPyDDMAuxiliaryLabels:
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
@@ -239,28 +217,25 @@ class TestPyDDMAuxiliaryLabels:
             f"omission_p should be 0 without deadline, got {data['opn_labels'][0, 0]}"
         )
 
-    def test_output_format_matches_simulation_strategy(self):
-        """Test that output format matches SimulationBasedGenerationStrategy."""
+    def test_output_format_matches_simulation_pipeline(self):
+        """Test that output format matches SimulationPipeline."""
         config = get_lan_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
-        estimator_builder = create_estimator_builder(config, model_config["ddm"])
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        strategy = PyDDMGenerationStrategy(
+        pipeline = PyDDMPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=PyDDMEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, random_seed=42
         )
         data = result["data"]
 
-        # Check that all expected keys exist (matching simulation strategy)
+        # Check that all expected keys exist (matching simulation pipeline)
         expected_keys = {
             "lan_data",
             "lan_labels",

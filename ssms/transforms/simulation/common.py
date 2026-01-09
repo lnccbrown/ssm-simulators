@@ -1,21 +1,21 @@
-"""
-Common parameter adaptations.
+"""Common simulation-time parameter transforms.
 
-This module provides a library of commonly-used parameter adaptations that
-can be combined to handle most model parameter preparation needs.
+This module provides a library of commonly-used parameter transforms that
+prepare theta parameters for simulator consumption.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
-from .base import ParameterAdaptation
+from ssms.transforms.base import ParameterTransform
 
 
-class SetDefaultValue(ParameterAdaptation):
+class SetDefaultValue(ParameterTransform):
     """Set a parameter to a default value if not present.
 
-    This adaptation adds a parameter with a default value if it doesn't
+    This transform adds a parameter with a default value if it doesn't
     already exist in theta. The value is automatically tiled to match n_trials.
 
     Parameters
@@ -24,7 +24,6 @@ class SetDefaultValue(ParameterAdaptation):
         Name of the parameter to set
     default_value : float or int or np.ndarray
         Default value to use. If scalar, will be tiled to (n_trials,).
-        If array, should have compatible shape.
     dtype : np.dtype, optional
         Data type for the parameter. Defaults to np.float32.
 
@@ -46,22 +45,28 @@ class SetDefaultValue(ParameterAdaptation):
         self.default_value = default_value
         self.dtype = dtype
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Add parameter with default value if not present."""
         if self.param_name not in theta:
+            if n_trials is None:
+                n_trials = 1
             if isinstance(self.default_value, (int, float)):
                 theta[self.param_name] = np.tile(
                     np.array([self.default_value], dtype=self.dtype), n_trials
                 )
             else:
-                # Assume it's already an array
                 theta[self.param_name] = np.asarray(
                     self.default_value, dtype=self.dtype
                 )
         return theta
 
 
-class ExpandDimension(ParameterAdaptation):
+class ExpandDimension(ParameterTransform):
     """Expand dimensions of specified parameters.
 
     Converts 1D arrays of shape (n_trials,) to shape (n_trials, 1) by adding
@@ -76,15 +81,19 @@ class ExpandDimension(ParameterAdaptation):
     --------
     >>> transform = ExpandDimension(["a", "t"])
     >>> theta = {"a": np.array([1.0, 2.0]), "t": np.array([0.3, 0.3])}
-    >>> theta = transform.apply(theta, {}, 2)
+    >>> theta = transform.apply(theta)
     >>> theta["a"].shape  # (2, 1)
-    >>> theta["t"].shape  # (2, 1)
     """
 
     def __init__(self, param_names: list[str]):
         self.param_names = param_names
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Expand dimensions of specified parameters."""
         for param in self.param_names:
             if param in theta:
@@ -92,12 +101,11 @@ class ExpandDimension(ParameterAdaptation):
         return theta
 
 
-class ColumnStackParameters(ParameterAdaptation):
+class ColumnStackParameters(ParameterTransform):
     """Stack multiple parameters into a single multi-column array.
 
     Takes individual parameters (e.g., v0, v1, v2) and stacks them column-wise
-    into a single array (e.g., v with shape (n_trials, 3)). Original parameters
-    are optionally deleted after stacking.
+    into a single array (e.g., v with shape (n_trials, 3)).
 
     Parameters
     ----------
@@ -112,9 +120,8 @@ class ColumnStackParameters(ParameterAdaptation):
     --------
     >>> transform = ColumnStackParameters(["v0", "v1", "v2"], "v")
     >>> theta = {"v0": [0.5], "v1": [0.6], "v2": [0.7]}
-    >>> theta = transform.apply(theta, {}, 1)
+    >>> theta = transform.apply(theta)
     >>> theta["v"]  # array([[0.5, 0.6, 0.7]])
-    >>> "v0" in theta  # False (deleted)
     """
 
     def __init__(
@@ -124,27 +131,25 @@ class ColumnStackParameters(ParameterAdaptation):
         self.target_param = target_param
         self.delete_sources = delete_sources
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Stack parameters column-wise."""
-        # Check if all source params exist
         if all(param in theta for param in self.source_params):
             theta[self.target_param] = np.column_stack(
                 [theta[param] for param in self.source_params]
             )
-
-            # Optionally delete source parameters
             if self.delete_sources:
                 for param in self.source_params:
                     del theta[param]
-
         return theta
 
 
-class RenameParameter(ParameterAdaptation):
+class RenameParameter(ParameterTransform):
     """Rename a parameter and optionally transform its value.
-
-    Changes the name of a parameter in theta. Can optionally apply a
-    transformation function to the value during renaming.
 
     Parameters
     ----------
@@ -153,23 +158,14 @@ class RenameParameter(ParameterAdaptation):
     new_name : str
         New parameter name
     transform_fn : Callable or None, optional
-        Optional function to apply to the value during renaming.
-        Should accept a numpy array and return a numpy array.
+        Optional function to apply to the value during renaming
 
     Examples
     --------
-    >>> # Simple rename
-    >>> transform = RenameParameter("A", "z")
+    >>> transform = RenameParameter("A", "z", lambda x: np.expand_dims(x, axis=1))
     >>> theta = {"A": np.array([0.5])}
-    >>> theta = transform.apply(theta, {}, 1)
+    >>> theta = transform.apply(theta)
     >>> "z" in theta  # True
-    >>> "A" in theta  # False
-
-    >>> # Rename with transformation
-    >>> transform = RenameParameter(
-    ...     "A", "z",
-    ...     transform_fn=lambda x: np.expand_dims(x, axis=1)
-    ... )
     """
 
     def __init__(
@@ -182,7 +178,12 @@ class RenameParameter(ParameterAdaptation):
         self.new_name = new_name
         self.transform_fn = transform_fn
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Rename parameter and optionally transform its value."""
         if self.old_name in theta:
             value = theta.pop(self.old_name)
@@ -192,11 +193,8 @@ class RenameParameter(ParameterAdaptation):
         return theta
 
 
-class DeleteParameters(ParameterAdaptation):
+class DeleteParameters(ParameterTransform):
     """Delete specified parameters from theta.
-
-    Removes parameters from the theta dictionary. Silently ignores parameters
-    that don't exist.
 
     Parameters
     ----------
@@ -207,49 +205,42 @@ class DeleteParameters(ParameterAdaptation):
     --------
     >>> transform = DeleteParameters(["A", "b"])
     >>> theta = {"v": [0.5], "A": [0.5], "b": [1.0]}
-    >>> theta = transform.apply(theta, {}, 1)
+    >>> theta = transform.apply(theta)
     >>> "A" in theta  # False
-    >>> "b" in theta  # False
-    >>> "v" in theta  # True
     """
 
     def __init__(self, param_names: list[str]):
         self.param_names = param_names
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Delete specified parameters."""
         for param in self.param_names:
-            theta.pop(param, None)  # Remove if exists, do nothing if not
+            theta.pop(param, None)
         return theta
 
 
-class SetZeroArray(ParameterAdaptation):
+class SetZeroArray(ParameterTransform):
     """Set a parameter to an array of zeros.
-
-    Creates a zero-filled array with specified shape. Commonly used for
-    models that compute drift dynamically.
 
     Parameters
     ----------
     param_name : str
         Name of the parameter to set
     shape : tuple or None, optional
-        Shape of the array. If None, creates shape (n_trials,).
-        Can use n_trials as a placeholder, e.g., (n_trials, 2).
+        Shape of the array. Use None for n_trials dimension.
     dtype : np.dtype, optional
         Data type for the array. Defaults to np.float32.
 
     Examples
     --------
-    >>> # Single value per trial
     >>> transform = SetZeroArray("v")
     >>> theta = transform.apply({}, {}, n_trials=5)
     >>> theta["v"].shape  # (5,)
-
-    >>> # Multiple values per trial
-    >>> transform = SetZeroArray("v", shape=(None, 2))
-    >>> theta = transform.apply({}, {}, n_trials=5)
-    >>> theta["v"].shape  # (5, 2)
     """
 
     def __init__(
@@ -259,23 +250,25 @@ class SetZeroArray(ParameterAdaptation):
         self.shape = shape
         self.dtype = dtype
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Set parameter to zero array."""
+        if n_trials is None:
+            n_trials = 1
         if self.shape is None:
-            # Simple 1D array
             theta[self.param_name] = np.zeros(n_trials, dtype=self.dtype)
         else:
-            # Replace None with n_trials in shape
             actual_shape = tuple(n_trials if dim is None else dim for dim in self.shape)
             theta[self.param_name] = np.zeros(actual_shape, dtype=self.dtype)
         return theta
 
 
-class TileArray(ParameterAdaptation):
+class TileArray(ParameterTransform):
     """Tile a constant value across trials.
-
-    Creates an array by tiling a constant value n_trials times.
-    Similar to SetDefaultValue but always creates the parameter.
 
     Parameters
     ----------
@@ -303,29 +296,33 @@ class TileArray(ParameterAdaptation):
         self.value = value
         self.dtype = dtype
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Tile value across trials."""
+        if n_trials is None:
+            n_trials = 1
         if isinstance(self.value, (int, float)):
             theta[self.param_name] = np.tile(
                 np.array([self.value], dtype=self.dtype), n_trials
             )
         else:
-            # Array-like value
             value_array = np.array(self.value, dtype=self.dtype)
             if value_array.ndim == 0:
-                # Scalar array
                 theta[self.param_name] = np.tile(value_array, n_trials)
             else:
-                # Multi-dimensional - tile along first axis
                 theta[self.param_name] = np.tile(value_array, (n_trials, 1))
         return theta
 
 
-class ApplyMapping(ParameterAdaptation):
+class ApplyMapping(ParameterTransform):
     """Apply a mapping function to transform a parameter.
 
     Uses a mapping from model_config to transform a parameter value.
-    Commonly used for random variable distributions (e.g., turning st into t_dist).
+    Commonly used for random variable distributions.
 
     Parameters
     ----------
@@ -334,23 +331,11 @@ class ApplyMapping(ParameterAdaptation):
     target_param : str
         Parameter to write to
     mapping_key : str
-        Key in model_config["simulator_param_mappings"] containing the mapping function
+        Key in model_config["simulator_param_mappings"]
     additional_sources : list[str], optional
         Additional parameters to pass to the mapping function
     delete_source : bool, default=False
         Whether to delete the source parameter after mapping
-
-    Examples
-    --------
-    >>> # In model_config:
-    >>> # "simulator_param_mappings": {
-    >>> #     "t_dist": lambda st: scipy.stats.uniform(0, st)
-    >>> # }
-    >>>
-    >>> transform = ApplyMapping("st", "t_dist", "t_dist")
-    >>> theta = {"st": np.array([0.5])}
-    >>> theta = transform.apply(theta, model_config, 1)
-    >>> # theta["t_dist"] is now a distribution object
     """
 
     def __init__(
@@ -367,46 +352,39 @@ class ApplyMapping(ParameterAdaptation):
         self.additional_sources = additional_sources or []
         self.delete_source = delete_source
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Apply mapping function to transform parameter."""
-        if self.source_param in theta:
-            # Get mapping function from config
+        if self.source_param in theta and model_config is not None:
             mappings = model_config.get("simulator_param_mappings", {})
             if self.mapping_key in mappings:
                 mapping_fn = mappings[self.mapping_key]
-
-                # Collect arguments
                 args = [theta[self.source_param]]
                 for param in self.additional_sources:
                     if param in theta:
                         args.append(theta[param])
-
-                # Apply mapping
                 theta[self.target_param] = mapping_fn(*args)
-
-                # Optionally delete source
                 if self.delete_source:
                     del theta[self.source_param]
-
         return theta
 
 
-class ConditionalAdaptation(ParameterAdaptation):
-    """Apply a transformation only if a condition is met.
-
-    Wraps another transformation and only applies it if the condition
-    function returns True.
+class ConditionalAdaptation(ParameterTransform):
+    """Apply a transform only if a condition is met.
 
     Parameters
     ----------
     condition : Callable
         Function that takes (theta, model_config, n_trials) and returns bool
-    transformation : ParameterAdaptation
-        Transformation to apply if condition is True
+    transformation : ParameterTransform
+        Transform to apply if condition is True
 
     Examples
     --------
-    >>> # Only expand dimension if parameter exists
     >>> transform = ConditionalAdaptation(
     ...     condition=lambda theta, cfg, n: "a" in theta,
     ...     transformation=ExpandDimension(["a"])
@@ -415,44 +393,39 @@ class ConditionalAdaptation(ParameterAdaptation):
 
     def __init__(
         self,
-        condition: Callable[[dict, dict, int], bool],
-        transformation: ParameterAdaptation,
+        condition: Callable[[dict, dict | None, int | None], bool],
+        transformation: ParameterTransform,
     ):
         self.condition = condition
         self.transformation = transformation
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
-        """Apply transformation if condition is met."""
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
+        """Apply transform if condition is met."""
         if self.condition(theta, model_config, n_trials):
             theta = self.transformation.apply(theta, model_config, n_trials)
         return theta
 
     def __repr__(self) -> str:
-        """String representation."""
         return f"ConditionalAdaptation({self.transformation})"
 
 
-class LambdaAdaptation(ParameterAdaptation):
-    """Wrap a lambda or callable function as a transformation.
-
-    This allows using simple lambda functions in transformation pipelines
-    without creating a full class for each one.
+class LambdaAdaptation(ParameterTransform):
+    """Wrap a lambda or callable function as a transform.
 
     Parameters
     ----------
     func : Callable
         Function with signature: func(theta, model_config, n_trials) → theta
     name : str, optional
-        Optional name for the transformation (for debugging)
+        Optional name for debugging
 
     Examples
     --------
-    >>> # Simple lambda
-    >>> transform = LambdaAdaptation(
-    ...     lambda theta, cfg, n: theta.update({"t": np.zeros(n)}) or theta
-    ... )
-    >>>
-    >>> # Named lambda for clarity
     >>> transform = LambdaAdaptation(
     ...     lambda theta, cfg, n: theta.update({"nact": 3}) or theta,
     ...     name="set_nact_to_3"
@@ -460,15 +433,21 @@ class LambdaAdaptation(ParameterAdaptation):
     """
 
     def __init__(
-        self, func: Callable[[dict, dict, int], dict], name: str | None = None
+        self,
+        func: Callable[[dict, dict | None, int | None], dict],
+        name: str | None = None,
     ):
         self.func = func
         self.name = name or "lambda"
 
-    def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+    def apply(
+        self,
+        theta: dict[str, Any],
+        model_config: dict[str, Any] | None = None,
+        n_trials: int | None = None,
+    ) -> dict[str, Any]:
         """Apply the wrapped function."""
         return self.func(theta, model_config, n_trials)
 
     def __repr__(self) -> str:
-        """String representation."""
         return f"LambdaAdaptation(name='{self.name}')"

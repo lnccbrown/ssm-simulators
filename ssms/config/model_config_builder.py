@@ -6,10 +6,20 @@ model configurations for use with the Simulator class.
 """
 
 from collections.abc import Callable
+from copy import deepcopy
 
 from ssms.config.model_registry import get_model_registry
 from ssms.config.boundary_registry import get_boundary_registry
 from ssms.config.drift_registry import get_drift_registry
+
+
+# Centralized configuration for the deadline parameter variant
+# These values are used when adding deadline support to any model
+DEADLINE_PARAM_CONFIG = {
+    "name": "deadline",
+    "default_bounds": (0.001, 10.0),
+    "default_value": 10.0,
+}
 
 
 class ModelConfigBuilder:
@@ -52,10 +62,14 @@ class ModelConfigBuilder:
     def from_model(model_name: str, **overrides) -> dict:
         """Create configuration starting from an existing model.
 
+        This method automatically parses variant suffixes like "_deadline"
+        from the model name and applies the appropriate transformations.
+
         Parameters
         ----------
         model_name : str
-            Name of the base model (e.g., "ddm", "angle", "lca_3")
+            Name of the model, optionally with variant suffixes.
+            Examples: "ddm", "angle", "ddm_deadline", "angle_deadline"
         **overrides
             Configuration fields to override. Common options:
             - params : list[str] - Parameter names
@@ -73,28 +87,42 @@ class ModelConfigBuilder:
         Returns
         -------
         dict
-            Configuration dictionary
+            Configuration dictionary with any variants applied
 
         Raises
         ------
         ValueError
-            If model_name is not recognized
+            If the base model name is not recognized
 
         Examples
         --------
         >>> config = ModelConfigBuilder.from_model("ddm",
         ...                                     param_bounds=[[-4, 0.3, 0.1, 0],
         ...                                                   [4, 3.0, 0.9, 2.0]])
+
+        >>> # With deadline variant
+        >>> config = ModelConfigBuilder.from_model("ddm_deadline")
+        >>> "deadline" in config["params"]
+        True
         """
+        # Parse variant suffixes from model name
+        base_model = model_name
+        has_deadline = False
+
+        if "_deadline" in model_name:
+            has_deadline = True
+            base_model = model_name.replace("_deadline", "")
+
+        # Look up base model in registry
         registry = get_model_registry()
-        if not registry.has_model(model_name):
+        if not registry.has_model(base_model):
             available = registry.list_models()
             raise ValueError(
-                f"Unknown model '{model_name}'. "
+                f"Unknown model '{base_model}'. "
                 f"Available models: {available[:10]}... ({len(available)} total)"
             )
 
-        config = registry.get(model_name)  # Already returns a deep copy
+        config = registry.get(base_model)  # Already returns a deep copy
         config.update(overrides)
 
         # If param_bounds was overridden, update param_bounds_dict accordingly
@@ -104,6 +132,10 @@ class ModelConfigBuilder:
             # Remove old param_bounds_dict to force re-normalization
             config.pop("param_bounds_dict", None)
             config = _normalize_param_bounds(config)
+
+        # Apply deadline variant if requested
+        if has_deadline:
+            config = ModelConfigBuilder.with_deadline(config)
 
         return config
 
@@ -433,3 +465,207 @@ class ModelConfigBuilder:
             raise ValueError("drift must be string name or callable")
 
         return config
+
+    @staticmethod
+    def with_deadline(config: dict) -> dict:
+        """Add deadline parameter to a model configuration.
+
+        Creates a NEW configuration with the deadline parameter added.
+        This is an immutable operation - the original config is not modified.
+
+        The deadline parameter allows models to incorporate response deadlines,
+        where trials are terminated if no response is made within the deadline.
+
+        This method is idempotent - calling it on a config that already has
+        the deadline parameter will return an equivalent config.
+
+        Parameters
+        ----------
+        config : dict
+            Model configuration to extend with deadline support
+
+        Returns
+        -------
+        dict
+            New configuration with deadline parameter added. Includes:
+            - "deadline" appended to params list
+            - Updated param_bounds (both list and dict formats)
+            - Updated default_params
+            - "_deadline" suffix added to name
+            - Incremented n_params
+            - "deadline" metadata flag set to True
+
+        Examples
+        --------
+        >>> base_config = ModelConfigBuilder.from_model("ddm")
+        >>> deadline_config = ModelConfigBuilder.with_deadline(base_config)
+        >>> "deadline" in deadline_config["params"]
+        True
+        >>> deadline_config["name"]
+        'ddm_deadline'
+        """
+        # Check if deadline is already present (idempotent)
+        if "deadline" in config.get("params", []):
+            return deepcopy(config)
+
+        # Create a deep copy to avoid mutating the original
+        new_config = deepcopy(config)
+
+        deadline_name = DEADLINE_PARAM_CONFIG["name"]
+        deadline_bounds = DEADLINE_PARAM_CONFIG["default_bounds"]
+        deadline_default = DEADLINE_PARAM_CONFIG["default_value"]
+
+        # Add deadline to params list
+        new_config["params"] = new_config.get("params", []) + [deadline_name]
+
+        # Update n_params
+        new_config["n_params"] = new_config.get("n_params", 0) + 1
+
+        # Update name with _deadline suffix (if not already present)
+        current_name = new_config.get("name", "")
+        if not current_name.endswith("_deadline"):
+            new_config["name"] = current_name + "_deadline"
+
+        # Update param_bounds based on format (list or dict)
+        if "param_bounds" in new_config:
+            bounds = new_config["param_bounds"]
+            if isinstance(bounds, list) and len(bounds) == 2:
+                # List format: [[lower bounds], [upper bounds]]
+                new_config["param_bounds"] = [
+                    bounds[0] + [deadline_bounds[0]],
+                    bounds[1] + [deadline_bounds[1]],
+                ]
+            elif isinstance(bounds, dict):
+                # Dict format: {param: (lower, upper)}
+                new_config["param_bounds"] = {**bounds, deadline_name: deadline_bounds}
+
+        # Update param_bounds_dict
+        if "param_bounds_dict" in new_config:
+            new_config["param_bounds_dict"] = {
+                **new_config["param_bounds_dict"],
+                deadline_name: deadline_bounds,
+            }
+        elif "param_bounds" in new_config:
+            # Regenerate param_bounds_dict from updated param_bounds
+            from ssms.config._modelconfig import _normalize_param_bounds
+
+            # Remove existing to force regeneration
+            new_config.pop("param_bounds_dict", None)
+            new_config = _normalize_param_bounds(new_config)
+
+        # Update default_params
+        if "default_params" in new_config:
+            new_config["default_params"] = new_config["default_params"] + [
+                deadline_default
+            ]
+
+        # Add metadata flag indicating this is a deadline variant
+        new_config["deadline"] = True
+
+        return new_config
+
+    @staticmethod
+    def get_transforms(config: dict, phase: str) -> list:
+        """Get transforms for a specific phase from model config.
+
+        This method extracts parameter transforms from the unified
+        `parameter_transforms` field in the model configuration.
+
+        Parameters
+        ----------
+        config : dict
+            Model configuration dictionary
+        phase : str
+            Either 'sampling' or 'simulation'
+
+        Returns
+        -------
+        list
+            List of transform instances (empty if none defined)
+
+        Examples
+        --------
+        >>> config = {
+        ...     "name": "lba_angle_3",
+        ...     "parameter_transforms": {
+        ...         "sampling": [SwapIfLessConstraint("a", "z")],
+        ...         "simulation": [ColumnStackParameters(["v0", "v1"], "v")],
+        ...     }
+        ... }
+        >>> sampling_transforms = ModelConfigBuilder.get_transforms(config, "sampling")
+        >>> len(sampling_transforms)
+        1
+        """
+        if phase not in ("sampling", "simulation"):
+            raise ValueError(f"phase must be 'sampling' or 'simulation', got '{phase}'")
+
+        transforms = config.get("parameter_transforms", {})
+        return transforms.get(phase, [])
+
+    @staticmethod
+    def get_sampling_transforms(config: dict) -> list:
+        """Get parameter sampling transforms from model config.
+
+        These transforms are applied during the parameter sampling stage of the
+        training data generation workflow. They enforce parameter relationships
+        (e.g., a > z) when generating synthetic training data for likelihood
+        approximation networks.
+
+        Note: These are NOT directly relevant for basic Simulator usage, which
+        uses simulation transforms via ParameterSimulatorAdapters instead.
+
+        Parameters
+        ----------
+        config : dict
+            Model configuration dictionary
+
+        Returns
+        -------
+        list
+            List of transform/constraint instances (empty if none defined)
+
+        Examples
+        --------
+        >>> config = {
+        ...     "parameter_transforms": {
+        ...         "sampling": [SwapIfLessConstraint("a", "z")],
+        ...     }
+        ... }
+        >>> transforms = ModelConfigBuilder.get_sampling_transforms(config)
+        """
+        return ModelConfigBuilder.get_transforms(config, "sampling")
+
+    @staticmethod
+    def get_simulation_transforms(config: dict) -> list:
+        """Get simulation transforms from model config.
+
+        These transforms are applied via ParameterSimulatorAdapters when running
+        the basic Simulator. They prepare user-provided parameters for the
+        low-level C/Cython simulators (e.g., stacking v0, v1, v2 into a single
+        v array, expanding dimensions).
+
+        Parameters
+        ----------
+        config : dict
+            Model configuration dictionary
+
+        Returns
+        -------
+        list
+            List of transform instances (empty if none defined)
+
+        Examples
+        --------
+        >>> config = {
+        ...     "parameter_transforms": {
+        ...         "simulation": [
+        ...             ColumnStackParameters(["v0", "v1", "v2"], "v"),
+        ...             ExpandDimension(["a", "z"]),
+        ...         ],
+        ...     }
+        ... }
+        >>> transforms = ModelConfigBuilder.get_simulation_transforms(config)
+        >>> len(transforms)
+        2
+        """
+        return ModelConfigBuilder.get_transforms(config, "simulation")

@@ -1,7 +1,15 @@
 """Race model configurations."""
 
+import numpy as np
+
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import (
+    ColumnStackParameters,
+    ExpandDimension,
+    SetZeroArray,
+    LambdaAdaptation,
+)
 
 
 def get_race_2_config():
@@ -21,6 +29,14 @@ def get_race_2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                ColumnStackParameters(["z0", "z1"], "z", delete_sources=False),
+                ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -41,6 +57,20 @@ def get_race_no_bias_2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"], theta["z"]])}
+                    )
+                    or theta,
+                    name="duplicate_z_2",
+                ),
+                ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -61,6 +91,14 @@ def get_race_no_z_2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 2)),
+                ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -81,6 +119,20 @@ def get_race_no_bias_angle_2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"], theta["z"]])}
+                    )
+                    or theta,
+                    name="duplicate_z_2",
+                ),
+                ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -101,6 +153,14 @@ def get_race_no_z_angle_2_config():
         "choices": [0, 1],
         "n_particles": 2,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 2)),
+                ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -121,6 +181,14 @@ def get_race_3_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                ColumnStackParameters(["z0", "z1", "z2"], "z", delete_sources=False),
+                ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -141,6 +209,20 @@ def get_race_no_bias_3_config():
         "nchoices": 3,
         "choices": [0, 1, 2],
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
+                    )
+                    or theta,
+                    name="duplicate_z_3",
+                ),
+                ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -161,6 +243,14 @@ def get_race_no_z_3_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 3)),
+                ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -181,6 +271,20 @@ def get_race_no_bias_angle_3_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
+                    )
+                    or theta,
+                    name="duplicate_z_3",
+                ),
+                ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -201,6 +305,14 @@ def get_race_no_z_angle_3_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 3)),
+                ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -221,6 +333,18 @@ def get_race_4_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                ColumnStackParameters(
+                    ["z0", "z1", "z2", "z3"], "z", delete_sources=False
+                ),
+                ColumnStackParameters(
+                    ["v0", "v1", "v2", "v3"], "v", delete_sources=False
+                ),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -241,6 +365,22 @@ def get_race_no_bias_4_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"]] * 4)}
+                    )
+                    or theta,
+                    name="duplicate_z_4",
+                ),
+                ColumnStackParameters(
+                    ["v0", "v1", "v2", "v3"], "v", delete_sources=False
+                ),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -261,6 +401,16 @@ def get_race_no_z_4_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 4)),
+                ColumnStackParameters(
+                    ["v0", "v1", "v2", "v3"], "v", delete_sources=False
+                ),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -281,6 +431,22 @@ def get_race_no_bias_angle_4_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"z": np.column_stack([theta["z"]] * 4)}
+                    )
+                    or theta,
+                    name="duplicate_z_4",
+                ),
+                ColumnStackParameters(
+                    ["v0", "v1", "v2", "v3"], "v", delete_sources=False
+                ),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }
 
 
@@ -301,4 +467,14 @@ def get_race_no_z_angle_4_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 4,
         "simulator": cssm.race_model,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                SetZeroArray("z", shape=(None, 4)),
+                ColumnStackParameters(
+                    ["v0", "v1", "v2", "v3"], "v", delete_sources=False
+                ),
+                ExpandDimension(["t", "a"]),
+            ],
+        },
     }

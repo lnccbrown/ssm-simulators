@@ -163,6 +163,11 @@ This system ensures new models are discoverable, validated, and work seamlessly 
    - `ModelConfigBuilder`: Constructs configs from names/overrides
    - Handles validation and defaults
 
+5. **Parameter Transforms** (unified pattern)
+   - Defined directly in model config under `parameter_transforms`
+   - `sampling`: Applied during training data generation (e.g., ensure `a > z`)
+   - `simulation`: Applied when using `Simulator` class (e.g., stack params into arrays)
+
 ### Example: How "ddm" Executes
 
 1. **User calls**: `Simulator("ddm")`
@@ -284,10 +289,18 @@ def get_collapsing_ddm_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound,  # Reuse existing simulator!
+        # Parameter transforms defined inline (simplified pattern!)
+        "parameter_transforms": {
+            "sampling": [],    # No sampling constraints needed
+            "simulation": [],  # DDM uses standard params, no transforms needed
+        },
     }
 ```
 
-**Key Insight**: We're reusing `cssm.ddm_flexbound`—no new simulation code needed!
+**Key Insights**:
+- We're reusing `cssm.ddm_flexbound`—no new simulation code needed!
+- The `parameter_transforms` field is where you define any parameter processing logic
+- For simple models like this, both lists can be empty
 
 ### Step 4: Register Your Model
 
@@ -571,6 +584,11 @@ def get_shifted_wald_config():
         "choices": [1],
         "n_particles": 1,
         "simulator": shifted_wald_simulator,  # Python function
+        # Define any parameter transforms here
+        "parameter_transforms": {
+            "sampling": [],    # No sampling constraints
+            "simulation": [],  # No simulation transforms needed
+        },
     }
 ```
 

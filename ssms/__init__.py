@@ -6,11 +6,7 @@ from . import config
 from . import support_utils
 from . import hssm_support
 from .basic_simulators import Simulator
-from .dataset_generators.parameter_samplers import (
-    register_constraint_class,
-    register_constraint_function,
-    get_registry,
-)
+from .config import get_default_generator_config
 
 __version__ = importlib.metadata.version("ssm-simulators")
 
@@ -21,7 +17,5 @@ __all__ = [
     "support_utils",
     "hssm_support",
     "Simulator",
-    "register_constraint_class",
-    "register_constraint_function",
-    "get_registry",
+    "get_default_generator_config",
 ]

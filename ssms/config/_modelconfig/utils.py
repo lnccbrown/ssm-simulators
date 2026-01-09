@@ -30,6 +30,8 @@ def _new_config(
     choices,
     n_particles,
     simulator,
+    sampling_transforms=None,
+    simulation_transforms=None,
 ):
     return {
         "name": name,
@@ -45,4 +47,8 @@ def _new_config(
         "choices": choices,
         "n_particles": n_particles,
         "simulator": simulator,
+        "parameter_transforms": {
+            "sampling": sampling_transforms or [],
+            "simulation": simulation_transforms or [],
+        },
     }

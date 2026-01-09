@@ -156,11 +156,15 @@ def test_model_config(model_name):
 def test_bad_inputs():
     model_conf = model_config["ddm"]
 
-    with pytest.raises(ValueError):
-        TrainingDataGenerator(config=gen_config, model_config=None)
-
+    # Test that config=None raises an error
     with pytest.raises(ValueError):
         TrainingDataGenerator(config=None, model_config=model_conf)
+
+    # Test that model_config=None without a 'model' field in generator_config raises error
+    gen_config_no_model = deepcopy(gen_config)
+    del gen_config_no_model["model"]
+    with pytest.raises(ValueError):
+        TrainingDataGenerator(config=gen_config_no_model, model_config=None)
 
 
 # ============================================================================

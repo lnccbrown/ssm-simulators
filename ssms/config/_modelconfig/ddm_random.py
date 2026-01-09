@@ -6,6 +6,7 @@ import scipy.stats as sps
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import ApplyMapping, LambdaAdaptation
 
 
 def get_ddm_st_config():
@@ -33,6 +34,22 @@ def get_ddm_st_config():
             "t_dist": lambda st: functools.partial(
                 sps.uniform.rvs, loc=(-1) * st, scale=2 * st
             ),
+        },
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {
+                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                        }
+                    )
+                    or theta,
+                    name="set_fixed_params",
+                ),
+                ApplyMapping("st", "t_dist", "t_dist"),
+            ],
         },
     }
 
@@ -68,6 +85,23 @@ def get_ddm_truncnormt_config():
                 scale=st,
             ),
         },
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {
+                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                            "t": np.array([0], dtype=np.float32),
+                        }
+                    )
+                    or theta,
+                    name="set_fixed_params_and_zero_t",
+                ),
+                ApplyMapping("mt", "t_dist", "t_dist", additional_sources=["st"]),
+            ],
+        },
     }
 
 
@@ -100,6 +134,25 @@ def get_ddm_rayleight_config():
                 scale=st,
             ),
         },
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {
+                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                            "t": (
+                                np.ones(n) * cfg["simulator_fixed_params"]["t"]
+                            ).astype(np.float32),
+                        }
+                    )
+                    or theta,
+                    name="set_fixed_params_and_t",
+                ),
+                ApplyMapping("st", "t_dist", "t_dist"),
+            ],
+        },
     }
 
 
@@ -127,5 +180,21 @@ def get_ddm_sdv_config():
                 loc=0,
                 scale=sv,
             ),
+        },
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {
+                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                            "t_dist": cfg["simulator_fixed_params"]["t_dist"],
+                        }
+                    )
+                    or theta,
+                    name="set_fixed_dists",
+                ),
+                ApplyMapping("sv", "v_dist", "v_dist"),
+            ],
         },
     }

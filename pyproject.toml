@@ -10,8 +10,7 @@ authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
 ]
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = {text = "MIT"}
 requires-python = ">3.10,<3.14" # for compatibility with lanfactory
 dependencies = [
     "scipy >= 1.6.3",
@@ -46,6 +45,7 @@ dev = [
     "pytest-xdist>=3.6.1",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
+    "nbmake>=1.5.0",
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
@@ -71,6 +71,7 @@ dev = [
     "pytest-xdist>=3.6.1",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
+    "nbmake>=1.5.0",
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
@@ -107,6 +108,9 @@ addopts = [
     "--timer-top-n=25",
     "--reruns=2",
     "--reruns-delay=1",
+]
+markers = [
+    "notebooks: mark test as a notebook test (skipped unless --run-notebooks is passed)",
 ]
 
 [tool.ruff]

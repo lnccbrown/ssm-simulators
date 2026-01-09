@@ -2,6 +2,9 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import LambdaAdaptation
+
+import numpy as np
 
 
 def get_ddm_seq2_config():
@@ -21,6 +24,10 @@ def get_ddm_seq2_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -38,6 +45,24 @@ def get_ddm_seq2_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -68,6 +93,24 @@ def get_ddm_seq2_conflict_gamma_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -88,6 +131,24 @@ def get_ddm_seq2_angle_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -108,4 +169,22 @@ def get_ddm_seq2_weibull_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_seq2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }

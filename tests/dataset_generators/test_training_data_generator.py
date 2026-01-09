@@ -24,15 +24,59 @@ class TestTrainingDataGeneratorInitialization:
         with pytest.raises(ValueError, match="No config specified"):
             TrainingDataGenerator(config=None)
 
-    def test_init_with_dict_config_but_no_model_config_raises_error(self):
-        """Test that dict config without model_config raises ValueError."""
+    def test_init_with_dict_config_auto_derives_model_config(self):
+        """Test that dict config with 'model' field auto-derives model_config."""
+        gen_config = get_default_generator_config("lan", model="ddm")
+        gen_config["pipeline"]["n_cpus"] = 1  # Avoid psutil issues in tests
+
+        # Should auto-derive model_config from generator_config["model"]
+        gen = TrainingDataGenerator(config=gen_config, model_config=None)
+
+        assert gen.model_config is not None
+        assert gen.model_config["name"] == "ddm"
+        assert "v" in gen.model_config["params"]
+
+    def test_init_with_dict_config_without_model_field_raises_error(self):
+        """Test that dict config without 'model' field and no model_config raises ValueError."""
         gen_config = get_default_generator_config("lan")
+        # Remove the model field to test error handling
+        del gen_config["model"]
 
         with pytest.raises(
             ValueError,
-            match="model_config is required when config is a dictionary",
+            match="model_config is required when generator_config does not contain a 'model' field",
         ):
             TrainingDataGenerator(config=gen_config, model_config=None)
+
+    def test_init_with_deadline_model_auto_derives_correctly(self):
+        """Test that deadline model auto-derives with deadline parameter."""
+        gen_config = get_default_generator_config("lan", model="ddm_deadline")
+        gen_config["pipeline"]["n_cpus"] = 1
+
+        gen = TrainingDataGenerator(config=gen_config)
+
+        assert gen.model_config["name"] == "ddm_deadline"
+        assert "deadline" in gen.model_config["params"]
+        assert "deadline" in gen.model_config["param_bounds_dict"]
+        assert gen.model_config.get("deadline") is True  # metadata flag
+
+    def test_init_with_base_model_config_and_deadline_name_emits_warning(self):
+        """Test backward compat: base model_config + deadline model name emits warning."""
+        gen_config = get_default_generator_config("lan", model="ddm_deadline")
+        gen_config["pipeline"]["n_cpus"] = 1
+
+        # Pass base model_config (without deadline) but deadline model name
+        base_config = model_config["ddm"]
+
+        with pytest.warns(
+            DeprecationWarning,
+            match="Passing a base model_config with a '_deadline' model name",
+        ):
+            gen = TrainingDataGenerator(config=gen_config, model_config=base_config)
+
+        # Should still work (backward compat) with deadline added
+        assert "deadline" in gen.model_config["params"]
+        assert gen.model_config["name"] == "ddm_deadline"
 
     def test_init_with_flat_config_raises_error(self):
         """Test that flat generator_config structure is rejected."""

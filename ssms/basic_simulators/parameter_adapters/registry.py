@@ -268,22 +268,15 @@ _GLOBAL_ADAPTER_REGISTRY: ParameterAdapterRegistry | None = None
 def _get_or_create_global_registry() -> ParameterAdapterRegistry:
     """Get or create the global registry with all built-in model adaptations.
 
-    This function uses lazy initialization to avoid circular import issues.
-    On first call, it imports ModularParameterSimulatorAdapter and uses its
-    _build_default_registry() method to get all the built-in registrations.
-    This keeps the single source of truth in one place.
+    This function uses lazy initialization to create an empty registry.
+    Built-in models now define their transforms directly in model configs
+    (via parameter_transforms.simulation), so the global registry is primarily
+    for custom model registration by users.
     """
     global _GLOBAL_ADAPTER_REGISTRY
 
     if _GLOBAL_ADAPTER_REGISTRY is None:
-        # Import here to avoid circular dependency
-        from ssms.basic_simulators.modular_parameter_simulator_adapter import (
-            ModularParameterSimulatorAdapter,
-        )
-
-        _GLOBAL_ADAPTER_REGISTRY = (
-            ModularParameterSimulatorAdapter._build_default_registry()
-        )
+        _GLOBAL_ADAPTER_REGISTRY = ParameterAdapterRegistry()
 
     return _GLOBAL_ADAPTER_REGISTRY
 

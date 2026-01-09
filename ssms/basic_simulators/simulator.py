@@ -12,10 +12,9 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 
-from ssms.basic_simulators.parameter_simulator_adapter import (
-    SimpleParameterSimulatorAdapter,
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
 )
-from ssms.config import model_config
 from ssms.config import get_boundary_registry, get_drift_registry
 
 _global_rng = default_rng()
@@ -606,22 +605,24 @@ def simulator(
     # (if supplied as 2d array or list in the first place,
     # user has to supply the correct ordering to begin with)
 
-    if "_deadline" in model:
-        deadline = True
-        model = model.replace("_deadline", "")
-    else:
-        deadline = False
+    # Use ModelConfigBuilder.from_model() which handles variant suffixes like "_deadline"
+    from ssms.config import ModelConfigBuilder
 
-    model_config_local = deepcopy(model_config[model])
+    model_config_local = ModelConfigBuilder.from_model(model)
 
-    if deadline:
-        model_config_local["params"] += ["deadline"]
+    # Get base model name (without _deadline suffix) for noise handling
+    model_base = model.replace("_deadline", "")
+
+    # Check if this is a deadline model by looking at params
+    is_deadline_model = "deadline" in model_config_local.get("params", [])
 
     if random_state is None:
         random_state = _get_unique_seed()
 
     theta = _preprocess_theta_generic(theta)
-    n_trials, theta = _preprocess_theta_deadline(theta, deadline, model_config_local)
+    n_trials, theta = _preprocess_theta_deadline(
+        theta, is_deadline_model, model_config_local
+    )
 
     # Initialize dictionary that collects
     # simulator inputs that are common across simulator functions
@@ -656,20 +657,20 @@ def simulator(
     else:
         if no_noise:
             sigma_noise = 0.0
-        elif "lba" in model and sigma_noise is None:
+        elif "lba" in model_base and sigma_noise is None:
             sigma_noise = 0.1
         elif sigma_noise is None:
             sigma_noise = 1.0
 
     noise_vec = make_noise_vec(sigma_noise, n_trials, model_config_local["n_particles"])
 
-    if "lba" in model:
+    if "lba" in model_base:
         theta["sd"] = noise_vec
     else:
         theta["s"] = noise_vec
 
     # Adapt parameters
-    theta = SimpleParameterSimulatorAdapter().adapt_parameters(
+    theta = ModularParameterSimulatorAdapter().adapt_parameters(
         theta, model_config_local, n_trials
     )
 
@@ -679,7 +680,7 @@ def simulator(
     drift_dict = make_drift_dict(model_config_local, theta)
 
     # Check if parameters are valid
-    validate_ssm_parameters(model, theta)
+    validate_ssm_parameters(model_base, theta)
 
     # Call to the simulator
     x = model_config_local["simulator"](

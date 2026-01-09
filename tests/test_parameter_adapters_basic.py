@@ -313,63 +313,27 @@ class TestRegistry:
 
 
 class TestModularParameterSimulatorAdapter:
-    """Test ModularParameterSimulatorAdapter."""
+    """Test ModularParameterSimulatorAdapter.
 
-    def test_processor_with_default_registry(self):
-        """Test processor uses default registry."""
-        processor = ModularParameterSimulatorAdapter()
-        assert processor.registry is not None
+    The adapter now uses config-defined transforms exclusively.
+    Transforms are defined in model_config['parameter_transforms']['simulation'].
+    """
 
-        # Should have registered models
-        assert processor.registry.has_processor("lba2")
-        assert processor.registry.has_processor("ddm")
+    def test_processor_uses_config_transforms(self):
+        """Test processor uses transforms from model config."""
+        from ssms.config import ModelConfigBuilder
 
-    def test_processor_with_custom_registry(self):
-        """Test processor with custom registry."""
-        custom_registry = ParameterAdapterRegistry()
-        custom_registry.register_model(
-            "custom_model", [SetDefaultValue("custom_param", 42)]
-        )
+        _ = ModularParameterSimulatorAdapter()
+        model_config = ModelConfigBuilder.from_model("lba_angle_3")
 
-        processor = ModularParameterSimulatorAdapter(registry=custom_registry)
-        assert processor.registry.has_processor("custom_model")
+        # Config should have transforms defined
+        transforms = ModelConfigBuilder.get_simulation_transforms(model_config)
+        assert len(transforms) > 0
 
-    def test_process_theta_lba2(self):
-        """Test processing theta for LBA2 model."""
-        processor = ModularParameterSimulatorAdapter()
-        theta = {
-            "v0": np.array([0.5]),
-            "v1": np.array([0.6]),
-            "A": np.array([0.5]),
-            "b": np.array([1.0]),
-        }
-        model_config = {"name": "lba2"}
+    def test_processor_with_empty_transforms(self):
+        """Test processor handles models with empty transforms."""
+        from ssms.config import ModelConfigBuilder
 
-        result = processor.adapt_parameters(theta, model_config, n_trials=1)
-
-        # Should have nact
-        assert "nact" in result
-
-        # Should have stacked v
-        assert "v" in result
-        assert result["v"].shape == (1, 2)
-
-        # Should have renamed and expanded z and a
-        assert "z" in result
-        assert "a" in result
-        assert result["z"].shape == (1, 1)
-        assert result["a"].shape == (1, 1)
-
-        # A and b should be deleted
-        assert "A" not in result
-        assert "b" not in result
-
-        # Should have t set to zero
-        assert "t" in result
-        assert result["t"][0] == 0.0
-
-    def test_process_theta_ddm(self):
-        """Test processing theta for DDM (no transformations)."""
         processor = ModularParameterSimulatorAdapter()
         theta = {
             "v": np.array([0.5]),
@@ -377,7 +341,58 @@ class TestModularParameterSimulatorAdapter:
             "z": np.array([0.5]),
             "t": np.array([0.3]),
         }
-        model_config = {"name": "ddm"}
+        # DDM has empty simulation transforms
+        model_config = ModelConfigBuilder.from_model("ddm")
+
+        result = processor.adapt_parameters(theta, model_config, n_trials=1)
+
+        # Should be unchanged
+        assert result["v"][0] == 0.5
+        assert result["a"][0] == 1.0
+
+    def test_process_theta_lba_angle_3(self):
+        """Test processing theta for lba_angle_3 model using config transforms."""
+        from ssms.config import ModelConfigBuilder
+
+        processor = ModularParameterSimulatorAdapter()
+        theta = {
+            "v0": np.array([0.5]),
+            "v1": np.array([0.6]),
+            "v2": np.array([0.7]),
+            "a": np.array([1.0]),
+            "z": np.array([0.5]),
+            "theta": np.array([0.3]),
+        }
+        # Use the real model config with transforms defined
+        model_config = ModelConfigBuilder.from_model("lba_angle_3")
+
+        result = processor.adapt_parameters(theta, model_config, n_trials=1)
+
+        # Should have stacked v
+        assert "v" in result
+        assert result["v"].shape == (1, 3)
+
+        # Should have expanded a, z, theta
+        assert result["a"].shape == (1, 1)
+        assert result["z"].shape == (1, 1)
+        assert result["theta"].shape == (1, 1)
+
+        # Should have t set to zero
+        assert "t" in result
+        assert result["t"][0] == 0.0
+
+    def test_process_theta_ddm(self):
+        """Test processing theta for DDM (no transformations)."""
+        from ssms.config import ModelConfigBuilder
+
+        processor = ModularParameterSimulatorAdapter()
+        theta = {
+            "v": np.array([0.5]),
+            "a": np.array([1.0]),
+            "z": np.array([0.5]),
+            "t": np.array([0.3]),
+        }
+        model_config = ModelConfigBuilder.from_model("ddm")
 
         result = processor.adapt_parameters(theta, model_config, n_trials=1)
 
@@ -388,7 +403,9 @@ class TestModularParameterSimulatorAdapter:
         assert result["t"][0] == 0.3
 
     def test_process_theta_race_3(self):
-        """Test processing theta for race_3 model."""
+        """Test processing theta for race_3 model using config transforms."""
+        from ssms.config import ModelConfigBuilder
+
         processor = ModularParameterSimulatorAdapter()
         theta = {
             "v0": np.array([0.5]),
@@ -400,7 +417,8 @@ class TestModularParameterSimulatorAdapter:
             "a": np.array([1.0]),
             "t": np.array([0.3]),
         }
-        model_config = {"name": "race_3"}
+        # Use the real model config with transforms defined
+        model_config = ModelConfigBuilder.from_model("race_3")
 
         result = processor.adapt_parameters(theta, model_config, n_trials=1)
 

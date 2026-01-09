@@ -378,3 +378,168 @@ class TestModelConfigBuilder:
 
         with pytest.raises(ValueError, match="drift must be string name or callable"):
             ModelConfigBuilder.add_drift(config, 123)
+
+    # --- Tests for with_deadline() ---
+
+    def test_with_deadline_adds_deadline_param(self):
+        """Test that with_deadline adds deadline to params list."""
+        config = ModelConfigBuilder.from_model("ddm")
+        assert "deadline" not in config["params"]
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert "deadline" in deadline_config["params"]
+        assert deadline_config["params"][-1] == "deadline"
+
+    def test_with_deadline_updates_name(self):
+        """Test that with_deadline appends _deadline suffix to name."""
+        config = ModelConfigBuilder.from_model("ddm")
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert deadline_config["name"] == "ddm_deadline"
+
+    def test_with_deadline_updates_n_params(self):
+        """Test that with_deadline increments n_params."""
+        config = ModelConfigBuilder.from_model("ddm")
+        original_n_params = config["n_params"]
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert deadline_config["n_params"] == original_n_params + 1
+
+    def test_with_deadline_updates_param_bounds_list_format(self):
+        """Test that with_deadline updates param_bounds in list format."""
+        config = ModelConfigBuilder.from_model("ddm")
+        # Ensure we have list format
+        assert isinstance(config["param_bounds"], list)
+        original_lower_len = len(config["param_bounds"][0])
+        original_upper_len = len(config["param_bounds"][1])
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert len(deadline_config["param_bounds"][0]) == original_lower_len + 1
+        assert len(deadline_config["param_bounds"][1]) == original_upper_len + 1
+        # Check deadline bounds are correct (0.001, 10.0)
+        assert deadline_config["param_bounds"][0][-1] == 0.001
+        assert deadline_config["param_bounds"][1][-1] == 10.0
+
+    def test_with_deadline_updates_param_bounds_dict(self):
+        """Test that with_deadline updates param_bounds_dict."""
+        config = ModelConfigBuilder.from_model("ddm")
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert "deadline" in deadline_config["param_bounds_dict"]
+        assert deadline_config["param_bounds_dict"]["deadline"] == (0.001, 10.0)
+
+    def test_with_deadline_updates_default_params(self):
+        """Test that with_deadline appends default value to default_params."""
+        config = ModelConfigBuilder.from_model("ddm")
+        original_defaults_len = len(config["default_params"])
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert len(deadline_config["default_params"]) == original_defaults_len + 1
+        assert deadline_config["default_params"][-1] == 10.0
+
+    def test_with_deadline_sets_metadata_flag(self):
+        """Test that with_deadline sets the deadline metadata flag."""
+        config = ModelConfigBuilder.from_model("ddm")
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+
+        assert deadline_config.get("deadline") is True
+
+    def test_with_deadline_is_immutable(self):
+        """Test that with_deadline does not modify the original config."""
+        config = ModelConfigBuilder.from_model("ddm")
+        original_params = config["params"].copy()
+        original_name = config["name"]
+
+        _ = ModelConfigBuilder.with_deadline(config)
+
+        # Original should be unchanged
+        assert config["params"] == original_params
+        assert config["name"] == original_name
+        assert "deadline" not in config["params"]
+
+    def test_with_deadline_is_idempotent(self):
+        """Test that calling with_deadline twice produces equivalent result."""
+        config = ModelConfigBuilder.from_model("ddm")
+
+        deadline_config = ModelConfigBuilder.with_deadline(config)
+        double_deadline_config = ModelConfigBuilder.with_deadline(deadline_config)
+
+        # Should have exactly one deadline param
+        assert double_deadline_config["params"].count("deadline") == 1
+        assert double_deadline_config["name"] == "ddm_deadline"
+        # n_params should not increase again
+        assert double_deadline_config["n_params"] == deadline_config["n_params"]
+
+    def test_with_deadline_works_with_different_models(self):
+        """Test with_deadline works with various model types."""
+        models_to_test = ["ddm", "angle", "ornstein", "weibull"]
+
+        for model_name in models_to_test:
+            config = ModelConfigBuilder.from_model(model_name)
+            deadline_config = ModelConfigBuilder.with_deadline(config)
+
+            assert "deadline" in deadline_config["params"]
+            assert deadline_config["name"] == f"{model_name}_deadline"
+            assert "deadline" in deadline_config["param_bounds_dict"]
+
+    # --- Tests for from_model() with deadline variant ---
+
+    def test_from_model_with_deadline_suffix(self):
+        """Test from_model parses _deadline suffix correctly."""
+        config = ModelConfigBuilder.from_model("ddm_deadline")
+
+        assert config["name"] == "ddm_deadline"
+        assert "deadline" in config["params"]
+        assert config.get("deadline") is True
+        assert "deadline" in config["param_bounds_dict"]
+
+    def test_from_model_deadline_with_overrides(self):
+        """Test from_model with deadline applies overrides before variant."""
+        custom_bounds = [[-5, 0.2, 0.05, 0, 0.001], [5, 4.0, 0.95, 3.0, 10.0]]
+        config = ModelConfigBuilder.from_model(
+            "ddm_deadline", param_bounds=custom_bounds
+        )
+
+        assert config["name"] == "ddm_deadline"
+        assert "deadline" in config["params"]
+        # Note: overrides are applied before with_deadline, so custom_bounds
+        # should already include deadline bounds
+
+    def test_from_model_deadline_invalid_base_model(self):
+        """Test from_model raises error for unknown base model with deadline."""
+        with pytest.raises(ValueError, match="Unknown model"):
+            ModelConfigBuilder.from_model("nonexistent_deadline")
+
+    def test_from_model_various_models_with_deadline(self):
+        """Test from_model with deadline suffix for various models."""
+        models = ["angle", "ornstein", "weibull", "levy"]
+
+        for model_name in models:
+            config = ModelConfigBuilder.from_model(f"{model_name}_deadline")
+
+            assert config["name"] == f"{model_name}_deadline"
+            assert "deadline" in config["params"]
+            assert config.get("deadline") is True
+
+    def test_from_model_deadline_equivalent_to_manual_pipeline(self):
+        """Test that from_model with deadline produces same result as manual calls."""
+        # Manual pipeline: get base model, then apply with_deadline
+        base_config = ModelConfigBuilder.from_model("ddm")
+        manual_config = ModelConfigBuilder.with_deadline(base_config)
+
+        # Direct call with deadline suffix
+        auto_config = ModelConfigBuilder.from_model("ddm_deadline")
+
+        # Should be equivalent
+        assert manual_config["name"] == auto_config["name"]
+        assert manual_config["params"] == auto_config["params"]
+        assert manual_config["n_params"] == auto_config["n_params"]
+        assert manual_config["param_bounds_dict"] == auto_config["param_bounds_dict"]
+        assert manual_config.get("deadline") == auto_config.get("deadline")
