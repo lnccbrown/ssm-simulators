@@ -33,9 +33,9 @@ DTYPE = np.float32
 
 # LBA Models ------------------------------------
 
-def lba_vanilla(np.ndarray[float, ndim = 2] v, 
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z, 
+def lba_vanilla(np.ndarray[float, ndim = 2] v,
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 1] deadline,
         np.ndarray[float, ndim = 2] sd, # noise sigma
         np.ndarray[float, ndim = 1] t, # non-decision time
@@ -92,32 +92,32 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact)
 
             vs = np.abs(np.random.normal(v_view[k], sd_view[k])) # np.abs() to avoid negative vs
 
             x_t = ([a_view[k]]*nact - zs)/vs
-        
+
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k]  # store reaction time for sample n
 
             # If the rt exceeds the deadline, set rt to -999
             if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999
-        
+
 
     # Build v_dict dynamically
     v_dict = build_param_dict_from_2d_array(v, 'v_', nact)
-    
+
     # LBA models always return full metadata (no return_option)
     minimal_meta = build_minimal_metadata(
         simulator_name='lba_vanilla',
@@ -125,25 +125,25 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
         n_samples=n_samples,
         n_trials=n_trials
     )
-    
+
     sim_config = {'max_t': max_t}
     params = {'a': a, 'z': z, 'deadline': deadline, 'sd': sd, 't': t}
-    
+
     full_meta = build_full_metadata(
         minimal_metadata=minimal_meta,
         params=params,
         sim_config=sim_config,
         extra_params=v_dict
     )
-    
+
     return build_return_dict(rts, choices, full_meta)
 
 
 
 # Simulate (rt, choice) tuples from: Collapsing bound angle LBA Model -----------------------------
-def lba_angle(np.ndarray[float, ndim = 2] v, 
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z,  
+def lba_angle(np.ndarray[float, ndim = 2] v,
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 2] theta,
         np.ndarray[float, ndim = 1] deadline,
         np.ndarray[float, ndim = 2] sd, # noise sigma
@@ -203,19 +203,19 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact)
-            
+
             vs = np.abs(np.random.normal(v_view[k], sd_view[k])) # np.abs() to avoid negative vs
             x_t = ([a_view[k]]*nact - zs)/(vs + np.tan(theta_view[k, 0]))
-        
+
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k] # store reaction time for sample n
 
@@ -225,10 +225,10 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
 
             # if np.min(x_t) <= 0:
             #     print("\n ssms sim error: ", a[k], zs, vs, np.tan(theta[k]))
-    
+
     # Build v_dict dynamically
     v_dict = build_param_dict_from_2d_array(v, 'v_', nact)
-    
+
     # LBA models always return full metadata (no return_option)
     minimal_meta = build_minimal_metadata(
         simulator_name='lba_angle',
@@ -236,28 +236,27 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
         n_samples=n_samples,
         n_trials=n_trials
     )
-    
+
     sim_config = {'max_t': max_t}
     params = {'a': a, 'z': z, 'theta': theta, 'deadline': deadline, 'sd': sd, 't': t}
-    
+
     full_meta = build_full_metadata(
         minimal_metadata=minimal_meta,
         params=params,
         sim_config=sim_config,
         extra_params=v_dict
     )
-    
+
     return build_return_dict(rts, choices, full_meta)
 
 
-# Simulate (rt, choice) tuples from LBA piece-wise model  -----------------------------
-def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL, 
+def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
         np.ndarray[float, ndim = 2] vWM,
-        np.ndarray[float, ndim = 2] a, 
-        np.ndarray[float, ndim = 2] z,  
+        np.ndarray[float, ndim = 2] a,
+        np.ndarray[float, ndim = 2] z,
         np.ndarray[float, ndim = 2] tWM,
         np.ndarray[float, ndim = 1] deadline,
-        np.ndarray[float, ndim = 2] sd, # std dev 
+        np.ndarray[float, ndim = 2] sd, # std dev
         np.ndarray[float, ndim = 1] t, # ndt is supposed to be 0 by default because of parameter identifiability issues
         int nact = 3,
         int n_samples = 2000,
@@ -265,6 +264,47 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
         float max_t = 20,
         **kwargs
         ):
+    """
+    Simulate reaction times and choices from a piecewise RLWM Linear Ballistic Accumulator (LBA) model.
+
+    This LBA model simulates a hybrid of reinforcement learning (RL) and working memory (WM) processes.
+    On each trial, accumulation for each accumulator starts at a random position drawn uniformly
+    between [0, z], with separate drift rates for RL and WM. Before time tWM, only RL accumulates;
+    after tWM, RL and WM accumulate in parallel (summed drift).
+
+    Args:
+        vRL (np.ndarray[float, ndim=2]):
+            RL drift rates for each accumulator and trial.
+        vWM (np.ndarray[float, ndim=2]):
+            WM drift rates for each accumulator and trial.
+        a (np.ndarray[float, ndim=2]):
+            Decision threshold (criterion height) for each trial and accumulator.
+        z (np.ndarray[float, ndim=2]):
+            Starting point upper bound for each trial and accumulator.
+        tWM (np.ndarray[float, ndim=2]):
+            Switching time to parallel RL+WM accumulation (per trial and accumulator).
+        deadline (np.ndarray[float, ndim=1]):
+            Maximum allowed decision time for each trial.
+        sd (np.ndarray[float, ndim=2]):
+            Standard deviation of drift rates for each accumulator and trial.
+        t (np.ndarray[float, ndim=1]):
+            Non-decision time (per trial).
+        nact (int, optional):
+            Number of accumulators (default: 3).
+        n_samples (int, optional):
+            Number of samples to simulate per trial (default: 2000).
+        n_trials (int, optional):
+            Number of simulated trials (default: 1).
+        max_t (float, optional):
+            Maximum time for simulation (default: 20).
+        **kwargs: Additional keyword arguments (unused).
+
+    Returns:
+        dict: Dictionary containing the following keys:
+            'rts': Simulated reaction times (shape: [n_samples, n_trials, 1])
+            'choices': Simulated choices (shape: [n_samples, n_trials, 1])
+            'metadata': Simulation metadata dictionary (full_meta)
+    """
 
     # Param views
     cdef float[:, :] v_RL_view = vRL
@@ -285,14 +325,14 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact).astype(DTYPE)
 
@@ -309,17 +349,17 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
 
             choices_view[n, k, 0] = np.argmin(x_t) # store choices for sample n
             rts_view[n, k, 0] = np.min(x_t) + t_view[k] # store reaction time for sample n
-            
+
             # If the rt exceeds the deadline, set rt to -999
             if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999
-        
 
-    v_dict = {}    
+
+    v_dict = {}
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
-    
+
     # LBA models always return full metadata (no return_option)
     minimal_meta = build_minimal_metadata(
         simulator_name='rlwm_lba_pw_v1',
@@ -327,17 +367,17 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
         n_samples=n_samples,
         n_trials=n_trials
     )
-    
+
     sim_config = {'max_t': max_t}
     params = {'a': a, 'z': z, 'tWM': tWM, 't': t, 'deadline': deadline, 'sd': sd}
-    
+
     full_meta = build_full_metadata(
         minimal_metadata=minimal_meta,
         params=params,
         sim_config=sim_config,
         extra_params=v_dict
     )
-    
+
     return build_return_dict(rts, choices, full_meta)
 
 # Simulate (rt, choice) tuples from: RLWM LBA Race Model without ndt -----------------------------
@@ -408,14 +448,14 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
     cdef float[:, :, :] rts_view = rts
-    
+
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     cdef Py_ssize_t n, k, i
 
     for k in range(n_trials):
-        
+
         for n in range(n_samples):
             zs = np.random.uniform(0, z_view[k], nact).astype(DTYPE)
 
@@ -430,18 +470,18 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
                 choices_view[n, k, 0] = np.argmin(x_t_RL) # store choices for sample n
             else:
                 rts_view[n, k, 0] = np.min(x_t_WM) + t_view[k]  # store reaction time for sample n
-                choices_view[n, k, 0] = np.argmin(x_t_WM) # store choices for sample n  
-            
+                choices_view[n, k, 0] = np.argmin(x_t_WM) # store choices for sample n
+
             # If the rt exceeds the deadline, set rt to -999
             if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999
-        
 
-    v_dict = {}    
+
+    v_dict = {}
     for i in range(nact):
         v_dict['vRL' + str(i)] = vRL[:, i]
         v_dict['vWM' + str(i)] = vWM[:, i]
-    
+
     # LBA models always return full metadata (no return_option)
     minimal_meta = build_minimal_metadata(
         simulator_name='rlwm_lba_race',
@@ -449,21 +489,17 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
         n_samples=n_samples,
         n_trials=n_trials
     )
-    
+
     sim_config = {'max_t': max_t}
     params = {'a': a, 'z': z, 't': t, 'deadline': deadline, 'sd': sd}
-    
+
     full_meta = build_full_metadata(
         minimal_metadata=minimal_meta,
         params=params,
         sim_config=sim_config,
         extra_params=v_dict
     )
-    
+
     return build_return_dict(rts, choices, full_meta)
 
 # ----------------------------------------------------------------------------------------------------
-
-# Simulate (rt, choice) tuples from: DDM WITH FLEXIBLE BOUNDARIES ------------------------------------
-# @cythonboundscheck(False)
-# @cythonwraparound(False)

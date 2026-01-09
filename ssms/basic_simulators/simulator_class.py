@@ -25,13 +25,10 @@ from ssms.basic_simulators.simulator import (
 )
 from ssms.basic_simulators.modular_parameter_simulator_adapter import (
     ModularParameterSimulatorAdapter,
-)
-from ssms.basic_simulators.parameter_simulator_adapter import (
-    AbstractParameterSimulatorAdapter,
+    ParameterSimulatorAdapterProtocol,
 )
 from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
-from ssms.config import model_config, get_boundary_registry, get_drift_registry
-from ssms.config.model_registry import get_model_registry
+from ssms.config import get_boundary_registry, get_drift_registry
 
 
 class Simulator:
@@ -82,7 +79,7 @@ class Simulator:
         boundary: str | Callable | None = None,
         drift: str | Callable | None = None,
         simulator_function: Callable | None = None,
-        parameter_adapter: AbstractParameterSimulatorAdapter | None = None,
+        parameter_adapter: ParameterSimulatorAdapterProtocol | None = None,
         parameter_adaptations: list[ParameterAdaptation] | None = None,
         **config_overrides,
     ):
@@ -106,10 +103,9 @@ class Simulator:
         simulator_function : Callable or None
             Custom simulator function. If provided, this overrides the model's
             default simulator. Must follow the simulator interface contract.
-        parameter_adapter : AbstractParameterSimulatorAdapter or None
+        parameter_adapter : ParameterSimulatorAdapterProtocol or None
             Custom parameter adapter for preparing parameters for simulators. If None, uses
             ModularParameterSimulatorAdapter with default adaptations for the model.
-            Pass SimpleParameterSimulatorAdapter() for legacy behavior.
         parameter_adaptations : list[ParameterAdaptation] or None
             Additional parameter adaptations to apply AFTER the model's default
             adaptations. Useful for adding custom parameter preparation without
@@ -141,9 +137,10 @@ class Simulator:
         >>> from ssms.basic_simulators.parameter_adapters import SetDefaultValue
         >>> sim = Simulator("ddm", parameter_adaptations=[SetDefaultValue("custom_param", 42)])
 
-        Use legacy adapter:
+        Use a custom parameter adapter:
 
-        >>> sim = Simulator("ddm", parameter_adapter=SimpleParameterSimulatorAdapter())
+        >>> custom_adapter = ModularParameterSimulatorAdapter()
+        >>> sim = Simulator("ddm", parameter_adapter=custom_adapter)
         """
         # Set parameter adapter (default to modular)
         self._parameter_adapter = (
@@ -191,26 +188,12 @@ class Simulator:
         # Case 1: Full config dict provided
         if isinstance(model, dict):
             config = deepcopy(model)
-        # Case 2: Model name provided
+        # Case 2: Model name provided (including variants like "_deadline")
         elif isinstance(model, str):
-            # Handle deadline models by stripping the suffix for lookup
-            model_lookup = model.replace("_deadline", "")
+            # Use ModelConfigBuilder.from_model() which handles variant suffixes
+            from ssms.config import ModelConfigBuilder
 
-            # Check custom registry first, then built-in models
-            registry = get_model_registry()
-            if registry.has_model(model_lookup):
-                config = deepcopy(registry.get(model_lookup))
-            elif model_lookup in model_config:
-                config = deepcopy(model_config[model_lookup])
-            else:
-                raise ValueError(
-                    f"Unknown model '{model_lookup}'. Available models: "
-                    f"{list(model_config.keys()) + registry.list_models()}"
-                )
-
-            # Preserve the original name with _deadline if it was provided
-            if "_deadline" in model:
-                config["name"] = model
+            config = ModelConfigBuilder.from_model(model)
         # Case 3: Custom simulator without base model
         elif model is None and simulator_function is not None:
             config = self._create_minimal_config(simulator_function, config_overrides)
@@ -574,18 +557,13 @@ class Simulator:
         ValueError
             If parameters are invalid
         """
-        # Handle deadline models
-        model_name = self._config.get("name", "")
-        if "_deadline" in model_name:
-            deadline = True
-            model_name = model_name.replace("_deadline", "")
-        else:
-            deadline = False
-
+        # Get model config - deadline params are already included if present
+        # (handled by ModelConfigBuilder.from_model() during initialization)
         model_config_local = deepcopy(self._config)
+        model_name = model_config_local.get("name", "").replace("_deadline", "")
 
-        if deadline:
-            model_config_local["params"] += ["deadline"]
+        # Check if this is a deadline model by looking at params
+        is_deadline_model = "deadline" in model_config_local.get("params", [])
 
         if random_state is None:
             random_state = _get_unique_seed()
@@ -593,7 +571,7 @@ class Simulator:
         # Preprocess theta
         theta = _preprocess_theta_generic(theta)
         n_trials, theta = _preprocess_theta_deadline(
-            theta, deadline, model_config_local
+            theta, is_deadline_model, model_config_local
         )
 
         # Build simulation parameters dict
@@ -712,12 +690,12 @@ class Simulator:
         return deepcopy(self._config)
 
     @property
-    def parameter_adapter(self) -> AbstractParameterSimulatorAdapter:
+    def parameter_adapter(self) -> ParameterSimulatorAdapterProtocol:
         """Get the configured parameter adapter.
 
         Returns
         -------
-        AbstractParameterSimulatorAdapter
+        ParameterSimulatorAdapterProtocol
             The parameter adapter instance used for parameter preparation
         """
         return self._parameter_adapter

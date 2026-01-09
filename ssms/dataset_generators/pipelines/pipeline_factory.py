@@ -52,7 +52,7 @@ def create_data_generation_pipeline(
     from ssms.dataset_generators.estimator_builders.kde_builder import (
         KDEEstimatorBuilder,
     )
-    from ssms.dataset_generators.strategies import MixtureTrainingStrategy
+    from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
     # Get estimator type from nested config
     estimator_type = get_nested_config(
@@ -65,7 +65,7 @@ def create_data_generation_pipeline(
             generator_config=generator_config,
             model_config=model_config,
             estimator_builder=KDEEstimatorBuilder,  # Class, not instance!
-            training_strategy=MixtureTrainingStrategy,  # Class, not instance!
+            training_strategy=ResampleMixtureStrategy,  # Class, not instance!
         )
     elif estimator_type == "pyddm":
         # For PyDDM, need the specific builder
@@ -77,7 +77,7 @@ def create_data_generation_pipeline(
             generator_config=generator_config,
             model_config=model_config,
             estimator_builder=PyDDMEstimatorBuilder,  # Class, not instance!
-            training_strategy=MixtureTrainingStrategy,  # Class, not instance!
+            training_strategy=ResampleMixtureStrategy,  # Class, not instance!
         )
     else:
         raise ValueError(

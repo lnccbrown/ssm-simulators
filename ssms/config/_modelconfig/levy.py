@@ -18,6 +18,10 @@ def get_levy_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.levy_flexbound,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -38,4 +42,8 @@ def get_levy_angle_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.levy_flexbound,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }

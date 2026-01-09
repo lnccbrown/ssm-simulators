@@ -1,4 +1,4 @@
-"""Resample mixture training data generation strategy.
+"""Mixture training data generation strategy.
 
 This strategy generates training data by mixing three types of samples:
 1. Samples drawn from the likelihood estimator (KDE or analytical PDF)
@@ -6,6 +6,8 @@ This strategy generates training data by mixing three types of samples:
 3. Uniform samples in negative RT space (to learn the hard boundary at t=0)
 
 This approach helps the network learn both the likelihood surface and its boundaries.
+
+Note: `MixtureTrainingStrategy` is provided as an alias for backward compatibility.
 """
 
 from typing import Any, Dict

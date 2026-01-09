@@ -5,6 +5,8 @@ from copy import deepcopy
 import numpy as np
 from sklearn.neighbors import KernelDensity
 
+from ssms.basic_simulators.simulator import OMISSION_SENTINEL
+
 """
     This module contains a class for generating kdes from data.
 """
@@ -189,7 +191,7 @@ class LogKDE:
         log_eval: bool = True,
         lb: float = -66.774,
         eps: float = 10e-5,
-        filter_rts: float = -999,
+        filter_rts: float = OMISSION_SENTINEL,
     ) -> np.ndarray:
         """
         Evaluates kde log likelihood at chosen points.
@@ -206,8 +208,9 @@ class LogKDE:
         eps: float
             Epsilon value to use for lower bounds on rts.
         filter_rts: float
-            Value to filter rts by, default is -999. -999 is the number returned by the
-            simulators if we breach max_t or deadline.
+            Value to filter rts by, default is OMISSION_SENTINEL (-999).
+            This is the sentinel value returned by simulators when a trial
+            exceeds max_t or deadline (i.e., an omission).
 
         Returns:
         --------
@@ -427,7 +430,7 @@ class LogKDE:
     # Helper function to transform ddm simulator output to dataset suitable for
     # the kde function class
     def _attach_data_from_simulator(
-        self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=-999
+        self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=OMISSION_SENTINEL
     ):
         """
         Helper function to transform ddm simulator output to dataset suitable for
@@ -438,8 +441,9 @@ class LogKDE:
         simulator_data: tuple
             Tuple of (rts, choices, simulator_info) as returned by simulator function.
         filter_rts: float
-            Value to filter rts by, default is -999. -999 is the number returned by the
-            simulators if we breach max_t or deadline.
+            Value to filter rts by, default is OMISSION_SENTINEL (-999).
+            This is the sentinel value returned by simulators when a trial
+            exceeds max_t or deadline (i.e., an omission).
         """
 
         simulator_data = deepcopy(simulator_data)

@@ -1,25 +1,18 @@
-"""Parameter sampling constraint classes."""
+"""Parameter sampling constraint classes.
 
-from ssms.dataset_generators.parameter_samplers.constraints.swap import (
+NOTE: This module re-exports from ssms.transforms for backwards compatibility.
+Import directly from ssms.transforms instead:
+
+    from ssms.transforms import SwapIfLessConstraint, NormalizeToSumConstraint
+"""
+
+# Re-export from canonical location for backwards compatibility
+from ssms.transforms.sampling import (
     SwapIfLessConstraint,
-)
-from ssms.dataset_generators.parameter_samplers.constraints.normalize import (
     NormalizeToSumConstraint,
-)
-from ssms.dataset_generators.parameter_samplers.constraints.registry import (
-    register_constraint_class,
-    register_constraint_function,
-    get_registry,
-)
-from ssms.dataset_generators.parameter_samplers.constraints.adapters import (
-    FunctionConstraintAdapter,
 )
 
 __all__ = [
     "SwapIfLessConstraint",
     "NormalizeToSumConstraint",
-    "register_constraint_class",
-    "register_constraint_function",
-    "get_registry",
-    "FunctionConstraintAdapter",
 ]

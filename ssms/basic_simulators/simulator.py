@@ -12,11 +12,25 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 
-from ssms.basic_simulators.parameter_simulator_adapter import (
-    SimpleParameterSimulatorAdapter,
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
 )
-from ssms.config import model_config
 from ssms.config import get_boundary_registry, get_drift_registry
+
+# Sentinel value indicating an omission (no response within deadline/max_t).
+# When a simulated trial exceeds the maximum time (max_t) or deadline parameter,
+# both the RT and choice are set to this value to indicate no valid response.
+#
+# This value is set by the low-level Cython simulators (in src/cssm/*.pyx) and
+# is used throughout the codebase for:
+#   - Filtering out omissions when computing choice probabilities
+#   - Computing omission rates (proportion of trials with RT == OMISSION_SENTINEL)
+#   - Distinguishing valid responses from timeouts in downstream analyses
+#
+# Example usage:
+#   valid_rts = rts[rts != OMISSION_SENTINEL]
+#   omission_rate = (rts == OMISSION_SENTINEL).mean()
+OMISSION_SENTINEL: float = -999.0
 
 _global_rng = default_rng()
 _rng_lock = Lock()
@@ -606,22 +620,24 @@ def simulator(
     # (if supplied as 2d array or list in the first place,
     # user has to supply the correct ordering to begin with)
 
-    if "_deadline" in model:
-        deadline = True
-        model = model.replace("_deadline", "")
-    else:
-        deadline = False
+    # Use ModelConfigBuilder.from_model() which handles variant suffixes like "_deadline"
+    from ssms.config import ModelConfigBuilder
 
-    model_config_local = deepcopy(model_config[model])
+    model_config_local = ModelConfigBuilder.from_model(model)
 
-    if deadline:
-        model_config_local["params"] += ["deadline"]
+    # Get base model name (without _deadline suffix) for noise handling
+    model_base = model.replace("_deadline", "")
+
+    # Check if this is a deadline model by looking at params
+    is_deadline_model = "deadline" in model_config_local.get("params", [])
 
     if random_state is None:
         random_state = _get_unique_seed()
 
     theta = _preprocess_theta_generic(theta)
-    n_trials, theta = _preprocess_theta_deadline(theta, deadline, model_config_local)
+    n_trials, theta = _preprocess_theta_deadline(
+        theta, is_deadline_model, model_config_local
+    )
 
     # Initialize dictionary that collects
     # simulator inputs that are common across simulator functions
@@ -656,20 +672,20 @@ def simulator(
     else:
         if no_noise:
             sigma_noise = 0.0
-        elif "lba" in model and sigma_noise is None:
+        elif "lba" in model_base and sigma_noise is None:
             sigma_noise = 0.1
         elif sigma_noise is None:
             sigma_noise = 1.0
 
     noise_vec = make_noise_vec(sigma_noise, n_trials, model_config_local["n_particles"])
 
-    if "lba" in model:
+    if "lba" in model_base:
         theta["sd"] = noise_vec
     else:
         theta["s"] = noise_vec
 
     # Adapt parameters
-    theta = SimpleParameterSimulatorAdapter().adapt_parameters(
+    theta = ModularParameterSimulatorAdapter().adapt_parameters(
         theta, model_config_local, n_trials
     )
 
@@ -679,7 +695,7 @@ def simulator(
     drift_dict = make_drift_dict(model_config_local, theta)
 
     # Check if parameters are valid
-    validate_ssm_parameters(model, theta)
+    validate_ssm_parameters(model_base, theta)
 
     # Call to the simulator
     x = model_config_local["simulator"](
@@ -710,20 +726,24 @@ def simulator(
     # TODO: #79 vectorize this  # noqa: FIX002
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
-        out_len_no_omission = x["rts"][:, k, :][x["rts"][:, k, :] != -999].shape[0]
+        out_len_no_omission = x["rts"][:, k, :][
+            x["rts"][:, k, :] != OMISSION_SENTINEL
+        ].shape[0]
 
         for n, choice in enumerate(x["metadata"]["possible_choices"]):
             x["choice_p"][k, n] = (x["choices"][:, k, :] == choice).sum() / out_len
             if out_len_no_omission > 0:
                 x["choice_p_no_omission"][k, n] = (
-                    x["choices"][:, k, :][x["rts"][:, k, :] != -999] == choice
+                    x["choices"][:, k, :][x["rts"][:, k, :] != OMISSION_SENTINEL]
+                    == choice
                 ).sum() / out_len_no_omission
             else:
-                # AF-TODO: Don't get why -999 is used here
-                x["choice_p_no_omission"][k, n] = -999
+                # All trials were omissions, so choice probability is undefined.
+                # We use OMISSION_SENTINEL to signal this to downstream code.
+                x["choice_p_no_omission"][k, n] = OMISSION_SENTINEL
 
         # Omission Probability (deadline)
-        x["omission_p"][k, 0] = (x["rts"][:, k, :] == -999).sum() / out_len
+        x["omission_p"][k, 0] = (x["rts"][:, k, :] == OMISSION_SENTINEL).sum() / out_len
 
         # Nogo Probability
         # NOTE: If deadline is set in simulator --> this is the nogo probability
@@ -732,7 +752,7 @@ def simulator(
             # AF-TODO: This should rather have a designated no-go choice
             # instead of `max`
             (x["choices"][:, k, :] != max(x["metadata"]["possible_choices"]))
-            | (x["rts"][:, k, :] == -999)
+            | (x["rts"][:, k, :] == OMISSION_SENTINEL)
         ).sum() / out_len
         x["go_p"][k, 0] = 1 - x["nogo_p"][k, 0]
 

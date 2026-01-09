@@ -12,9 +12,6 @@ from ssms import Simulator
 from ssms.basic_simulators.modular_parameter_simulator_adapter import (
     ModularParameterSimulatorAdapter,
 )
-from ssms.basic_simulators.parameter_simulator_adapter import (
-    SimpleParameterSimulatorAdapter,
-)
 from ssms.basic_simulators.parameter_adapters import (
     LambdaAdaptation,
     SetDefaultValue,
@@ -32,11 +29,11 @@ class TestThetaProcessorIntegration:
 
     def test_custom_theta_processor(self):
         """Test that custom theta processor can be provided."""
-        custom_processor = SimpleParameterSimulatorAdapter()
+        custom_processor = ModularParameterSimulatorAdapter()
         sim = Simulator("ddm", parameter_adapter=custom_processor)
 
         assert sim.parameter_adapter is custom_processor
-        assert isinstance(sim.parameter_adapter, SimpleParameterSimulatorAdapter)
+        assert isinstance(sim.parameter_adapter, ModularParameterSimulatorAdapter)
 
     def test_simulate_with_default_processor(self):
         """Test simulation with default ModularParameterSimulatorAdapter."""
@@ -52,24 +49,6 @@ class TestThetaProcessorIntegration:
         result = sim.simulate(theta, n_samples=10, random_state=42)
 
         # Should complete successfully
-        assert "rts" in result
-        assert "choices" in result
-        assert len(result["rts"]) == 10
-
-    def test_simulate_with_legacy_processor(self):
-        """Test simulation with legacy SimpleParameterSimulatorAdapter."""
-        sim = Simulator("lba2", parameter_adapter=SimpleParameterSimulatorAdapter())
-
-        theta = {
-            "v0": np.array([0.5]),
-            "v1": np.array([0.6]),
-            "A": np.array([0.5]),
-            "b": np.array([1.0]),
-        }
-
-        result = sim.simulate(theta, n_samples=10, random_state=42)
-
-        # Should produce same results as default
         assert "rts" in result
         assert "choices" in result
         assert len(result["rts"]) == 10
@@ -109,31 +88,13 @@ class TestThetaProcessorIntegration:
         assert "rts" in result
         assert "choices" in result
 
-    def test_custom_transforms_only_with_modular_processor(self):
-        """Test that custom transforms are only applied with ModularParameterSimulatorAdapter."""
-        # With SimpleParameterSimulatorAdapter, custom transforms should be ignored
-        custom_transform = SetDefaultValue("custom_param", 999)
-
-        sim = Simulator(
-            "ddm",
-            parameter_adapter=SimpleParameterSimulatorAdapter(),
-            parameter_adaptations=[custom_transform],  # Should be ignored
-        )
-
-        theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
-        result = sim.simulate(theta, n_samples=10, random_state=42)
-
-        # Should still work (transforms just ignored)
-        assert "rts" in result
-        assert "choices" in result
-
 
 class TestProcessorEquivalence:
-    """Test that both processors produce equivalent results."""
+    """Test that processors produce consistent results."""
 
     @pytest.mark.parametrize("model_name", ["ddm", "angle", "race_3"])
-    def test_processor_equivalence_simple_models(self, model_name):
-        """Test that ModularParameterSimulatorAdapter produces same results as SimpleParameterSimulatorAdapter."""
+    def test_processor_consistency_simple_models(self, model_name):
+        """Test that ModularParameterSimulatorAdapter produces consistent results."""
         # Generate appropriate theta for each model
         if model_name == "ddm":
             theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
@@ -153,55 +114,27 @@ class TestProcessorEquivalence:
         else:
             theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
 
-        # Simulate with both processors
-        sim_modular = Simulator(model_name)  # Default ModularParameterSimulatorAdapter
-        sim_legacy = Simulator(
-            model_name, parameter_adapter=SimpleParameterSimulatorAdapter()
-        )
+        # Simulate twice with same seed
+        sim = Simulator(model_name)
 
         random_state = 42
-        result_modular = sim_modular.simulate(
-            theta, n_samples=100, random_state=random_state
-        )
-        result_legacy = sim_legacy.simulate(
-            theta, n_samples=100, random_state=random_state
-        )
+        result1 = sim.simulate(theta, n_samples=100, random_state=random_state)
+        result2 = sim.simulate(theta, n_samples=100, random_state=random_state)
 
         # Results should be identical (same random seed)
-        np.testing.assert_array_equal(result_modular["rts"], result_legacy["rts"])
-        np.testing.assert_array_equal(
-            result_modular["choices"], result_legacy["choices"]
-        )
+        np.testing.assert_array_equal(result1["rts"], result2["rts"])
+        np.testing.assert_array_equal(result1["choices"], result2["choices"])
 
-    def test_lba_models_work_with_both_processors(self):
-        """Test that LBA models work with both processors (may have different RNG behavior)."""
+    def test_lba_models_work(self):
+        """Test that LBA models work correctly."""
         theta = {"v0": 0.5, "v1": 0.6, "A": 0.5, "b": 1.0}
 
-        # Both should complete successfully
-        sim_modular = Simulator("lba2")
-        result_modular = sim_modular.simulate(theta, n_samples=100, random_state=42)
+        sim = Simulator("lba2")
+        result = sim.simulate(theta, n_samples=100, random_state=42)
 
-        sim_legacy = Simulator(
-            "lba2", parameter_adapter=SimpleParameterSimulatorAdapter()
-        )
-        result_legacy = sim_legacy.simulate(theta, n_samples=100, random_state=42)
-
-        # Both should return valid results
-        assert "rts" in result_modular and len(result_modular["rts"]) == 100
-        assert "choices" in result_modular and len(result_modular["choices"]) == 100
-        assert "rts" in result_legacy and len(result_legacy["rts"]) == 100
-        assert "choices" in result_legacy and len(result_legacy["choices"]) == 100
-
-        # Statistical properties should be similar (not identical due to LBA start point randomness)
-        assert (
-            np.abs(np.mean(result_modular["rts"]) - np.mean(result_legacy["rts"])) < 0.5
-        )
-        assert (
-            np.abs(
-                np.mean(result_modular["choices"]) - np.mean(result_legacy["choices"])
-            )
-            < 0.3
-        )
+        # Should return valid results
+        assert "rts" in result and len(result["rts"]) == 100
+        assert "choices" in result and len(result["choices"]) == 100
 
 
 class TestThetaProcessorProperty:
@@ -216,7 +149,7 @@ class TestThetaProcessorProperty:
 
     def test_theta_processor_property_with_custom(self):
         """Test theta_processor property with custom processor."""
-        custom = SimpleParameterSimulatorAdapter()
+        custom = ModularParameterSimulatorAdapter()
         sim = Simulator("ddm", parameter_adapter=custom)
 
         assert sim.parameter_adapter is custom

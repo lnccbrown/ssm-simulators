@@ -33,7 +33,7 @@ class TrainingDataGenerator:  # noqa: N801
     ----------
         generator_config: dict
             Configuration dictionary for the data generator.
-            (For an example load ssms.config.get_lan_config())
+            (For an example load ssms.get_default_generator_config())
         model_config: dict
             Configuration dictionary for the model to be simulated.
             (For an example load ssms.config.model_config['ddm'])
@@ -82,14 +82,16 @@ class TrainingDataGenerator:  # noqa: N801
             This serves as the single source of truth for model specifications,
             parameter bounds, transforms, and custom drift/boundary functions.
 
-            **Required** when config is a dict (generator_config).
+            **Optional** when config is a dict containing a 'model' field - will
+            auto-derive using ModelConfigBuilder.from_model(config['model']).
             **Optional** when config is a pipeline (extracted from pipeline if not provided).
 
         Raises
         ------
         ValueError
-            If config is None, or if model_config is None when config is a dict,
-            or if model_config cannot be extracted from a pipeline.
+            If config is None, or if model_config is None and cannot be derived
+            (i.e., config is a dict without 'model' field), or if model_config
+            cannot be extracted from a pipeline.
 
         Returns
         -------
@@ -97,10 +99,13 @@ class TrainingDataGenerator:  # noqa: N801
 
         Notes
         -----
-        **Simple Usage**:
-        Pass a generator_config dict as the first argument. The TrainingDataGenerator
-        will auto-create the appropriate strategy based on 'estimator_type'
-        in the config ('kde' for simulation-based, 'pyddm' for analytical).
+        **Simple Usage** (recommended):
+        Pass a generator_config dict with 'model' field set. The TrainingDataGenerator
+        will auto-derive model_config and create the appropriate strategy.
+
+        **Explicit model_config**:
+        Pass both generator_config and model_config for complete control over
+        model configuration (e.g., custom param_bounds).
 
         **Advanced Usage**:
         Pass a custom DataGenerationPipelineProtocol instance to completely
@@ -118,7 +123,15 @@ class TrainingDataGenerator:  # noqa: N801
 
         Examples
         --------
-        Simple (dict config):
+        Simple (auto-derive model_config from generator_config['model']):
+            >>> from ssms import get_default_generator_config
+            >>> config = get_default_generator_config(model="ddm_deadline")
+            >>> gen = TrainingDataGenerator(config)  # model_config auto-derived!
+            >>> data = gen.generate_data_training()
+
+        Explicit model_config (for custom bounds):
+            >>> from ssms.config import ModelConfigBuilder
+            >>> model_config = ModelConfigBuilder.from_model("ddm", param_bounds=[...])
             >>> gen = TrainingDataGenerator(generator_config, model_config)
             >>> data = gen.generate_data_training()
 
@@ -140,13 +153,6 @@ class TrainingDataGenerator:  # noqa: N801
         # Determine if config is a dict or a pipeline
         if isinstance(config, dict):
             # Config is a dictionary - treat as generator_config
-            # In this case, model_config is REQUIRED
-            if model_config is None:
-                raise ValueError(
-                    "model_config is required when config is a dictionary. "
-                    "Pass both generator_config and model_config."
-                )
-
             # Validate that config uses nested structure
             from ssms.config.config_utils import has_nested_structure
 
@@ -161,7 +167,25 @@ class TrainingDataGenerator:  # noqa: N801
                 )
 
             self.generator_config = deepcopy(config)
-            self.model_config = deepcopy(model_config)
+
+            # Handle model_config: auto-derive if not provided
+            if model_config is None:
+                # Auto-derive model_config from generator_config["model"]
+                model_name = self.generator_config.get("model")
+                if model_name is None:
+                    raise ValueError(
+                        "model_config is required when generator_config does not "
+                        "contain a 'model' field. Either pass model_config explicitly "
+                        "or set generator_config['model'] to the model name."
+                    )
+                from ssms.config import ModelConfigBuilder
+
+                self.model_config = ModelConfigBuilder.from_model(model_name)
+            else:
+                # model_config provided - use it, but check for deadline mismatch
+                self.model_config = deepcopy(model_config)
+                self._check_deadline_mismatch()
+
             generation_pipeline = None  # Will auto-create later
         else:
             # Config is a pipeline object
@@ -199,27 +223,6 @@ class TrainingDataGenerator:  # noqa: N801
 
         # Handle config-specific setup only if we have generator_config dict
         if isinstance(config, dict):
-            # Account for deadline if in model name
-            # Note: This mutates the model_config - ideally this should be handled
-            # at config creation time, but kept for backward compatibility
-            if "deadline" in self.generator_config["model"]:
-                self.model_config["params"].append("deadline")
-                if isinstance(self.model_config["param_bounds"], list):
-                    self.model_config["param_bounds"][0].append(0.001)
-                    self.model_config["param_bounds"][1].append(10)
-                    self.model_config["default_params"].append(10)
-                    self.model_config["name"] += "_deadline"
-                    self.model_config["n_params"] += 1
-                    # Update param_bounds_dict to include deadline
-                    self.model_config["param_bounds_dict"]["deadline"] = (0.001, 10)
-                elif isinstance(self.model_config["param_bounds"], dict):
-                    self.model_config["param_bounds"]["deadline"] = (0.001, 10)
-                    self.model_config["default_params"].append(10)
-                    self.model_config["name"] += "_deadline"
-                    self.model_config["n_params"] += 1
-                    # Update param_bounds_dict to match
-                    self.model_config["param_bounds_dict"]["deadline"] = (0.001, 10)
-
             # Ensure estimator section exists and set default displace_t
             if "estimator" not in self.generator_config:
                 self.generator_config["estimator"] = {}
@@ -264,6 +267,38 @@ class TrainingDataGenerator:  # noqa: N801
         if self.generator_config is not None:
             output_folder = Path(self.generator_config["output"]["folder"])
             output_folder.mkdir(parents=True, exist_ok=True)
+
+    def _check_deadline_mismatch(self) -> None:
+        """Check for mismatch between generator_config model and model_config deadline state.
+
+        If generator_config["model"] has "_deadline" suffix but model_config doesn't
+        have the deadline parameter, apply with_deadline() and emit a deprecation warning.
+
+        This provides backward compatibility for the old pattern where users would
+        pass a base model_config (e.g., model_config["ddm"]) with a deadline model
+        name in generator_config (e.g., "ddm_deadline").
+        """
+        model_name = self.generator_config.get("model", "")
+        has_deadline_in_name = "_deadline" in model_name
+        has_deadline_in_config = "deadline" in self.model_config.get("params", [])
+
+        if has_deadline_in_name and not has_deadline_in_config:
+            # Old pattern detected: base model_config + deadline model name
+            warnings.warn(
+                "Passing a base model_config with a '_deadline' model name in "
+                "generator_config is deprecated. Instead, either:\n"
+                "  1. Omit model_config to auto-derive from generator_config['model'], or\n"
+                "  2. Use ModelConfigBuilder.from_model('model_deadline') to create "
+                "a deadline-aware model_config.\n\n"
+                "The deadline parameter will be added automatically for backward "
+                "compatibility, but this behavior will be removed in a future version.",
+                DeprecationWarning,
+                stacklevel=4,  # Point to the caller of __init__
+            )
+            # Apply with_deadline for backward compatibility
+            from ssms.config import ModelConfigBuilder
+
+            self.model_config = ModelConfigBuilder.with_deadline(self.model_config)
 
     def _get_ncpus(self):
         """Get the number cpus to use for parallelization."""

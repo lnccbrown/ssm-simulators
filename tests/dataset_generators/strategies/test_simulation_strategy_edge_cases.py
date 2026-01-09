@@ -1,58 +1,48 @@
-"""Tests for SimulationBasedGenerationStrategy error handling and edge cases."""
+"""Tests for SimulationPipeline error handling and edge cases."""
 
 import numpy as np
 import pytest
+from ssms import OMISSION_SENTINEL
 from ssms.config import model_config, get_lan_config
-from ssms.dataset_generators.strategies.simulation_based_strategy import (
-    SimulationBasedGenerationStrategy,
-)
+from ssms.dataset_generators.pipelines import SimulationPipeline
 from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
 
-class TestSimulationBasedStrategyErrorHandling:
-    """Test error handling in SimulationBasedGenerationStrategy."""
+class TestSimulationPipelineErrorHandling:
+    """Test error handling in SimulationPipeline."""
 
     @pytest.fixture
-    def strategy(self):
-        """Create a strategy instance for testing."""
-        # Use nested config but flatten simulator keys for backward compatibility
+    def pipeline(self):
+        """Create a pipeline instance for testing."""
         config = get_lan_config()
 
-        # The strategy expects flat keys at the top level
-        config["n_samples"] = config["simulator"]["n_samples"]
-        config["delta_t"] = config["simulator"]["delta_t"]
-        config["max_t"] = config["simulator"]["max_t"]
-        config["simulation_filters"] = config["pipeline"]["simulation_filters"]
-
-        estimator_builder = KDEEstimatorBuilder(config)
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        return SimulationBasedGenerationStrategy(
+        # SimulationPipeline accepts classes and instantiates them internally
+        return SimulationPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=KDEEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
-    def test_is_valid_simulation_with_none(self, strategy):
+    def test_is_valid_simulation_with_none(self, pipeline):
         """Test _is_valid_simulation raises ValueError when simulations is None."""
         with pytest.raises(ValueError, match="No simulations provided"):
-            strategy._is_valid_simulation(None)
+            pipeline._is_valid_simulation(None)
 
-    def test_compute_auxiliary_labels_all_omissions(self, strategy):
+    def test_compute_auxiliary_labels_all_omissions(self, pipeline):
         """Test _compute_auxiliary_labels when all responses are omissions."""
-        # Create simulations with all omissions (choice = -999)
+        # Create simulations with all omissions (RT and choice = OMISSION_SENTINEL)
         simulations = {
-            "rts": np.array([-999, -999, -999, -999, -999]),
-            "choices": np.array([-999, -999, -999, -999, -999]),
+            "rts": np.array([OMISSION_SENTINEL] * 5),
+            "choices": np.array([OMISSION_SENTINEL] * 5),
             "metadata": {
                 "possible_choices": [-1, 1],
                 "max_t": 20.0,
             },
         }
 
-        labels = strategy._compute_auxiliary_labels(simulations)
+        labels = pipeline._compute_auxiliary_labels(simulations)
 
         # All omissions should result in uniform choice probabilities (excluding omissions)
         assert labels["choice_p_no_omission"][0, 0] == 0.5
@@ -64,7 +54,7 @@ class TestSimulationBasedStrategyErrorHandling:
         # Nogo probability should be 1.0 (all omitted)
         assert labels["nogo_p"][0, 0] == 1.0
 
-    def test_compute_auxiliary_labels_single_choice(self, strategy):
+    def test_compute_auxiliary_labels_single_choice(self, pipeline):
         """Test _compute_auxiliary_labels with only one choice type."""
         # All responses are choice 1 (correct)
         simulations = {
@@ -76,7 +66,7 @@ class TestSimulationBasedStrategyErrorHandling:
             },
         }
 
-        labels = strategy._compute_auxiliary_labels(simulations)
+        labels = pipeline._compute_auxiliary_labels(simulations)
 
         # Choice probabilities: all choice 1, none choice -1
         assert labels["choice_p"][0, 0] == 0.0  # P(choice=-1)
@@ -88,19 +78,19 @@ class TestSimulationBasedStrategyErrorHandling:
         # Nogo = 0 (all chose max choice = 1)
         assert labels["nogo_p"][0, 0] == 0.0
 
-    def test_compute_auxiliary_labels_mixed_responses(self, strategy):
+    def test_compute_auxiliary_labels_mixed_responses(self, pipeline):
         """Test _compute_auxiliary_labels with mixed choices and omissions."""
         # 3 correct (choice=1), 2 error (choice=-1), 1 omission
         simulations = {
-            "rts": np.array([0.5, 0.6, 0.7, 0.8, 0.9, -999]),
-            "choices": np.array([1, 1, 1, -1, -1, -999]),
+            "rts": np.array([0.5, 0.6, 0.7, 0.8, 0.9, OMISSION_SENTINEL]),
+            "choices": np.array([1, 1, 1, -1, -1, OMISSION_SENTINEL]),
             "metadata": {
                 "possible_choices": [-1, 1],
                 "max_t": 20.0,
             },
         }
 
-        labels = strategy._compute_auxiliary_labels(simulations)
+        labels = pipeline._compute_auxiliary_labels(simulations)
 
         # Choice probabilities (including omissions)
         # 3/6 = 0.5 for choice=1, 2/6 ≈ 0.333 for choice=-1
@@ -115,7 +105,7 @@ class TestSimulationBasedStrategyErrorHandling:
         # Omission probability: 1/6
         assert np.isclose(labels["omission_p"][0, 0], 1 / 6)
 
-    def test_compute_auxiliary_labels_binned_histograms(self, strategy):
+    def test_compute_auxiliary_labels_binned_histograms(self, pipeline):
         """Test that binned histograms are computed correctly."""
         # Mix of RTs for different choices
         simulations = {
@@ -127,7 +117,7 @@ class TestSimulationBasedStrategyErrorHandling:
             },
         }
 
-        labels = strategy._compute_auxiliary_labels(simulations)
+        labels = pipeline._compute_auxiliary_labels(simulations)
 
         # Should have histograms
         assert "binned_128" in labels
@@ -142,11 +132,11 @@ class TestSimulationBasedStrategyErrorHandling:
         assert np.sum(labels["binned_128"][0, :, 1]) == 5  # 5 samples for choice=1
 
     def test_compute_auxiliary_labels_excludes_omissions_from_histograms(
-        self, strategy
+        self, pipeline
     ):
-        """Test that omissions (RT=-999) are excluded from RT histograms."""
+        """Test that omissions (RT=OMISSION_SENTINEL) are excluded from RT histograms."""
         simulations = {
-            "rts": np.array([0.5, 0.6, -999, -999]),
+            "rts": np.array([0.5, 0.6, OMISSION_SENTINEL, OMISSION_SENTINEL]),
             "choices": np.array([1, -1, 1, -1]),
             "metadata": {
                 "possible_choices": [-1, 1],
@@ -154,7 +144,7 @@ class TestSimulationBasedStrategyErrorHandling:
             },
         }
 
-        labels = strategy._compute_auxiliary_labels(simulations)
+        labels = pipeline._compute_auxiliary_labels(simulations)
 
         # Histograms should only count the 2 non-omission RTs
         assert (
@@ -164,16 +154,12 @@ class TestSimulationBasedStrategyErrorHandling:
             np.sum(labels["binned_128"][0, :, 1]) == 1
         )  # 1 sample for choice=1 (RT=0.5)
 
-    def test_generate_for_parameter_set_failure_after_max_attempts(self, strategy):
+    def test_generate_for_parameter_set_failure_after_max_attempts(self, pipeline):
         """Test that generate_for_parameter_set returns failure after max attempts."""
-        # Create a strategy with impossible filters
+        # Create a pipeline with impossible filters
         config = get_lan_config()
-
-        # Flatten the config
-        config["n_samples"] = 100
-        config["delta_t"] = config["simulator"]["delta_t"]
-        config["max_t"] = config["simulator"]["max_t"]
-        config["simulation_filters"] = {
+        # SimulationPipeline reads filters from simulator.filters
+        config["simulator"]["filters"] = {
             "mode": 0.001,  # Impossible: mode must be tiny
             "choice_cnt": 1000,  # Impossible: need 1000 samples of each choice
             "mean_rt": 0.001,  # Impossible: mean must be tiny
@@ -181,25 +167,22 @@ class TestSimulationBasedStrategyErrorHandling:
             "mode_cnt_rel": 0.0,  # Impossible: mode can't exist
         }
 
-        estimator_builder = KDEEstimatorBuilder(config)
-        training_strategy = ResampleMixtureStrategy(config, model_config["ddm"])
-
-        bad_strategy = SimulationBasedGenerationStrategy(
+        bad_pipeline = SimulationPipeline(
             generator_config=config,
             model_config=model_config["ddm"],
-            estimator_builder=estimator_builder,
-            training_strategy=training_strategy,
+            estimator_builder=KDEEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
         )
 
         # Should fail after max attempts (this will take a moment)
-        result = bad_strategy.generate_for_parameter_set(
+        result = bad_pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, simulator_seed=42
         )
 
         assert result["success"] is False
         assert result["data"] is None
 
-    def test_is_valid_simulation_respects_all_filters(self, strategy):
+    def test_is_valid_simulation_respects_all_filters(self, pipeline):
         """Test that _is_valid_simulation applies all filters correctly."""
         # Create simulations that should pass
         valid_simulations = {
@@ -211,7 +194,7 @@ class TestSimulationBasedStrategyErrorHandling:
             },
         }
 
-        keep, stats = strategy._is_valid_simulation(valid_simulations)
+        keep, stats = pipeline._is_valid_simulation(valid_simulations)
 
         # Should pass with reasonable parameters
         # Note: Using truthiness test (not identity) to work with both bool and np.bool_
@@ -220,14 +203,14 @@ class TestSimulationBasedStrategyErrorHandling:
         # Stats should have expected shape
         assert len(stats) == 6  # [mode, mean, std, mode_cnt_rel, tmp_n_c, n_sim]
 
-    def test_generate_for_parameter_set_with_isolated_rng(self, strategy):
+    def test_generate_for_parameter_set_with_isolated_rng(self, pipeline):
         """Test that parameter sampling uses isolated RNG (no global state pollution)."""
         # Generate twice with same seed - should get identical parameters
-        result1 = strategy.generate_for_parameter_set(
+        result1 = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=123, simulator_seed=456
         )
 
-        result2 = strategy.generate_for_parameter_set(
+        result2 = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=123,
             simulator_seed=789,  # Different simulator seed, same param seed
         )
@@ -239,9 +222,9 @@ class TestSimulationBasedStrategyErrorHandling:
         for key in theta1:
             assert np.allclose(theta1[key], theta2[key]), f"Parameter {key} differs"
 
-    def test_generate_for_parameter_set_success_format(self, strategy):
+    def test_generate_for_parameter_set_success_format(self, pipeline):
         """Test that successful generation returns expected format."""
-        result = strategy.generate_for_parameter_set(
+        result = pipeline.generate_for_parameter_set(
             parameter_sampling_seed=42, simulator_seed=42
         )
 

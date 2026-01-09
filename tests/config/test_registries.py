@@ -288,16 +288,16 @@ class TestModelConfigRegistry:
 
 
 class TestParameterAdapterRegistry:
-    """Tests for ParameterAdapterRegistry."""
+    """Tests for ParameterAdapterRegistry.
 
-    def test_builtin_adapters_loaded(self):
-        """Test that built-in parameter adapters are automatically loaded."""
+    Note: The ParameterAdapterRegistry is now primarily an optional infrastructure
+    for custom use. Built-in models define transforms directly in their model configs.
+    """
+
+    def test_registry_exists(self):
+        """Test that the adapter registry can be retrieved."""
         registry = get_adapter_registry()
-
-        # Check that built-in model adaptations are registered
-        registered_models = registry.list_registered_models()
-        assert len(registered_models) > 0
-        assert "ddm" in registered_models
+        assert registry is not None
 
     def test_register_adapter_to_model(self):
         """Test registering a parameter adaptation to a specific model."""
@@ -322,21 +322,21 @@ class TestParameterAdapterRegistry:
 
     def test_register_adapter_to_model_family(self):
         """Test registering a parameter adaptation to a model family."""
-        # Register an adaptation for all models starting with "test_family_"
+        # Register an adaptation for all models starting with "test_registry_family_"
         register_adapter_to_model_family(
-            "test_family_matcher",
-            lambda name: name.startswith("test_family_"),
+            "test_registry_family_matcher",
+            lambda name: name.startswith("test_registry_family_"),
             [SetDefaultValue("test_param", 2.0)],
         )
 
         # Verify registration
         registry = get_adapter_registry()
         families = registry.list_registered_families()
-        assert "test_family_matcher" in families
+        assert "test_registry_family_matcher" in families
 
         # Test that it matches a model in that family
         # Use a model name that won't have model-specific adaptations
-        adaptations = registry.get_processor("test_family_model1")
+        adaptations = registry.get_processor("test_registry_family_model1")
         # Should have the family adaptation
         assert any(
             isinstance(a, SetDefaultValue) and a.param_name == "test_param"
@@ -347,19 +347,19 @@ class TestParameterAdapterRegistry:
         """Test that model-specific adaptations take precedence over family adaptations."""
         # Register family adaptation
         register_adapter_to_model_family(
-            "test_family",
-            lambda name: name.startswith("test_"),
+            "test_override_family",
+            lambda name: name.startswith("test_override_"),
             [SetDefaultValue("param1", 1.0)],
         )
 
         # Register model-specific adaptation
         register_adapter_to_model(
-            "test_model_specific", [SetDefaultValue("param1", 2.0)]
+            "test_override_model_specific", [SetDefaultValue("param1", 2.0)]
         )
 
         # Verify that model-specific is used
         registry = get_adapter_registry()
-        adaptations = registry.get_processor("test_model_specific")
+        adaptations = registry.get_processor("test_override_model_specific")
 
         # Should only have model-specific adaptation
         assert len([a for a in adaptations if isinstance(a, SetDefaultValue)]) >= 1
@@ -370,6 +370,7 @@ class TestRegistryIntegration:
 
     def test_complete_custom_model_pipeline(self):
         """Test a complete pipeline with custom components across all registries."""
+        from ssms.transforms.simulation import SetZeroArray
 
         # 1. Register custom boundary
         def custom_integration_boundary(t, a, rate=0.1):
@@ -391,7 +392,7 @@ class TestRegistryIntegration:
             params=["amplitude"],
         )
 
-        # 3. Register custom model
+        # 3. Register custom model with transforms defined in config (new pattern)
         custom_model = {
             "name": "test_integration_model",
             "params": ["v", "a", "z", "t", "rate", "amplitude"],
@@ -406,14 +407,16 @@ class TestRegistryIntegration:
             "boundary_name": "test_integration_boundary",
             "drift_name": "test_integration_drift",
             "nchoices": 2,
+            # Define transforms directly in config (new pattern)
+            "parameter_transforms": {
+                "sampling": [],
+                "simulation": [SetZeroArray("t")],
+            },
         }
 
         register_model_config("test_integration_model", custom_model)
 
-        # 4. Register custom parameter adaptation
-        register_adapter_to_model("test_integration_model", [SetDefaultValue("z", 0.5)])
-
-        # 5. Build configuration using ModelConfigBuilder
+        # 4. Build configuration using ModelConfigBuilder
         config = ModelConfigBuilder.from_model("test_integration_model")
         config = ModelConfigBuilder.add_boundary(config, "test_integration_boundary")
         config = ModelConfigBuilder.add_drift(config, "test_integration_drift")
@@ -426,10 +429,9 @@ class TestRegistryIntegration:
         assert config["drift"] == custom_integration_drift
         assert len(config["params"]) == 6
 
-        # Verify parameter adaptation is registered
-        registry = get_adapter_registry()
-        adaptations = registry.get_processor("test_integration_model")
-        assert any(isinstance(a, SetDefaultValue) for a in adaptations)
+        # Verify parameter transforms are in config
+        transforms = ModelConfigBuilder.get_simulation_transforms(config)
+        assert any(isinstance(t, SetZeroArray) for t in transforms)
 
     def test_registry_isolation(self):
         """Test that registries are independent and don't interfere with each other."""

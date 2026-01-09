@@ -21,7 +21,6 @@ from .model_registry import (
 from ssms.config._modelconfig import get_model_config
 
 from .generator_config.data_generator_config import (
-    TrainingDataGenerator_config,  # TODO: remove from interface in v1.0.0
     get_default_generator_config,
     get_defective_detector_config,
     get_kde_simulation_filters,
@@ -72,11 +71,11 @@ __all__ = [
     # Legacy access (kept for convenience)
     "model_config",
     "boundary_config_to_function_params",
-    # Generator configs
-    "get_lan_config",
+    # Generator configs (get_default_generator_config is the primary API)
+    "get_default_generator_config",
     "get_kde_simulation_filters",
+    # Approach-specific configs (for advanced users)
+    "get_lan_config",
     "get_defective_detector_config",
     "get_ratio_estimator_config",
-    "get_default_generator_config",
-    "TrainingDataGenerator_config",  # TODO: remove from interface in v1.0.0
 ]

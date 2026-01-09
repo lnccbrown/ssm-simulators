@@ -4,7 +4,6 @@ import logging
 import os
 import pickle
 from collections import namedtuple
-from copy import deepcopy
 from importlib.resources import files, as_file
 from pathlib import Path
 from pprint import pformat
@@ -14,7 +13,7 @@ import typer
 import yaml
 
 import ssms
-from ssms.config import get_default_generator_config, model_config as _model_config
+from ssms.config import get_default_generator_config
 
 app = typer.Typer(add_completion=False)
 
@@ -27,13 +26,13 @@ def make_data_generator_configs(
     save_name=None,
     save_folder="",
 ):
-    # Load copy of the respective model's config dict from ssms
-    _no_deadline_model = model.split("_deadline")[0]
-    model_config = deepcopy(_model_config[_no_deadline_model])
+    # Use ModelConfigBuilder.from_model() which handles variant suffixes like "_deadline"
+    from ssms.config import ModelConfigBuilder
 
-    # Load data_generator_config dicts (already nested)
-    data_config = get_default_generator_config(generator_approach)
-    data_config["model"] = model
+    model_config = ModelConfigBuilder.from_model(model)
+
+    # Load data_generator_config dicts (already nested) with model name set
+    data_config = get_default_generator_config(generator_approach, model=model)
 
     # Deep merge nested config sections
     for section, values in data_generator_nested_dict.items():
