@@ -12,6 +12,7 @@ import numpy
 CYTHON_MODULES = [
     "_utils",
     "ddm_models",
+    "ddm_models_fast",  # Optimized DDM with pre-generated randoms
     "race_models",
     "lba_models",
     "sequential_models",
