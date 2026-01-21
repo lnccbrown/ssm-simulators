@@ -446,3 +446,207 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------
+
+# Simulate (rt, choice) tuples from: Racing Diffusion Model ----------------------------------
+# @cythonboundscheck(False)
+# @cythonwraparound(False)
+
+def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
+                  np.ndarray[float, ndim = 2] b,  # response boundaries (thresholds)
+                  np.ndarray[float, ndim = 2] A,  # between-trial variability in starting point (U[0, A])
+                  np.ndarray[float, ndim = 2] t,  # non-decision times
+                  np.ndarray[float, ndim = 2] s,  # diffusion coefficients (within-trial noise)
+                  np.ndarray[float, ndim = 1] deadline,
+                  float delta_t = 0.001, # time increment step
+                  float max_t = 20, # maximum rt allowed
+                  int n_samples = 2000, 
+                  int n_trials = 1,
+                  random_state = None,
+                  return_option = 'full',
+                  smooth_unif = False,
+                  **kwargs):
+    """
+    Simulate reaction times and choices from the Racing Diffusion Model (RDM)
+    based on the generative process described in Tillman et al. (2020).
+
+    This model implements a "first-past-the-post" race of N independent
+    Wiener diffusion processes with no reflecting lower boundary.
+
+    Args:
+        v (np.ndarray): Mean drift rates for each accumulator and trial.
+        b (np.ndarray): Response threshold for each accumulator and trial.
+        A (np.ndarray): Upper bound of the uniform starting point distribution (U[0, A]).
+        t (np.ndarray): Non-decision time for each trial.
+        s (np.ndarray): Diffusion coefficient (noise) for each accumulator and trial.
+        deadline (np.ndarray): Maximum reaction time allowed for each trial.
+        delta_t (float): Time increment step for simulation (default: 0.001).
+        max_t (float): Maximum time for simulation (default: 20).
+        n_samples (int): Number of samples to simulate per trial (default: 2000).
+        n_trials (int): Number of trials to simulate (default: 1).
+        random_state (int or None): Seed for random number generator (default: None).
+        return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
+        smooth_unif (bool): Whether to apply uniform smoothing to reaction times (default: False).
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        dict: A dictionary containing simulated reaction times, choices, and metadata.
+
+    Raises:
+        ValueError: If return_option is not 'full' or 'minimal'.
+    """
+
+    # print all the parameters
+    print("v: ", v)
+    print("b: ", b)
+    print("A: ", A)
+    print("t: ", t)
+    print("s: ", s)
+    print("delta_t: ", delta_t)
+    print("max_t: ", max_t)
+    print("n_samples: ", n_samples)
+    print("n_trials: ", n_trials)
+
+    set_seed(random_state)
+    # Param views
+    cdef float[:, :] v_view = v
+    cdef float[:, :] b_view = b
+    cdef float[:, :] A_view = A
+    cdef float[:, :] t_view = t
+    cdef float[:, :] s_view = s
+    cdef float[:] deadline_view = deadline
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    sqrt_st = delta_t_sqrt * s
+    cdef float[:, :] sqrt_st_view = sqrt_st
+
+    cdef int n_particles = v.shape[1]
+    rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
+    cdef float[:, :, :] rts_view = rts
+    choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
+    cdef int[:, :, :] choices_view = choices
+    
+    particles = np.zeros((n_particles), dtype = DTYPE)
+    cdef float [:] particles_view = particles
+
+    # Trajectory saving (for first trial, first sample)
+    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
+    traj[:, :] = -999 
+    cdef float[:, :] traj_view = traj    
+
+    # Initialize variables needed for for loop 
+    cdef float t_particle, smooth_u, deadline_tmp
+    cdef Py_ssize_t n, ix, j, k
+    cdef Py_ssize_t m = 0
+    cdef int winner = -1
+    cdef int winner_found = 0 # <-- FIX: Use 'int' (0=False, 1=True) instead of 'bool'
+
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps * n_particles
+    cdef float[:] gaussian_values = draw_gaussian(num_draws)
+
+    for k in range(n_trials):
+        
+        deadline_tmp = min(max_t, deadline_view[k] - t_view[k, 0])
+        
+        # Loop over samples
+        for n in range(n_samples):
+
+            for j in range(n_particles):
+                particles_view[j] = random_uniform() * A_view[k, 0]
+            
+            t_particle = 0.0 # reset time
+            ix = 0
+            winner = -1         # Reset winner for this sample
+            winner_found = 0    # <-- FIX: Reset to 0 (False)
+
+            # Save initial trajectory
+            if n == 0:
+                if k == 0:
+                    for j in range(n_particles):
+                        traj_view[0, j] = particles[j]
+
+            # Random walker
+            while not winner_found and t_particle <= deadline_tmp: # <-- 'not 0' is True
+                for j in range(n_particles):
+                    # Standard Wiener diffusion process update
+                    particles_view[j] += (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * gaussian_values[m]
+                    
+                    # No reflecting boundary for RDM
+                    # The line `particles_view[j] = fmax(0.0, particles_view[j])` is REMOVED.
+                    
+                    m += 1
+                    if m == num_draws: # Resample random numbers if needed
+                        m = 0
+                        gaussian_values = draw_gaussian(num_draws)
+                
+                    # Check for a winner (first-past-the-post)
+                    if particles_view[j] >= b_view[k, 0]:
+                        winner_found = 1 # <-- FIX: Set to 1 (True)
+                        winner = j
+                        break # Stop checking, we have a winner
+                
+                if winner_found: # <-- `if 1` is True
+                    #print("Winner found: Particle ", winner, " at time ", t_particle)
+                    break # Stop the while loop, a decision is made
+
+                t_particle += delta_t
+                ix += 1
+                
+                # Save running trajectory
+                if n == 0:
+                    if k == 0:
+                        for j in range(n_particles):
+                            traj_view[ix, j] = particles[j]
+
+            # --- End of while loop ---
+
+            # Apply smoothing if specified
+            if smooth_unif:
+                if t_particle == 0.0:
+                    smooth_u = random_uniform() * 0.5 * delta_t
+                elif t_particle < deadline_tmp: # Only smooth if not a deadline response
+                    smooth_u = (0.5 - random_uniform()) * delta_t
+                else:
+                    smooth_u = 0.0
+            else:
+                smooth_u = 0.0
+
+            # Store RT and choice
+            rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u 
+            choices_view[n, k, 0] = winner
+
+            # Handle non-responses (deadline hit or no decision)
+            if (rts_view[n, k, 0] >= deadline_view[k]) | (not winner_found): # <-- `not 0` is True
+                rts_view[n, k, 0] = -999
+                choices_view[n, k, 0] = -1 # Ensure choice is also -1
+            
+
+        # Create parameter dictionaries for metadata
+        v_dict = {}
+        for i in range(n_particles):
+            v_dict['v' + str(i)] = v[:, i]
+
+    if return_option == 'full':
+        return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
+                                                            'b': b,
+                                                            'A': A,
+                                                            't': t,
+                                                            'deadline': deadline,
+                                                            's': s,
+                                                            'delta_t': delta_t,
+                                                            'max_t': max_t,
+                                                            'n_samples': n_samples,
+                                                            'n_trials': n_trials,
+                                                            'simulator': 'rdm_simulator',
+                                                            'possible_choices': list(np.arange(0, n_particles, 1)),
+                                                            'trajectory': traj}}
+    elif return_option == 'minimal':
+        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'rdm_simulator', 
+                                                             'possible_choices': list(np.arange(0, n_particles, 1)),
+                                                             'n_samples': n_samples,
+                                                             'n_trials': n_trials,
+                                                             }}
+
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
+# -----------------------------------------------------------------------------------------------
