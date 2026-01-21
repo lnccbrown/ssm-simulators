@@ -265,13 +265,9 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             ix2 = 0
             choice_val = 0
 
-            # High-dimensional walker
+            # High-dimensional walker initialization
             bound_h = boundaries_view[k, 0]
             y_h = (-1.0) * bound_h + (zh_view[k] * 2.0 * bound_h)
-
-            # Low-dimensional walkers (start from initial boundary position)
-            y_l1 = (-1.0) * bound_h + (zl1_view[k] * 2.0 * bound_h)
-            y_l2 = (-1.0) * bound_h + (zl2_view[k] * 2.0 * bound_h)
 
             # Simulate high-dimensional walker
             while True:
@@ -293,33 +289,23 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_h) / (2.0 * bound_h)):
                 choice_val = 2
 
-            # Simulate low-dimensional walker 1
-            while True:
-                bound_l1 = boundaries_view[k, ix1]
-                if y_l1 < (-1.0) * bound_l1 or y_l1 > bound_l1 or t_l1 > deadline_tmp_k:
-                    break
-                noise = ssms_gaussian_f32(&rng_states[tid])
-                y_l1 = y_l1 + (vl1_view[k] * delta_t) + (sqrt_st_k * noise)
-                t_l1 = t_l1 + delta_t
-                ix1 = ix1 + 1
-                if ix1 >= num_steps:
-                    break
-
-            # Simulate low-dimensional walker 2
-            while True:
-                bound_l2 = boundaries_view[k, ix2]
-                if y_l2 < (-1.0) * bound_l2 or y_l2 > bound_l2 or t_l2 > deadline_tmp_k:
-                    break
-                noise = ssms_gaussian_f32(&rng_states[tid])
-                y_l2 = y_l2 + (vl2_view[k] * delta_t) + (sqrt_st_k * noise)
-                t_l2 = t_l2 + delta_t
-                ix2 = ix2 + 1
-                if ix2 >= num_steps:
-                    break
-
-            # Combine results: max time of high and the relevant low dimension
+            # OPTIMIZATION: Only simulate the RELEVANT low-dimensional walker
+            # based on high-dim choice (saves ~33% computation)
             # choice_val mapping: 0=high0_low0, 1=high0_low1, 2=high1_low0, 3=high1_low1
             if choice_val == 0:
+                # High-dim chose lower bound -> simulate low-dim walker 1
+                y_l1 = (-1.0) * bound_h + (zl1_view[k] * 2.0 * bound_h)
+                while True:
+                    bound_l1 = boundaries_view[k, ix1]
+                    if y_l1 < (-1.0) * bound_l1 or y_l1 > bound_l1 or t_l1 > deadline_tmp_k:
+                        break
+                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    y_l1 = y_l1 + (vl1_view[k] * delta_t) + (sqrt_st_k * noise)
+                    t_l1 = t_l1 + delta_t
+                    ix1 = ix1 + 1
+                    if ix1 >= num_steps:
+                        break
+
                 t_particle = fmax(t_h, t_l1)
                 rts_low_view[n, k, 0] = t_l1 + t_view[k]
                 # Low-dim choice based on y_l1
@@ -331,7 +317,19 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                     choice_val = 1
                 # else choice_val remains 0
             else:
-                # choice_val is 2 (high choice upper bound)
+                # High-dim chose upper bound (choice_val == 2) -> simulate low-dim walker 2
+                y_l2 = (-1.0) * bound_h + (zl2_view[k] * 2.0 * bound_h)
+                while True:
+                    bound_l2 = boundaries_view[k, ix2]
+                    if y_l2 < (-1.0) * bound_l2 or y_l2 > bound_l2 or t_l2 > deadline_tmp_k:
+                        break
+                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    y_l2 = y_l2 + (vl2_view[k] * delta_t) + (sqrt_st_k * noise)
+                    t_l2 = t_l2 + delta_t
+                    ix2 = ix2 + 1
+                    if ix2 >= num_steps:
+                        break
+
                 t_particle = fmax(t_h, t_l2)
                 rts_low_view[n, k, 0] = t_l2 + t_view[k]
                 # Low-dim choice based on y_l2: result will be 2 or 3
