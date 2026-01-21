@@ -26,6 +26,9 @@ Usage:
     n_threads = check_parallel_request(n_threads)  # Validates and warns
 """
 
+# Include shared constants (MAX_THREADS, etc.) - single source of truth
+include "_constants.pxi"
+
 import os
 
 # =============================================================================
@@ -157,12 +160,14 @@ def get_openmp_info():
         >>> print(f"OpenMP available: {info['openmp_available']}")
         >>> print(f"GSL available: {info['gsl_available']}")
         >>> print(f"Parallel ready: {info['parallel_ready']}")
+        >>> print(f"Max threads limit: {info['max_threads_limit']}")
     """
     return {
         "openmp_available": _OPENMP_AVAILABLE,
         "gsl_available": _GSL_AVAILABLE,
         "parallel_ready": _OPENMP_AVAILABLE and _GSL_AVAILABLE,
         "max_threads": get_max_threads(),
+        "max_threads_limit": MAX_THREADS,  # Compile-time limit
         "num_procs": get_num_procs(),
         "omp_num_threads_env": os.environ.get("OMP_NUM_THREADS"),
         "cpu_count": os.cpu_count(),
@@ -178,11 +183,14 @@ def check_parallel_request(n_threads, warn=True):
     and optionally warns the user.
 
     Args:
-        n_threads: Requested number of threads
+        n_threads: Requested number of threads (maximum: 256)
         warn: Whether to emit a warning if falling back to sequential
 
     Returns:
         int: Actual number of threads to use (may be 1 if requirements not met)
+
+    Raises:
+        ValueError: If n_threads exceeds the compile-time maximum (256)
 
     Example:
         >>> # In a simulator function:
@@ -192,6 +200,13 @@ def check_parallel_request(n_threads, warn=True):
         ... else:
         ...     # Use sequential path with NumPy RNG
     """
+    # Validate against compile-time maximum
+    if n_threads > MAX_THREADS:
+        raise ValueError(
+            f"n_threads={n_threads} exceeds maximum supported ({MAX_THREADS}). "
+            f"This is a compile-time limit for thread-local RNG state arrays."
+        )
+
     if n_threads <= 1:
         return 1
 
@@ -241,7 +256,8 @@ def print_status():
     print(f"  OpenMP compiled:    {'Yes' if info['openmp_available'] else 'No'}")
     print(f"  GSL compiled:       {'Yes' if info['gsl_available'] else 'No'}")
     print(f"  Parallel ready:     {'Yes' if info['parallel_ready'] else 'No'}")
-    print(f"  Max threads:        {info['max_threads']}")
+    print(f"  Max threads (OMP):  {info['max_threads']}")
+    print(f"  Max threads limit:  {info['max_threads_limit']} (compile-time)")
     print(f"  CPU processors:     {info['num_procs']}")
     print(f"  OMP_NUM_THREADS:    {info['omp_num_threads_env'] or '(not set)'}")
     print(f"  Python cpu_count:   {info['cpu_count']}")

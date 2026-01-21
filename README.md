@@ -65,6 +65,31 @@ conda install -c conda-forge ssm-simulators
 > ```
 > Most users installing from PyPI wheels do **not** need to install GCC.
 
+#### Parallel Execution Details
+
+When using `n_threads > 1`, the package uses GSL's validated Ziggurat algorithm for
+Gaussian random number generation, ensuring statistically correct simulations.
+
+**Thread Limit**: The maximum supported number of threads is **256** (compile-time limit).
+Requesting more threads will raise a `ValueError`. This limit exists because per-thread
+random number generator states are allocated as static arrays for performance.
+
+```python
+from ssms.basic_simulators import simulator
+
+# Single-threaded (uses NumPy RNG)
+result = simulator.simulator(model='ddm', theta=theta, n_samples=10000, n_threads=1)
+
+# Multi-threaded (uses GSL Ziggurat RNG, requires OpenMP + GSL)
+result = simulator.simulator(model='ddm', theta=theta, n_samples=10000, n_threads=8)
+```
+
+Check your installation's parallel capabilities:
+```python
+from cssm._openmp_status import print_status
+print_status()
+```
+
 #### Command Line Interface
 The package exposes a command-line tool, `generate`, for creating training data from a YAML configuration file.
 
@@ -181,6 +206,21 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```bash
 uv sync --all-groups  # Installs all dependency groups
 ```
+
+#### Building Cython Extensions from Source
+
+For development or to rebuild with different settings:
+
+```bash
+# Clean environment and sync
+rm -rf .venv && uv sync
+
+# Rebuild Cython extensions (editable install)
+uv pip install --python .venv/bin/python -e . --reinstall
+```
+
+**Important**: Always use `uv pip install --python .venv/bin/python` to ensure extensions
+are built for the correct Python version in your virtual environment.
 
 ### Contributing
 

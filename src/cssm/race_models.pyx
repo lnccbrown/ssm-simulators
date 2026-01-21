@@ -43,23 +43,32 @@ from cssm._utils import (
 # C-LEVEL GSL RNG (for parallel execution)
 # =============================================================================
 # Uses GSL's validated Ziggurat implementation for correct variance.
-# Falls back to stub implementation if GSL not available (should not be called).
+# Per-thread RNG states are allocated before parallel block and freed after.
 
 cdef extern from "gsl_rng.h" nogil:
+    # Struct with known size (pointer) so Cython can allocate arrays
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer (void* for Cython compatibility)
 
-    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
-    void ssms_rng_cleanup(ssms_rng_state* state)
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     float ssms_gaussian_f32(ssms_rng_state* state)
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
-# Aliases for cleaner code
+# Type alias for consistency
 ctypedef ssms_rng_state RngState
 
+# Wrapper functions for GSL RNG
+cdef inline void rng_alloc(RngState* state) noexcept nogil:
+    ssms_rng_alloc(state)
+
+cdef inline void rng_free(RngState* state) noexcept nogil:
+    ssms_rng_free(state)
+
 cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_init(state, seed)
+    ssms_rng_seed(state, seed)
 
 cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
     return ssms_mix_seed(base, t, n)
@@ -74,8 +83,9 @@ DTYPE = np.float32
 
 # Maximum particles/accumulators for stack-allocated arrays
 DEF MAX_PARTICLES = 16
-# Maximum threads for per-thread RNG states
-DEF MAX_THREADS = 128
+
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
 
 # C-level helper functions for nogil operation ------------------------------------
 
@@ -267,34 +277,45 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     cdef float[:, :] boundaries_view = boundaries_all_np
     cdef float[:] deadlines_view = deadlines_tmp
 
-    # RNG state (per-iteration seeding)
-    cdef RngState rng_state
+    # Per-thread RNG states for parallel execution
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
     cdef uint64_t combined_seed
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads = n_threads
 
     # Flattened parallel loop variables
     cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
     cdef Py_ssize_t flat_idx
     cdef int ix, j
     cdef float t_particle, deadline_tmp_k, bound_val, noise
-    cdef float particles[MAX_PARTICLES]  # Stack-allocated!
+    # Per-thread particle arrays to avoid race conditions
+    cdef float particles[MAX_THREADS][MAX_PARTICLES]
+
+    # Allocate per-thread GSL RNGs BEFORE parallel block
+    for i_thread in range(c_n_threads):
+        rng_alloc(&rng_states[i_thread])
 
     # Parallel execution over FLATTENED iteration space
     with nogil, parallel(num_threads=n_threads):
         for flat_idx in prange(total_iterations, schedule='dynamic'):
+            # Get thread ID for per-thread RNG and particle array
+            tid = threadid()
+
             k = flat_idx // c_n_samples  # trial index
             n = flat_idx % c_n_samples   # sample index
 
-            # Create unique seed for this (trial, sample) pair
+            # Re-seed per-thread RNG with unique seed for this (trial, sample)
             combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
-            rng_seed(&rng_state, combined_seed)
+            rng_seed(&rng_states[tid], combined_seed)
 
             deadline_tmp_k = deadlines_view[k]
             bound_val = boundaries_view[k, 0]
 
-            # Initialize particle positions
+            # Initialize particle positions (using thread-local array)
             for j in range(c_n_particles):
-                particles[j] = z_view[k, j] * bound_val
+                particles[tid][j] = z_view[k, j] * bound_val
 
             t_particle = 0.0
             ix = 0
@@ -302,13 +323,13 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
             # Race simulation
             while True:
                 bound_val = boundaries_view[k, ix]
-                if check_finished_stack(particles, bound_val, c_n_particles) or t_particle > deadline_tmp_k:
+                if check_finished_stack(&particles[tid][0], bound_val, c_n_particles) or t_particle > deadline_tmp_k:
                     break
 
                 for j in range(c_n_particles):
-                    noise = ssms_gaussian_f32(&rng_state)
-                    particles[j] = particles[j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, j] * noise
-                    particles[j] = fmax(0.0, particles[j])  # Cut off at 0
+                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    particles[tid][j] = particles[tid][j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, j] * noise
+                    particles[tid][j] = fmax(0.0, particles[tid][j])  # Cut off at 0
 
                 t_particle = t_particle + delta_t
                 ix = ix + 1
@@ -316,11 +337,15 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
                     break
 
             rts_view[n, k, 0] = t_particle + t_view[k, 0]
-            choices_view[n, k, 0] = argmax_stack(particles, c_n_particles)
+            choices_view[n, k, 0] = argmax_stack(&particles[tid][0], c_n_particles)
 
             # Enforce deadline
             if rts_view[n, k, 0] > deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
+
+    # Free per-thread GSL RNGs AFTER parallel block
+    for i_thread in range(c_n_threads):
+        rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -639,35 +664,46 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     cdef float[:, :] boundaries_view = boundaries_all_np
     cdef float[:] deadlines_view = deadlines_tmp
 
-    # RNG state (per-iteration seeding)
-    cdef RngState rng_state
+    # Per-thread RNG states for parallel execution
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
     cdef uint64_t combined_seed
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads = n_threads
 
     # Flattened parallel loop variables
     cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
     cdef Py_ssize_t flat_idx
     cdef int ix, i
     cdef float t_particle, deadline_tmp_k, particles_sum, bound_val, noise
-    cdef float particles[MAX_PARTICLES]  # Stack-allocated!
-    cdef float particles_reduced_sum[MAX_PARTICLES]  # Stack-allocated!
+    # Per-thread particle arrays to avoid race conditions
+    cdef float particles[MAX_THREADS][MAX_PARTICLES]
+    cdef float particles_reduced_sum[MAX_THREADS][MAX_PARTICLES]
+
+    # Allocate per-thread GSL RNGs BEFORE parallel block
+    for i_thread in range(c_n_threads):
+        rng_alloc(&rng_states[i_thread])
 
     # Parallel execution over FLATTENED iteration space
     with nogil, parallel(num_threads=n_threads):
         for flat_idx in prange(total_iterations, schedule='dynamic'):
+            # Get thread ID for per-thread RNG and particle arrays
+            tid = threadid()
+
             k = flat_idx // c_n_samples  # trial index
             n = flat_idx % c_n_samples   # sample index
 
-            # Create unique seed for this (trial, sample) pair
+            # Re-seed per-thread RNG with unique seed for this (trial, sample)
             combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
-            rng_seed(&rng_state, combined_seed)
+            rng_seed(&rng_states[tid], combined_seed)
 
             deadline_tmp_k = deadlines_view[k]
             bound_val = boundaries_view[k, 0]
 
-            # Initialize particle positions
+            # Initialize particle positions (using thread-local array)
             for i in range(c_n_particles):
-                particles[i] = z_view[k, i] * bound_val
+                particles[tid][i] = z_view[k, i] * bound_val
 
             t_particle = 0.0
             ix = 0
@@ -675,20 +711,20 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
             # LCA simulation with lateral inhibition
             while True:
                 bound_val = boundaries_view[k, ix]
-                if check_finished_stack(particles, bound_val, c_n_particles) or t_particle > deadline_tmp_k:
+                if check_finished_stack(&particles[tid][0], bound_val, c_n_particles) or t_particle > deadline_tmp_k:
                     break
 
                 # Calculate current sum over particle positions
-                particles_sum = csum_stack(particles, c_n_particles)
+                particles_sum = csum_stack(&particles[tid][0], c_n_particles)
 
                 # Update particle positions with decay and inhibition
                 for i in range(c_n_particles):
-                    particles_reduced_sum[i] = (-1.0) * particles[i] + particles_sum
-                    noise = ssms_gaussian_f32(&rng_state)
-                    particles[i] = particles[i] + ((v_view[k, i] - (g_view[k, 0] * particles[i]) - \
-                            (b_view[k, 0] * particles_reduced_sum[i])) * delta_t) + \
+                    particles_reduced_sum[tid][i] = (-1.0) * particles[tid][i] + particles_sum
+                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    particles[tid][i] = particles[tid][i] + ((v_view[k, i] - (g_view[k, 0] * particles[tid][i]) - \
+                            (b_view[k, 0] * particles_reduced_sum[tid][i])) * delta_t) + \
                             (sqrt_st_view[k, i] * noise)
-                    particles[i] = fmax(0.0, particles[i])
+                    particles[tid][i] = fmax(0.0, particles[tid][i])
 
                 t_particle = t_particle + delta_t
                 ix = ix + 1
@@ -696,11 +732,15 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
                     break
 
             rts_view[n, k, 0] = t_particle + t_view[k, 0]
-            choices_view[n, k, 0] = argmax_stack(particles, c_n_particles)
+            choices_view[n, k, 0] = argmax_stack(&particles[tid][0], c_n_particles)
 
             # Enforce deadline
             if rts_view[n, k, 0] > deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
+
+    # Free per-thread GSL RNGs AFTER parallel block
+    for i_thread in range(c_n_threads):
+        rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

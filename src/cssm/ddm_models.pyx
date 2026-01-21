@@ -43,27 +43,42 @@ from cssm._utils import (
 # Import OpenMP status checker for graceful degradation
 from cssm._openmp_status import check_parallel_request
 
+# Import thread ID for per-thread RNG
+from cython.parallel cimport threadid
+
 # =============================================================================
 # C-LEVEL GSL RNG (for parallel execution)
 # =============================================================================
 # Uses GSL's validated Ziggurat implementation for correct variance.
-# Falls back to stub implementation if GSL not available (should not be called).
+# Per-thread RNG states are allocated before parallel block and freed after.
 
 cdef extern from "gsl_rng.h" nogil:
+    # Struct with known size (pointer) so Cython can allocate arrays
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer (void* for Cython compatibility)
 
-    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
-    void ssms_rng_cleanup(ssms_rng_state* state)
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     float ssms_gaussian_f32(ssms_rng_state* state)
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
-# Aliases for cleaner code (same interface as before)
+# Type alias
 ctypedef ssms_rng_state RngState
 
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
+
+# Wrapper functions
+cdef inline void rng_alloc(RngState* state) noexcept nogil:
+    ssms_rng_alloc(state)
+
+cdef inline void rng_free(RngState* state) noexcept nogil:
+    ssms_rng_free(state)
+
 cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_init(state, seed)
+    ssms_rng_seed(state, seed)
 
 cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
     return ssms_mix_seed(base, t, n)
@@ -161,17 +176,20 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
     cdef Py_ssize_t m = 0
     cdef float drift_increment = 0.0
 
-    # Variables for parallel execution
-    cdef RngState rng_state
+    # Variables for parallel execution - per-thread RNG states
+    cdef RngState[MAX_THREADS] rng_states
+    cdef int tid
     cdef uint64_t combined_seed
     cdef float z_k, v_k, a_k, t_k, s_k, sz_k, sv_k, st_k, sqrt_st_k, deadline_k
     cdef float noise, y_disp, v_disp, t_disp
     cdef int choice
+    cdef int i_thread
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
     cdef Py_ssize_t total_iterations
     cdef int c_n_samples = n_samples
+    cdef int c_n_threads = n_threads
 
     # =========================================================================
     # SEQUENTIAL PATH (n_threads == 1): Original algorithm
@@ -233,14 +251,22 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                 enforce_deadline(rts_view, deadline_view, n, k, 0)
 
     # =========================================================================
-    # PARALLEL PATH (n_threads > 1): FLATTENED OpenMP parallelization with C RNG
-    # Parallelizes over (n_trials × n_samples) for optimal efficiency
+    # PARALLEL PATH (n_threads > 1): FLATTENED OpenMP parallelization with GSL RNG
+    # Uses GSL's validated Ziggurat implementation for Gaussian sampling.
+    # Per-thread RNG states are allocated before parallel block and freed after.
     # =========================================================================
     else:
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
 
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
+
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Get thread ID for per-thread RNG
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -262,15 +288,16 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                 if deadline_tmp < 0:
                     deadline_tmp = c_max_t
 
+                # Re-seed per-thread RNG with unique seed for this (trial, sample)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
-                # Generate variability using C RNG
-                v_disp = sv_k * rng_gaussian_f32(&rng_state)  # Normal for drift variability
+                # Generate variability using GSL Ziggurat
+                v_disp = sv_k * rng_gaussian_f32(&rng_states[tid])
 
                 # Uniform for starting point and t variability: 2 * (U - 0.5) = range [-1, 1]
-                y_disp = 2.0 * (<float>ssms_uniform(&rng_state) - 0.5) * sz_k
-                t_disp = 2.0 * (<float>ssms_uniform(&rng_state) - 0.5) * st_k
+                y_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * sz_k
+                t_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * st_k
 
                 # Starting point: z * a + displacement
                 y = z_k * a_k + y_disp
@@ -283,7 +310,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
 
                 # Random walker with constant boundaries [0, a]
                 while y >= 0 and y <= a_k and t_particle <= deadline_tmp:
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_increment + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -301,6 +328,10 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -413,13 +444,16 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     cdef Py_ssize_t n, ix, k
     cdef int m = 0
 
-    # Variables for parallel execution
-    cdef RngState rng_state
+    # Variables for parallel execution - per-thread RNG states
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float v_k, a_k, z_k, t_k, s_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_inc, noise
     cdef int choice
     cdef float max_t_c = <float>max_t  # Cache max_t for nogil
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -476,9 +510,17 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     # =========================================================================
     else:
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Get thread ID for per-thread RNG
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -493,9 +535,9 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
                 deadline_tmp_k = fmin(max_t_c, deadline_view[k] - t_k)
                 drift_inc = v_k * delta_t
 
-                # Create unique seed for this (trial, sample) pair
+                # Re-seed per-thread RNG with unique seed for this (trial, sample)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Initialize particle
                 y = z_k * a_k
@@ -503,7 +545,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
 
                 # Random walk with inline C RNG
                 while y > 0.0 and y < a_k and t_particle <= deadline_tmp_k:
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_inc + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
 
@@ -520,6 +562,10 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
                 # Deadline enforcement
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
         # Note: smooth_unif is not supported in parallel mode
 
@@ -640,21 +686,24 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all  # 2D: [n_trials, num_steps]
     cdef float[:] deadlines_tmp      # 1D: [n_trials]
     cdef float[:] sqrt_st_all        # 1D: [n_trials]
     cdef float[:] drift_inc_all      # 1D: [n_trials]
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
+    cdef int tid
     cdef uint64_t combined_seed
     cdef float v_k, z_k, t_k, s_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_inc, noise, bound_val, neg_bound_val
     cdef int choice
+    cdef int i_thread
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
     cdef Py_ssize_t total_iterations
     cdef int c_n_samples = n_samples
+    cdef int c_n_threads = n_threads
 
     # =========================================================================
     # SEQUENTIAL PATH (n_threads == 1): Original algorithm, preserves all behavior
@@ -740,9 +789,16 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
 
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
+
         # Parallel execution over FLATTENED iteration space
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Get thread ID for per-thread RNG
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -754,9 +810,9 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                 deadline_tmp_k = deadlines_tmp[k]
                 drift_inc = drift_inc_all[k]
 
-                # Create unique seed for this (trial, sample) pair
+                # Re-seed per-thread RNG with unique seed for this (trial, sample) pair
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Initialize particle position using boundary at t=0
                 bound_val = boundaries_all[k, 0]
@@ -764,7 +820,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                 t_particle = 0.0
                 ix = 0
 
-                # Random walk with inline C RNG
+                # Random walk with GSL Ziggurat RNG
                 while True:
                     bound_val = boundaries_all[k, ix]
                     neg_bound_val = -bound_val
@@ -772,7 +828,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp_k:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_inc + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -797,6 +853,10 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                 # Deadline enforcement (inline for nogil)
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
         # Note: smooth_unif is not supported in parallel mode
 
@@ -924,16 +984,19 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:, :] drifts_all
     cdef float[:] deadlines_tmp
     cdef float[:] sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, t_k, s_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_val, noise, bound_val, neg_bound_val
     cdef int choice
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -1033,10 +1096,18 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         # Parallel execution over FLATTENED iteration space
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Get thread ID for per-thread RNG
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -1047,9 +1118,9 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
                 sqrt_st_k = sqrt_st_all[k]
                 deadline_tmp_k = deadlines_tmp[k]
 
-                # Create unique seed for this (trial, sample) pair
+                # Re-seed per-thread RNG with unique seed for this (trial, sample)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Initialize particle position
                 bound_val = boundaries_all[k, 0]
@@ -1066,7 +1137,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
                         break
 
                     drift_val = drifts_all[k, ix]
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + (drift_val * delta_t) + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -1088,6 +1159,10 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
 
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -1222,16 +1297,19 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:, :] drifts_all
     cdef float[:] deadlines_tmp
     cdef float[:] sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, t_k, g_k, s_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_val, noise, bound_val, neg_bound_val
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -1329,9 +1407,16 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -1343,7 +1428,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
                 deadline_tmp_k = deadlines_tmp[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 bound_val = boundaries_all[k, 0]
                 y = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
@@ -1358,7 +1443,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
                         break
 
                     drift_val = drifts_all[k, ix]
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     # Leak term: drift_val - g_k * y
                     y = y + ((drift_val - g_k * y) * delta_t) + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
@@ -1380,6 +1465,10 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -1538,11 +1627,14 @@ def ddm_flex_leak2(
     cdef float[:] deadlines_tmp
     cdef float[:] sqrt_st_all
     cdef float[:] half_sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, t_k, g_t_k, g_d_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_t, drift_d, noise, bound_val, neg_bound_val, half_sqrt_st
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -1652,9 +1744,16 @@ def ddm_flex_leak2(
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -1667,7 +1766,7 @@ def ddm_flex_leak2(
                 deadline_tmp_k = deadlines_tmp[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 bound_val = boundaries_all[k, 0]
                 y_start = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
@@ -1686,7 +1785,7 @@ def ddm_flex_leak2(
 
                     drift_t = drifts_all[k, ix, 0]
                     drift_d = drifts_all[k, ix, 1]
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
 
                     # Both accumulators use the same noise (shared variance)
                     y_t = y_t + ((drift_t - g_t_k * y_t) * delta_t) + half_sqrt_st * noise
@@ -1712,6 +1811,10 @@ def ddm_flex_leak2(
 
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -1852,14 +1955,17 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
     cdef Py_ssize_t m = 0
     cdef float drift_increment = 0.0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:] sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, t_k, s_k, sqrt_st_k, deadline_k
     cdef float sz_n, sv_n, st_n, bound_val, neg_bound_val, noise
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -1953,9 +2059,16 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -1967,7 +2080,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
                 deadline_k = deadline_view[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Get per-sample variability
                 sz_n = sz_samplewise_view[k, n]
@@ -1995,7 +2108,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_increment + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -2016,6 +2129,10 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -2150,13 +2267,16 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
     cdef Py_ssize_t m = 0
     cdef float drift_increment = 0.0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, t_k, s_k, sz_k, sv_k, st_k, sqrt_st_k, deadline_k
     cdef float bound_val, neg_bound_val, noise, y_disp, v_disp, t_disp
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -2239,9 +2359,16 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -2257,15 +2384,15 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                 deadline_k = deadline_view[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Generate variability using C RNG
                 # sv uses normal distribution, sz and st use uniform
-                v_disp = sv_k * rng_gaussian_f32(&rng_state)  # Normal for drift variability
+                v_disp = sv_k * rng_gaussian_f32(&rng_states[tid])  # Normal for drift variability
 
                 # Uniform for starting point and t variability: 2 * (U - 0.5) = range [-1, 1]
-                y_disp = 2.0 * (<float>ssms_uniform(&rng_state) - 0.5) * sz_k
-                t_disp = 2.0 * (<float>ssms_uniform(&rng_state) - 0.5) * st_k
+                y_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * sz_k
+                t_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * st_k
 
                 bound_val = boundaries_all[k, 0]
                 y = (-1.0) * bound_val + (z_k * 2.0 * bound_val) + y_disp
@@ -2288,7 +2415,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_increment + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -2309,6 +2436,10 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -2425,16 +2556,19 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     cdef int m = 0
     cdef float deadline_tmp = 0.0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:] deadlines_tmp_all
     cdef float[:] sqrt_st_all
     cdef float[:] drift_inc_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, t_k, s_k, sqrt_st_k, deadline_k
     cdef float bound_val, neg_bound_val, noise, drift_inc
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -2506,9 +2640,16 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -2521,7 +2662,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                 deadline_tmp = deadlines_tmp_all[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 bound_val = boundaries_all[k, 0]
                 y = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
@@ -2535,7 +2676,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_inc + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -2556,6 +2697,10 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -2682,15 +2827,18 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t m = 0
     cdef float drift_increment = 0.0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:] deadlines_tmp_all
     cdef float[:] sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, t_k, s_k, sv_k, sqrt_st_k, deadline_k
     cdef float bound_val, neg_bound_val, noise, v_disp
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -2777,9 +2925,16 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -2793,10 +2948,10 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                 deadline_tmp = deadlines_tmp_all[k]
 
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Generate drift variability
-                v_disp = sv_k * rng_gaussian_f32(&rng_state)
+                v_disp = sv_k * rng_gaussian_f32(&rng_states[tid])
                 drift_increment = (v_k + v_disp) * delta_t
 
                 bound_val = boundaries_all[k, 0]
@@ -2811,7 +2966,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_increment + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -2832,6 +2987,10 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -3229,16 +3388,19 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all       # 2D: [n_trials, num_steps]
     cdef float[:] deadlines_tmp           # 1D: [n_trials]
     cdef float[:] sqrt_st_all             # 1D: [n_trials] - precomputed sqrt_st per trial
     cdef float[:] drift_inc_all           # 1D: [n_trials] - precomputed drift increment per trial
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t combined_seed
     cdef float v_k, z_k, t_k, s_k, sqrt_st_k, deadline_tmp_k
     cdef float drift_inc, noise, bound_val, neg_bound_val
     cdef int choice
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -3307,10 +3469,17 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         # Parallel execution over FLATTENED iteration space
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples   # trial index
                 n = flat_idx % c_n_samples    # sample index
@@ -3322,9 +3491,9 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
                 deadline_tmp_k = deadlines_tmp[k]
                 drift_inc = drift_inc_all[k]
 
-                # Create unique seed for this (trial, sample) pair
+                # Re-seed per-thread RNG with unique seed for this (trial, sample)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 # Initialize particle position
                 bound_val = boundaries_all[k, 0]
@@ -3340,7 +3509,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp_k:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y = y + drift_inc + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
                     ix = ix + 1
@@ -3363,6 +3532,10 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
                 # Deadline enforcement
                 if rts_view[n, k, 0] >= deadline_view[k] or deadline_view[k] <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build metadata
     minimal_meta = build_minimal_metadata(

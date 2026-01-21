@@ -40,24 +40,38 @@ from cssm._utils import (
 # C-LEVEL GSL RNG (for parallel execution)
 # =============================================================================
 # Uses GSL's validated Ziggurat implementation for correct variance.
-# Falls back to stub implementation if GSL not available (should not be called).
+# Per-thread RNG states are allocated before parallel block and freed after.
 
 cdef extern from "gsl_rng.h" nogil:
+    # Struct with known size (pointer) so Cython can allocate arrays
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer (void* for Cython compatibility)
 
-    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
-    void ssms_rng_cleanup(ssms_rng_state* state)
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     float ssms_gaussian_f32(ssms_rng_state* state)
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
+# Use Cython's parallel module for thread ID
+from cython.parallel cimport threadid
+
 # Type alias for consistency
 ctypedef ssms_rng_state RngState
 
-# Wrapper functions
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
+
+# Wrapper functions for GSL RNG
+cdef inline void rng_alloc(RngState* state) noexcept nogil:
+    ssms_rng_alloc(state)
+
+cdef inline void rng_free(RngState* state) noexcept nogil:
+    ssms_rng_free(state)
+
 cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_init(state, seed)
+    ssms_rng_seed(state, seed)
 
 cdef inline uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
     return ssms_mix_seed(base_seed, thread_id, trial_id)
@@ -159,11 +173,14 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     cdef float[:, :] boundaries_all
     cdef float[:] deadlines_tmp_all
     cdef float[:] sqrt_st_all
-    cdef RngState rng_state
+    cdef RngState[MAX_THREADS] rng_states  # Per-thread RNG states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, g_k, t_k, s_k, sqrt_st_k, deadline_k
     cdef float bound_val, neg_bound_val, noise
     cdef int choice
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -237,9 +254,17 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
 
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+        c_n_threads = n_threads
+
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
 
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Get thread ID for per-thread RNG
+                tid = threadid()
+
                 # Compute (k, n) from flat index
                 k = flat_idx // c_n_samples
                 n = flat_idx % c_n_samples
@@ -252,8 +277,9 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                 sqrt_st_k = sqrt_st_all[k]
                 deadline_tmp = deadlines_tmp_all[k]
 
+                # Re-seed per-thread RNG with unique seed for this (trial, sample)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
-                rng_seed(&rng_state, combined_seed)
+                rng_seed(&rng_states[tid], combined_seed)
 
                 bound_val = boundaries_all[k, 0]
                 y = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
@@ -267,7 +293,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    noise = rng_gaussian_f32(&rng_state)
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     # Ornstein-Uhlenbeck: drift with decay toward 0
                     y = y + ((v_k - g_k * y) * delta_t) + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
@@ -289,6 +315,10 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

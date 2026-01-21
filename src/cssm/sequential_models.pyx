@@ -42,23 +42,32 @@ from cssm._utils import (
 # C-LEVEL GSL RNG (for parallel execution)
 # =============================================================================
 # Uses GSL's validated Ziggurat implementation for correct variance.
-# Falls back to stub implementation if GSL not available (should not be called).
+# Per-thread RNG states are allocated before parallel block and freed after.
 
 cdef extern from "gsl_rng.h" nogil:
+    # Struct with known size (pointer) so Cython can allocate arrays
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer (void* for Cython compatibility)
 
-    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
-    void ssms_rng_cleanup(ssms_rng_state* state)
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     float ssms_gaussian_f32(ssms_rng_state* state)
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
-# Aliases for cleaner code
+# Type alias for consistency
 ctypedef ssms_rng_state RngState
 
+# Wrapper functions for GSL RNG
+cdef inline void rng_alloc(RngState* state) noexcept nogil:
+    ssms_rng_alloc(state)
+
+cdef inline void rng_free(RngState* state) noexcept nogil:
+    ssms_rng_free(state)
+
 cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_init(state, seed)
+    ssms_rng_seed(state, seed)
 
 cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
     return ssms_mix_seed(base, t, n)
@@ -75,8 +84,8 @@ DTYPE = np.float32
 # For max_t=20, delta_t=0.001 -> 20001 steps. Use 25000 for safety margin.
 DEF MAX_STEPS = 25000
 
-# Maximum threads for per-thread RNG states
-DEF MAX_THREADS = 128
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
 
 # Sequential Models ------------------------------------
 
@@ -209,10 +218,13 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
     cdef float[:] deadlines_view = deadlines_tmp
     cdef float[:] sqrt_st_view = sqrt_st_arr
 
-    # RNG state (per-iteration seeding)
-    cdef RngState rng_state
+    # Per-thread RNG states for parallel execution
+    cdef RngState[MAX_THREADS] rng_states
     cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
     cdef uint64_t combined_seed
+    cdef int tid  # Thread ID
+    cdef int i_thread
+    cdef int c_n_threads = n_threads
 
     # Flattened parallel loop variables
     cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
@@ -222,15 +234,22 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
     cdef float deadline_tmp_k, sqrt_st_k, bound_val, noise
     cdef int choice_val, decision_taken
 
+    # Allocate per-thread GSL RNGs BEFORE parallel block
+    for i_thread in range(c_n_threads):
+        rng_alloc(&rng_states[i_thread])
+
     # Parallel execution over FLATTENED iteration space
     with nogil, parallel(num_threads=n_threads):
         for flat_idx in prange(total_iterations, schedule='dynamic'):
+            # Get thread ID for per-thread RNG
+            tid = threadid()
+
             k = flat_idx // c_n_samples  # trial index
             n = flat_idx % c_n_samples   # sample index
 
-            # Create unique seed for this (trial, sample) pair
+            # Re-seed per-thread RNG with unique seed for this (trial, sample)
             combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
-            rng_seed(&rng_state, combined_seed)
+            rng_seed(&rng_states[tid], combined_seed)
 
             deadline_tmp_k = deadlines_view[k]
             sqrt_st_k = sqrt_st_view[k]
@@ -247,7 +266,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 bound_val = boundaries_view[k, ix]
                 if y_h < (-1.0) * bound_val or y_h > bound_val or t_particle > deadline_tmp_k:
                     break
-                noise = rng_gaussian_f32(&rng_state)
+                noise = rng_gaussian_f32(&rng_states[tid])
                 y_h = y_h + (vh_view[k] * delta_t) + (sqrt_st_k * noise)
                 t_particle = t_particle + delta_t
                 ix = ix + 1
@@ -259,25 +278,25 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             if t_particle >= max_t:
                 # At max_t, make stochastic choice
                 if bound_val <= 0.0:
-                    if rng_uniform(&rng_state) <= 0.5:
+                    if rng_uniform(&rng_states[tid]) <= 0.5:
                         choice_val = 2
-                elif rng_uniform(&rng_state) <= ((y_h + bound_val) / (2.0 * bound_val)):
+                elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
                     choice_val = 2
 
                 # Low dim choice random (a priori bias)
                 if choice_val == 0:
-                    if rng_uniform(&rng_state) <= zl1_view[k]:
+                    if rng_uniform(&rng_states[tid]) <= zl1_view[k]:
                         choice_val = 1
                 else:
-                    if rng_uniform(&rng_state) <= zl2_view[k]:
+                    if rng_uniform(&rng_states[tid]) <= zl2_view[k]:
                         choice_val = 3
                 decision_taken = 1
             else:
                 # High-dim choice based on position
                 if bound_val <= 0.0:
-                    if rng_uniform(&rng_state) <= 0.5:
+                    if rng_uniform(&rng_states[tid]) <= 0.5:
                         choice_val = 2
-                elif rng_uniform(&rng_state) <= ((y_h + bound_val) / (2.0 * bound_val)):
+                elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
                     choice_val = 2
 
                 # Stage 2: Low-dimensional walker (only run the one determined by high-dim choice)
@@ -293,7 +312,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 if choice_val == 0:
                     # Check if already at boundary
                     if y_l1 >= bound_val or y_l1 <= (-1.0) * bound_val:
-                        if rng_uniform(&rng_state) < zl1_view[k]:
+                        if rng_uniform(&rng_states[tid]) < zl1_view[k]:
                             choice_val = 1
                         decision_taken = 1
                     else:
@@ -302,7 +321,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                             bound_val = boundaries_view[k, ix1]
                             if y_l1 < (-1.0) * bound_val or y_l1 > bound_val or t_particle1 > deadline_tmp_k:
                                 break
-                            noise = rng_gaussian_f32(&rng_state)
+                            noise = rng_gaussian_f32(&rng_states[tid])
                             y_l1 = y_l1 + (vl1_view[k] * delta_t) + (sqrt_st_k * noise)
                             t_particle1 = t_particle1 + delta_t
                             ix1 = ix1 + 1
@@ -313,7 +332,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 else:
                     # Check if already at boundary
                     if y_l2 >= bound_val or y_l2 <= (-1.0) * bound_val:
-                        if rng_uniform(&rng_state) < zl2_view[k]:
+                        if rng_uniform(&rng_states[tid]) < zl2_view[k]:
                             choice_val = 3
                         decision_taken = 1
                     else:
@@ -322,7 +341,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                             bound_val = boundaries_view[k, ix2]
                             if y_l2 < (-1.0) * bound_val or y_l2 > bound_val or t_particle2 > deadline_tmp_k:
                                 break
-                            noise = rng_gaussian_f32(&rng_state)
+                            noise = rng_gaussian_f32(&rng_states[tid])
                             y_l2 = y_l2 + (vl2_view[k] * delta_t) + (sqrt_st_k * noise)
                             t_particle2 = t_particle2 + delta_t
                             ix2 = ix2 + 1
@@ -337,16 +356,16 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 if choice_val == 0:
                     # Low-dim choice based on y_l1 position
                     if bound_val <= 0.0:
-                        if rng_uniform(&rng_state) <= 0.5:
+                        if rng_uniform(&rng_states[tid]) <= 0.5:
                             choice_val = 1
-                    elif rng_uniform(&rng_state) <= ((y_l1 + bound_val) / (2.0 * bound_val)):
+                    elif rng_uniform(&rng_states[tid]) <= ((y_l1 + bound_val) / (2.0 * bound_val)):
                         choice_val = 1
                 else:
                     # Low-dim choice based on y_l2 position
                     if bound_val <= 0.0:
-                        if rng_uniform(&rng_state) <= 0.5:
+                        if rng_uniform(&rng_states[tid]) <= 0.5:
                             choice_val = 3
-                    elif rng_uniform(&rng_state) <= ((y_l2 + bound_val) / (2.0 * bound_val)):
+                    elif rng_uniform(&rng_states[tid]) <= ((y_l2 + bound_val) / (2.0 * bound_val)):
                         choice_val = 3
 
             rts_view[n, k, 0] = t_particle + t_view[k]
@@ -355,6 +374,10 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             # Enforce deadline
             if rts_view[n, k, 0] > deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
+
+    # Free per-thread GSL RNGs AFTER parallel block
+    for i_thread in range(c_n_threads):
+        rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

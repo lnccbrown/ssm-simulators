@@ -13,19 +13,20 @@ Uses GSL's validated implementations:
 - gsl_ran_gaussian_ziggurat: Fast Gaussian sampling (variance = 1.0)
 - gsl_ran_levy: Alpha-stable (Lévy) distributions
 
-When GSL is not available, provides stub implementations for testing.
-
 Reference:
 - GSL Manual: https://www.gnu.org/software/gsl/doc/html/randist.html
 """
 
 from libc.stdint cimport uint64_t
 
-# Use the GSL header file implementation
+# RNG state structure - must match the C struct in gsl_rng.h
 cdef extern from "gsl_rng.h" nogil:
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer
 
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
     void ssms_rng_cleanup(ssms_rng_state* state)
     float ssms_gaussian_f32(ssms_rng_state* state)
@@ -34,8 +35,9 @@ cdef extern from "gsl_rng.h" nogil:
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
-# Type alias for backward compatibility
+# Type aliases for backward compatibility and clarity
 ctypedef ssms_rng_state Xoroshiro128PlusState
+ctypedef ssms_rng_state RngState
 
 # =============================================================================
 # WRAPPER FUNCTIONS (for internal Cython use)
@@ -68,6 +70,14 @@ cdef double rng_levy(Xoroshiro128PlusState* state, double alpha) noexcept nogil:
 cdef float rng_levy_f32(Xoroshiro128PlusState* state, float alpha) noexcept nogil:
     """Generate alpha-stable random float."""
     return ssms_levy_f32(state, 1.0, alpha)
+
+cdef void rng_alloc(RngState* state) noexcept nogil:
+    """Allocate GSL RNG - call once per thread before parallel block."""
+    ssms_rng_alloc(state)
+
+cdef void rng_free(RngState* state) noexcept nogil:
+    """Free GSL RNG - call once per thread after parallel block."""
+    ssms_rng_free(state)
 
 # =============================================================================
 # PYTHON-ACCESSIBLE TEST AND VALIDATION FUNCTIONS
@@ -218,3 +228,51 @@ def py_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id):
         Mixed seed value
     """
     return ssms_mix_seed(base_seed, thread_id, trial_id)
+
+
+# =============================================================================
+# TEST ARRAY ALLOCATION (for parallel execution pattern)
+# =============================================================================
+
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
+
+def test_parallel_alloc(int n_threads=4):
+    """
+    Test the allocation pattern used in parallel execution.
+
+    This tests:
+    1. Allocating an array of RNG states
+    2. Seeding each one
+    3. Generating samples
+    4. Freeing them
+    """
+    import numpy as np
+
+    cdef ssms_rng_state[MAX_THREADS] rng_states
+    cdef int i
+    cdef float val
+
+    print(f"Testing parallel allocation pattern with {n_threads} threads...")
+
+    # Step 1: Allocate
+    print("  Allocating RNG states...")
+    for i in range(n_threads):
+        ssms_rng_alloc(&rng_states[i])
+        print(f"    Allocated state {i}")
+
+    # Step 2: Seed and generate
+    print("  Seeding and generating samples...")
+    for i in range(n_threads):
+        ssms_rng_seed(&rng_states[i], 42 + i)
+        val = ssms_gaussian_f32(&rng_states[i])
+        print(f"    State {i}: gaussian = {val:.4f}")
+
+    # Step 3: Free
+    print("  Freeing RNG states...")
+    for i in range(n_threads):
+        ssms_rng_free(&rng_states[i])
+        print(f"    Freed state {i}")
+
+    print("SUCCESS: Parallel allocation pattern works!")
+    return True

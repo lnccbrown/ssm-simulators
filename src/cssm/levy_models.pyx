@@ -39,15 +39,17 @@ from cssm._utils import (
 # =============================================================================
 # C-LEVEL GSL RNG (for parallel execution)
 # =============================================================================
-# Uses GSL's validated implementations for correct distributions.
-# Falls back to stub implementation if GSL not available (should not be called).
+# Uses GSL's validated Ziggurat/Levy implementations for correct distributions.
+# Per-thread RNG states are allocated before parallel block and freed after.
 
 cdef extern from "gsl_rng.h" nogil:
+    # Struct with known size (pointer) so Cython can allocate arrays
     ctypedef struct ssms_rng_state:
-        pass
+        void* rng  # gsl_rng pointer (void* for Cython compatibility)
 
-    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
-    void ssms_rng_cleanup(ssms_rng_state* state)
+    void ssms_rng_alloc(ssms_rng_state* state)
+    void ssms_rng_free(ssms_rng_state* state)
+    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     float ssms_gaussian_f32(ssms_rng_state* state)
     float ssms_levy_f32(ssms_rng_state* state, float c, float alpha)
     double ssms_uniform(ssms_rng_state* state)
@@ -59,12 +61,18 @@ from cython.parallel cimport threadid
 # Type alias for consistency
 ctypedef ssms_rng_state RngState
 
-# Maximum threads we support (for static array allocation)
-DEF MAX_THREADS = 64
+# Include shared constants (MAX_THREADS, etc.)
+include "_constants.pxi"
 
 # Wrapper functions
+cdef inline void rng_alloc(RngState* state) noexcept nogil:
+    ssms_rng_alloc(state)
+
+cdef inline void rng_free(RngState* state) noexcept nogil:
+    ssms_rng_free(state)
+
 cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_init(state, seed)
+    ssms_rng_seed(state, seed)
 
 cdef inline uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
     return ssms_mix_seed(base_seed, thread_id, trial_id)
@@ -115,6 +123,9 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         random_state (int or None): Seed for random number generator (default: None).
         return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
         smooth_unif (bool): Whether to apply uniform smoothing to reaction times (default: False).
+        n_threads (int): Number of threads for parallel execution (default: 1).
+            If > 1 and OpenMP/GSL are available, uses parallel execution with GSL's
+            validated Levy distribution sampler. Maximum supported: 256 threads.
         **kwargs: Additional keyword arguments.
 
     Returns:
@@ -123,12 +134,17 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
 
     Raises:
         ValueError: If return_option is neither 'full' nor 'minimal'.
+        ValueError: If n_threads exceeds the maximum supported (256).
     """
 
+    # Validate n_threads against compile-time maximum
+    if n_threads > MAX_THREADS:
+        raise ValueError(
+            f"n_threads={n_threads} exceeds maximum supported ({MAX_THREADS}). "
+            "Reduce n_threads or rebuild with higher MAX_THREADS."
+        )
+
     # Check if parallel execution is requested and available
-    # Note: Levy parallel support is implemented but may not show speedup due to
-    # the computational complexity of the Chambers-Mallows-Stuck algorithm.
-    # Sequential execution is often faster for this model.
     n_threads = check_parallel_request(n_threads)
 
     # Get seed for reproducibility
@@ -167,21 +183,23 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t m = 0
     cdef float[:] alpha_stable_values
 
-    # Variables for parallel execution
+    # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
     cdef float[:] deadlines_tmp_all
     cdef float[:] delta_t_alpha_all
-    cdef RngState[MAX_THREADS] rng_states  # Per-thread RNG states to avoid contention
+    cdef RngState[MAX_THREADS] rng_states  # Per-thread RNG states
     cdef uint64_t combined_seed
     cdef float z_k, v_k, alpha_k, t_k, s_k, deadline_k, delta_t_alpha_k
     cdef float bound_val, neg_bound_val, noise
     cdef int choice
     cdef int tid  # Thread ID
+    cdef int i_thread  # Loop variable for alloc/free
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
     cdef Py_ssize_t total_iterations
     cdef int c_n_samples = n_samples
+    cdef int c_n_threads = n_threads
 
     # =========================================================================
     # SEQUENTIAL PATH (n_threads == 1): Original algorithm
@@ -266,6 +284,10 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         # Total iterations = n_trials × n_samples
         total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
 
+        # Allocate per-thread GSL RNGs BEFORE parallel block
+        for i_thread in range(c_n_threads):
+            rng_alloc(&rng_states[i_thread])
+
         with nogil, parallel(num_threads=n_threads):
             for flat_idx in prange(total_iterations, schedule='dynamic'):
                 # Compute (k, n) from flat index
@@ -283,6 +305,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
                 delta_t_alpha_k = delta_t_alpha_all[k]
                 deadline_tmp = deadlines_tmp_all[k]
 
+                # Re-seed per-thread RNG (no allocation, safe in parallel)
                 combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
                 rng_seed(&rng_states[tid], combined_seed)
 
@@ -298,7 +321,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
                     if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
                         break
 
-                    # Generate alpha-stable noise using CMS algorithm
+                    # Generate alpha-stable noise using GSL's Levy sampler
                     noise = rng_levy_f32(&rng_states[tid], alpha_k)
                     y = y + (v_k * delta_t) + (delta_t_alpha_k * noise)
                     t_particle = t_particle + delta_t
@@ -320,6 +343,10 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
 
                 if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
                     rts_view[n, k, 0] = -999.0
+
+        # Free per-thread GSL RNGs AFTER parallel block
+        for i_thread in range(c_n_threads):
+            rng_free(&rng_states[i_thread])
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

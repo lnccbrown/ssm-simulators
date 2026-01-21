@@ -1,138 +1,105 @@
 /*
  * GSL-based Random Number Generation for Parallel Execution
  *
- * This header provides thread-safe RNG functions. When HAVE_GSL is defined,
- * it uses GSL's validated implementations. Otherwise, it provides a simple
- * xoroshiro128+ based implementation with Box-Muller for Gaussian.
+ * This header provides thread-safe RNG functions using GSL's validated
+ * Ziggurat implementation for Gaussian sampling.
  *
- * The state is a simple struct that doesn't require malloc, making it safe
- * for use in parallel loops without memory management issues.
+ * USAGE FOR PARALLEL CODE:
+ * 1. Declare array: cdef RngState[MAX_THREADS] rng_states
+ * 2. Before parallel block: call ssms_rng_alloc(&rng_states[i]) for each thread
+ * 3. Inside parallel: use ssms_rng_seed(&rng_states[tid], seed) to re-seed
+ * 4. After parallel block: call ssms_rng_free(&rng_states[i]) for each thread
+ *
+ * Functions:
+ * - ssms_rng_alloc: Allocate GSL RNG (call once per thread, before parallel)
+ * - ssms_rng_free: Free GSL RNG (call once per thread, after parallel)
+ * - ssms_rng_seed: Re-seed an allocated RNG (no allocation, safe in parallel)
+ * - ssms_gaussian_f32: Generate Gaussian using GSL Ziggurat (variance = 1.0)
+ * - ssms_levy_f32: Generate Levy alpha-stable
+ * - ssms_uniform: Generate uniform in (0, 1)
+ * - ssms_mix_seed: Mix seed with thread/trial IDs
  */
 
 #ifndef SSMS_GSL_RNG_H
 #define SSMS_GSL_RNG_H
 
 #include <stdint.h>
-#include <math.h>
+#include <stdlib.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#ifdef HAVE_GSL
 
-/* Simple xoroshiro128+ state - no malloc needed */
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+
+/*
+ * RNG state wrapper - contains pointer to GSL RNG.
+ * This struct has KNOWN SIZE (just a pointer) so Cython can allocate arrays of it.
+ */
 typedef struct {
-    uint64_t s0;
-    uint64_t s1;
+    gsl_rng *rng;
 } ssms_rng_state;
 
-/* Rotate left helper */
-static inline uint64_t rotl(const uint64_t x, int k) {
-    return (x << k) | (x >> (64 - k));
+/* Allocate GSL RNG - call ONCE per thread BEFORE parallel block */
+static inline void ssms_rng_alloc(ssms_rng_state* state) {
+    state->rng = gsl_rng_alloc(gsl_rng_mt19937);
 }
 
-/* Initialize RNG with seed */
-static inline void ssms_rng_init(ssms_rng_state* state, uint64_t seed) {
-    /* SplitMix64 to initialize state from seed */
-    uint64_t z = seed;
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    state->s0 = z ^ (z >> 31);
-
-    z = seed + 0x9E3779B97F4A7C15ULL;
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    state->s1 = z ^ (z >> 31);
-}
-
-/* Alias for backward compatibility */
-static inline void ssms_rng_seed(ssms_rng_state* state, uint64_t seed) {
-    ssms_rng_init(state, seed);
-}
-
-/* No-op cleanup (no malloc used) */
-static inline void ssms_rng_cleanup(ssms_rng_state* state) {
-    (void)state;
-}
-
-/* Xoroshiro128+ next */
-static inline uint64_t ssms_rng_next(ssms_rng_state* state) {
-    const uint64_t s0 = state->s0;
-    uint64_t s1 = state->s1;
-    const uint64_t result = s0 + s1;
-
-    s1 ^= s0;
-    state->s0 = rotl(s0, 24) ^ s1 ^ (s1 << 16);
-    state->s1 = rotl(s1, 37);
-
-    return result;
-}
-
-/* Generate uniform random double in (0, 1) */
-static inline double ssms_uniform(ssms_rng_state* state) {
-    /* Use upper 53 bits for maximum precision */
-    return (ssms_rng_next(state) >> 11) * (1.0 / 9007199254740992.0);
-}
-
-/* Generate Gaussian random float using Box-Muller transform */
-static inline float ssms_gaussian_f32(ssms_rng_state* state) {
-    /* Box-Muller transform - generates two values, we use one */
-    double u1, u2, r, theta;
-
-    /* Ensure u1 > 0 to avoid log(0) */
-    do {
-        u1 = ssms_uniform(state);
-    } while (u1 <= 1e-15);
-
-    u2 = ssms_uniform(state);
-
-    r = sqrt(-2.0 * log(u1));
-    theta = 2.0 * M_PI * u2;
-
-    return (float)(r * cos(theta));
-}
-
-/* Generate Gaussian random float with given sigma */
-static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
-    return ssms_gaussian_f32(state) * sigma;
-}
-
-/* Chambers-Mallows-Stuck algorithm for alpha-stable (Levy) distribution */
-static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
-    double U, W, X;
-    double inv_alpha, one_minus_alpha_over_alpha;
-
-    /* Handle special case: alpha=2 is Gaussian with variance=2 */
-    if (alpha >= 1.9999f) {
-        return c * ssms_gaussian_f32(state) * 1.4142135623730951f; /* sqrt(2) */
+/* Free GSL RNG - call ONCE per thread AFTER parallel block */
+static inline void ssms_rng_free(ssms_rng_state* state) {
+    if (state->rng != NULL) {
+        gsl_rng_free(state->rng);
+        state->rng = NULL;
     }
+}
 
-    /* Uniform in (-pi/2, pi/2) */
-    U = (ssms_uniform(state) - 0.5) * M_PI;
+/* Re-seed an already allocated RNG - safe to call in parallel (no allocation) */
+static inline void ssms_rng_seed(ssms_rng_state* state, uint64_t seed) {
+    gsl_rng_set(state->rng, (unsigned long)seed);
+}
 
-    /* Exponential with mean 1 */
-    double e;
-    do {
-        e = ssms_uniform(state);
-    } while (e <= 1e-15);
-    W = -log(e);
+/* Legacy init function - allocates AND seeds (for backward compat, avoid in loops) */
+static inline void ssms_rng_init(ssms_rng_state* state, uint64_t seed) {
+    state->rng = gsl_rng_alloc(gsl_rng_mt19937);
+    gsl_rng_set(state->rng, (unsigned long)seed);
+}
 
-    inv_alpha = 1.0 / (double)alpha;
-    one_minus_alpha_over_alpha = ((double)alpha - 1.0) * inv_alpha;
+/* Legacy cleanup function */
+static inline void ssms_rng_cleanup(ssms_rng_state* state) {
+    ssms_rng_free(state);
+}
 
-    /* CMS formula */
-    X = sin((double)alpha * U) / pow(cos(U), inv_alpha);
-    X *= pow(cos(U - (double)alpha * U) / W, one_minus_alpha_over_alpha);
+/* Generate Gaussian using GSL's validated Ziggurat - variance = 1.0 */
+static inline float ssms_gaussian_f32(ssms_rng_state* state) {
+    return (float)gsl_ran_gaussian_ziggurat(state->rng, 1.0);
+}
 
-    return (float)(c * X);
+/* Generate Gaussian with given sigma */
+static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
+    return (float)gsl_ran_gaussian_ziggurat(state->rng, (double)sigma);
+}
+
+/* Generate Levy alpha-stable using GSL */
+static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
+    return (float)gsl_ran_levy(state->rng, (double)c, (double)alpha);
+}
+
+/* Generate uniform in (0, 1) */
+static inline double ssms_uniform(ssms_rng_state* state) {
+    return gsl_rng_uniform_pos(state->rng);
 }
 
 /* Mix seed with thread/trial IDs for independent streams */
 static inline uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
-    /* SplitMix64-style mixing for high-quality seed derivation */
     uint64_t z = base + t1 * 0x9E3779B97F4A7C15ULL + t2 * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
 }
+
+#else /* !HAVE_GSL */
+
+#error "GSL is required for parallel execution. Install GSL and rebuild."
+
+#endif /* HAVE_GSL */
 
 #endif /* SSMS_GSL_RNG_H */
