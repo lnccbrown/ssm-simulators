@@ -246,7 +246,11 @@ cpdef float[:] draw_random_stable_scipy(int n, float alpha):
 cpdef float[:] draw_random_stable(int n, float alpha):
     """
     Generate alpha-stable variates using NumPy RNG with vectorized operations.
-    ~1.8x faster than the old C-based implementation.
+
+    NUMERICALLY STABLE VERSION:
+    - Clamps uniform values away from ±π/2 boundaries
+    - Clamps cosine values to avoid log(0) in power operations
+    - Clamps final output to avoid inf propagation
 
     Args:
         n (int): The number of random floats to generate.
@@ -259,31 +263,51 @@ cpdef float[:] draw_random_stable(int n, float alpha):
     if _global_rng is None:
         _global_rng = np.random.default_rng()
 
-    # Generate as float64, then cast to float32
+    # Generate uniform values and clamp away from boundaries
+    # to avoid cos(u) ≈ 0 issues
     cdef np.ndarray[float, ndim=1] u_vals = _global_rng.uniform(
-        -np.pi/2, np.pi/2, n
+        -np.pi/2 + 1e-7, np.pi/2 - 1e-7, n
     ).astype(np.float32)
 
+    # Generate exponential values with minimum to avoid division issues
     cdef np.ndarray[float, ndim=1] w_vals = _global_rng.exponential(
         1.0, n
     ).astype(np.float32)
+    w_vals = np.maximum(w_vals, 1e-10)
 
     # Declare result array and intermediate values
     cdef np.ndarray[float, ndim=1] result
+    cdef np.ndarray[float, ndim=1] cos_u
+    cdef np.ndarray[float, ndim=1] cos_u_alpha
     cdef float alpha_inv
     cdef float scale
 
-    # Vectorized computation
+    # Vectorized computation with numerical stability
     if alpha == 1.0:
+        # Cauchy case
         result = np.tan(u_vals).astype(np.float32)
+        # Clamp extreme values
+        result = np.clip(result, -1e10, 1e10)
         return result
     else:
         alpha_inv = 1.0 / alpha
         scale = (1.0 - alpha) / alpha
 
-        # All operations with explicit float32 cast at end
-        result = ((np.sin(alpha * u_vals) / (np.cos(u_vals) ** alpha_inv)) * \
-                  ((np.cos(u_vals - alpha * u_vals) / w_vals) ** scale)).astype(np.float32)
+        # Compute cosines with clamping to avoid pow(0, x) issues
+        cos_u = np.cos(u_vals)
+        cos_u = np.sign(cos_u) * np.maximum(np.abs(cos_u), 1e-10)
+
+        cos_u_alpha = np.cos(u_vals * (1.0 - alpha))
+        cos_u_alpha = np.sign(cos_u_alpha) * np.maximum(np.abs(cos_u_alpha), 1e-10)
+
+        # Use np.abs for power operations (CMS formula with symmetric stable)
+        # This avoids "invalid value in power" for negative bases
+        result = ((np.sin(alpha * u_vals) / (np.abs(cos_u) ** alpha_inv)) * \
+                  ((np.abs(cos_u_alpha) / w_vals) ** scale)).astype(np.float32)
+
+        # Clamp output and replace NaN with 0
+        result = np.clip(result, -1e10, 1e10)
+        result = np.nan_to_num(result, nan=0.0, posinf=1e10, neginf=-1e10)
 
         return result
 

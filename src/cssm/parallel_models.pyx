@@ -14,9 +14,13 @@ multiple dimensions that combine to form a single decision variable.
 
 import cython
 from libc.math cimport sqrt, log, fmax
+from libc.stdint cimport uint64_t
 
 import numpy as np
 cimport numpy as np
+
+# OpenMP imports
+from cython.parallel cimport prange, parallel, threadid
 
 # Import utility functions from the _utils module
 from cssm._utils import (
@@ -34,7 +38,41 @@ from cssm._utils import (
     build_return_dict,
 )
 
+# =============================================================================
+# C-LEVEL GSL RNG (for parallel execution)
+# =============================================================================
+# Uses GSL's validated Ziggurat implementation for correct variance.
+# Falls back to stub implementation if GSL not available (should not be called).
+
+cdef extern from "gsl_rng.h" nogil:
+    ctypedef struct ssms_rng_state:
+        pass
+
+    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
+    void ssms_rng_cleanup(ssms_rng_state* state)
+    float ssms_gaussian_f32(ssms_rng_state* state)
+    double ssms_uniform(ssms_rng_state* state)
+    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
+
+# Aliases for cleaner code
+ctypedef ssms_rng_state RngState
+
+cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
+    ssms_rng_init(state, seed)
+
+cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
+    return ssms_mix_seed(base, t, n)
+
+cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
+    return ssms_gaussian_f32(state)
+
+cdef inline double rng_uniform(RngState* state) noexcept nogil:
+    return ssms_uniform(state)
+
 DTYPE = np.float32
+
+# Maximum threads for per-thread RNG states
+DEF MAX_THREADS = 128
 
 # Parallel Models ------------------------------------
 
@@ -57,20 +95,19 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                        random_state = None,
                        return_option = 'full',
                        smooth_unif = False,
+                       int n_threads = 1,
                        **kwargs):
     """
     Simulate a parallel diffusion decision model with flexible boundaries.
 
-    This function simulates a two-stage decision process where a high-dimensional choice
-    is made first, followed by a low-dimensional choice. The process uses a flexible
-    boundary that can change over time.
+    This function simulates a decision process where three independent walkers
+    (high-dimensional and two low-dimensional) evolve in parallel. The final
+    decision combines outcomes from all three processes.
 
     Parameters:
     -----------
     vh, vl1, vl2 : np.ndarray
         Drift rates for high-dimensional and two low-dimensional choices.
-    a : np.ndarray
-        Initial boundary separation.
     zh, zl1, zl2 : np.ndarray
         Starting points for high-dimensional and two low-dimensional choices.
     t : np.ndarray
@@ -99,6 +136,8 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         Determines the content of the returned dictionary. Can be 'full' or 'minimal'. Default is 'full'.
     smooth_unif : bool, optional
         If True, adds uniform noise to simulate continuous time. Default is False.
+    n_threads : int, optional
+        Number of threads for parallel execution. Default is 1.
 
     Returns:
     --------
@@ -106,6 +145,253 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         A dictionary containing simulation results. The exact contents depend on the return_option.
         'full' returns all simulation data and parameters, while 'minimal' returns only essential outputs.
     """
+    # Check OpenMP availability for parallel execution
+    if n_threads > 1:
+        from cssm._openmp_status import check_parallel_request
+        n_threads = check_parallel_request(n_threads)
+
+    # Sequential path (n_threads=1)
+    if n_threads == 1:
+        return _ddm_flexbound_par2_sequential(
+            vh, vl1, vl2, zh, zl1, zl2, t, deadline, s,
+            delta_t, max_t, n_samples, n_trials, print_info,
+            boundary_fun, boundary_params, random_state,
+            return_option, smooth_unif
+        )
+
+    # Parallel path
+    # Param views
+    cdef float[:] vh_view = vh
+    cdef float[:] vl1_view = vl1
+    cdef float[:] vl2_view = vl2
+    cdef float[:] zh_view = zh
+    cdef float[:] zl1_view = zl1
+    cdef float[:] zl2_view = zl2
+    cdef float[:] t_view = t
+    cdef float[:] deadline_view = deadline
+    cdef float[:] s_view = s
+
+    # Trajectory storage - disabled in parallel mode (would require first sample only)
+    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype=DTYPE)
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    rts_high = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    rts_low = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
+
+    cdef float[:, :, :] rts_view = rts
+    cdef float[:, :, :] rts_high_view = rts_high
+    cdef float[:, :, :] rts_low_view = rts_low
+    cdef int[:, :, :] choices_view = choices
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef float c_max_t = max_t
+    cdef int c_n_samples = n_samples
+
+    # Pre-compute boundaries for all trials (outside nogil)
+    t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
+    boundaries_all_np = np.zeros((n_trials, len(t_s)), dtype=DTYPE)
+    deadlines_tmp = np.zeros(n_trials, dtype=DTYPE)
+    sqrt_st_arr = np.zeros(n_trials, dtype=DTYPE)
+
+    cdef Py_ssize_t k_precomp
+    for k_precomp in range(n_trials):
+        boundary_params_tmp = {key: boundary_params[key][k_precomp] for key in boundary_params.keys()}
+        boundary_tmp = np.zeros(t_s.shape, dtype=DTYPE)
+        compute_boundary(boundary_tmp, t_s, boundary_fun, boundary_params_tmp)
+        boundaries_all_np[k_precomp, :] = boundary_tmp
+        deadlines_tmp[k_precomp] = compute_deadline_tmp(max_t, deadline_view[k_precomp], t_view[k_precomp])
+        sqrt_st_arr[k_precomp] = delta_t_sqrt * s_view[k_precomp]
+
+    cdef float[:, :] boundaries_view = boundaries_all_np
+    cdef float[:] deadlines_view = deadlines_tmp
+    cdef float[:] sqrt_st_view = sqrt_st_arr
+
+    # RNG state (per-iteration seeding)
+    cdef RngState rng_state
+    cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+    cdef uint64_t combined_seed
+
+    # Flattened parallel loop variables
+    cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+    cdef Py_ssize_t flat_idx
+    cdef int ix, ix1, ix2
+    cdef float y_h, y_l1, y_l2, t_h, t_l1, t_l2, t_particle
+    cdef float deadline_tmp_k, sqrt_st_k
+    cdef int choice_val
+    cdef float bound_h, bound_l1, bound_l2, noise
+
+    # Parallel execution over FLATTENED iteration space
+    with nogil, parallel(num_threads=n_threads):
+        for flat_idx in prange(total_iterations, schedule='dynamic'):
+            k = flat_idx // c_n_samples  # trial index
+            n = flat_idx % c_n_samples   # sample index
+
+            # Create unique seed for this (trial, sample) pair
+            combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
+            rng_seed(&rng_state, combined_seed)
+
+            deadline_tmp_k = deadlines_view[k]
+            sqrt_st_k = sqrt_st_view[k]
+
+            # Initialize all three walkers
+            t_h = 0.0
+            t_l1 = 0.0
+            t_l2 = 0.0
+            ix = 0
+            ix1 = 0
+            ix2 = 0
+            choice_val = 0
+
+            # High-dimensional walker
+            bound_h = boundaries_view[k, 0]
+            y_h = (-1.0) * bound_h + (zh_view[k] * 2.0 * bound_h)
+
+            # Low-dimensional walkers (start from initial boundary position)
+            y_l1 = (-1.0) * bound_h + (zl1_view[k] * 2.0 * bound_h)
+            y_l2 = (-1.0) * bound_h + (zl2_view[k] * 2.0 * bound_h)
+
+            # Simulate high-dimensional walker
+            while True:
+                bound_h = boundaries_view[k, ix]
+                if y_h < (-1.0) * bound_h or y_h > bound_h or t_h > deadline_tmp_k:
+                    break
+                noise = ssms_gaussian_f32(&rng_state)
+                y_h = y_h + (vh_view[k] * delta_t) + (sqrt_st_k * noise)
+                t_h = t_h + delta_t
+                ix = ix + 1
+                if ix >= num_steps:
+                    break
+
+            # Determine high-dimensional choice
+            bound_h = boundaries_view[k, ix] if ix < num_steps else 0.0
+            if bound_h <= 0.0:
+                if rng_uniform(&rng_state) <= 0.5:
+                    choice_val = 2
+            elif rng_uniform(&rng_state) <= ((y_h + bound_h) / (2.0 * bound_h)):
+                choice_val = 2
+
+            # Simulate low-dimensional walker 1
+            while True:
+                bound_l1 = boundaries_view[k, ix1]
+                if y_l1 < (-1.0) * bound_l1 or y_l1 > bound_l1 or t_l1 > deadline_tmp_k:
+                    break
+                noise = ssms_gaussian_f32(&rng_state)
+                y_l1 = y_l1 + (vl1_view[k] * delta_t) + (sqrt_st_k * noise)
+                t_l1 = t_l1 + delta_t
+                ix1 = ix1 + 1
+                if ix1 >= num_steps:
+                    break
+
+            # Simulate low-dimensional walker 2
+            while True:
+                bound_l2 = boundaries_view[k, ix2]
+                if y_l2 < (-1.0) * bound_l2 or y_l2 > bound_l2 or t_l2 > deadline_tmp_k:
+                    break
+                noise = ssms_gaussian_f32(&rng_state)
+                y_l2 = y_l2 + (vl2_view[k] * delta_t) + (sqrt_st_k * noise)
+                t_l2 = t_l2 + delta_t
+                ix2 = ix2 + 1
+                if ix2 >= num_steps:
+                    break
+
+            # Combine results: max time of high and the relevant low dimension
+            # choice_val mapping: 0=high0_low0, 1=high0_low1, 2=high1_low0, 3=high1_low1
+            if choice_val == 0:
+                t_particle = fmax(t_h, t_l1)
+                rts_low_view[n, k, 0] = t_l1 + t_view[k]
+                # Low-dim choice based on y_l1
+                bound_l1 = boundaries_view[k, ix1] if ix1 < num_steps else 0.0
+                if bound_l1 <= 0.0:
+                    if rng_uniform(&rng_state) <= 0.5:
+                        choice_val = 1
+                elif rng_uniform(&rng_state) <= ((y_l1 + bound_l1) / (2.0 * bound_l1)):
+                    choice_val = 1
+                # else choice_val remains 0
+            else:
+                # choice_val is 2 (high choice upper bound)
+                t_particle = fmax(t_h, t_l2)
+                rts_low_view[n, k, 0] = t_l2 + t_view[k]
+                # Low-dim choice based on y_l2: result will be 2 or 3
+                bound_l2 = boundaries_view[k, ix2] if ix2 < num_steps else 0.0
+                if bound_l2 <= 0.0:
+                    if rng_uniform(&rng_state) <= 0.5:
+                        choice_val = 3  # high=1, low=1
+                    # else choice_val stays 2
+                elif rng_uniform(&rng_state) <= ((y_l2 + bound_l2) / (2.0 * bound_l2)):
+                    choice_val = 3  # high=1, low=1
+                # else choice_val stays 2
+
+            rts_view[n, k, 0] = t_particle + t_view[k]
+            rts_high_view[n, k, 0] = t_h + t_view[k]
+            choices_view[n, k, 0] = choice_val
+
+            # Enforce deadline
+            if rts_view[n, k, 0] > deadline_view[k]:
+                rts_view[n, k, 0] = -999.0
+
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='ddm_flexbound_par2',
+        possible_choices=[0, 1, 2, 3],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
+
+    # Extra arrays for this model
+    extra_arrays_dict = {'rts_low': rts_low, 'rts_high': rts_high}
+
+    if return_option == 'full':
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
+        params = {
+            'vh': vh, 'vl1': vl1, 'vl2': vl2,
+            'zh': zh, 'zl1': zl1, 'zl2': zl2,
+            't': t, 'deadline': deadline, 's': s
+        }
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundaries_all_np[0] if n_trials > 0 else np.array([]),
+            traj=traj,
+            boundary_params=boundary_params
+        )
+        return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
+
+    elif return_option == 'minimal':
+        return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
+
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
+
+
+def _ddm_flexbound_par2_sequential(
+    np.ndarray[float, ndim = 1] vh,
+    np.ndarray[float, ndim = 1] vl1,
+    np.ndarray[float, ndim = 1] vl2,
+    np.ndarray[float, ndim = 1] zh,
+    np.ndarray[float, ndim = 1] zl1,
+    np.ndarray[float, ndim = 1] zl2,
+    np.ndarray[float, ndim = 1] t,
+    np.ndarray[float, ndim = 1] deadline,
+    np.ndarray[float, ndim = 1] s,
+    float delta_t,
+    float max_t,
+    int n_samples,
+    int n_trials,
+    print_info,
+    boundary_fun,
+    boundary_params,
+    random_state,
+    return_option,
+    smooth_unif
+):
+    """Sequential implementation of ddm_flexbound_par2 (original code path)."""
 
     set_seed(random_state)
     # Param views
@@ -268,7 +554,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
-        simulator_name='ddm_flexbound',
+        simulator_name='ddm_flexbound_par2',
         possible_choices=[0, 1, 2, 3],
         n_samples=n_samples,
         n_trials=n_trials,

@@ -13,7 +13,9 @@ by allowing for heavy-tailed jump distributions.
 """
 
 import cython
-from libc.math cimport log, sqrt, pow, fmax
+from libc.math cimport log, sqrt, pow, fmax, fmin, tan, sin, cos
+from cython.parallel import prange, parallel
+from libc.stdint cimport uint64_t
 
 import numpy as np
 cimport numpy as np
@@ -34,6 +36,47 @@ from cssm._utils import (
     build_return_dict,
 )
 
+# =============================================================================
+# C-LEVEL GSL RNG (for parallel execution)
+# =============================================================================
+# Uses GSL's validated implementations for correct distributions.
+# Falls back to stub implementation if GSL not available (should not be called).
+
+cdef extern from "gsl_rng.h" nogil:
+    ctypedef struct ssms_rng_state:
+        pass
+
+    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
+    void ssms_rng_cleanup(ssms_rng_state* state)
+    float ssms_gaussian_f32(ssms_rng_state* state)
+    float ssms_levy_f32(ssms_rng_state* state, float c, float alpha)
+    double ssms_uniform(ssms_rng_state* state)
+    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
+
+# Use Cython's parallel module for thread ID
+from cython.parallel cimport threadid
+
+# Type alias for consistency
+ctypedef ssms_rng_state RngState
+
+# Maximum threads we support (for static array allocation)
+DEF MAX_THREADS = 64
+
+# Wrapper functions
+cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
+    ssms_rng_init(state, seed)
+
+cdef inline uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
+    return ssms_mix_seed(base_seed, thread_id, trial_id)
+
+cdef inline float rng_levy_f32(RngState* state, float alpha) noexcept nogil:
+    # GSL's gsl_ran_levy takes (rng, c, alpha) where c is scale parameter
+    # For our models, c=1.0 (unit scale)
+    return ssms_levy_f32(state, 1.0, alpha)
+
+# Import OpenMP status check
+from cssm._openmp_status import check_parallel_request
+
 DTYPE = np.float32
 
 def levy_flexbound(np.ndarray[float, ndim = 1] v,
@@ -51,6 +94,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
                    random_state = None,
                    return_option = 'full',
                    smooth_unif = False,
+                   int n_threads = 1,
                    **kwargs):
     """
     Simulate reaction times and choices from a Levy Flight model with flexible boundaries.
@@ -81,6 +125,15 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         ValueError: If return_option is neither 'full' nor 'minimal'.
     """
 
+    # Check if parallel execution is requested and available
+    # Note: Levy parallel support is implemented but may not show speedup due to
+    # the computational complexity of the Chambers-Mallows-Stuck algorithm.
+    # Sequential execution is often faster for this model.
+    n_threads = check_parallel_request(n_threads)
+
+    # Get seed for reproducibility
+    cdef uint64_t seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+
     setup = setup_simulation(n_samples, n_trials, max_t, delta_t, random_state)
 
     # Extract arrays and create memory views for C-level performance
@@ -93,6 +146,8 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef float c_max_t = max_t
 
     # Param views
     cdef float[:] v_view  = v
@@ -110,60 +165,161 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
-    cdef float[:] alpha_stable_values = draw_random_stable(num_draws, alpha_view[0])
+    cdef float[:] alpha_stable_values
 
-    for k in range(n_trials):
-        # AF-TODO: check if this is correct
-        delta_t_alpha = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])
-        boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+    # Variables for parallel execution
+    cdef float[:, :] boundaries_all
+    cdef float[:] deadlines_tmp_all
+    cdef float[:] delta_t_alpha_all
+    cdef RngState[MAX_THREADS] rng_states  # Per-thread RNG states to avoid contention
+    cdef uint64_t combined_seed
+    cdef float z_k, v_k, alpha_k, t_k, s_k, deadline_k, delta_t_alpha_k
+    cdef float bound_val, neg_bound_val, noise
+    cdef int choice
+    cdef int tid  # Thread ID
 
-        # Precompute boundary evaluations
-        compute_boundary(boundary,
-                         t_s,
-                         boundary_fun,
-                         boundary_params_tmp
-                         )
-        deadline_tmp = compute_deadline_tmp(max_t,
-                                            deadline_view[k],
-                                            t_view[k]
-                                            )
+    # Flattened parallelization variables
+    cdef Py_ssize_t flat_idx
+    cdef Py_ssize_t total_iterations
+    cdef int c_n_samples = n_samples
 
-        # Loop over samples
-        for n in range(n_samples):
-            y = (-1) * boundary_view[0] + (z_view[k] * 2 * (boundary_view[0]))  # reset starting position
-            t_particle = 0.0 # reset time
-            ix = 0 # reset boundary index
-            if n == 0:
-                if k == 0:
-                    traj_view[0, 0] = y
+    # =========================================================================
+    # SEQUENTIAL PATH (n_threads == 1): Original algorithm
+    # =========================================================================
+    if n_threads == 1:
+        alpha_stable_values = draw_random_stable(num_draws, alpha_view[0])
 
-            # Random walker
-            while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
-                y += (v_view[k] * delta_t) + (delta_t_alpha * alpha_stable_values[m])
-                t_particle += delta_t
-                ix += 1
-                m += 1
+        for k in range(n_trials):
+            # AF-TODO: check if this is correct
+            delta_t_alpha = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])
+            boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+
+            # Precompute boundary evaluations
+            compute_boundary(boundary,
+                             t_s,
+                             boundary_fun,
+                             boundary_params_tmp
+                             )
+            deadline_tmp = compute_deadline_tmp(max_t,
+                                                deadline_view[k],
+                                                t_view[k]
+                                                )
+
+            # Loop over samples
+            for n in range(n_samples):
+                y = (-1) * boundary_view[0] + (z_view[k] * 2 * (boundary_view[0]))  # reset starting position
+                t_particle = 0.0 # reset time
+                ix = 0 # reset boundary index
                 if n == 0:
                     if k == 0:
-                        traj_view[ix, 0] = y
-                if m == num_draws:
-                    alpha_stable_values = draw_random_stable(num_draws, alpha_view[k])
-                    m = 0
+                        traj_view[0, 0] = y
 
-            smooth_u = compute_smooth_unif(smooth_unif,
-                                           t_particle,
-                                           deadline_tmp,
-                                           delta_t
-                                           )
+                # Random walker
+                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                    y += (v_view[k] * delta_t) + (delta_t_alpha * alpha_stable_values[m])
+                    t_particle += delta_t
+                    ix += 1
+                    m += 1
+                    if n == 0:
+                        if k == 0:
+                            traj_view[ix, 0] = y
+                    if m == num_draws:
+                        alpha_stable_values = draw_random_stable(num_draws, alpha_view[k])
+                        m = 0
 
-            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
-            choices_view[n, k, 0] = sign(y) # Store choice
-            enforce_deadline(rts_view,
-                             deadline_view,
-                             n,
-                             k,
-                             0
-                            )
+                smooth_u = compute_smooth_unif(smooth_unif,
+                                               t_particle,
+                                               deadline_tmp,
+                                               delta_t
+                                               )
+
+                rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
+                choices_view[n, k, 0] = sign(y) # Store choice
+                enforce_deadline(rts_view,
+                                 deadline_view,
+                                 n,
+                                 k,
+                                 0
+                                )
+
+    # =========================================================================
+    # PARALLEL PATH (n_threads > 1): FLATTENED OpenMP parallelization with C RNG
+    # Parallelizes over (n_trials × n_samples) for optimal efficiency
+    # =========================================================================
+    else:
+        # Precompute ALL trial data outside nogil
+        boundaries_all_np = np.zeros((n_trials, num_steps), dtype=DTYPE)
+        deadlines_tmp_all_np = np.zeros(n_trials, dtype=DTYPE)
+        delta_t_alpha_all_np = np.zeros(n_trials, dtype=DTYPE)
+
+        for k in range(n_trials):
+            boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
+            boundaries_all_np[k, :] = boundary
+            deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
+            delta_t_alpha_all_np[k] = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])
+
+        boundaries_all = boundaries_all_np
+        deadlines_tmp_all = deadlines_tmp_all_np
+        delta_t_alpha_all = delta_t_alpha_all_np
+
+        # Total iterations = n_trials × n_samples
+        total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+
+        with nogil, parallel(num_threads=n_threads):
+            for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Compute (k, n) from flat index
+                k = flat_idx // c_n_samples
+                n = flat_idx % c_n_samples
+
+                # Get this thread's dedicated RNG state
+                tid = threadid()
+
+                z_k = z_view[k]
+                v_k = v_view[k]
+                alpha_k = alpha_view[k]
+                t_k = t_view[k]
+                deadline_k = deadline_view[k]
+                delta_t_alpha_k = delta_t_alpha_all[k]
+                deadline_tmp = deadlines_tmp_all[k]
+
+                combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
+                rng_seed(&rng_states[tid], combined_seed)
+
+                bound_val = boundaries_all[k, 0]
+                y = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
+                t_particle = 0.0
+                ix = 0
+
+                while True:
+                    bound_val = boundaries_all[k, ix]
+                    neg_bound_val = -bound_val
+
+                    if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
+                        break
+
+                    # Generate alpha-stable noise using CMS algorithm
+                    noise = rng_levy_f32(&rng_states[tid], alpha_k)
+                    y = y + (v_k * delta_t) + (delta_t_alpha_k * noise)
+                    t_particle = t_particle + delta_t
+                    ix = ix + 1
+
+                    if ix >= num_steps:
+                        break
+
+                rts_view[n, k, 0] = t_particle + t_k
+
+                # Choice based on sign of y (same as sequential path)
+                if y > 0.0:
+                    choice = 1
+                elif y < 0.0:
+                    choice = -1
+                else:
+                    choice = 0
+                choices_view[n, k, 0] = choice
+
+                if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
+                    rts_view[n, k, 0] = -999.0
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

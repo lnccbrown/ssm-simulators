@@ -14,9 +14,13 @@ Unlike DDM, race models have separate evidence accumulators for each choice.
 
 import cython
 from libc.math cimport sqrt, log, fmax
+from libc.stdint cimport uint64_t
 
 import numpy as np
 cimport numpy as np
+
+# OpenMP imports
+from cython.parallel cimport prange, parallel, threadid
 
 # Import utility functions from the _utils module
 from cssm._utils import (
@@ -35,13 +39,47 @@ from cssm._utils import (
     build_return_dict,
 )
 
+# =============================================================================
+# C-LEVEL GSL RNG (for parallel execution)
+# =============================================================================
+# Uses GSL's validated Ziggurat implementation for correct variance.
+# Falls back to stub implementation if GSL not available (should not be called).
+
+cdef extern from "gsl_rng.h" nogil:
+    ctypedef struct ssms_rng_state:
+        pass
+
+    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
+    void ssms_rng_cleanup(ssms_rng_state* state)
+    float ssms_gaussian_f32(ssms_rng_state* state)
+    double ssms_uniform(ssms_rng_state* state)
+    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
+
+# Aliases for cleaner code
+ctypedef ssms_rng_state RngState
+
+cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
+    ssms_rng_init(state, seed)
+
+cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
+    return ssms_mix_seed(base, t, n)
+
+cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
+    return ssms_gaussian_f32(state)
+
+cdef inline double rng_uniform(RngState* state) noexcept nogil:
+    return ssms_uniform(state)
+
 DTYPE = np.float32
 
-# Helper function for race models ------------------------------------
-# @cythonboundscheck(False)
-# @cythonwraparound(False)
+# Maximum particles/accumulators for stack-allocated arrays
+DEF MAX_PARTICLES = 16
+# Maximum threads for per-thread RNG states
+DEF MAX_THREADS = 128
 
-cdef bint check_finished(float[:] particles, float boundary, int n):
+# C-level helper functions for nogil operation ------------------------------------
+
+cdef inline bint check_finished(float[:] particles, float boundary, int n) noexcept:
     """
     Check if any particle has crossed the boundary.
 
@@ -59,22 +97,67 @@ cdef bint check_finished(float[:] particles, float boundary, int n):
             return True
     return False
 
-#def test_check():
-#    # Quick sanity check for the check_finished function
-#    temp = np.random.normal(0,1, 10).astype(DTYPE)
-#    cdef float[:] temp_view = temp
-#    start = time()
-#    [check_finished(temp_view, 3) for _ in range(1000000)]
-#    print(check_finished(temp_view, 3))
-#    end = time()
-#    print("cython check: {}".format(start - end))
-#    start = time()
-#    [(temp > 3).any() for _ in range(1000000)]
-#    end = time()
-#    print("numpy check: {}".format(start - end))
 
-# @cythonboundscheck(False)
-# @cythonwraparound(False)
+cdef inline bint check_finished_stack(float* particles, float boundary, int n) noexcept nogil:
+    """
+    Check if any particle has crossed the boundary (stack-allocated version).
+
+    Args:
+        particles: Pointer to stack-allocated particle array.
+        boundary: Boundary value to check against.
+        n: Number of particles.
+
+    Returns:
+        True if any particle has crossed the boundary, False otherwise.
+    """
+    cdef int i
+    for i in range(n):
+        if particles[i] > boundary:
+            return True
+    return False
+
+
+cdef inline int argmax_stack(float* arr, int n) noexcept nogil:
+    """
+    Find the index of the maximum element (stack-allocated version).
+
+    Args:
+        arr: Pointer to float array.
+        n: Number of elements.
+
+    Returns:
+        Index of the maximum element.
+    """
+    cdef int best_idx = 0
+    cdef float best_val = arr[0]
+    cdef int i
+    for i in range(1, n):
+        if arr[i] > best_val:
+            best_val = arr[i]
+            best_idx = i
+    return best_idx
+
+
+cdef inline float csum_stack(float* arr, int n) noexcept nogil:
+    """
+    Compute sum of array elements (stack-allocated version).
+
+    Args:
+        arr: Pointer to float array.
+        n: Number of elements.
+
+    Returns:
+        Sum of all elements.
+    """
+    cdef float total = 0.0
+    cdef int i
+    for i in range(n):
+        total += arr[i]
+    return total
+
+
+# Race Model ------------------------------------
+
 def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column of floats
                np.ndarray[float, ndim = 2] z, # np.array expected, one column of floats
                np.ndarray[float, ndim = 2] t, # for now we we don't allow t by choice
@@ -89,13 +172,13 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
                random_state = None,
                return_option = 'full',
                smooth_unif = False,
+               int n_threads = 1,
                **kwargs):
     """
     Simulate reaction times and choices from a race model with N samples.
 
     Args:
         v (np.ndarray): Drift rates for each accumulator and trial.
-        a (np.ndarray): Initial boundary separation for each trial.
         z (np.ndarray): Starting points for each accumulator and trial.
         t (np.ndarray): Non-decision time for each trial.
         s (np.ndarray): Noise standard deviation for each accumulator and trial.
@@ -109,6 +192,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         random_state (int or None): Seed for random number generator (default: None).
         return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
         smooth_unif (bool): Whether to apply uniform smoothing to reaction times (default: False).
+        n_threads (int): Number of threads for parallel execution (default: 1).
         **kwargs: Additional keyword arguments.
 
     Returns:
@@ -117,7 +201,182 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
 
     Raises:
         ValueError: If return_option is not 'full' or 'minimal'.
+        ValueError: If n_particles > MAX_PARTICLES (16) for parallel execution.
     """
+    cdef int n_particles = v.shape[1]
+
+    # Check particle count limit for parallel execution
+    if n_threads > 1 and n_particles > MAX_PARTICLES:
+        raise ValueError(
+            f"race_model parallel execution requires n_particles <= {MAX_PARTICLES}, "
+            f"got {n_particles}. Use n_threads=1 for larger particle counts."
+        )
+
+    # Check OpenMP availability for parallel execution
+    if n_threads > 1:
+        from cssm._openmp_status import check_parallel_request
+        n_threads = check_parallel_request(n_threads)
+
+    # Sequential path (n_threads=1)
+    if n_threads == 1:
+        return _race_model_sequential(
+            v, z, t, s, deadline, delta_t, max_t, n_samples, n_trials,
+            boundary_fun, boundary_params, random_state, return_option, smooth_unif
+        )
+
+    # Parallel path
+    # Param views
+    cdef float[:, :] v_view = v
+    cdef float[:, :] z_view = z
+    cdef float[:, :] t_view = t
+    cdef float[:, :] s_view = s
+    cdef float[:] deadline_view = deadline
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    sqrt_st = delta_t_sqrt * s
+    cdef float[:, :] sqrt_st_view = sqrt_st
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    cdef float[:, :, :] rts_view = rts
+    choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
+    cdef int[:, :, :] choices_view = choices
+
+    # Trajectory storage - disabled in parallel mode
+    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
+
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef float c_max_t = max_t
+    cdef int c_n_samples = n_samples
+    cdef int c_n_particles = n_particles
+
+    # Pre-compute boundaries for all trials (outside nogil)
+    t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
+    boundaries_all_np = np.zeros((n_trials, len(t_s)), dtype=DTYPE)
+    deadlines_tmp = np.zeros(n_trials, dtype=DTYPE)
+
+    cdef Py_ssize_t k_precomp
+    for k_precomp in range(n_trials):
+        boundary_params_tmp = {key: boundary_params[key][k_precomp] for key in boundary_params.keys()}
+        boundary_tmp = np.zeros(t_s.shape, dtype=DTYPE)
+        compute_boundary(boundary_tmp, t_s, boundary_fun, boundary_params_tmp)
+        boundaries_all_np[k_precomp, :] = boundary_tmp
+        deadlines_tmp[k_precomp] = compute_deadline_tmp(max_t, deadline_view[k_precomp], t_view[k_precomp, 0])
+
+    cdef float[:, :] boundaries_view = boundaries_all_np
+    cdef float[:] deadlines_view = deadlines_tmp
+
+    # RNG state (per-iteration seeding)
+    cdef RngState rng_state
+    cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+    cdef uint64_t combined_seed
+
+    # Flattened parallel loop variables
+    cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+    cdef Py_ssize_t flat_idx
+    cdef int ix, j
+    cdef float t_particle, deadline_tmp_k, bound_val, noise
+    cdef float particles[MAX_PARTICLES]  # Stack-allocated!
+
+    # Parallel execution over FLATTENED iteration space
+    with nogil, parallel(num_threads=n_threads):
+        for flat_idx in prange(total_iterations, schedule='dynamic'):
+            k = flat_idx // c_n_samples  # trial index
+            n = flat_idx % c_n_samples   # sample index
+
+            # Create unique seed for this (trial, sample) pair
+            combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
+            rng_seed(&rng_state, combined_seed)
+
+            deadline_tmp_k = deadlines_view[k]
+            bound_val = boundaries_view[k, 0]
+
+            # Initialize particle positions
+            for j in range(c_n_particles):
+                particles[j] = z_view[k, j] * bound_val
+
+            t_particle = 0.0
+            ix = 0
+
+            # Race simulation
+            while True:
+                bound_val = boundaries_view[k, ix]
+                if check_finished_stack(particles, bound_val, c_n_particles) or t_particle > deadline_tmp_k:
+                    break
+
+                for j in range(c_n_particles):
+                    noise = ssms_gaussian_f32(&rng_state)
+                    particles[j] = particles[j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, j] * noise
+                    particles[j] = fmax(0.0, particles[j])  # Cut off at 0
+
+                t_particle = t_particle + delta_t
+                ix = ix + 1
+                if ix >= num_steps:
+                    break
+
+            rts_view[n, k, 0] = t_particle + t_view[k, 0]
+            choices_view[n, k, 0] = argmax_stack(particles, c_n_particles)
+
+            # Enforce deadline
+            if rts_view[n, k, 0] > deadline_view[k]:
+                rts_view[n, k, 0] = -999.0
+
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='race_model',
+        possible_choices=[-1, 1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
+
+    if return_option == 'full':
+        # Build v_dict and z_dict dynamically
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+        z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
+
+        # Update possible_choices for full (n_particles-specific)
+        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
+
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
+        params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundaries_all_np[0] if n_trials > 0 else np.array([]),
+            traj=traj,
+            boundary_params=boundary_params,
+            extra_params={**v_dict, **z_dict}
+        )
+        return build_return_dict(rts, choices, full_meta)
+
+    elif return_option == 'minimal':
+        return build_return_dict(rts, choices, minimal_meta)
+
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
+
+
+def _race_model_sequential(
+    np.ndarray[float, ndim = 2] v,
+    np.ndarray[float, ndim = 2] z,
+    np.ndarray[float, ndim = 2] t,
+    np.ndarray[float, ndim = 2] s,
+    np.ndarray[float, ndim = 1] deadline,
+    float delta_t,
+    float max_t,
+    int n_samples,
+    int n_trials,
+    boundary_fun,
+    boundary_params,
+    random_state,
+    return_option,
+    smooth_unif
+):
+    """Sequential implementation of race_model (original code path)."""
 
     set_seed(random_state)
     # Param views
@@ -242,11 +501,10 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
 
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
-    # -------------------------------------------------------------------------------------------------
-# @cythonboundscheck(False)
-# @cythonwraparound(False)
 
-# Simulate (rt, choice) tuples from: Leaky Competing Accumulator Model -----------------------------
+
+# Leaky Competing Accumulator Model ------------------------------------
+
 def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one column of floats)
         np.ndarray[float, ndim = 2] z, # initial bias parameters (np.array expect: one column of floats)
         np.ndarray[float, ndim = 2] g, # decay parameter
@@ -263,6 +521,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         random_state = None,
         return_option = 'full',
         smooth_unif = False,
+        int n_threads = 1,
         **kwargs):
     """
     Simulate reaction times and choices from a Leaky Competing Accumulator (LCA) model.
@@ -271,8 +530,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     -----------
     v : np.ndarray, shape (n_trials, n_particles)
         Drift rate parameters for each particle.
-    a : np.ndarray, shape (n_trials, 1)
-        Criterion height (decision threshold).
     z : np.ndarray, shape (n_trials, n_particles)
         Initial bias parameters for each particle.
     g : np.ndarray, shape (n_trials, 1)
@@ -303,13 +560,205 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         Determines the amount of data returned. Can be 'full' or 'minimal' (default: 'full').
     smooth_unif : bool, optional
         If True, applies uniform smoothing to reaction times (default: False).
+    n_threads : int, optional
+        Number of threads for parallel execution (default: 1).
 
     Returns:
     --------
     dict
         A dictionary containing simulated reaction times, choices, and metadata.
         The exact contents depend on the 'return_option' parameter.
+
+    Raises:
+        ValueError: If n_particles > MAX_PARTICLES (16) for parallel execution.
     """
+    cdef int n_particles = v.shape[1]
+
+    # Check particle count limit for parallel execution
+    if n_threads > 1 and n_particles > MAX_PARTICLES:
+        raise ValueError(
+            f"lca parallel execution requires n_particles <= {MAX_PARTICLES}, "
+            f"got {n_particles}. Use n_threads=1 for larger particle counts."
+        )
+
+    # Check OpenMP availability for parallel execution
+    if n_threads > 1:
+        from cssm._openmp_status import check_parallel_request
+        n_threads = check_parallel_request(n_threads)
+
+    # Sequential path (n_threads=1)
+    if n_threads == 1:
+        return _lca_sequential(
+            v, z, g, b, t, s, deadline, delta_t, max_t, n_samples, n_trials,
+            boundary_fun, boundary_params, random_state, return_option, smooth_unif
+        )
+
+    # Parallel path
+    # Param views
+    cdef float[:, :] v_view = v
+    cdef float[:, :] z_view = z
+    cdef float[:, :] g_view = g
+    cdef float[:, :] b_view = b
+    cdef float[:, :] t_view = t
+    cdef float[:, :] s_view = s
+    cdef float[:] deadline_view = deadline
+
+    # Trajectory storage - disabled in parallel mode
+    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    cdef float[:, :, :] rts_view = rts
+
+    choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
+    cdef int[:, :, :] choices_view = choices
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    sqrt_st = s * delta_t_sqrt
+    cdef float[:, :] sqrt_st_view = sqrt_st
+
+    cdef int num_steps = int((max_t / delta_t) + 2)
+    cdef float c_max_t = max_t
+    cdef int c_n_samples = n_samples
+    cdef int c_n_particles = n_particles
+
+    # Pre-compute boundaries for all trials (outside nogil)
+    t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
+    boundaries_all_np = np.zeros((n_trials, len(t_s)), dtype=DTYPE)
+    deadlines_tmp = np.zeros(n_trials, dtype=DTYPE)
+
+    cdef Py_ssize_t k_precomp
+    for k_precomp in range(n_trials):
+        boundary_params_tmp = {key: boundary_params[key][k_precomp] for key in boundary_params.keys()}
+        boundary_tmp = np.zeros(t_s.shape, dtype=DTYPE)
+        compute_boundary(boundary_tmp, t_s, boundary_fun, boundary_params_tmp)
+        boundaries_all_np[k_precomp, :] = boundary_tmp
+        deadlines_tmp[k_precomp] = compute_deadline_tmp(max_t, deadline_view[k_precomp], t_view[k_precomp, 0])
+
+    cdef float[:, :] boundaries_view = boundaries_all_np
+    cdef float[:] deadlines_view = deadlines_tmp
+
+    # RNG state (per-iteration seeding)
+    cdef RngState rng_state
+    cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+    cdef uint64_t combined_seed
+
+    # Flattened parallel loop variables
+    cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+    cdef Py_ssize_t flat_idx
+    cdef int ix, i
+    cdef float t_particle, deadline_tmp_k, particles_sum, bound_val, noise
+    cdef float particles[MAX_PARTICLES]  # Stack-allocated!
+    cdef float particles_reduced_sum[MAX_PARTICLES]  # Stack-allocated!
+
+    # Parallel execution over FLATTENED iteration space
+    with nogil, parallel(num_threads=n_threads):
+        for flat_idx in prange(total_iterations, schedule='dynamic'):
+            k = flat_idx // c_n_samples  # trial index
+            n = flat_idx % c_n_samples   # sample index
+
+            # Create unique seed for this (trial, sample) pair
+            combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
+            rng_seed(&rng_state, combined_seed)
+
+            deadline_tmp_k = deadlines_view[k]
+            bound_val = boundaries_view[k, 0]
+
+            # Initialize particle positions
+            for i in range(c_n_particles):
+                particles[i] = z_view[k, i] * bound_val
+
+            t_particle = 0.0
+            ix = 0
+
+            # LCA simulation with lateral inhibition
+            while True:
+                bound_val = boundaries_view[k, ix]
+                if check_finished_stack(particles, bound_val, c_n_particles) or t_particle > deadline_tmp_k:
+                    break
+
+                # Calculate current sum over particle positions
+                particles_sum = csum_stack(particles, c_n_particles)
+
+                # Update particle positions with decay and inhibition
+                for i in range(c_n_particles):
+                    particles_reduced_sum[i] = (-1.0) * particles[i] + particles_sum
+                    noise = ssms_gaussian_f32(&rng_state)
+                    particles[i] = particles[i] + ((v_view[k, i] - (g_view[k, 0] * particles[i]) - \
+                            (b_view[k, 0] * particles_reduced_sum[i])) * delta_t) + \
+                            (sqrt_st_view[k, i] * noise)
+                    particles[i] = fmax(0.0, particles[i])
+
+                t_particle = t_particle + delta_t
+                ix = ix + 1
+                if ix >= num_steps:
+                    break
+
+            rts_view[n, k, 0] = t_particle + t_view[k, 0]
+            choices_view[n, k, 0] = argmax_stack(particles, c_n_particles)
+
+            # Enforce deadline
+            if rts_view[n, k, 0] > deadline_view[k]:
+                rts_view[n, k, 0] = -999.0
+
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='lca',
+        possible_choices=[-1, 1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+        boundary_fun_name=boundary_fun.__name__
+    )
+
+    if return_option == 'full':
+        # Build v_dict and z_dict dynamically
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+        z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
+
+        # Update possible_choices for full (n_particles-specific)
+        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
+
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
+        params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            boundary_fun=boundary_fun,
+            boundary=boundaries_all_np[0] if n_trials > 0 else np.array([]),
+            traj=traj,
+            boundary_params=boundary_params,
+            extra_params={**v_dict, **z_dict}
+        )
+        return build_return_dict(rts, choices, full_meta)
+
+    elif return_option == 'minimal':
+        return build_return_dict(rts, choices, minimal_meta)
+
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
+
+
+def _lca_sequential(
+    np.ndarray[float, ndim = 2] v,
+    np.ndarray[float, ndim = 2] z,
+    np.ndarray[float, ndim = 2] g,
+    np.ndarray[float, ndim = 2] b,
+    np.ndarray[float, ndim = 2] t,
+    np.ndarray[float, ndim = 2] s,
+    np.ndarray[float, ndim = 1] deadline,
+    float delta_t,
+    float max_t,
+    int n_samples,
+    int n_trials,
+    boundary_fun,
+    boundary_params,
+    random_state,
+    return_option,
+    smooth_unif
+):
+    """Sequential implementation of lca (original code path)."""
 
     set_seed(random_state)
     # Param views

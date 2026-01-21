@@ -571,6 +571,7 @@ def simulator(
     smooth_unif: bool = True,
     random_state: int | None = None,
     return_option: str = "full",
+    n_threads: int = 1,
 ) -> dict:
     """Basic data simulator for the models included in HDDM.
 
@@ -607,6 +608,11 @@ def simulator(
             metadata contains the model parameters and some additional
             information. 'metadata' is a simpler dictionary with less information
             if 'minimal' is chosen.
+        n_threads: int <default=1>
+            Number of threads for parallel execution. If > 1 and OpenMP is available,
+            uses multi-threaded simulation. Note: trajectory recording is only
+            available with n_threads=1. For models that don't support n_threads yet,
+            this parameter is silently ignored.
 
     Return
     ------
@@ -649,6 +655,7 @@ def simulator(
         "random_state": random_state,
         "return_option": return_option,
         "smooth_unif": smooth_unif,
+        "n_threads": n_threads,
     }
 
     # Update all values of sim_param_dict that are defined in locals()

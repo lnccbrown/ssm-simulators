@@ -13,7 +13,9 @@ drift and diffusion.
 """
 
 import cython
-from libc.math cimport sqrt
+from libc.math cimport sqrt, fmin
+from cython.parallel import prange, parallel
+from libc.stdint cimport uint64_t
 
 import numpy as np
 cimport numpy as np
@@ -34,6 +36,38 @@ from cssm._utils import (
     build_return_dict,
 )
 
+# =============================================================================
+# C-LEVEL GSL RNG (for parallel execution)
+# =============================================================================
+# Uses GSL's validated Ziggurat implementation for correct variance.
+# Falls back to stub implementation if GSL not available (should not be called).
+
+cdef extern from "gsl_rng.h" nogil:
+    ctypedef struct ssms_rng_state:
+        pass
+
+    void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
+    void ssms_rng_cleanup(ssms_rng_state* state)
+    float ssms_gaussian_f32(ssms_rng_state* state)
+    double ssms_uniform(ssms_rng_state* state)
+    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
+
+# Type alias for consistency
+ctypedef ssms_rng_state RngState
+
+# Wrapper functions
+cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
+    ssms_rng_init(state, seed)
+
+cdef inline uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
+    return ssms_mix_seed(base_seed, thread_id, trial_id)
+
+cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
+    return ssms_gaussian_f32(state)
+
+# Import OpenMP status check
+from cssm._openmp_status import check_parallel_request
+
 DTYPE = np.float32
 
 def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
@@ -51,6 +85,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                        random_state = None,
                        return_option = 'full',
                        smooth_unif = False,
+                       int n_threads = 1,
                        **kwargs):
     """
     Simulate reaction times and choices from an Ornstein-Uhlenbeck process with flexible boundaries.
@@ -82,6 +117,12 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
         ValueError: If return_option is not 'full' or 'minimal'.
     """
 
+    # Check if parallel execution is requested and available
+    n_threads = check_parallel_request(n_threads)
+
+    # Get seed for reproducibility
+    cdef uint64_t seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+
     setup = setup_simulation(n_samples, n_trials, max_t, delta_t, random_state)
 
     # Extract arrays and create memory views for C-level performance
@@ -95,6 +136,8 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef float c_max_t = max_t
 
     # Param views
     cdef float[:] v_view  = v
@@ -112,45 +155,140 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
 
-    for k in range(n_trials):
-        # Precompute boundary evaluations
-        boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, boundary_fun,
-                        boundary_params_tmp)
+    # Variables for parallel execution
+    cdef float[:, :] boundaries_all
+    cdef float[:] deadlines_tmp_all
+    cdef float[:] sqrt_st_all
+    cdef RngState rng_state
+    cdef uint64_t combined_seed
+    cdef float z_k, v_k, g_k, t_k, s_k, sqrt_st_k, deadline_k
+    cdef float bound_val, neg_bound_val, noise
+    cdef int choice
 
-        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
-        sqrt_st = delta_t_sqrt * s_view[k]
-        # Loop over samples
-        for n in range(n_samples):
-            y = (-1) * boundary_view[0] + (z_view[k] * 2 * boundary_view[0])
-            t_particle = 0.0
-            ix = 0
+    # Flattened parallelization variables
+    cdef Py_ssize_t flat_idx
+    cdef Py_ssize_t total_iterations
+    cdef int c_n_samples = n_samples
 
-            if n == 0:
-                if k == 0:
-                    traj_view[0, 0] = y
+    # =========================================================================
+    # SEQUENTIAL PATH (n_threads == 1): Original algorithm
+    # =========================================================================
+    if n_threads == 1:
+        for k in range(n_trials):
+            # Precompute boundary evaluations
+            boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun,
+                            boundary_params_tmp)
 
-            # Random walker
-            while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
-                y += ((v_view[k] - (g_view[k] * y)) * delta_t) + sqrt_st * gaussian_values[m]
-                t_particle += delta_t
-                ix += 1
-                m += 1
+            deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
+            sqrt_st = delta_t_sqrt * s_view[k]
+            # Loop over samples
+            for n in range(n_samples):
+                y = (-1) * boundary_view[0] + (z_view[k] * 2 * boundary_view[0])
+                t_particle = 0.0
+                ix = 0
 
                 if n == 0:
                     if k == 0:
-                        traj_view[ix, 0] = y
+                        traj_view[0, 0] = y
 
-                if m == num_draws:
-                    gaussian_values = draw_gaussian(num_draws)
-                    m = 0
+                # Random walker
+                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                    y += ((v_view[k] - (g_view[k] * y)) * delta_t) + sqrt_st * gaussian_values[m]
+                    t_particle += delta_t
+                    ix += 1
+                    m += 1
 
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                    if n == 0:
+                        if k == 0:
+                            traj_view[ix, 0] = y
 
-            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
-            choices_view[n, k, 0] = sign(y)
+                    if m == num_draws:
+                        gaussian_values = draw_gaussian(num_draws)
+                        m = 0
 
-            enforce_deadline(rts_view, deadline_view, n, k, 0)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+
+                rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
+                choices_view[n, k, 0] = sign(y)
+
+                enforce_deadline(rts_view, deadline_view, n, k, 0)
+
+    # =========================================================================
+    # PARALLEL PATH (n_threads > 1): FLATTENED OpenMP parallelization with C RNG
+    # Parallelizes over (n_trials × n_samples) for optimal efficiency
+    # =========================================================================
+    else:
+        # Precompute ALL trial data outside nogil
+        boundaries_all_np = np.zeros((n_trials, num_steps), dtype=DTYPE)
+        deadlines_tmp_all_np = np.zeros(n_trials, dtype=DTYPE)
+        sqrt_st_all_np = np.zeros(n_trials, dtype=DTYPE)
+
+        for k in range(n_trials):
+            boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
+            boundaries_all_np[k, :] = boundary
+            deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
+            sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
+
+        boundaries_all = boundaries_all_np
+        deadlines_tmp_all = deadlines_tmp_all_np
+        sqrt_st_all = sqrt_st_all_np
+
+        # Total iterations = n_trials × n_samples
+        total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+
+        with nogil, parallel(num_threads=n_threads):
+            for flat_idx in prange(total_iterations, schedule='dynamic'):
+                # Compute (k, n) from flat index
+                k = flat_idx // c_n_samples
+                n = flat_idx % c_n_samples
+
+                z_k = z_view[k]
+                v_k = v_view[k]
+                g_k = g_view[k]
+                t_k = t_view[k]
+                deadline_k = deadline_view[k]
+                sqrt_st_k = sqrt_st_all[k]
+                deadline_tmp = deadlines_tmp_all[k]
+
+                combined_seed = rng_mix_seed(seed, <uint64_t>k, <uint64_t>n)
+                rng_seed(&rng_state, combined_seed)
+
+                bound_val = boundaries_all[k, 0]
+                y = (-1.0) * bound_val + (z_k * 2.0 * bound_val)
+                t_particle = 0.0
+                ix = 0
+
+                while True:
+                    bound_val = boundaries_all[k, ix]
+                    neg_bound_val = -bound_val
+
+                    if y < neg_bound_val or y > bound_val or t_particle > deadline_tmp:
+                        break
+
+                    noise = rng_gaussian_f32(&rng_state)
+                    # Ornstein-Uhlenbeck: drift with decay toward 0
+                    y = y + ((v_k - g_k * y) * delta_t) + sqrt_st_k * noise
+                    t_particle = t_particle + delta_t
+                    ix = ix + 1
+
+                    if ix >= num_steps:
+                        break
+
+                rts_view[n, k, 0] = t_particle + t_k
+
+                # Choice based on sign of y (same as sequential path)
+                if y > 0.0:
+                    choice = 1
+                elif y < 0.0:
+                    choice = -1
+                else:
+                    choice = 0
+                choices_view[n, k, 0] = choice
+
+                if rts_view[n, k, 0] >= deadline_k or deadline_k <= 0:
+                    rts_view[n, k, 0] = -999.0
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

@@ -30,6 +30,33 @@ A number of tutorial notebooks are available under the `/notebooks` directory.
 pip install ssm-simulators
 ```
 
+**Recommended: Install via conda-forge for full parallel support:**
+
+```sh
+conda install -c conda-forge ssm-simulators
+```
+
+> [!NOTE]
+> **Parallel Execution Requirements:**
+>
+> For multi-threaded simulation (`n_threads > 1`), the package requires:
+> - **OpenMP**: For parallel loop execution
+> - **GSL (GNU Scientific Library)**: For validated random number generation
+>
+> **conda-forge users**: Both dependencies are automatically included.
+>
+> **pip users**: Install system dependencies first:
+> ```bash
+> # macOS
+> brew install libomp gsl
+>
+> # Ubuntu/Debian
+> sudo apt-get install libgomp-dev libgsl-dev
+> ```
+> Then reinstall: `pip install --force-reinstall ssm-simulators`
+>
+> Without these dependencies, the package works in single-threaded mode using NumPy.
+
 > [!NOTE]
 > Building from source or developing this package requires a C compiler (such as GCC).
 > On Linux, you can install GCC with:
