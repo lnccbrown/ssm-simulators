@@ -11,10 +11,11 @@ def get_expected_shapes(
     n_choice_options = _model_config["nchoices"]
     lan_data_samples = n_parameter_sets * n_training_samples_by_parameter_set
 
-    cpn_labels_b = n_choice_options if n_choice_options > 2 else n_choice_options - 1
-    cpn_labels = (
-        (n_parameter_sets,) if cpn_labels_b == 1 else (n_parameter_sets, cpn_labels_b)
-    )
+    # CPN labels are always 2D for consistency with other label arrays
+    # For 2-choice: (n_parameter_sets, 1) - probability of choice 1
+    # For multi-choice: (n_parameter_sets, n_choices) - probability of each choice
+    cpn_labels_b = n_choice_options if n_choice_options > 2 else 1
+    cpn_labels = (n_parameter_sets, cpn_labels_b)
 
     return {
         "binned_128": (n_parameter_sets, 128, n_choice_options),
@@ -34,5 +35,5 @@ def get_expected_shapes(
         ),  # always this (possible we should make this (..., 1) but need to take care of downstream for that)
         "opn_data": (n_parameter_sets, n_model_parameters),
         "opn_labels": (n_parameter_sets, 1),
-        "thetas": (n_parameter_sets, n_model_parameters),
+        "theta": (n_parameter_sets, n_model_parameters),
     }

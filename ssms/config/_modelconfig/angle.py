@@ -18,4 +18,8 @@ def get_angle_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }

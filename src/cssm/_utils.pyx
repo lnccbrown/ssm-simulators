@@ -152,17 +152,17 @@ cpdef float[:] draw_gaussian(int n):
     """
     Generate Gaussian samples using NumPy's Ziggurat algorithm.
     ~2.4x faster than the old Marsaglia polar method.
-    
+
     Args:
         n (int): The number of random floats to generate.
-    
+
     Returns:
         float[:]: An array of random floats from a standard normal distribution.
     """
     global _global_rng
     if _global_rng is None:
         _global_rng = np.random.default_rng()
-    
+
     # Generate with NumPy's fast Ziggurat, return as memoryview
     cdef np.ndarray[float, ndim=1] samples = _global_rng.standard_normal(
         n, dtype=np.float32
@@ -175,7 +175,7 @@ cpdef float[:] draw_random_stable_scipy(int n, float alpha):
     This is the fastest option but adds scipy dependency.
     """
     from scipy.stats import levy_stable
-    
+
     # SciPy uses different parameterization:
     # beta=0 for symmetric, scale and loc for standardization
     cdef np.ndarray[float, ndim=1] samples = levy_stable.rvs(
@@ -193,86 +193,86 @@ cpdef float[:] draw_random_stable_scipy(int n, float alpha):
 #     """
 #     Generate alpha-stable random variates using NumPy's fast RNG.
 #     ~2-3x faster than the Marsaglia-based version.
-#     
+#
 #     Args:
 #         n (int): Number of samples to generate
 #         alpha (float): Stability parameter (0 < alpha <= 2)
-#     
+#
 #     Returns:
 #         float[:]: Array of stable random variates
 #     """
 #     global _global_rng
 #     if _global_rng is None:
 #         _global_rng = np.random.default_rng()
-#     
+#
 #     # Generate all random numbers at once (FAST!)
 #     cdef np.ndarray[float, ndim=1] u_vals = _global_rng.uniform(
 #         -np.pi/2, np.pi/2, n
 #     ).astype(np.float32)
-#     
+#
 #     cdef np.ndarray[float, ndim=1] w_vals = _global_rng.exponential(
 #         1.0, n
 #     ).astype(np.float32)
-#     
+#
 #     # Prepare output
 #     cdef np.ndarray[float, ndim=1] result = np.empty(n, dtype=np.float32)
 #     cdef float[:] result_view = result
 #     cdef float[:] u_view = u_vals
 #     cdef float[:] w_view = w_vals
-#     
+#
 #     cdef int i
 #     cdef float u, w, x
-#     
+#
 #     # Special case: alpha = 1 (Cauchy)
 #     if alpha == 1.0:
 #         for i in range(n):
 #             result_view[i] = tan(u_view[i])
 #         return result
-#     
+#
 #     # General case
 #     cdef float alpha_inv = 1.0 / alpha
 #     cdef float one_minus_alpha = 1.0 - alpha
 #     cdef float scale = one_minus_alpha / alpha
-#     
+#
 #     for i in range(n):
 #         u = u_view[i]
 #         w = w_view[i]
 #         x = (sin(alpha * u) / pow(cos(u), alpha_inv)) * \
 #             pow(cos(u - alpha * u) / w, scale)
 #         result_view[i] = x
-#     
+#
 #     return result
 
 cpdef float[:] draw_random_stable(int n, float alpha):
     """
     Generate alpha-stable variates using NumPy RNG with vectorized operations.
     ~1.8x faster than the old C-based implementation.
-    
+
     Args:
         n (int): The number of random floats to generate.
         alpha (float): The stability parameter of the distribution.
-    
+
     Returns:
         float[:]: An array of random floats from a stable distribution.
     """
     global _global_rng
     if _global_rng is None:
         _global_rng = np.random.default_rng()
-    
+
     # Generate as float64, then cast to float32
     cdef np.ndarray[float, ndim=1] u_vals = _global_rng.uniform(
         -np.pi/2, np.pi/2, n
     ).astype(np.float32)
-    
+
     cdef np.ndarray[float, ndim=1] w_vals = _global_rng.exponential(
         1.0, n
     ).astype(np.float32)
-    
+
     # Declare result array and intermediate values
     cdef np.ndarray[float, ndim=1] result
     cdef float alpha_inv
     cdef float scale
-    
+
     # Vectorized computation
     if alpha == 1.0:
         result = np.tan(u_vals).astype(np.float32)
@@ -280,11 +280,11 @@ cpdef float[:] draw_random_stable(int n, float alpha):
     else:
         alpha_inv = 1.0 / alpha
         scale = (1.0 - alpha) / alpha
-        
+
         # All operations with explicit float32 cast at end
         result = ((np.sin(alpha * u_vals) / (np.cos(u_vals) ** alpha_inv)) * \
                   ((np.cos(u_vals - alpha * u_vals) / w_vals) ** scale)).astype(np.float32)
-        
+
         return result
 
 cpdef int sign(float x):
@@ -312,7 +312,7 @@ cpdef float csum(float[:] x):
     cdef int i
     cdef int n = x.shape[0]
     cdef float total = 0
-    
+
     for i in range(n):
         total += x[i]
     return total
@@ -338,7 +338,7 @@ cpdef float csum(float[:] x):
 #
 #     w = ((-2.0 * log(w)) / w) ** 0.5
 #     out[assign_ix] = x1 * w
-#     out[assign_ix + 1] = x2 * w # this was x2 * 2 ..... :0 
+#     out[assign_ix + 1] = x2 * w # this was x2 * 2 ..... :0
 #
 # # @cythonboundscheck(False)
 # cpdef float[:] draw_gaussian(int n):
@@ -376,13 +376,13 @@ cpdef float csum(float[:] x):
 #     DEPRECATED: Uses old C-based draw_gaussian which is ~2.4x slower.
 #     """
 #     set_seed(random_state)
-#     
+#
 #     cdef int num_draws = int((max_t / delta_t) + 1)
-#     
+#
 #     # Trajectory storage
 #     traj = np.zeros((num_draws, 1), dtype=DTYPE)
 #     traj[:, :] = -999
-#     
+#
 #     # Output arrays
 #     rts = np.zeros((n_samples,
 #                     n_trials,
@@ -392,13 +392,13 @@ cpdef float csum(float[:] x):
 #                         n_trials,
 #                         1),
 #                         dtype=np.intc)
-#     
+#
 #     # Time array
 #     t_s = np.arange(0,
 #                     max_t + delta_t,
 #                     delta_t)\
 #                     .astype(DTYPE)
-#     
+#
 #     # Gaussian values
 #     gaussian_values = draw_gaussian(num_draws)  # OLD VERSION
 #     return {
@@ -423,7 +423,7 @@ cpdef dict setup_simulation(
     ~2.4x faster than the old C-based implementation.
     """
     set_seed(random_state)
-    
+
     cdef int num_draws = int((max_t / delta_t) + 1)
 
     # Initialize NumPy RNG with same seed
@@ -432,11 +432,11 @@ cpdef dict setup_simulation(
         _global_rng = np.random.default_rng(random_state)
     else:
         _global_rng = np.random.default_rng()
-    
+
     # Trajectory storage
     traj = np.zeros((num_draws, 1), dtype=DTYPE)
     traj[:, :] = -999
-    
+
     # Output arrays
     rts = np.zeros((n_samples,
                     n_trials,
@@ -446,13 +446,13 @@ cpdef dict setup_simulation(
                         n_trials,
                         1),
                         dtype=np.intc)
-    
+
     # Time array
     t_s = np.arange(0,
                     max_t + delta_t,
                     delta_t)\
                     .astype(DTYPE)
-    
+
     # Gaussian values (using new fast NumPy-based draw_gaussian)
     gaussian_values = draw_gaussian(num_draws)
     return {
@@ -468,20 +468,15 @@ cpdef dict setup_simulation(
 cpdef void compute_boundary(
     boundary,
     t_s,
-    float a,
     boundary_fun,
-    dict boundary_params,
-    bint multiplicative
+    dict boundary_params
 ):
-    """Compute boundary values for given time points."""
-    if multiplicative:
-        boundary[:] = np.multiply(a, boundary_fun(t=t_s,
-                                                  **boundary_params))\
-                                                  .astype(DTYPE)
-    else:
-        boundary[:] = np.add(a, boundary_fun(t=t_s,
-                                             **boundary_params))\
-                                             .astype(DTYPE)
+    """Compute boundary values for given time points.
+
+    Boundary functions now receive all parameters via boundary_params,
+    including 'a'. No special treatment needed.
+    """
+    boundary[:] = boundary_fun(t=t_s, **boundary_params).astype(DTYPE)
 
 cpdef float compute_smooth_unif(
     bint smooth_unif,
@@ -492,7 +487,7 @@ cpdef float compute_smooth_unif(
     """Compute uniform smoothing adjustment for reaction times."""
     if not smooth_unif:
         return 0.0
-    
+
     if t_particle == 0.0:
         return random_uniform() * 0.5 * delta_t
     elif t_particle < deadline_tmp:
@@ -507,7 +502,11 @@ cpdef void enforce_deadline(
     int k,
     int idx=0
 ):
-    """Set RT to -999 if it exceeds deadline or deadline is invalid."""
+    """Set RT to OMISSION_SENTINEL (-999) if it exceeds deadline or deadline is invalid.
+
+    The value -999 is the sentinel indicating an omission (no response within deadline).
+    This corresponds to ssms.OMISSION_SENTINEL in the Python API.
+    """
     if (rts_view[n, k, idx] >= deadline_view[k]) or (deadline_view[k] <= 0):
         rts_view[n, k, idx] = -999
 
@@ -568,11 +567,11 @@ cpdef dict build_full_metadata(
     """
     # Start with a copy of minimal metadata
     metadata = dict(minimal_metadata)
-    
+
     # Add all the full metadata fields
     metadata.update(params)
     metadata.update(sim_config)
-    
+
     # Add optional fields
     if boundary_fun is not None:
         metadata['boundary_fun_type'] = boundary_fun.__name__
@@ -586,7 +585,7 @@ cpdef dict build_full_metadata(
         metadata.update(drift_params)
     if extra_params:
         metadata.update(extra_params)
-    
+
     return metadata
 
 cpdef dict build_return_dict(
@@ -600,4 +599,3 @@ cpdef dict build_return_dict(
     if extra_arrays:
         result.update(extra_arrays)
     return result
-

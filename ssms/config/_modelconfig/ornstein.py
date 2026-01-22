@@ -18,6 +18,10 @@ def get_ornstein_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ornstein_uhlenbeck,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -38,4 +42,8 @@ def get_ornstein_angle_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ornstein_uhlenbeck,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }

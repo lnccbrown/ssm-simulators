@@ -38,10 +38,9 @@ DTYPE = np.float32
 
 # Parallel Models ------------------------------------
 
-def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh, 
+def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                        np.ndarray[float, ndim = 1] vl1,
                        np.ndarray[float, ndim = 1] vl2,
-                       np.ndarray[float, ndim = 1] a,
                        np.ndarray[float, ndim = 1] zh,
                        np.ndarray[float, ndim = 1] zl1,
                        np.ndarray[float, ndim = 1] zl2,
@@ -54,7 +53,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                        int n_trials = 1,
                        print_info = True,
                        boundary_fun = None, # function of t (and potentially other parameters) that takes in (t, *args)
-                       boundary_multiplicative = True,
                        boundary_params = {},
                        random_state = None,
                        return_option = 'full',
@@ -93,8 +91,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         Whether to print information during simulation. Default is True.
     boundary_fun : callable, optional
         Function defining the decision boundary over time.
-    boundary_multiplicative : bool, optional
-        If True, boundary function is multiplied by 'a'. If False, it's added. Default is True.
     boundary_params : dict, optional
         Additional parameters for the boundary function.
     random_state : int or None, optional
@@ -116,7 +112,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     cdef float[:] vh_view = vh
     cdef float[:] vl1_view = vl1
     cdef float[:] vl2_view = vl2
-    cdef float[:] a_view = a
     cdef float[:] zh_view = zh
     cdef float[:] zl1_view = zl1
     cdef float[:] zl2_view = zl2
@@ -127,7 +122,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     # TD: Add trajectory --> Tricky here because the simulator is optimized to include only two instead of three particles (high dimension choice determines which low dimension choice will matter for ultimate choice)
     # TD: Add Trajectory
     traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
-    traj[:, :] = -999 
+    traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     rts = np.zeros((n_samples, n_trials, 1), dtype = DTYPE)
@@ -158,9 +153,9 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     for k in range(n_trials):
         # Precompute boundary evaluations
         boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
-        compute_boundary(boundary, t_s, a_view[k], boundary_fun, 
-                        boundary_params_tmp, boundary_multiplicative)
-        
+        compute_boundary(boundary, t_s, boundary_fun,
+                        boundary_params_tmp)
+
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         # Loop over samples
@@ -172,7 +167,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             ix = 0 # reset boundary index
 
             # Initialize walkers
-            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0])) 
+            y_h = (-1) * boundary_view[0] + (zh_view[k] * 2 * (boundary_view[0]))
 
             if n == 0:
                 if k == 0:
@@ -196,7 +191,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             # y at upper bound --> choices_view[n, k, 0] add 2 deterministically (correct)
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically (mistake)
 
-            # if boundary is negative (or 0) already, we flip a coin 
+            # if boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
                 if random_uniform() <= 0.5:
                     choices_view[n, k, 0] += 2
@@ -205,8 +200,8 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 choices_view[n, k, 0] += 2
 
             # Initialize lower level walkers
-            y_l1 = (-1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0])) 
-            y_l2 = (-1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0])) 
+            y_l1 = (-1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
+            y_l2 = (-1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
 
             # Random walker lower level (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
@@ -249,7 +244,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 t_l = t_l2
                 y_l = y_l2
                 ix = ix2
-            
+
             t_particle = fmax(t_h, t_l)  # Use max time for parallel model
             smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
 
@@ -260,7 +255,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add one deterministically
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
-            
+
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
                 if random_uniform() <= 0.5:
@@ -279,15 +274,15 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
     )
-    
+
     # Extra arrays for this model
     extra_arrays_dict = {'rts_low': rts_low, 'rts_high': rts_high}
-    
+
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
-            'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
+            'zh': zh, 'zl1': zl1, 'zl2': zl2,
             't': t, 'deadline': deadline, 's': s
         }
         full_meta = build_full_metadata(
@@ -300,10 +295,10 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             boundary_params=boundary_params
         )
         return build_return_dict(rts, choices, full_meta, extra_arrays=extra_arrays_dict)
-    
+
     elif return_option == 'minimal':
         return build_return_dict(rts, choices, minimal_meta, extra_arrays=extra_arrays_dict)
-    
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------

@@ -10,8 +10,7 @@ authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
 ]
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = {text = "MIT"}
 requires-python = ">3.10,<3.14" # for compatibility with lanfactory
 dependencies = [
     "scipy >= 1.6.3",
@@ -30,7 +29,36 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+mlflow = ["mlflow>=3.6.0"]
+pyddm = ["pyddm>=0.9.0"]
+dev = [
+    "pytest",
+    "mypy",
+    "black",
+    "ruff",
+    "pre-commit",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
+    "ipykernel>=6.29.5",
+    "nbconvert>=7.16.6",
+    "nbmake>=1.5.0",
+    "nb-clean>=4.0.1",
+    "pytest-timer>=1.0.0",
+    "pytest-rerunfailures>=16.0.1",
+    "mlflow>=3.6.0",
+    "marimo[recommended]",
+    "pyddm>=0.9.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-jupyter>=0.24.0",
+    "mkdocstrings[python]>=0.24.0",
 ]
 
 [dependency-groups]
@@ -44,10 +72,19 @@ dev = [
     "pytest-xdist>=3.6.1",
     "ipykernel>=6.29.5",
     "nbconvert>=7.16.6",
+    "nbmake>=1.5.0",
     "nb-clean>=4.0.1",
     "pytest-timer>=1.0.0",
     "pytest-rerunfailures>=16.0.1",
+    "mlflow>=3.6.0",
     "marimo[recommended]",
+    "pyddm>=0.9.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-jupyter>=0.24.0",
+    "mkdocstrings[python]>=0.24.0",
 ]
 
 [project.urls]
@@ -55,7 +92,11 @@ Homepage = "https://github.com/lnccbrown/ssm-simulators"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
 
 [tool.setuptools.packages.find]
-include = ["ssms", "ssms.*"]
+where = [".", "src"]
+include = ["ssms*", "cssm"]
+
+[tool.setuptools.package-dir]
+cssm = "src/cssm"
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -68,6 +109,9 @@ addopts = [
     "--timer-top-n=25",
     "--reruns=2",
     "--reruns-delay=1",
+]
+markers = [
+    "notebooks: mark test as a notebook test (skipped unless --run-notebooks is passed)",
 ]
 
 [tool.ruff]
@@ -153,7 +197,15 @@ module = ["bambi"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
-omit = ["*/setup.py", "*/__init__.py", "tests/*"]
+omit = [
+    "*/setup.py",
+    "*/__init__.py",
+    "tests/*",
+    # Optional PyDDM dependency - exclude from coverage
+    "ssms/dataset_generators/pipelines/pyddm_pipeline.py",
+    "ssms/dataset_generators/strategies/pyddm_strategy.py",
+    "ssms/external_simulators/pyddm_mapper.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -170,3 +222,4 @@ generate = "ssms.cli.generate:app"
 
 [tool.setuptools.package-data]
 "ssms.cli" = ["config_network_training_lan.yaml"]
+"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd"]

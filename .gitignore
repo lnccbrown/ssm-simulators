@@ -1,10 +1,14 @@
+# ML-FLOW tests
+test_mlruns/
+test_mlruns_output/
+hssm_paper/
+
 # MY PACKAGE SPECIFIC ADDITIONS
 generated_data/
 data/
 ssm_simulators.egg-info/
 .vscode/
 #.ruff_cache/
-src/cssm.cpp
 sysconfig.sh
 .cursor/
 __marimo__/
@@ -32,6 +36,8 @@ __pycache__/
 
 # C extensions
 *.so
+# Specifically ignore root-level cssm artifacts
+/cssm.*.so
 
 # Distribution / packaging
 .Python

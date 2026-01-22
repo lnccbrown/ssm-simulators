@@ -5,7 +5,8 @@ from . import dataset_generators
 from . import config
 from . import support_utils
 from . import hssm_support
-from .basic_simulators import Simulator
+from .basic_simulators import Simulator, OMISSION_SENTINEL
+from .config import get_default_generator_config
 
 __version__ = importlib.metadata.version("ssm-simulators")
 
@@ -16,4 +17,6 @@ __all__ = [
     "support_utils",
     "hssm_support",
     "Simulator",
+    "OMISSION_SENTINEL",
+    "get_default_generator_config",
 ]

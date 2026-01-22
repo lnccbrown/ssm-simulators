@@ -23,6 +23,10 @@ def get_gamma_drift_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm_flex,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -45,4 +49,8 @@ def get_gamma_drift_angle_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm_flex,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }

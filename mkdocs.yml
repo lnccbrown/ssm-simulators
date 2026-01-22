@@ -5,12 +5,22 @@ site_url: https://lnccbrown.github.io/ssm-simulators
 edit_uri: edit/main/docs
 
 nav:
-  - Home: 
+  - Home:
       - Overview: index.md
-  - Basic Tutorial:
-      - Installation: basic_tutorial/basic_tutorial.ipynb
-  - Tutorials:
-      - KDE Class: tutorials/kde_class.ipynb
+  - Getting Started:
+      - Basic Tutorial: basic_tutorial/basic_tutorial.ipynb
+  - Core Tutorials:
+      - Package Overview: core_tutorials/tutorial_capabilities.ipynb
+      - Configuration Systems: core_tutorials/tutorial_configs.ipynb
+      - Custom Models: core_tutorials/tutorial_custom_models.ipynb
+      - Data Generators: core_tutorials/tutorial_data_generators.ipynb
+      - KDE Class: core_tutorials/kde_class.ipynb
+      - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
+      - Using MLflow: core_tutorials/using_mlflow.md
+  - Contributing:
+      - Contribute New Models: contributing/add_models.md
+      - Contribute Parameter Adapters: contributing/add_parameter_adapters.md
+
   - API:
       - ssms: api/ssms.md
       - basic simulators: api/basic_simulators.md
@@ -23,8 +33,8 @@ plugins:
   - autorefs
   - mkdocs-jupyter:
       execute: True
-      execute_ignore:
-        - basic_tutorial/basic_tutorial.ipynb
+      # execute_ignore:
+      #   - basic_tutorial/basic_tutorial.ipynb
   - mkdocstrings:
       default_handler: python
       handlers:

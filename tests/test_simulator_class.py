@@ -1,12 +1,12 @@
 """
-Tests for the Simulator class and ConfigBuilder.
+Tests for the Simulator class and ModelConfigBuilder.
 
 This module tests the class-based simulator interface including:
 - Initialization with different model specifications
 - Custom boundary and drift functions
 - Custom simulator functions
 - Parameter validation
-- ConfigBuilder utilities
+- ModelConfigBuilder utilities
 """
 
 import numpy as np
@@ -14,7 +14,7 @@ import pytest
 
 from ssms import Simulator
 from ssms.basic_simulators.simulator import simulator
-from ssms.config import ConfigBuilder
+from ssms.config import ModelConfigBuilder
 
 
 class TestSimulatorInitialization:
@@ -34,7 +34,7 @@ class TestSimulatorInitialization:
 
     def test_init_with_config_dict(self):
         """Test initialization with configuration dictionary."""
-        config = ConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model("ddm")
         sim = Simulator(config)
         assert sim.config["name"] == "ddm"
 
@@ -220,35 +220,35 @@ class TestSimulation:
         np.testing.assert_array_equal(results1["choices"], results2["choices"])
 
 
-class TestConfigBuilder:
-    """Test ConfigBuilder utility class."""
+class TestModelConfigBuilder:
+    """Test ModelConfigBuilder utility class."""
 
     def test_from_model(self):
-        """Test ConfigBuilder.from_model()."""
-        config = ConfigBuilder.from_model("ddm")
+        """Test ModelConfigBuilder.from_model()."""
+        config = ModelConfigBuilder.from_model("ddm")
         assert config["name"] == "ddm"
         assert "params" in config
         assert "simulator" in config
 
     def test_from_model_with_overrides(self):
-        """Test ConfigBuilder.from_model() with overrides."""
-        config = ConfigBuilder.from_model(
+        """Test ModelConfigBuilder.from_model() with overrides."""
+        config = ModelConfigBuilder.from_model(
             "ddm", param_bounds=[[-4, 0.3, 0.1, 0], [4, 3.0, 0.9, 2.0]]
         )
         assert config["param_bounds"][0][0] == -4
 
     def test_from_model_invalid_name(self):
-        """Test ConfigBuilder.from_model() with invalid name."""
+        """Test ModelConfigBuilder.from_model() with invalid name."""
         with pytest.raises(ValueError, match="Unknown model"):
-            ConfigBuilder.from_model("invalid_name")
+            ModelConfigBuilder.from_model("invalid_name")
 
     def test_from_scratch(self):
-        """Test ConfigBuilder.from_scratch()."""
+        """Test ModelConfigBuilder.from_scratch()."""
 
         def my_sim(**kwargs):
             return {"rts": np.array([0.5]), "choices": np.array([1]), "metadata": {}}
 
-        config = ConfigBuilder.from_scratch(
+        config = ModelConfigBuilder.from_scratch(
             name="my_model", params=["v", "a"], simulator_function=my_sim, nchoices=2
         )
 
@@ -259,12 +259,12 @@ class TestConfigBuilder:
         assert config["simulator"] == my_sim
 
     def test_minimal_config(self):
-        """Test ConfigBuilder.minimal_config()."""
+        """Test ModelConfigBuilder.minimal_config()."""
 
         def my_sim(**kwargs):
             return {"rts": np.array([0.5]), "choices": np.array([1]), "metadata": {}}
 
-        config = ConfigBuilder.minimal_config(
+        config = ModelConfigBuilder.minimal_config(
             params=["v", "a"], simulator_function=my_sim
         )
 
@@ -273,29 +273,29 @@ class TestConfigBuilder:
         assert config["simulator"] == my_sim
 
     def test_validate_config_valid(self):
-        """Test ConfigBuilder.validate_config() with valid config."""
+        """Test ModelConfigBuilder.validate_config() with valid config."""
 
         def my_sim(**kwargs):
             return {}
 
-        config = ConfigBuilder.minimal_config(
+        config = ModelConfigBuilder.minimal_config(
             params=["v", "a"], simulator_function=my_sim
         )
 
-        is_valid, errors = ConfigBuilder.validate_config(config)
+        is_valid, errors = ModelConfigBuilder.validate_config(config)
         assert is_valid
         assert len(errors) == 0
 
     def test_validate_config_missing_fields(self):
-        """Test ConfigBuilder.validate_config() with missing fields."""
+        """Test ModelConfigBuilder.validate_config() with missing fields."""
         config = {"params": ["v", "a"]}  # Missing nchoices and simulator
 
-        is_valid, errors = ConfigBuilder.validate_config(config)
+        is_valid, errors = ModelConfigBuilder.validate_config(config)
         assert not is_valid
         assert len(errors) > 0
 
     def test_validate_config_inconsistent_params(self):
-        """Test ConfigBuilder.validate_config() with inconsistent params."""
+        """Test ModelConfigBuilder.validate_config() with inconsistent params."""
 
         def my_sim(**kwargs):
             return {}
@@ -307,45 +307,45 @@ class TestConfigBuilder:
             "simulator": my_sim,
         }
 
-        is_valid, errors = ConfigBuilder.validate_config(config)
+        is_valid, errors = ModelConfigBuilder.validate_config(config)
         assert not is_valid
         assert any("Inconsistent n_params" in err for err in errors)
 
     def test_add_boundary(self):
-        """Test ConfigBuilder.add_boundary()."""
-        config = ConfigBuilder.from_model("ddm")
-        config = ConfigBuilder.add_boundary(config, "angle", ["theta"])
+        """Test ModelConfigBuilder.add_boundary()."""
+        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.add_boundary(config, "angle", ["theta"])
 
         assert config["boundary_name"] == "angle"
-        assert config["boundary_params"] == ["theta"]
+        assert config["boundary_params"] == ["a", "theta"]  # 'a' is now always included
 
     def test_add_boundary_custom_function(self):
-        """Test ConfigBuilder.add_boundary() with custom function."""
+        """Test ModelConfigBuilder.add_boundary() with custom function."""
 
         def my_boundary(t, theta):
             return np.sin(theta * t)
 
-        config = ConfigBuilder.from_model("ddm")
-        config = ConfigBuilder.add_boundary(config, my_boundary, ["theta"])
+        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.add_boundary(config, my_boundary, ["theta"])
 
         assert config["boundary"] == my_boundary
         assert config["boundary_params"] == ["theta"]
 
     def test_add_drift(self):
-        """Test ConfigBuilder.add_drift()."""
-        config = ConfigBuilder.from_model("gamma_drift")
-        config = ConfigBuilder.add_drift(config, "constant")
+        """Test ModelConfigBuilder.add_drift()."""
+        config = ModelConfigBuilder.from_model("gamma_drift")
+        config = ModelConfigBuilder.add_drift(config, "constant")
 
         assert config["drift_name"] == "constant"
 
     def test_add_drift_custom_function(self):
-        """Test ConfigBuilder.add_drift() with custom function."""
+        """Test ModelConfigBuilder.add_drift() with custom function."""
 
         def my_drift(t, scale):
             return scale * np.exp(-t)
 
-        config = ConfigBuilder.from_model("gamma_drift")
-        config = ConfigBuilder.add_drift(config, my_drift, ["scale"])
+        config = ModelConfigBuilder.from_model("gamma_drift")
+        config = ModelConfigBuilder.add_drift(config, my_drift, ["scale"])
 
         assert config["drift"] == my_drift
         assert config["drift_params"] == ["scale"]

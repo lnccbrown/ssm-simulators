@@ -2,6 +2,9 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import LambdaAdaptation
+
+import numpy as np
 
 
 def get_ddm_par2_config():
@@ -20,6 +23,10 @@ def get_ddm_par2_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_par2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -36,6 +43,24 @@ def get_ddm_par2_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_par2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -65,6 +90,24 @@ def get_ddm_par2_conflict_gamma_no_bias_config():
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_par2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -78,13 +121,30 @@ def get_ddm_par2_angle_no_bias_config():
         ],
         "boundary_name": "angle",
         "boundary": bf.angle,
-        "boundary_multiplicative": False,
         "n_params": 6,
         "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_par2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }
 
 
@@ -98,11 +158,28 @@ def get_ddm_par2_weibull_no_bias_config():
         ],
         "boundary_name": "weibull_cdf",
         "boundary": bf.weibull_cdf,
-        "boundary_multiplicative": True,
         "n_params": 7,
         "default_params": [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 3.0],
         "nchoices": 4,
         "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_par2,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [
+                LambdaAdaptation(
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "zh": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl1": np.tile(np.array([0.5], dtype=np.float32), n),
+                                "zl2": np.tile(np.array([0.5], dtype=np.float32), n),
+                            }
+                        )
+                        or theta
+                    ),
+                    name="add_z_defaults",
+                )
+            ],
+        },
     }

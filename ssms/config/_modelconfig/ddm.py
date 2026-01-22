@@ -19,6 +19,10 @@ def get_ddm_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }
 
 
@@ -36,4 +40,8 @@ def get_ddm_legacy_config():
         "choices": [-1, 1],
         "n_particles": 1,
         "simulator": cssm.ddm,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": [],
+        },
     }

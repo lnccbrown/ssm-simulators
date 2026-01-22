@@ -1,4 +1,11 @@
-from setuptools import setup, Extension, find_packages
+"""
+Minimal setup.py for Cython extensions only.
+
+All package metadata, dependencies, and configuration are defined in pyproject.toml.
+This file exists solely to configure the Cython extension modules.
+"""
+
+from setuptools import setup, Extension
 import numpy
 
 # Define all Cython extension modules
@@ -40,28 +47,7 @@ except ImportError:
     # Fallback to pre-compiled .c files if Cython is not available
     ext_modules = create_extensions(CYTHON_MODULES)
 
-# Use find_packages to automatically discover all packages
-packages = find_packages(include=["ssms", "ssms.*"])
-
+# Minimal setup call - all metadata comes from pyproject.toml
 setup(
-    name="ssm-simulators",
-    version="0.10.2",
-    packages=packages,
-    package_dir={"cssm": "src/cssm"},  # Map cssm package to source directory
-    package_data={
-        "ssms": ["**/*.py", "**/*.pyx", "**/*.pxd", "**/*.so", "**/*.pyd"],
-        "cssm": ["*.py", "*.pyx", "*.pxd"],  # Include cssm source files
-    },
-    include_package_data=True,
-    include_dirs=[numpy.get_include()],
     ext_modules=ext_modules,
-    install_requires=[
-        "numpy",
-        "pandas",
-        "scipy",
-        "matplotlib",
-        "tqdm",
-        "pyyaml",
-        "typer",
-    ],
 )

@@ -5,6 +5,8 @@ from copy import deepcopy
 import numpy as np
 from sklearn.neighbors import KernelDensity
 
+from ssms.basic_simulators.simulator import OMISSION_SENTINEL
+
 """
     This module contains a class for generating kdes from data.
 """
@@ -189,7 +191,7 @@ class LogKDE:
         log_eval: bool = True,
         lb: float = -66.774,
         eps: float = 10e-5,
-        filter_rts: float = -999,
+        filter_rts: float = OMISSION_SENTINEL,
     ) -> np.ndarray:
         """
         Evaluates kde log likelihood at chosen points.
@@ -206,8 +208,9 @@ class LogKDE:
         eps: float
             Epsilon value to use for lower bounds on rts.
         filter_rts: float
-            Value to filter rts by, default is -999. -999 is the number returned by the
-            simulators if we breach max_t or deadline.
+            Value to filter rts by, default is OMISSION_SENTINEL (-999).
+            This is the sentinel value returned by simulators when a trial
+            exceeds max_t or deadline (i.e., an omission).
 
         Returns:
         --------
@@ -330,6 +333,7 @@ class LogKDE:
         n_samples: int = 2000,
         use_empirical_choice_p: bool = True,
         alternate_choice_p: np.ndarray | float = 0.0,
+        random_state: int | None = None,
     ) -> dict[str, np.ndarray | dict]:
         """
         Samples from a given kde.
@@ -345,6 +349,8 @@ class LogKDE:
         alternate_choice_p: np.ndarray | float
             Array of choice proportions to use, default is 0. (Note 'alternate' here refers to 'alternative'
             to the 'empirical' choice proportions)
+        random_state: int | None
+            Random seed for reproducibility. If None, uses non-reproducible random behavior.
 
         Returns:
         --------
@@ -355,6 +361,8 @@ class LogKDE:
             - 'choices': np.ndarray - Choices made
             - 'metadata': dict - Simulator information
         """
+        # Create seeded RNG for reproducibility
+        rng = np.random.default_rng(random_state)
 
         rts = np.zeros((n_samples, 1))
         choices = np.zeros((n_samples, 1))
@@ -385,7 +393,7 @@ class LogKDE:
             n_by_choice[np.argmax(n_by_choice)] -= 1
         elif sum(n_by_choice) < n_samples:
             n_by_choice[np.argmax(n_by_choice)] += 1
-            choices[n_samples - 1, 0] = np.random.choice(self.data["choices"])
+            choices[n_samples - 1, 0] = rng.choice(self.data["choices"])
 
         # Get samples
         cnt_low = 0
@@ -395,10 +403,12 @@ class LogKDE:
 
                 if self.base_kdes[i] != "no_base_data":
                     rts[cnt_low:cnt_high] = np.exp(
-                        self.base_kdes[i].sample(n_samples=n_by_choice[i])
+                        self.base_kdes[i].sample(
+                            n_samples=n_by_choice[i], random_state=random_state
+                        )
                     )
                 else:
-                    rts[cnt_low:cnt_high, 0] = np.random.uniform(
+                    rts[cnt_low:cnt_high, 0] = rng.uniform(
                         low=0, high=self.simulator_info["max_t"], size=n_by_choice[i]
                     )
 
@@ -420,7 +430,7 @@ class LogKDE:
     # Helper function to transform ddm simulator output to dataset suitable for
     # the kde function class
     def _attach_data_from_simulator(
-        self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=-999
+        self, simulator_data=([0, 2, 4], [-1, 1, -1]), filter_rts=OMISSION_SENTINEL
     ):
         """
         Helper function to transform ddm simulator output to dataset suitable for
@@ -431,8 +441,9 @@ class LogKDE:
         simulator_data: tuple
             Tuple of (rts, choices, simulator_info) as returned by simulator function.
         filter_rts: float
-            Value to filter rts by, default is -999. -999 is the number returned by the
-            simulators if we breach max_t or deadline.
+            Value to filter rts by, default is OMISSION_SENTINEL (-999).
+            This is the sentinel value returned by simulators when a trial
+            exceeds max_t or deadline (i.e., an omission).
         """
 
         simulator_data = deepcopy(simulator_data)

@@ -129,8 +129,41 @@ from .shrink import (
     get_shrink_spot_simple_config,
     get_shrink_spot_simple_extended_config,
 )
-from .base import drift_config, boundary_config
 from .validation import get_invalid_configs
+
+
+def _normalize_param_bounds(config: dict) -> dict:
+    """Normalize param_bounds to param_bounds_dict format.
+
+    Converts the param_bounds field (which can be either list or dict format)
+    to a standardized dict format stored in param_bounds_dict.
+
+    Args:
+        config: Model configuration dict
+
+    Returns:
+        Modified config with param_bounds_dict added
+    """
+    if "param_bounds_dict" in config:
+        # Already normalized
+        return config
+
+    if "param_bounds" not in config:
+        # No param_bounds to normalize
+        return config
+
+    if isinstance(config["param_bounds"], list):
+        # Convert list format to dict: [[low1, low2, ...], [high1, high2, ...]]
+        bounds_lower, bounds_upper = config["param_bounds"]
+        config["param_bounds_dict"] = {
+            param: (lower, upper)
+            for param, lower, upper in zip(config["params"], bounds_lower, bounds_upper)
+        }
+    elif isinstance(config["param_bounds"], dict):
+        # Already dict format, just copy
+        config["param_bounds_dict"] = config["param_bounds"]
+
+    return config
 
 
 def get_model_config():
@@ -140,9 +173,13 @@ def get_model_config():
     -------
     dict
         Dictionary containing all model configurations.
+
+    Note:
+        All returned configs are normalized to include param_bounds_dict,
+        which is the dict format of param_bounds for easier parameter sampling.
     """
     # TODO: Refactor to load these lazily
-    return {
+    configs = {
         "ddm": get_ddm_config(),
         "ddm_st": get_ddm_st_config(),
         "ddm_truncnormt": get_ddm_truncnormt_config(),
@@ -252,6 +289,9 @@ def get_model_config():
         "ddm_legacy": get_ddm_legacy_config(),
     }
 
+    # Normalize all configs to include param_bounds_dict
+    return {name: _normalize_param_bounds(cfg) for name, cfg in configs.items()}
+
 
 __all__ = [
     "get_model_config",
@@ -297,13 +337,22 @@ __all__ = [
 
 # Validate
 
-_ALL_CONFIGS = {
-    "model_configs": get_model_config(),
-    "drift_configs": drift_config,
-    "boundary_configs": boundary_config,
-}
-invalid_configs = {
-    key: get_invalid_configs(configs) for key, configs in _ALL_CONFIGS.items()
-}
-if any(invalid_configs.values()):
-    raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
+
+def _validate_configs():
+    """Validate all configurations for parameter name consistency."""
+    # Import locally to avoid circular imports
+    from .base import boundary_config, drift_config
+
+    _ALL_CONFIGS = {
+        "model_configs": get_model_config(),
+        "drift_configs": drift_config,
+        "boundary_configs": boundary_config,
+    }
+    invalid_configs = {
+        key: get_invalid_configs(configs) for key, configs in _ALL_CONFIGS.items()
+    }
+    if any(invalid_configs.values()):
+        raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
+
+
+_validate_configs()

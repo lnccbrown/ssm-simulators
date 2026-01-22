@@ -27,24 +27,28 @@ sample_parameters_from_constraints(param_dict: Dict[str, Tuple[Any, Any]],
     Sample parameters uniformly within specified bounds, respecting any dependencies.
 """  # noqa: D205, D404
 
-from collections import defaultdict
-from typing import Any
-
+from typing import Any, Dict, List, Set, Tuple
 import numpy as np
 
 
-def parse_bounds(bounds: tuple[Any, Any]) -> set[str]:
-    """
-    Parse the bounds of a parameter and extract any dependencies.
+def parse_bounds(bounds: Tuple[Any, Any]) -> Set[str]:
+    """Parse the bounds of a parameter and extract any dependencies.
 
-    Parameters
-    ----------
-        bounds (Tuple[Any, Any]): A tuple containing the lower and upper bounds,
-                                  numeric or strings, indicating dependencies.
+    Args:
+        bounds: A tuple of (lower, upper) bounds. Can be numeric or strings (for dependencies).
 
-    Returns
-    -------
-        Set[str]: A set of parameter names that the bounds depend on.
+    Returns:
+        Set of parameter names that this parameter depends on.
+
+    Example:
+        >>> parse_bounds((0.0, 1.0))
+        set()
+        >>> parse_bounds(("a", 1.0))
+        {'a'}
+        >>> parse_bounds((0.0, "b"))
+        {'b'}
+        >>> parse_bounds(("c", "d"))
+        {'c', 'd'}
     """
     dependencies = set()
     for value in bounds:
@@ -54,177 +58,176 @@ def parse_bounds(bounds: tuple[Any, Any]) -> set[str]:
 
 
 def build_dependency_graph(
-    param_dict: dict[str, tuple[Any, Any]],
-) -> dict[str, set[str]]:
+    param_dict: Dict[str, Tuple[Any, Any]],
+) -> Dict[str, Set[str]]:
+    """Build a dependency graph based on parameter bounds.
+
+    The graph is structured as parent -> children, where children depend on parent.
+    For example, if 'st' has upper bound 't', then graph['t'] contains 'st'.
+
+    Args:
+        param_dict: Dictionary mapping parameter names to (lower, upper) bounds.
+
+    Returns:
+        Dictionary where keys are parameters and values are sets of parameters
+        that depend on them.
+
+    Raises:
+        ValueError: If a dependency references an undefined parameter.
+
+    Example:
+        >>> param_dict = {"a": (0, 1), "b": ("a", 2)}
+        >>> build_dependency_graph(param_dict)
+        {'a': {'b'}, 'b': set()}
     """
-    Build a dependency graph based on parameter bounds.
-
-    Parameters
-    ----------
-        param_dict (Dict[str, Tuple[Any, Any]]): A dictionary mapping parameter names
-        to their bounds.
-
-    Returns
-    -------
-        Dict[str, Set[str]]: A dictionary representing the dependency graph where keys
-        are parameter names,
-                             and values are sets of parameter names they depend on.
-    """
-    # Note: For the topological sort to work properly
-    # we need to construct this graph so that
-    # keys represent 'parents' and values represent sets
-    # of 'children'!
-
-    # e.g.
-    # param_dict = {'a': (0, 5), 'b': (0, 'a'), 'c': ('b', 'a')}
-    # resulting graph = {'a': {'b', 'c'}, 'b': {'c'}, 'c': set()}
-    graph: dict[str, set[str]] = defaultdict(set)
+    graph: Dict[str, Set[str]] = {}
     all_params = set(param_dict.keys())
+
+    # First pass: extract all dependencies
+    all_dependencies = set()
+    for param, bounds in param_dict.items():
+        dependencies = parse_bounds(bounds)
+        all_dependencies.update(dependencies)
+
+    # Validate all dependencies exist in param_dict
+    for dependency in all_dependencies:
+        if dependency not in all_params:
+            raise ValueError(
+                f"Dependency '{dependency}' is referenced but not defined in param_dict."
+            )
+
+    # Build the graph: dependency -> dependents
+    for param in all_params:
+        graph[param] = set()
+
     for param, bounds in param_dict.items():
         dependencies = parse_bounds(bounds)
         for dependency in dependencies:
-            if dependency not in all_params:
-                raise ValueError(f"Parameter '{dependency}' is not defined.")
-            else:
-                graph[dependency].add(param)
-        all_params.update(dependencies)
-    # Ensure all parameters are in the graph
-    for param in all_params:
-        if param not in graph:
-            graph[param] = set()
+            graph[dependency].add(param)
+
     return graph
 
 
 def topological_sort_util(
     node: str,
-    visited: set[str],
-    stack: list[str],
-    graph: dict[str, set[str]],
-    temp_marks: set[str],
+    visited: Set[str],
+    stack: List[str],
+    graph: Dict[str, Set[str]],
+    temp_marks: Set[str],
 ) -> None:
-    """
-    Helper function for performing a depth-first search in the topological sort.
+    """Helper function for performing a depth-first search in the topological sort.
 
-    Parameters
-    ----------
-        node (str): The current node being visited.
-        visited (Set[str]): Set of nodes that have been permanently marked
-        (fully processed).
-        stack (List[str]): List representing the ordering of nodes.
-        graph (Dict[str, Set[str]]): The dependency graph.
-        temp_marks (Set[str]): Set of nodes that have been temporarily marked (currently
-         being processed).
+    Args:
+        node: Current node to visit
+        visited: Set of permanently visited nodes
+        stack: List to accumulate the topological order (prepended in post-order)
+        graph: Dependency graph
+        temp_marks: Set of temporarily marked nodes (for cycle detection)
 
-    Raises
-    ------
+    Raises:
         ValueError: If a circular dependency is detected.
-    """  # noqa: D401
+    """
     if node in temp_marks:
-        raise ValueError(f"Circular dependency detected involving '{node}'.")
-    if node not in visited:
-        temp_marks.add(node)
-        for neighbor in graph.get(node, set()):
-            topological_sort_util(neighbor, visited, stack, graph, temp_marks)
-        temp_marks.remove(node)
-        visited.add(node)
-        stack.insert(0, node)  # Prepend node to the stack
+        raise ValueError(f"Circular dependency detected involving parameter '{node}'")
+
+    if node in visited:
+        return
+
+    temp_marks.add(node)
+
+    # Visit all parameters that depend on this one
+    for neighbor in graph.get(node, set()):
+        topological_sort_util(neighbor, visited, stack, graph, temp_marks)
+
+    temp_marks.remove(node)
+    visited.add(node)
+    # Prepend to get correct dependency order (dependencies first)
+    stack.insert(0, node)
 
 
-def topological_sort(graph: dict[str, set[str]]) -> list[str]:
+def topological_sort(graph: Dict[str, Set[str]]) -> List[str]:
+    """Perform a topological sort on the dependency graph to determine the sampling order.
+
+    Args:
+        graph: Dependency graph where keys are parameters and values are sets of
+               parameters that depend on them.
+
+    Returns:
+        List of parameter names in sampling order (dependencies first).
+
+    Raises:
+        ValueError: If circular dependencies are detected.
+
+    Example:
+        >>> graph = {"a": {"b"}, "b": set()}
+        >>> topological_sort(graph)
+        ['a', 'b']
     """
-    Perform a topological sort on the dependency graph to determine the sampling order.
+    visited: Set[str] = set()
+    temp_marks: Set[str] = set()
+    stack: List[str] = []
 
-    Parameters
-    ----------
-        graph (Dict[str, Set[str]]): The dependency graph.
-
-    Returns
-    -------
-        List[str]: A list of parameter names in the order they should be sampled.
-
-    Raises
-    ------
-        ValueError: If a circular dependency is detected.
-    """
-    visited: set[str] = set()
-    temp_marks: set[str] = set()
-    stack: list[str] = []
     for node in graph:
         if node not in visited:
             topological_sort_util(node, visited, stack, graph, temp_marks)
+
     return stack
 
 
 def sample_parameters_from_constraints(
-    param_dict: dict[str, tuple[Any, Any]], sample_size: int
-) -> dict[str, np.ndarray]:
+    param_dict: Dict[str, Tuple[Any, Any]],
+    sample_size: int,
+    random_state: int | None = None,
+) -> Dict[str, np.ndarray]:
+    """Sample parameters uniformly within specified bounds, respecting any dependencies.
+
+    This is a backward-compatible wrapper around UniformParameterSampler.
+
+    Args:
+        param_dict: Dictionary mapping parameter names to (lower, upper) bounds.
+                   Bounds can be numeric or strings (for dependencies).
+        sample_size: Number of parameter sets to sample.
+        random_state: Optional random seed for reproducibility.
+
+    Returns:
+        Dictionary mapping parameter names to arrays of sampled values.
+
+    Raises:
+        ValueError: If bounds are invalid (lower >= upper) or circular dependencies exist.
+
+    Example:
+        >>> param_dict = {"v": (-1.0, 1.0), "a": (0.5, 2.0)}
+        >>> samples = sample_parameters_from_constraints(param_dict, sample_size=10)
+        >>> samples['v'].shape
+        (10,)
     """
-    Sample parameters uniformly within specified bounds, respecting any dependencies.
+    from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
 
-    Parameters
-    ----------
-        param_dict (Dict[str, Tuple[Any, Any]]): Dictionary mapping parameter names to
-        their bounds.
-        sample_size (int): Number of samples to generate.
-
-    Returns
-    -------
-        Dict[str, np.ndarray]: A dictionary mapping parameter names to arrays of sampled
-         values.
-
-    Raises
-    ------
-        ValueError: If dependencies cannot be resolved due to missing parameters or
-         circular dependencies.
-    """
-    graph = build_dependency_graph(param_dict)
-    try:
-        sampling_order = topological_sort(graph)
-    except ValueError as e:
-        raise ValueError(f"Error in topological sorting: {e}") from e
-
-    samples: dict[str, np.ndarray] = {}
-    for param in sampling_order:
-        # print('sampling :', param)
-        bounds = param_dict.get(param)
-        if bounds is None:
-            # Skip if the parameter wasn't in param_dict (could be a dependency only)
-            continue
-        lower, upper = bounds
-
-        # Resolve bounds if they are dependent on other parameters
-        if isinstance(lower, str):
-            if lower in samples:
-                lower = samples[lower]
-            else:
-                raise ValueError(
-                    f"Parameter '{lower}' must be defined before '{param}'."
-                )
-        if isinstance(upper, str):
-            if upper in samples:
-                upper = samples[upper]
-            else:
-                raise ValueError(
-                    f"Parameter '{upper}' must be defined before '{param}'."
-                )
-
-        # Ensure lower bound is less than upper bound
-        # TODO: #83 Improve this test to not only operate on sampled but on strict checks!  # noqa: FIX002
-        if np.any(lower >= upper):
+    # Validate bounds for parameters with numeric bounds
+    for param, (lower, upper) in param_dict.items():
+        # Check for same dependency (e.g., ("a", "a"))
+        if isinstance(lower, str) and isinstance(upper, str) and lower == upper:
             raise ValueError(
-                f"Lower bound '{lower}' must be less than upper bound '{upper}' for parameter '{param}'."  # noqa: E501
+                f"Parameter '{param}' has invalid bounds: lower bound '{lower}' "
+                f"must be less than upper bound '{upper}' (same dependency)"
             )
+        # Check numeric bounds
+        if not isinstance(lower, str) and not isinstance(upper, str):
+            if lower >= upper:
+                raise ValueError(
+                    f"Parameter '{param}' has invalid bounds: lower bound {lower} "
+                    f"must be less than upper bound {upper}"
+                )
 
-        # Ensure lower and upper are arrays of the correct size
-        lower_array = np.full(sample_size, lower) if np.isscalar(lower) else lower
-        upper_array = np.full(sample_size, upper) if np.isscalar(upper) else upper
+    # Convert random_state to rng if provided
+    rng = np.random.default_rng(random_state) if random_state is not None else None
 
-        # Sample uniformly within bounds
-        try:
-            samples[param] = np.random.uniform(
-                low=lower_array, high=upper_array
-            ).astype(np.float32)
-        except ValueError as e:
-            raise ValueError(f"Error sampling parameter '{param}': {e}") from e
-
-    return samples
+    try:
+        sampler = UniformParameterSampler(param_space=param_dict, constraints=[])
+        return sampler.sample(n_samples=sample_size, rng=rng)
+    except ValueError as e:
+        # Re-raise circular dependency errors with backward-compatible message
+        if "Circular dependency" in str(e):
+            raise ValueError(f"Error in topological sorting: {e}") from e
+        # Re-raise other errors as-is
+        raise

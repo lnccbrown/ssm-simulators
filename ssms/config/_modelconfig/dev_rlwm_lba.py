@@ -2,6 +2,15 @@
 
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
+from ssms.transforms import (
+    SwapIfLessConstraint,
+    NormalizeToSumConstraint,
+    ColumnStackParameters,
+    ExpandDimension,
+    LambdaAdaptation,
+)
+
+import numpy as np
 
 
 def get_dev_rlwm_lba_pw_v1_config():
@@ -30,6 +39,27 @@ def get_dev_rlwm_lba_pw_v1_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_pw_v1,
+        "parameter_transforms": {
+            "sampling": [
+                SwapIfLessConstraint("a", "z"),
+            ],
+            "simulation": [
+                ColumnStackParameters(
+                    ["vRL0", "vRL1", "vRL2"], "vRL", delete_sources=False
+                ),
+                ColumnStackParameters(
+                    ["vWM0", "vWM1", "vWM2"], "vWM", delete_sources=False
+                ),
+                ExpandDimension(["a", "z", "tWM"]),
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"t": np.zeros(n).astype(np.float32)}
+                    )
+                    or theta,
+                    name="set_zero_t",
+                ),
+            ],
+        },
     }
 
 
@@ -60,6 +90,29 @@ def get_dev_rlwm_lba_race_v1_config():
         "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_race,
+        "parameter_transforms": {
+            "sampling": [
+                NormalizeToSumConstraint(["vRL0", "vRL1", "vRL2"]),
+                NormalizeToSumConstraint(["vWM0", "vWM1", "vWM2"]),
+                SwapIfLessConstraint("a", "z"),
+            ],
+            "simulation": [
+                ColumnStackParameters(
+                    ["vRL0", "vRL1", "vRL2"], "vRL", delete_sources=False
+                ),
+                ColumnStackParameters(
+                    ["vWM0", "vWM1", "vWM2"], "vWM", delete_sources=False
+                ),
+                ExpandDimension(["a", "z"]),
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"t": np.zeros(n).astype(np.float32)}
+                    )
+                    or theta,
+                    name="set_zero_t",
+                ),
+            ],
+        },
     }
 
 
@@ -89,4 +142,25 @@ def get_dev_rlwm_lba_race_v2_config():
         "nchoices": 3,
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_race,
+        "parameter_transforms": {
+            "sampling": [
+                SwapIfLessConstraint("a", "z"),
+            ],
+            "simulation": [
+                ColumnStackParameters(
+                    ["vRL0", "vRL1", "vRL2"], "vRL", delete_sources=False
+                ),
+                ColumnStackParameters(
+                    ["vWM0", "vWM1", "vWM2"], "vWM", delete_sources=False
+                ),
+                ExpandDimension(["a", "z"]),
+                LambdaAdaptation(
+                    lambda theta, cfg, n: theta.update(
+                        {"t": np.zeros(n).astype(np.float32)}
+                    )
+                    or theta,
+                    name="set_zero_t",
+                ),
+            ],
+        },
     }
