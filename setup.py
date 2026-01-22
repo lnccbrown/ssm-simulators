@@ -6,6 +6,7 @@ CYTHON_MODULES = [
     "_utils",
     "ddm_models",
     "race_models",
+    "poisson_race_models",
     "lba_models",
     "sequential_models",
     "parallel_models",
