@@ -124,6 +124,9 @@ generate \
 ```bash
 mlflow ui
 # Opens http://localhost:5000
+
+# Sets up UI with tracking from .db
+mlflow server --backend-store-uri <sqlite:////path/to/tracking.db>
 ```
 
 
@@ -283,6 +286,9 @@ generate \
 # View experiments
 mlflow ui
 
+# Sets up UI with tracking from .db
+mlflow server --backend-store-uri <sqlite:////path/to/tracking.db>
+
 # Python queries
 python -c "
 import mlflow
@@ -320,5 +326,16 @@ generate --config-path config.yaml --output ./data/val \
   --mlflow-experiment-name "my-project"
 
 # 4. Review in UI
-mlflow ui
+mlflow --backend-store-uri sqlite:///project_mlflow.db"
+```
+
+## Troubleshooting
+
+```bash
+alembic.util.exc.CommandError: Can't locate revision identified by <revision number>
+```
+
+### Solution:
+```bash
+pip install --upgrade mlflow
 ```
