@@ -478,23 +478,3 @@ def get_race_no_z_angle_4_config():
             ],
         },
     }
-
-
-def get_poisson_race_config():
-    """Get configuration for 2-choice Poisson race model."""
-    return {
-        "name": "poisson_race",
-        "params": ["r0", "r1", "k0", "k1", "t"],
-        "param_bounds": [
-            [1e-3, 1e-3, 1.0, 1.0, 0.0],
-            [20.0, 20.0, 20.0, 20.0, 2.0],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 5,
-        "default_params": [1.0, 1.0, 2.0, 2.0, 1e-3],
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 2,
-        "simulator": cssm.poisson_race,
-    }
