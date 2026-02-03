@@ -472,39 +472,43 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     This model implements a "first-past-the-post" race of N independent
     Wiener diffusion processes with no reflecting lower boundary.
 
-    Args:
-        v (np.ndarray): Mean drift rates for each accumulator and trial.
-        b (np.ndarray): Response threshold for each accumulator and trial.
-        A (np.ndarray): Upper bound of the uniform starting point distribution (U[0, A]).
-        t (np.ndarray): Non-decision time for each trial.
-        s (np.ndarray): Diffusion coefficient (noise) for each accumulator and trial.
-        deadline (np.ndarray): Maximum reaction time allowed for each trial.
-        delta_t (float): Time increment step for simulation (default: 0.001).
-        max_t (float): Maximum time for simulation (default: 20).
-        n_samples (int): Number of samples to simulate per trial (default: 2000).
-        n_trials (int): Number of trials to simulate (default: 1).
-        random_state (int or None): Seed for random number generator (default: None).
-        return_option (str): 'full' for complete output, 'minimal' for basic output (default: 'full').
-        smooth_unif (bool): Whether to apply uniform smoothing to reaction times (default: False).
-        **kwargs: Additional keyword arguments.
+    Parameters:
+    -----------
+    v : np.ndarray
+        Mean drift rates. Shape (n_trials, n_particles).
+    b : np.ndarray
+        Response boundaries (thresholds). Shape (n_trials, n_particles).
+    A : np.ndarray
+        Upper bound of the uniform starting point distribution (U[0, A]). Shape (n_trials, n_particles).
+    t : np.ndarray
+        Non-decision times. Shape (n_trials, 1).
+    s : np.ndarray
+        Diffusion coefficients (within-trial noise). Shape (n_trials, n_particles).
+    deadline : np.ndarray
+        Maximum reaction time allowed for each trial. Shape (n_trials,).
+    delta_t : float, optional
+        Time increment step for simulation (default: 0.001).
+    max_t : float, optional
+        Maximum time for simulation (default: 20).
+    n_samples : int, optional
+        Number of samples to simulate per trial (default: 2000).
+    n_trials : int, optional
+        Number of trials to simulate (default: 1).
+    random_state : int or None, optional
+        Seed for random number generator (default: None).
+    return_option : str, optional
+        'full' for complete output, 'minimal' for basic output (default: 'full').
+    smooth_unif : bool, optional
+        Whether to apply uniform smoothing to reaction times (default: False).
+    **kwargs : dict
+        Additional keyword arguments.
 
     Returns:
-        dict: A dictionary containing simulated reaction times, choices, and metadata.
-
-    Raises:
-        ValueError: If return_option is not 'full' or 'minimal'.
+    --------
+    dict
+        A dictionary containing simulated reaction times, choices, and metadata.
+        The exact contents depend on the 'return_option' parameter.
     """
-
-    # print all the parameters
-    print("v: ", v)
-    print("b: ", b)
-    print("A: ", A)
-    print("t: ", t)
-    print("s: ", s)
-    print("delta_t: ", delta_t)
-    print("max_t: ", max_t)
-    print("n_samples: ", n_samples)
-    print("n_trials: ", n_trials)
 
     set_seed(random_state)
     # Param views
@@ -586,7 +590,6 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                         break # Stop checking, we have a winner
 
                 if winner_found: # <-- `if 1` is True
-                    #print("Winner found: Particle ", winner, " at time ", t_particle)
                     break # Stop the while loop, a decision is made
 
                 t_particle += delta_t
