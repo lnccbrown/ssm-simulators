@@ -7,6 +7,7 @@ from ssms.transforms import (
     ExpandDimension,
 )
 
+
 def get_racing_diffusion_3_config():
     """Get configuration for racing diffusion model with 3 choices."""
     return {
@@ -32,4 +33,3 @@ def get_racing_diffusion_3_config():
             ],
         },
     }
-

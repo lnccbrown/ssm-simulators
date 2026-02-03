@@ -459,7 +459,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                   np.ndarray[float, ndim = 1] deadline,
                   float delta_t = 0.001, # time increment step
                   float max_t = 20, # maximum rt allowed
-                  int n_samples = 2000, 
+                  int n_samples = 2000,
                   int n_trials = 1,
                   random_state = None,
                   return_option = 'full',
@@ -524,16 +524,16 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     cdef float[:, :, :] rts_view = rts
     choices = np.zeros((n_samples, n_trials, 1), dtype = np.intc)
     cdef int[:, :, :] choices_view = choices
-    
+
     particles = np.zeros((n_particles), dtype = DTYPE)
     cdef float [:] particles_view = particles
 
     # Trajectory saving (for first trial, first sample)
     traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
-    traj[:, :] = -999 
-    cdef float[:, :] traj_view = traj    
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
 
-    # Initialize variables needed for for loop 
+    # Initialize variables needed for for loop
     cdef float t_particle, smooth_u, deadline_tmp
     cdef Py_ssize_t n, ix, j, k
     cdef Py_ssize_t m = 0
@@ -545,15 +545,15 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
 
     for k in range(n_trials):
-        
+
         deadline_tmp = min(max_t, deadline_view[k] - t_view[k, 0])
-        
+
         # Loop over samples
         for n in range(n_samples):
 
             for j in range(n_particles):
                 particles_view[j] = random_uniform() * A_view[k, 0]
-            
+
             t_particle = 0.0 # reset time
             ix = 0
             winner = -1         # Reset winner for this sample
@@ -570,28 +570,28 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                 for j in range(n_particles):
                     # Standard Wiener diffusion process update
                     particles_view[j] += (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * gaussian_values[m]
-                    
+
                     # No reflecting boundary for RDM
                     # The line `particles_view[j] = fmax(0.0, particles_view[j])` is REMOVED.
-                    
+
                     m += 1
                     if m == num_draws: # Resample random numbers if needed
                         m = 0
                         gaussian_values = draw_gaussian(num_draws)
-                
+
                     # Check for a winner (first-past-the-post)
                     if particles_view[j] >= b_view[k, 0]:
                         winner_found = 1 # <-- FIX: Set to 1 (True)
                         winner = j
                         break # Stop checking, we have a winner
-                
+
                 if winner_found: # <-- `if 1` is True
                     #print("Winner found: Particle ", winner, " at time ", t_particle)
                     break # Stop the while loop, a decision is made
 
                 t_particle += delta_t
                 ix += 1
-                
+
                 # Save running trajectory
                 if n == 0:
                     if k == 0:
@@ -612,14 +612,14 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                 smooth_u = 0.0
 
             # Store RT and choice
-            rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u 
+            rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u
             choices_view[n, k, 0] = winner
 
             # Handle non-responses (deadline hit or no decision)
             if (rts_view[n, k, 0] >= deadline_view[k]) | (not winner_found): # <-- `not 0` is True
                 rts_view[n, k, 0] = -999
                 choices_view[n, k, 0] = -1 # Ensure choice is also -1
-            
+
 
         # Create parameter dictionaries for metadata
         v_dict = {}
@@ -641,7 +641,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                                                             'possible_choices': list(np.arange(0, n_particles, 1)),
                                                             'trajectory': traj}}
     elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'rdm_simulator', 
+        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'rdm_simulator',
                                                              'possible_choices': list(np.arange(0, n_particles, 1)),
                                                              'n_samples': n_samples,
                                                              'n_trials': n_trials,
