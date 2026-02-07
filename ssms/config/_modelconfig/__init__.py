@@ -122,9 +122,7 @@ from .race import (
     get_race_no_z_angle_3_config,
     get_race_no_z_angle_4_config,
 )
-from .poisson_race import (
-    get_poisson_race_config
-)
+from .poisson_race import get_poisson_race_config
 from .shrink import (
     get_shrink_spot_config,
     get_shrink_spot_extended_config,
