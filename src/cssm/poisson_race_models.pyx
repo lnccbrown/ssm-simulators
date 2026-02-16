@@ -137,9 +137,9 @@ def poisson_race(
             else:
                 rts_view[sample_ix, trial_ix, 0] = rt_value
             if winners_view[sample_ix] == 0:
-                choices_view[sample_ix, trial_ix, 0] = 1
-            else:
                 choices_view[sample_ix, trial_ix, 0] = -1
+            else:
+                choices_view[sample_ix, trial_ix, 0] = 1
             enforce_deadline(rts_view, deadline_view, sample_ix, trial_ix, 0)
 
     minimal_meta = build_minimal_metadata(
