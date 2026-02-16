@@ -243,6 +243,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
     # -------------------------------------------------------------------------------------------------
+
 # @cythonboundscheck(False)
 # @cythonwraparound(False)
 
