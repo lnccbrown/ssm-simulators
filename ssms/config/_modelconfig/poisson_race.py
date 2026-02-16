@@ -12,7 +12,7 @@ def get_poisson_race_config():
     """Get configuration for 2-choice Poisson race model."""
     return {
         "name": "poisson_race",
-        "params": ["r0", "r1", "k0", "k1", "t"],
+        "params": ["r1", "r2", "k1", "k2", "t"],
         "param_bounds": [
             [1e-3, 1e-3, 1.0, 1.0, 0.0],
             [20.0, 20.0, 20.0, 20.0, 2.0],
@@ -28,8 +28,8 @@ def get_poisson_race_config():
         "parameter_transforms": {
             "sampling": [],
             "simulation": [
-                ColumnStackParameters(["r0", "r1"], "r", delete_sources=False),
-                ColumnStackParameters(["k0", "k1"], "k", delete_sources=False),
+                ColumnStackParameters(["r1", "r2"], "r", delete_sources=False),
+                ColumnStackParameters(["k1", "k2"], "k", delete_sources=False),
                 ExpandDimension(["t"]),
             ],
         },
