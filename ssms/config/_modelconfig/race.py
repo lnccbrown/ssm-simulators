@@ -61,10 +61,10 @@ def get_race_no_bias_2_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"], theta["z"]])}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"z": np.column_stack([theta["z"], theta["z"]])})
+                        or theta
+                    ),
                     name="duplicate_z_2",
                 ),
                 ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
@@ -123,10 +123,10 @@ def get_race_no_bias_angle_2_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"], theta["z"]])}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"z": np.column_stack([theta["z"], theta["z"]])})
+                        or theta
+                    ),
                     name="duplicate_z_2",
                 ),
                 ColumnStackParameters(["v0", "v1"], "v", delete_sources=False),
@@ -213,10 +213,12 @@ def get_race_no_bias_3_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
+                        )
+                        or theta
+                    ),
                     name="duplicate_z_3",
                 ),
                 ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
@@ -275,10 +277,12 @@ def get_race_no_bias_angle_3_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {"z": np.column_stack([theta["z"], theta["z"], theta["z"]])}
+                        )
+                        or theta
+                    ),
                     name="duplicate_z_3",
                 ),
                 ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
@@ -369,10 +373,9 @@ def get_race_no_bias_4_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"]] * 4)}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"z": np.column_stack([theta["z"]] * 4)}) or theta
+                    ),
                     name="duplicate_z_4",
                 ),
                 ColumnStackParameters(
@@ -435,10 +438,9 @@ def get_race_no_bias_angle_4_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"z": np.column_stack([theta["z"]] * 4)}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"z": np.column_stack([theta["z"]] * 4)}) or theta
+                    ),
                     name="duplicate_z_4",
                 ),
                 ColumnStackParameters(

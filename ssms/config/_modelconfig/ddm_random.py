@@ -39,13 +39,15 @@ def get_ddm_st_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {
-                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
-                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
-                        }
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                                "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                            }
+                        )
+                        or theta
+                    ),
                     name="set_fixed_params",
                 ),
                 ApplyMapping("st", "t_dist", "t_dist"),
@@ -89,14 +91,16 @@ def get_ddm_truncnormt_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {
-                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
-                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
-                            "t": np.array([0], dtype=np.float32),
-                        }
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                                "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                                "t": np.array([0], dtype=np.float32),
+                            }
+                        )
+                        or theta
+                    ),
                     name="set_fixed_params_and_zero_t",
                 ),
                 ApplyMapping("mt", "t_dist", "t_dist", additional_sources=["st"]),
@@ -138,16 +142,18 @@ def get_ddm_rayleight_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {
-                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
-                            "v_dist": cfg["simulator_fixed_params"]["v_dist"],
-                            "t": (
-                                np.ones(n) * cfg["simulator_fixed_params"]["t"]
-                            ).astype(np.float32),
-                        }
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                                "v_dist": cfg["simulator_fixed_params"]["v_dist"],
+                                "t": (
+                                    np.ones(n) * cfg["simulator_fixed_params"]["t"]
+                                ).astype(np.float32),
+                            }
+                        )
+                        or theta
+                    ),
                     name="set_fixed_params_and_t",
                 ),
                 ApplyMapping("st", "t_dist", "t_dist"),
@@ -185,13 +191,15 @@ def get_ddm_sdv_config():
             "sampling": [],
             "simulation": [
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {
-                            "z_dist": cfg["simulator_fixed_params"]["z_dist"],
-                            "t_dist": cfg["simulator_fixed_params"]["t_dist"],
-                        }
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update(
+                            {
+                                "z_dist": cfg["simulator_fixed_params"]["z_dist"],
+                                "t_dist": cfg["simulator_fixed_params"]["t_dist"],
+                            }
+                        )
+                        or theta
+                    ),
                     name="set_fixed_dists",
                 ),
                 ApplyMapping("sv", "v_dist", "v_dist"),
