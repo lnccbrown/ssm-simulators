@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssm-simulators"
-version = "0.11.3"
+version = "0.12.0b1"
 description = "SSMS is a package collecting simulators and training data generators for cognitive science, neuroscience, and approximate bayesian computation"
 authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
