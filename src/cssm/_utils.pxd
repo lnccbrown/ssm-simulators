@@ -4,12 +4,12 @@
 cimport numpy as np
 
 # Random number generation functions (updated to NumPy-based implementations)
-cdef set_seed(random_state)
-cdef float random_uniform()
-cdef float random_exponential()
-cdef float[:] draw_random_stable(int n, float alpha)
-cdef float[:] draw_gaussian(int n)
+cpdef void set_seed(random_state)
+cpdef float random_uniform()
+cpdef float random_exponential()
+cpdef float[:] draw_random_stable(int n, float alpha)
+cpdef float[:] draw_gaussian(int n)
 
 # Helper functions
-cdef int sign(float x)
-cdef float csum(float[:] x)
+cpdef int sign(float x)
+cpdef float csum(float[:] x)
