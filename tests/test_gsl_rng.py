@@ -204,6 +204,36 @@ class TestParallelRequestValidation:
                 assert len(w) == 1
                 assert "n_threads=4" in str(w[0].message)
 
+    def test_n_threads_zero_treated_as_one(self):
+        """n_threads=0 and n_threads negative fall through the <= 1 check and return 1."""
+        from cssm._openmp_status import check_parallel_request
+
+        assert check_parallel_request(0, warn=False) == 1
+        assert check_parallel_request(-1, warn=False) == 1
+
+    def test_n_threads_above_max_raises(self):
+        """n_threads > MAX_THREADS (256) must raise ValueError."""
+        from cssm._openmp_status import check_parallel_request
+
+        with pytest.raises(ValueError, match="exceeds maximum supported"):
+            check_parallel_request(257, warn=False)
+
+    def test_n_threads_at_max_does_not_raise(self):
+        """n_threads == MAX_THREADS (256) must not raise."""
+        from cssm._openmp_status import check_parallel_request
+
+        # Should not raise regardless of whether OpenMP is available
+        result = check_parallel_request(256, warn=False)
+        assert result >= 1
+
+    def test_n_threads_sweep_two_to_eight(self):
+        """n_threads in {2,3,4,5,6,7,8} all return >= 1 without error."""
+        from cssm._openmp_status import check_parallel_request
+
+        for n in range(2, 9):
+            result = check_parallel_request(n, warn=False)
+            assert result >= 1, f"check_parallel_request({n}) returned {result}"
+
 
 def test_numpy_gaussian_variance_reference():
     """Reference test: NumPy's Gaussian should have variance ~1.0."""

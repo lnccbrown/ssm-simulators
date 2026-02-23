@@ -267,17 +267,28 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
             - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
 
     """
-    boundary_name = config["boundary_name"]
-    boundary_registry = get_boundary_registry()
-    boundary_info = boundary_registry.get(boundary_name)
-
-    boundary_params = {
-        param_name: value
-        for param_name, value in theta.items()
-        if param_name in boundary_info["params"]
-    }
-
-    boundary_fun = boundary_info["fun"]
+    if callable(config.get("boundary")):
+        # Model config carries the function directly (e.g. a custom boundary
+        # registered only in the current process).  Use it without a registry
+        # lookup so this also works inside multiprocessing workers that start
+        # with a fresh registry.
+        boundary_fun = config["boundary"]
+        boundary_params_names = config.get("boundary_params", [])
+        boundary_params = {
+            param_name: value
+            for param_name, value in theta.items()
+            if param_name in boundary_params_names
+        }
+    else:
+        boundary_name = config["boundary_name"]
+        boundary_registry = get_boundary_registry()
+        boundary_info = boundary_registry.get(boundary_name)
+        boundary_params = {
+            param_name: value
+            for param_name, value in theta.items()
+            if param_name in boundary_info["params"]
+        }
+        boundary_fun = boundary_info["fun"]
     boundary_dict = {
         "boundary_params": boundary_params,
         "boundary_fun": boundary_fun,
@@ -613,6 +624,12 @@ def simulator(
             uses multi-threaded simulation. Note: trajectory recording is only
             available with n_threads=1. For models that don't support n_threads yet,
             this parameter is silently ignored.
+
+            **Reproducibility note:** the sequential path (n_threads=1) uses NumPy's
+            RNG, while the parallel path (n_threads>1) uses a C-level GSL/Ziggurat
+            RNG. Results with a fixed ``random_state`` are reproducible *within* a
+            given ``n_threads`` value, but will differ *across* n_threads values.
+            Both paths produce statistically equivalent distributions.
 
     Return
     ------

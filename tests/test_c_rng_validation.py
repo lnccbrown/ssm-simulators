@@ -30,14 +30,6 @@ try:
 except ImportError:
     C_RNG_AVAILABLE = False
 
-# Try to import the parallel module with CMS
-try:
-    from cssm._parallel_gsl import draw_random_stable
-
-    CMS_AVAILABLE = True
-except ImportError:
-    CMS_AVAILABLE = False
-
 
 # Custom markers for optional tests
 pytestmark = [
@@ -241,16 +233,18 @@ class TestCMSAlphaStable:
             )
 
     def test_cms_gaussian_limit(self):
-        """Test that alpha=2 gives Gaussian distribution."""
+        """Test that alpha=2 gives Gaussian distribution.
+
+        GSL's gsl_ran_levy(rng, c, alpha) for alpha=2 returns a Gaussian
+        with variance 2*c^2 (the S(2,0,c,0) stable parameterization).
+        With c=1.0, the expected std is sqrt(2) ≈ 1.4142.
+        """
         samples = generate_levy_samples(50_000, alpha=2.0, seed=42)
 
-        # Should be approximately standard Gaussian N(0,1)
-        # Note: Our implementation returns standard Gaussian for alpha=2,
-        # not the S(2,0,1) stable distribution which would have variance 2
         assert abs(np.mean(samples)) < 0.05, (
             f"Mean {np.mean(samples):.4f} too far from 0"
         )
-        expected_std = 1.0  # Standard Gaussian
+        expected_std = np.sqrt(2.0)
         assert abs(np.std(samples) - expected_std) < 0.05, (
             f"Std {np.std(samples):.4f} too far from {expected_std:.4f}"
         )

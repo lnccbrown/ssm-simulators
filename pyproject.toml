@@ -118,6 +118,9 @@ addopts = [
 ]
 markers = [
     "notebooks: mark test as a notebook test (skipped unless --run-notebooks is passed)",
+    "statistical: mark test as a statistical equivalence test (skipped unless --run-statistical is passed)",
+    "slow: mark test as slow (large sample sizes, may take several seconds)",
+    "rng_validation: mark test as an RNG validation test",
 ]
 
 [tool.ruff]

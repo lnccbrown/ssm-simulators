@@ -23,10 +23,7 @@ from scipy import stats
 
 # Try to import the C RNG module
 try:
-    from cssm._c_rng import (
-        generate_gaussian_samples,
-        generate_uniform_samples,
-    )
+    from cssm._c_rng import generate_gaussian_samples
 
     C_RNG_AVAILABLE = True
 except ImportError:
@@ -111,19 +108,17 @@ class TestZigguratDistribution:
         """Chi-squared test against binned normal distribution."""
         samples = generate_gaussian_samples(500_000, seed=42)
 
-        # Use 50 bins from -4 to 4
         bins = np.linspace(-4, 4, 51)
+        bins[0] = -np.inf
+        bins[-1] = np.inf
         observed, _ = np.histogram(samples, bins=bins)
 
-        # Calculate expected counts
         n_samples = len(samples)
         expected = n_samples * np.diff(stats.norm.cdf(bins))
 
-        # Chi-squared test (only use bins with expected > 5)
         mask = expected > 5
         chi2, pvalue = stats.chisquare(observed[mask], expected[mask])
 
-        # p-value should be > 0.01
         assert pvalue > 0.01, (
             f"Chi-squared test failed: chi2={chi2:.2f}, p-value={pvalue:.6f}"
         )

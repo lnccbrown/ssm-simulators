@@ -14,7 +14,7 @@ try:
 except ImportError:
     PYDDM_AVAILABLE = False
 
-from ssms.config import model_config, get_lan_config
+from ssms.config import model_config, get_lan_kde_config
 from ssms.dataset_generators.pipelines import PyDDMPipeline
 from ssms.dataset_generators.estimator_builders.pyddm_builder import (
     PyDDMEstimatorBuilder,
@@ -28,7 +28,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_auxiliary_labels_exist(self):
         """Test that all auxiliary label fields are present and not None."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -75,7 +75,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_auxiliary_labels_shapes(self):
         """Test that auxiliary labels have correct shapes."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -103,7 +103,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_choice_probabilities_sum_to_one(self):
         """Test that choice probabilities sum to approximately 1."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -138,7 +138,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_probabilities_are_valid(self):
         """Test that all probabilities are in [0, 1]."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -164,7 +164,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_nogo_equals_error_probability_no_deadline(self):
         """Test that nogo_p equals P(error) when there's no deadline."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -196,7 +196,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_omission_zero_without_deadline(self):
         """Test that omission_p is zero when there's no deadline."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 
@@ -219,7 +219,7 @@ class TestPyDDMAuxiliaryLabels:
 
     def test_output_format_matches_simulation_pipeline(self):
         """Test that output format matches SimulationPipeline."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
         config["model"] = "ddm"
         config["estimator"]["type"] = "pyddm"
 

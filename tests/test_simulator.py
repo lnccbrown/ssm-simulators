@@ -116,3 +116,45 @@ def test_simulator_runs(sim_input_data):
                     assert "metadata" in out
                     assert "rts" in out
                     assert "choices" in out
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        # ddm_models.pyx — ddm_flexbound (constant boundary)
+        "ddm",
+        # ddm_models.pyx — ddm_flexbound (angle boundary)
+        "angle",
+        # ddm_models.pyx — full_ddm
+        "full_ddm",
+        # levy_models.pyx — levy_flexbound
+        "levy",
+        # ornstein_models.pyx — ornstein_uhlenbeck
+        "ornstein",
+        # parallel_models.pyx — ddm_flexbound_par2
+        "ddm_par2",
+        # sequential_models.pyx — ddm_flexbound_seq2 (true parallel path)
+        "ddm_seq2",
+        # sequential_models.pyx — ddm_flexbound_mic2_ornstein (warning-only)
+        "ddm_mic2_adj",
+        # ddm_models.pyx — ddm_flexbound_tradeoff (warning-only)
+        "tradeoff_no_bias",
+        # race_models.pyx — race_model (warning-only)
+        "race_no_bias_2",
+        # lba_models.pyx — lba_vanilla
+        "lba2",
+        # race_models.pyx — lca
+        "lca_3",
+        # sequential_models.pyx — rlwm_lba_pw_v1 (warning-only)
+        "dev_rlwm_lba_pw_v1",
+    ],
+)
+def test_simulator_runs_parallel(model):
+    """Smoke test: n_threads=4 does not crash, covering every distinct Cython backend."""
+    cfg = model_config[model]
+    theta = {p: cfg["default_params"][i] for i, p in enumerate(cfg["params"])}
+    out = simulator(model=model, theta=theta, n_samples=10, n_threads=4)
+    assert isinstance(out, dict)
+    assert "rts" in out
+    assert "choices" in out
+    assert "metadata" in out

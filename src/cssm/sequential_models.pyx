@@ -1126,7 +1126,6 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     """
     # Warn if n_threads > 1 (limited benefit for MIC2 models)
     if n_threads > 1:
-        import warnings
         warnings.warn(
             "ddm_flexbound_mic2_multinoise: n_threads > 1 has limited speedup due to "
             "bias trace dependencies. Using sequential execution.",
@@ -1475,7 +1474,6 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     """
     # Warn if n_threads > 1 (limited benefit for MIC2 models)
     if n_threads > 1:
-        import warnings
         warnings.warn(
             "ddm_flexbound_mic2_ornstein_multinoise: n_threads > 1 has limited speedup due to "
             "bias trace dependencies. Using sequential execution.",
@@ -1951,7 +1949,6 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
 
     # Note: LBA models have multiple accumulators. Parallel execution not yet supported.
     if n_threads > 1:
-        import warnings
         warnings.warn(
             "rlwm_lba_pw_v1 does not yet support parallel execution. Running with n_threads=1.",
             UserWarning
@@ -2229,7 +2226,6 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     """
     # Warn if n_threads > 1 (limited benefit for MIC2 models)
     if n_threads > 1:
-        import warnings
         warnings.warn(
             "ddm_flexbound_mic2_unnormalized_ornstein_multinoise: n_threads > 1 has limited speedup due to "
             "bias trace dependencies. Using sequential execution.",

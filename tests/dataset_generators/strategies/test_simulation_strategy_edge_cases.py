@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from ssms import OMISSION_SENTINEL
-from ssms.config import model_config, get_lan_config
+from ssms.config import model_config, get_lan_kde_config
 from ssms.dataset_generators.pipelines import SimulationPipeline
 from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 from ssms.dataset_generators.strategies import ResampleMixtureStrategy
@@ -15,7 +15,7 @@ class TestSimulationPipelineErrorHandling:
     @pytest.fixture
     def pipeline(self):
         """Create a pipeline instance for testing."""
-        config = get_lan_config()
+        config = get_lan_kde_config()
 
         # SimulationPipeline accepts classes and instantiates them internally
         return SimulationPipeline(
@@ -157,7 +157,7 @@ class TestSimulationPipelineErrorHandling:
     def test_generate_for_parameter_set_failure_after_max_attempts(self, pipeline):
         """Test that generate_for_parameter_set returns failure after max attempts."""
         # Create a pipeline with impossible filters
-        config = get_lan_config()
+        config = get_lan_kde_config()
         # SimulationPipeline reads filters from simulator.filters
         config["simulator"]["filters"] = {
             "mode": 0.001,  # Impossible: mode must be tiny

@@ -208,7 +208,10 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         alpha_stable_values = draw_random_stable(num_draws, alpha_view[0])
 
         for k in range(n_trials):
-            # AF-TODO: check if this is correct
+            # Scale for a discretised alpha-stable increment over delta_t:
+            # by the self-similarity property X(delta_t) ~ S_alpha(s * delta_t^(1/alpha)).
+            # Ref: Samorodnitsky & Taqqu (1994), "Stable Non-Gaussian Random Processes", ch. 1.
+            # Same formula is reused in the parallel precomputation block below.
             delta_t_alpha = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
 
@@ -275,6 +278,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
             boundaries_all_np[k, :] = boundary
             deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
+            # Same self-similarity scaling as in the sequential path above.
             delta_t_alpha_all_np[k] = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])
 
         boundaries_all = boundaries_all_np
