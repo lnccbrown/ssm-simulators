@@ -210,6 +210,8 @@ omit = [
     "*/setup.py",
     "*/__init__.py",
     "tests/*",
+    # Benchmark and reference scripts - not package code, not unit tests
+    "benchmarks/*",
     # Optional PyDDM dependency - exclude from coverage
     "ssms/dataset_generators/pipelines/pyddm_pipeline.py",
     "ssms/dataset_generators/strategies/pyddm_strategy.py",

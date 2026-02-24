@@ -1,5 +1,6 @@
 from copy import deepcopy
 import logging
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -158,3 +159,46 @@ def test_simulator_runs_parallel(model):
     assert "rts" in out
     assert "choices" in out
     assert "metadata" in out
+
+
+def test_simulator_sigma_noise_conflict_raises():
+    """ValueError when 's' is in theta and sigma_noise is also explicitly passed."""
+    with pytest.raises(ValueError, match="sigma_noise parameter should be None"):
+        simulator(
+            model="ddm",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "s": 1.0},
+            sigma_noise=0.5,
+            n_samples=5,
+        )
+
+
+def test_simulator_no_noise_flag():
+    """no_noise=True suppresses diffusion noise (sigma_noise set to 0.0 internally)."""
+    out = simulator(
+        model="ddm",
+        theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
+        no_noise=True,
+        n_samples=50,
+    )
+    assert "rts" in out
+    assert "choices" in out
+
+
+def test_simulator_bad_return_type_raises():
+    """TypeError when the underlying simulator callable returns a non-dict."""
+    from ssms.config import ModelConfigBuilder
+
+    real_config = ModelConfigBuilder.from_model("ddm")
+    bad_config = dict(real_config)
+    bad_config["simulator"] = lambda **kwargs: [1, 2, 3]
+
+    # ModelConfigBuilder is imported locally inside simulator(), so patch at the source.
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=bad_config):
+        with pytest.raises(
+            TypeError, match="Expected simulator to return a dictionary"
+        ):
+            simulator(
+                model="ddm",
+                theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
+                n_samples=5,
+            )
