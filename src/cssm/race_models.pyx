@@ -612,9 +612,9 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
             choices_view[n, k, 0] = winner
 
             # Handle non-responses (deadline hit or no decision)
-            if (rts_view[n, k, 0] >= deadline_view[k]) | (not winner_found): # <-- `not 0` is True
+            if enforce_deadline(rts_view[n, k, 0], deadline_view[k]) or (not winner_found):
                 rts_view[n, k, 0] = -999
-                choices_view[n, k, 0] = -1 # Ensure choice is also -1
+                choices_view[n, k, 0] = -1  # Ensure choice is also -1
 
 
         # Create parameter dictionaries for metadata
