@@ -630,27 +630,36 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
         for i in range(n_particles):
             v_dict['v' + str(i)] = v[:, i]
 
-    if return_option == 'full':
-        return {'rts': rts, 'choices': choices, 'metadata': {**v_dict,
-                                                            'b': b,
-                                                            'A': A,
-                                                            't': t,
-                                                            'deadline': deadline,
-                                                            's': s,
-                                                            'delta_t': delta_t,
-                                                            'max_t': max_t,
-                                                            'n_samples': n_samples,
-                                                            'n_trials': n_trials,
-                                                            'simulator': 'rdm_simulator',
-                                                            'possible_choices': list(np.arange(0, n_particles, 1)),
-                                                            'trajectory': traj}}
-    elif return_option == 'minimal':
-        return {'rts': rts, 'choices': choices, 'metadata': {'simulator': 'rdm_simulator',
-                                                             'possible_choices': list(np.arange(0, n_particles, 1)),
-                                                             'n_samples': n_samples,
-                                                             'n_trials': n_trials,
-                                                             }}
+    # Build standardized metadata using utility functions for consistency
+    full_metadata = build_full_metadata(
+        simulator='rdm_simulator',
+        possible_choices=list(np.arange(0, n_particles, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials,
+        b=b,
+        A=A,
+        t=t,
+        deadline=deadline,
+        s=s,
+        delta_t=delta_t,
+        max_t=max_t,
+        trajectory=traj,
+        **v_dict
+    )
 
+    minimal_metadata = build_minimal_metadata(
+        simulator='rdm_simulator',
+        possible_choices=list(np.arange(0, n_particles, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials,
+    )
+
+    if return_option == 'full':
+        metadata = full_metadata
+    elif return_option == 'minimal':
+        metadata = minimal_metadata
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
+
+    return build_return_dict(rts=rts, choices=choices, metadata=metadata)
 # -----------------------------------------------------------------------------------------------
