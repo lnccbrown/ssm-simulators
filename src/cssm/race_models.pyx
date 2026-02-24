@@ -616,11 +616,10 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                 rts_view[n, k, 0] = -999
                 choices_view[n, k, 0] = -1  # Ensure choice is also -1
 
-
-        # Create parameter dictionaries for metadata
-        v_dict = {}
-        for i in range(n_particles):
-            v_dict['v' + str(i)] = v[:, i]
+    # Create parameter dictionaries for metadata
+    v_dict = {}
+    for i in range(n_particles):
+        v_dict['v' + str(i)] = v[:, i]
 
     # Build standardized metadata using utility functions for consistency
     full_metadata = build_full_metadata(
