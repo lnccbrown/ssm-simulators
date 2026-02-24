@@ -23,7 +23,7 @@ cimport numpy as np
 # Import utility functions from the _utils module
 from cssm._utils import (
     set_seed,
-    random_uniform,
+    draw_uniform,
     draw_random_stable,
     sign,
     setup_simulation,
@@ -162,6 +162,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    cdef float[:] uniform_values = setup['uniform_values']
     cdef int num_steps = int((max_t / delta_t) + 1)
     cdef float c_max_t = max_t
 
@@ -182,6 +183,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
     cdef float[:] alpha_stable_values
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
@@ -251,8 +253,13 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
                 smooth_u = compute_smooth_unif(smooth_unif,
                                                t_particle,
                                                deadline_tmp,
-                                               delta_t
+                                               delta_t,
+                                               uniform_values[mu]
                                                )
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = sign(y) # Store choice

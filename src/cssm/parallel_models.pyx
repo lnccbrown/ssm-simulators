@@ -25,7 +25,7 @@ from cython.parallel cimport prange, parallel, threadid
 # Import utility functions from the _utils module
 from cssm._utils import (
     set_seed,
-    random_uniform,
+    draw_uniform,
     draw_gaussian,
     sign,
     setup_simulation,
@@ -456,6 +456,8 @@ def _ddm_flexbound_par2_sequential(
     cdef Py_ssize_t n, ix, ix1, ix2, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -500,11 +502,15 @@ def _ddm_flexbound_par2_sequential(
 
             # if boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             # Initialize lower level walkers
             y_l1 = (-1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
@@ -553,7 +559,11 @@ def _ddm_flexbound_par2_sequential(
                 ix = ix2
 
             t_particle = fmax(t_h, t_l)  # Use max time for parallel model
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k] + smooth_u
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -565,11 +575,15 @@ def _ddm_flexbound_par2_sequential(
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 

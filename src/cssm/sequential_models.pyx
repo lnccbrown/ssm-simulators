@@ -26,8 +26,8 @@ from cython.parallel cimport prange, parallel, threadid
 # Import utility functions from the _utils module
 from cssm._utils import (
     set_seed,
-    random_uniform,
     draw_gaussian,
+    draw_uniform,
     sign,
     compute_boundary,
     compute_smooth_unif,
@@ -471,6 +471,8 @@ def _ddm_flexbound_seq2_sequential(
     cdef Py_ssize_t n, ix, ix1, ix2, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -511,29 +513,41 @@ def _ddm_flexbound_seq2_sequential(
             if t_particle >= max_t:
                 # High dim choice depends on position of particle
                 if boundary_view[ix] <= 0:
-                    if random_uniform() <= 0.5:
+                    if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 2
-                elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                         choices_view[n, k, 0] += 2
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 # Low dim choice random (didn't even get to process it if rt is at max after first choice)
                 # so we just apply a priori bias
                 if choices_view[n, k, 0] == 0:
-                    if random_uniform() <= zl1_view[k]:
+                    if uniform_values[mu] <= zl1_view[k]:
                         choices_view[n, k, 0] += 1
                 else:
-                    if random_uniform() <= zl2_view[k]:
+                    if uniform_values[mu] <= zl2_view[k]:
                         choices_view[n, k, 0] += 1
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
                 rts_view[n, k, 0] = t_particle
                 decision_taken = 1
             else:
                 # If boundary is negative (or 0) already, we flip a coin
                 if boundary_view[ix] <= 0:
-                    if random_uniform() <= 0.5:
+                    if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 2
                 # Otherwise apply rule from above
-                elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                     choices_view[n, k, 0] += 2
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 y_l1 = (-1) * boundary_view[ix] + (zl1_view[k] * 2 * (boundary_view[ix]))
                 y_l2 = (-1) * boundary_view[ix] + (zl2_view[k] * 2 * (boundary_view[ix]))
@@ -547,8 +561,12 @@ def _ddm_flexbound_seq2_sequential(
                 if choices_view[n, k, 0] == 0:
                     # In case boundary is negative already, we flip a coin with bias determined by w_l_ parameter
                     if (y_l1 >= boundary_view[ix]) or (y_l1 <= ((-1) * boundary_view[ix])):
-                        if random_uniform() < zl1_view[k]:
+                        if uniform_values[mu] < zl1_view[k]:
                             choices_view[n, k, 0] += 1
+                        mu += 1
+                        if mu == num_draws:
+                            uniform_values = draw_uniform(num_draws)
+                            mu = 0
                         decision_taken = 1
 
                     if n == 0:
@@ -557,8 +575,12 @@ def _ddm_flexbound_seq2_sequential(
                 else:
                     # In case boundary is negative already, we flip a coin with bias determined by w_l_ parameter
                     if (y_l2 >= boundary_view[ix]) or (y_l2 <= ((-1) * boundary_view[ix])):
-                        if random_uniform() < zl2_view[k]:
+                        if uniform_values[mu] < zl2_view[k]:
                             choices_view[n, k, 0] += 1
+                        mu += 1
+                        if mu == num_draws:
+                            uniform_values = draw_uniform(num_draws)
+                            mu = 0
                         decision_taken = 1
 
                     if n == 0:
@@ -605,7 +627,11 @@ def _ddm_flexbound_seq2_sequential(
                     ix = ix2
                     y_l = y_l2
 
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             # Add nondecision time and smoothing of rt
             rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
@@ -620,11 +646,15 @@ def _ddm_flexbound_seq2_sequential(
             # If boundary is negative (or 0) already, we flip a coin
             if not decision_taken:
                 if boundary_view[ix] <= 0:
-                    if random_uniform() <= 0.5:
+                    if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 1
                 # Otherwise apply rule from above
-                elif random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                     choices_view[n, k, 0] += 1
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -839,6 +869,8 @@ def _ddm_flexbound_mic2_ornstein_sequential(
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -892,11 +924,15 @@ def _ddm_flexbound_mic2_ornstein_sequential(
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
@@ -980,7 +1016,11 @@ def _ddm_flexbound_mic2_ornstein_sequential(
                 y_l = y_l2
                 ix_l = ix2
 
-            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -992,11 +1032,15 @@ def _ddm_flexbound_mic2_ornstein_sequential(
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_l + boundary_view[ix_l]) / (2 * boundary_view[ix_l])):
+            elif uniform_values[mu] <= ((y_l + boundary_view[ix_l]) / (2 * boundary_view[ix_l])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 
@@ -1182,6 +1226,8 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -1235,11 +1281,15 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
@@ -1326,7 +1376,11 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix_l = ix2
 
-            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -1338,11 +1392,15 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 
@@ -1530,6 +1588,8 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -1579,11 +1639,15 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
@@ -1667,7 +1731,11 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                 y_l = y_l2
                 ix_l = ix2
 
-            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -1679,11 +1747,15 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 
@@ -2282,6 +2354,8 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -2331,11 +2405,15 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             y_l2 = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
             y_l1 = (- 1) * boundary_view[0] + (zl1_view[k] * 2 * (boundary_view[0]))
@@ -2418,7 +2496,11 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                 y_l = y_l2
                 ix_l = ix2
 
-            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
             rts_high_view[n, k, 0] = t_h + t_view[k]
@@ -2430,11 +2512,15 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
 
             # If boundary is negative (or 0) already, we flip a coin
             if boundary_view[ix] <= 0:
-                if random_uniform() <= 0.5:
+                if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 

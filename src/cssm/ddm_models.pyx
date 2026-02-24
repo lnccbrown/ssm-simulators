@@ -29,6 +29,7 @@ from cssm._utils import (
     set_seed,
     random_uniform,
     draw_gaussian,
+    draw_uniform,
     sign,
     setup_simulation,
     compute_boundary,
@@ -154,6 +155,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -174,6 +176,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float y, t_particle, t_tmp, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
     cdef float drift_increment = 0.0
 
     # Variables for parallel execution - per-thread RNG states
@@ -205,10 +208,18 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
 
                 # get drift by random displacement of v
                 drift_increment = (v_view[k] + sv_view[k] * gaussian_values[m]) * delta_t
-                t_tmp = t_view[k] + (2 * (random_uniform() - 0.5) * st_view[k])
+                t_tmp = t_view[k] + (2 * (uniform_values[mu] - 0.5) * st_view[k])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 # apply uniform displacement on y
-                y += 2 * (random_uniform() - 0.5) * sz_view[k]
+                y += 2 * (uniform_values[mu] - 0.5) * sz_view[k]
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 # increment m appropriately
                 m += 1
@@ -238,7 +249,11 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                         m = 0
 
                 # Apply smoothing with uniform if desired
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_tmp + smooth_u # Store rt
 
@@ -428,6 +443,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -443,6 +459,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef int m = 0
+    cdef int mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef RngState[MAX_THREADS] rng_states
@@ -496,7 +513,11 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
                 # the choice corresponding the lower barrier is +1, higher barrier is -1
 
                 # Apply smoothing with uniform if desired
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # store rt
                 choices_view[n, k, 0] = sign(y) # store choice
@@ -664,6 +685,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -685,6 +707,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all  # 2D: [n_trials, num_steps]
@@ -747,15 +770,11 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                if smooth_unif :
-                    if t_particle == 0.0:
-                        smooth_u = random_uniform() * 0.5 * delta_t
-                    elif t_particle < deadline_tmp:
-                        smooth_u = (0.5 - random_uniform()) * delta_t
-                    else:
-                        smooth_u = 0.0
-                else:
-                    smooth_u = 0.0
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = sign(y) # Store choice
@@ -962,6 +981,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -983,6 +1003,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
@@ -1051,15 +1072,11 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                if smooth_unif :
-                    if t_particle == 0.0:
-                        smooth_u = random_uniform() * 0.5 * delta_t
-                    elif t_particle < deadline_tmp:
-                        smooth_u = (0.5 - random_uniform()) * delta_t
-                    else:
-                        smooth_u = 0.0
-                else:
-                    smooth_u = 0.0
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = sign(y) # Store choice
@@ -1274,6 +1291,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -1296,6 +1314,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all
@@ -1364,15 +1383,11 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                if smooth_unif :
-                    if t_particle == 0.0:
-                        smooth_u = random_uniform() * 0.5 * delta_t
-                    elif t_particle < deadline_tmp:
-                        smooth_u = (0.5 - random_uniform()) * delta_t
-                    else:
-                        smooth_u = 0.0
-                else:
-                    smooth_u = 0.0
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = sign(y) # Store choice
@@ -1592,6 +1607,7 @@ def ddm_flex_leak2(
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -1620,6 +1636,7 @@ def ddm_flex_leak2(
     cdef float y_t, y_d, y_start, y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution
     cdef float[:, :] boundaries_all
@@ -1698,15 +1715,11 @@ def ddm_flex_leak2(
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                if smooth_unif :
-                    if t_particle == 0.0:
-                        smooth_u = random_uniform() * 0.5 * delta_t
-                    elif t_particle < deadline_tmp:
-                        smooth_u = (0.5 - random_uniform()) * delta_t
-                    else:
-                        smooth_u = 0.0
-                else:
-                    smooth_u = 0.0
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = sign(y) # Store choice
@@ -1925,6 +1938,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -1953,6 +1967,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float y, t_particle, t_tmp, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
     cdef float drift_increment = 0.0
 
     # Variables for parallel execution - per-thread RNG states
@@ -2032,7 +2047,11 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_tmp + smooth_u # Store rt
                 choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -2241,6 +2260,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -2265,6 +2285,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float y, t_particle, t_tmp, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
     cdef float drift_increment = 0.0
 
     # Variables for parallel execution - per-thread RNG states
@@ -2303,10 +2324,18 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
 
                 # get drift by random displacement of v
                 drift_increment = (v_view[k] + sv_view[k] * gaussian_values[m]) * delta_t
-                t_tmp = t_view[k] + (2 * (random_uniform() - 0.5) * st_view[k])
+                t_tmp = t_view[k] + (2 * (uniform_values[mu] - 0.5) * st_view[k])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 # apply uniform displacement on y
-                y += 2 * (random_uniform() - 0.5) * sz_view[k]
+                y += 2 * (uniform_values[mu] - 0.5) * sz_view[k]
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 # increment m appropriately
                 m += 1
@@ -2335,7 +2364,11 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_tmp + smooth_u # Store rt
                 choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -2542,6 +2575,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -2564,6 +2598,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
     cdef float drift_increment = 0.0
 
     # Variables for parallel execution - per-thread RNG states
@@ -2634,7 +2669,11 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
 
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u # Store rt
                 choices_view[n, k, 0] = np.sign(y) # Store choice
@@ -2868,6 +2907,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -2896,6 +2936,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     cdef float y_h, y_l, v_l, t_h, t_l, tmp_pos_dep, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, ix_tmp, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -2932,8 +2973,12 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add 2 deterministically
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
-            if random_uniform() <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            if uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 2
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             if choices_view[n, k, 0] == 2:
                 y_l = (- 1) * boundary_view[0] + (zl2_view[k] * 2 * (boundary_view[0]))
@@ -2986,15 +3031,23 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
                     gaussian_values = draw_gaussian(num_draws)
                     m = 0
 
-            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, fmax(t_h, t_l), deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n, k, 0] = fmax(t_h, t_l) + t_view[k]
 
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add one deterministically
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
-            if random_uniform() <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            if uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
                 choices_view[n, k, 0] += 1
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             enforce_deadline(rts_view, deadline_view, n, k, 0)
 
@@ -3105,6 +3158,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
+    cdef float[:] uniform_values = setup['uniform_values']
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
@@ -3126,6 +3180,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
     cdef Py_ssize_t m = 0
+    cdef Py_ssize_t mu = 0
 
     # Variables for parallel execution - per-thread RNG states
     cdef float[:, :] boundaries_all       # 2D: [n_trials, num_steps]
@@ -3178,7 +3233,11 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
                         gaussian_values = draw_gaussian(num_draws)
                         m = 0
 
-                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+                smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+                mu += 1
+                if mu == num_draws:
+                    uniform_values = draw_uniform(num_draws)
+                    mu = 0
                 rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
                 choices_view[n, k, 0] = sign(y)
                 enforce_deadline(rts_view, deadline_view, n, k, 0)

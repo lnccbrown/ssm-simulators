@@ -25,7 +25,7 @@ from cython.parallel cimport prange, parallel, threadid
 # Import utility functions from the _utils module
 from cssm._utils import (
     set_seed,
-    random_uniform,
+    draw_uniform,
     draw_gaussian,
     sign,
     csum,
@@ -443,6 +443,8 @@ def _race_model_sequential(
 
     cdef int num_draws = num_steps * n_particles
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -481,7 +483,11 @@ def _race_model_sequential(
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u # for now no t per choice option
             choices_view[n, k, 0] = np.argmax(particles)
@@ -845,6 +851,8 @@ def _lca_sequential(
 
     cdef int num_draws = num_steps * n_particles
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
         # Precompute boundary evaluations
@@ -891,7 +899,11 @@ def _lca_sequential(
                         for i in range(n_particles):
                             traj_view[ix, i] = particles[i]
 
-            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t)
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             choices_view[n, k, 0] = np.argmax(particles) # store choices for sample n
             rts_view[n, k, 0] = t_particle + t_view[k, 0] + smooth_u # t[choices_view[n, 0]] # store reaction time for sample n
