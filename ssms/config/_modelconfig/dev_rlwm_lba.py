@@ -52,10 +52,9 @@ def get_dev_rlwm_lba_pw_v1_config():
                 ),
                 ExpandDimension(["a", "z", "tWM"]),
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"t": np.zeros(n).astype(np.float32)}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"t": np.zeros(n).astype(np.float32)}) or theta
+                    ),
                     name="set_zero_t",
                 ),
             ],
@@ -105,10 +104,9 @@ def get_dev_rlwm_lba_race_v1_config():
                 ),
                 ExpandDimension(["a", "z"]),
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"t": np.zeros(n).astype(np.float32)}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"t": np.zeros(n).astype(np.float32)}) or theta
+                    ),
                     name="set_zero_t",
                 ),
             ],
@@ -155,10 +153,9 @@ def get_dev_rlwm_lba_race_v2_config():
                 ),
                 ExpandDimension(["a", "z"]),
                 LambdaAdaptation(
-                    lambda theta, cfg, n: theta.update(
-                        {"t": np.zeros(n).astype(np.float32)}
-                    )
-                    or theta,
+                    lambda theta, cfg, n: (
+                        theta.update({"t": np.zeros(n).astype(np.float32)}) or theta
+                    ),
                     name="set_zero_t",
                 ),
             ],
