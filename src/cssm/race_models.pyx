@@ -478,7 +478,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     v : np.ndarray
         Mean drift rates. Shape (n_trials, n_particles).
     b : np.ndarray
-        Response boundaries (thresholds). Shape (n_trials, n_particles).
+        Response boundaries (thresholds), shared across particles within a trial. Shape (n_trials, 1).
     A : np.ndarray
         Upper bound of the uniform starting point distribution (U[0, A]) shared across particles within a trial. Shape (n_trials, 1).
     t : np.ndarray
