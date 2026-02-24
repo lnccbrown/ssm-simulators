@@ -484,7 +484,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     t : np.ndarray
         Non-decision times. Shape (n_trials, 1).
     s : np.ndarray
-        Diffusion coefficients (within-trial noise). Shape (n_trials, n_particles).
+        Diffusion coefficients (within-trial noise), shared across all particles in a trial. Shape (n_trials, 1).
     deadline : np.ndarray
         Maximum reaction time allowed for each trial. Shape (n_trials,).
     delta_t : float, optional
