@@ -202,3 +202,19 @@ def test_simulator_bad_return_type_raises():
                 theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
                 n_samples=5,
             )
+
+
+def test_make_boundary_dict_registry_path():
+    """make_boundary_dict uses boundary registry when 'boundary' key is not callable."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    # Old-style config: no callable "boundary" key, only "boundary_name"
+    # This exercises the else-branch (lines 283-291) that does a registry lookup.
+    config = {"boundary_name": "constant"}
+    theta = {"a": 1.0, "z": 0.5, "v": 1.0}
+    result = make_boundary_dict(config, theta)
+    assert "boundary_fun" in result
+    assert callable(result["boundary_fun"])
+    assert "boundary_params" in result
+    # "constant" boundary has params=["a"], so only "a" should be extracted
+    assert result["boundary_params"] == {"a": 1.0}
