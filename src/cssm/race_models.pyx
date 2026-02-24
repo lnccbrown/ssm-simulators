@@ -604,16 +604,8 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
 
             # --- End of while loop ---
 
-            # Apply smoothing if specified
-            if smooth_unif:
-                if t_particle == 0.0:
-                    smooth_u = random_uniform() * 0.5 * delta_t
-                elif t_particle < deadline_tmp: # Only smooth if not a deadline response
-                    smooth_u = (0.5 - random_uniform()) * delta_t
-                else:
-                    smooth_u = 0.0
-            else:
-                smooth_u = 0.0
+            # Apply smoothing if specified (using shared utility for consistency)
+            smooth_u = compute_smooth_unif(t_particle, deadline_tmp, delta_t, smooth_unif)
 
             # Store RT and choice
             rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u
