@@ -50,3 +50,45 @@ jobs:
           flags: unittests
           name: codecov-${{ matrix.python-version }}
           fail_ci_if_error: false
+
+  test_multithreading:
+    name: Test multithreading (OpenMP + GSL)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install GSL
+        run: sudo apt-get install -y libgsl-dev
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml pdm.lock"
+
+      - name: Install package (with GSL + OpenMP)
+        run: uv sync --all-groups
+
+      - name: Verify GSL and OpenMP are available
+        run: |
+          uv run python -c "
+          from cssm._openmp_status import is_gsl_available, is_openmp_available
+          gsl = is_gsl_available()
+          omp = is_openmp_available()
+          print(f'GSL available:    {gsl}')
+          print(f'OpenMP available: {omp}')
+          assert gsl, 'GSL must be available for multithreading tests'
+          assert omp, 'OpenMP must be available for multithreading tests'
+          from cssm._c_rng import test_rng
+          print('_c_rng module: OK')
+          "
+
+      - name: Run parallel equivalence tests
+        run: uv run pytest tests/test_parallel_equivalence.py --run-statistical --no-cov -v

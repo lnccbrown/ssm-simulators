@@ -32,7 +32,6 @@ CYTHON_MODULES = [
 # These modules use prange/parallel for multi-threading
 OPENMP_MODULES = [
     "_openmp_status",  # Runtime OpenMP/GSL detection
-    "_c_rng",  # C random number generator wrapper (for testing)
     "ddm_models",  # DDM simulators with n_threads support
     "levy_models",  # Levy simulators with n_threads support
     "ornstein_models",  # Ornstein-Uhlenbeck with n_threads support
@@ -41,8 +40,11 @@ OPENMP_MODULES = [
     "sequential_models",  # Sequential two-stage models with n_threads support
 ]
 
-# Note: GSL is linked via gsl_rng.h header included in OPENMP_MODULES
-# No separate GSL-only modules needed
+# Modules that require GSL - only compiled when GSL is available.
+# _c_rng.pyx unconditionally includes gsl_rng.h which #errors without HAVE_GSL.
+GSL_MODULES = [
+    "_c_rng",  # C random number generator wrapper (requires GSL)
+]
 
 # Cache detection results
 _OPENMP_AVAILABLE = None
@@ -376,13 +378,20 @@ try:
     standard_extensions = create_extensions(CYTHON_MODULES, openmp=False, gsl=False)
 
     # OpenMP modules (will use OpenMP if available, otherwise graceful degradation)
-    # These also get GSL flags so they can detect GSL at runtime
     openmp_extensions = create_extensions(OPENMP_MODULES, openmp=True, gsl=HAS_GSL)
 
+    # GSL-only modules: only compiled when GSL is present.
+    # _c_rng.pyx includes gsl_rng.h unconditionally; without GSL the #error fires.
+    gsl_extensions = (
+        create_extensions(GSL_MODULES, openmp=True, gsl=True) if HAS_GSL else []
+    )
+
     ext_modules = cythonize(
-        standard_extensions + openmp_extensions,
+        standard_extensions + openmp_extensions + gsl_extensions,
         compiler_directives={"language_level": "3"},
     )
+
+    n_gsl = len(GSL_MODULES) if HAS_GSL else 0
 
     # Print build summary
     print(f"\n{'=' * 60}")
@@ -397,6 +406,7 @@ try:
     )
     print(
         f"  Modules:      {len(CYTHON_MODULES)} standard + {len(OPENMP_MODULES)} parallel"
+        + (f" + {n_gsl} gsl" if HAS_GSL else "")
     )
     print(f"{'=' * 60}\n")
 

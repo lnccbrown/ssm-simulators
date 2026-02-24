@@ -98,7 +98,37 @@ static inline uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
 
 #else /* !HAVE_GSL */
 
-#error "GSL is required for parallel execution. Install GSL and rebuild."
+/* Stub implementations for compilation without GSL.
+ * These are never called at runtime — the simulator checks is_gsl_available()
+ * before entering any parallel path that uses per-thread RNG states.
+ * They exist solely to allow compilation on systems without GSL installed.
+ */
+typedef struct { void* rng; } ssms_rng_state;
+
+static inline void ssms_rng_alloc(ssms_rng_state* state) { (void)state; }
+static inline void ssms_rng_free(ssms_rng_state* state) { (void)state; }
+static inline void ssms_rng_seed(ssms_rng_state* state, uint64_t seed) {
+    (void)state; (void)seed;
+}
+static inline void ssms_rng_init(ssms_rng_state* state, uint64_t seed) {
+    (void)state; (void)seed;
+}
+static inline void ssms_rng_cleanup(ssms_rng_state* state) { (void)state; }
+static inline float ssms_gaussian_f32(ssms_rng_state* state) {
+    (void)state; return 0.0f;
+}
+static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
+    (void)state; (void)sigma; return 0.0f;
+}
+static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
+    (void)state; (void)c; (void)alpha; return 0.0f;
+}
+static inline double ssms_uniform(ssms_rng_state* state) {
+    (void)state; return 0.5;
+}
+static inline uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
+    (void)t1; (void)t2; return base;
+}
 
 #endif /* HAVE_GSL */
 
