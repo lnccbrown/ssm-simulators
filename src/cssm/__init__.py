@@ -23,7 +23,7 @@ from .ddm_models import (
     ddm_flexbound_tradeoff,
 )
 
-from .race_models import race_model, lca
+from .race_models import race_model, lca, racing_diffusion_model
 from .poisson_race_models import poisson_race
 from .lba_models import lba_vanilla, lba_angle, rlwm_lba_pw_v1, rlwm_lba_race
 
@@ -55,6 +55,7 @@ __all__ = [
     # Race models
     "race_model",
     "lca",
+    "racing_diffusion_model",
     # Poisson race models
     "poisson_race",
     # LBA models
