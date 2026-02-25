@@ -19,8 +19,12 @@ Reference:
 
 from libc.stdint cimport uint64_t
 
-# Raw C function declarations (struct and typedefs are in _c_rng.pxd)
+# Raw C function declarations
 cdef extern from "gsl_rng.h" nogil:
+    # Struct must be declared here (not just in .pxd) for cross-version Cython compatibility
+    ctypedef struct ssms_rng_state:
+        void* rng
+
     void ssms_rng_alloc(ssms_rng_state* state)
     void ssms_rng_free(ssms_rng_state* state)
     void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
