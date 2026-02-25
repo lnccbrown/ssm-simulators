@@ -25,7 +25,14 @@ import numpy
 # Define all Cython extension modules (sequential only - no OpenMP/GSL needed)
 CYTHON_MODULES = [
     "_utils",
-    "lba_models",  # LBA models (no timestep loop, uses NumPy vectorized ops)
+    "ddm_models",
+    "race_models",
+    "poisson_race_models",
+    "lba_models",
+    "sequential_models",
+    "parallel_models",
+    "levy_models",
+    "ornstein_models",
 ]
 
 # Modules that benefit from OpenMP (will still build without it, but with OpenMP flags)
