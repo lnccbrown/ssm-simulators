@@ -22,17 +22,14 @@ import tempfile
 from setuptools import setup, Extension
 import numpy
 
-# Define all Cython extension modules (sequential only - no OpenMP/GSL needed)
+# Define Cython extension modules that do NOT need OpenMP/GSL.
+# Modules that use prange/parallel or GSL RNG belong in OPENMP_MODULES below.
+# A module must appear in exactly one list to avoid duplicate-extension issues
+# (setuptools deduplicates by keeping the first occurrence, which would be
+# the one without OpenMP/GSL flags).
 CYTHON_MODULES = [
     "_utils",
-    "ddm_models",
-    "race_models",
-    "poisson_race_models",
     "lba_models",
-    "sequential_models",
-    "parallel_models",
-    "levy_models",
-    "ornstein_models",
 ]
 
 # Modules that benefit from OpenMP (will still build without it, but with OpenMP flags)
@@ -45,6 +42,7 @@ OPENMP_MODULES = [
     "race_models",  # Race models with n_threads support
     "parallel_models",  # Parallel decision models with n_threads support
     "sequential_models",  # Sequential two-stage models with n_threads support
+    "poisson_race_models",  # Poisson race models with n_threads support
 ]
 
 # Modules that require GSL - only compiled when GSL is available.

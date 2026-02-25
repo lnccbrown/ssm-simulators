@@ -379,6 +379,205 @@ class TestSimulatorRNGIntegration:
         assert not np.allclose(result1["rts"], result2["rts"])
 
 
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestRacingDiffusionParallel:
+    """Integration tests for racing_diffusion_model parallel execution."""
+
+    @pytest.fixture
+    def rdm_params(self):
+        """Common RDM parameters for 3-particle, 5-trial setup."""
+        n_trials = 5
+        return {
+            "v": np.array([[1.0, 0.8, 0.5]] * n_trials, dtype=np.float32),
+            "b": np.array([[1.5]] * n_trials, dtype=np.float32),
+            "A": np.array([[0.5]] * n_trials, dtype=np.float32),
+            "t": np.array([[0.3]] * n_trials, dtype=np.float32),
+            "s": np.array([[1.0]] * n_trials, dtype=np.float32),
+            "deadline": np.array([10.0] * n_trials, dtype=np.float32),
+            "n_samples": 200,
+            "n_trials": n_trials,
+        }
+
+    def test_rdm_parallel_reproducible(self, rdm_params):
+        """Test that RDM parallel produces reproducible results with same seed."""
+        from cssm.race_models import racing_diffusion_model
+
+        r1 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+        r2 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        np.testing.assert_array_equal(r1["rts"], r2["rts"])
+        np.testing.assert_array_equal(r1["choices"], r2["choices"])
+
+    def test_rdm_parallel_different_seeds_differ(self, rdm_params):
+        """Test that different seeds produce different results."""
+        from cssm.race_models import racing_diffusion_model
+
+        r1 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+        r2 = racing_diffusion_model(**rdm_params, random_state=123, n_threads=4)
+
+        assert not np.allclose(r1["rts"], r2["rts"])
+
+    def test_rdm_parallel_produces_valid_results(self, rdm_params):
+        """Test that RDM parallel results are statistically valid."""
+        from cssm.race_models import racing_diffusion_model
+
+        result = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        rts = result["rts"]
+        choices = result["choices"]
+
+        # Valid RTs should be positive (or -999 for deadline/no-response)
+        valid = rts[rts != -999]
+        assert len(valid) > 0, "Should produce some valid RTs"
+        assert (valid > 0).all(), "Valid RTs should be positive"
+
+        # Choices should be valid particle indices (0, 1, 2) or -1 for no-response
+        valid_choices = set(np.unique(choices))
+        expected_choices = {-1, 0, 1, 2}
+        assert valid_choices.issubset(expected_choices), (
+            f"Unexpected choices: {valid_choices - expected_choices}"
+        )
+
+        # When RT is -999, choice should be -1
+        deadline_mask = rts.flatten() == -999
+        if deadline_mask.any():
+            assert (choices.flatten()[deadline_mask] == -1).all(), (
+                "Choice should be -1 when RT is -999"
+            )
+
+    def test_rdm_parallel_matches_sequential_distribution(self, rdm_params):
+        """Test that parallel and sequential produce similar RT distributions."""
+        from cssm.race_models import racing_diffusion_model
+
+        rdm_params["n_samples"] = 2000
+
+        seq = racing_diffusion_model(**rdm_params, random_state=42, n_threads=1)
+        par = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        # Compare valid RT distributions (not exact match, different RNGs)
+        seq_valid = seq["rts"][seq["rts"] != -999].flatten()
+        par_valid = par["rts"][par["rts"] != -999].flatten()
+
+        # Both should produce a reasonable fraction of valid trials
+        assert len(seq_valid) > 100
+        assert len(par_valid) > 100
+
+        # Means should be similar (within 20%)
+        seq_mean = np.mean(seq_valid)
+        par_mean = np.mean(par_valid)
+        assert abs(seq_mean - par_mean) / seq_mean < 0.2, (
+            f"Means differ too much: seq={seq_mean:.3f}, par={par_mean:.3f}"
+        )
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestPoissonRaceParallel:
+    """Integration tests for poisson_race parallel execution."""
+
+    @pytest.fixture
+    def pr_params(self):
+        """Common Poisson race parameters for 5-trial setup."""
+        n_trials = 5
+        return {
+            "r": np.array([[5.0, 3.0]] * n_trials, dtype=np.float32),
+            "k": np.array([[3.0, 3.0]] * n_trials, dtype=np.float32),
+            "t": np.array([[0.3, 0.3]] * n_trials, dtype=np.float32),
+            "deadline": np.array([10.0] * n_trials, dtype=np.float32),
+            "n_samples": 200,
+            "n_trials": n_trials,
+        }
+
+    def test_pr_parallel_reproducible(self, pr_params):
+        """Test that poisson_race parallel produces reproducible results."""
+        from cssm.poisson_race_models import poisson_race
+
+        r1 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+        r2 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        np.testing.assert_array_equal(r1["rts"], r2["rts"])
+        np.testing.assert_array_equal(r1["choices"], r2["choices"])
+
+    def test_pr_parallel_different_seeds_differ(self, pr_params):
+        """Test that different seeds produce different results."""
+        from cssm.poisson_race_models import poisson_race
+
+        r1 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+        r2 = poisson_race(
+            **pr_params, random_state=123, n_threads=4, return_option="minimal"
+        )
+
+        assert not np.allclose(r1["rts"], r2["rts"])
+
+    def test_pr_parallel_produces_valid_results(self, pr_params):
+        """Test that poisson_race parallel results are statistically valid."""
+        from cssm.poisson_race_models import poisson_race
+
+        result = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        rts = result["rts"]
+        choices = result["choices"]
+
+        # Valid RTs should be positive
+        valid = rts[rts != -999]
+        assert len(valid) > 0, "Should produce some valid RTs"
+        assert (valid > 0).all(), "Valid RTs should be positive"
+
+        # Choices should be -1 or 1
+        valid_choices = set(np.unique(choices))
+        assert valid_choices.issubset({-1, 1}), f"Unexpected choices: {valid_choices}"
+
+        # Higher rate accumulator (r=5.0) should win more often
+        valid_mask = rts.flatten() != -999
+        valid_ch = choices.flatten()[valid_mask]
+        frac_minus1 = (valid_ch == -1).mean()  # accumulator 0 (rate=5.0)
+        assert frac_minus1 > 0.5, (
+            f"Faster accumulator (r=5) should win >50% but won {frac_minus1:.1%}"
+        )
+
+    def test_pr_parallel_matches_sequential_distribution(self, pr_params):
+        """Test that parallel and sequential produce similar RT distributions."""
+        from cssm.poisson_race_models import poisson_race
+
+        pr_params["n_samples"] = 2000
+
+        seq = poisson_race(
+            **pr_params, random_state=42, n_threads=1, return_option="minimal"
+        )
+        par = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        seq_valid = seq["rts"][seq["rts"] != -999].flatten()
+        par_valid = par["rts"][par["rts"] != -999].flatten()
+
+        assert len(seq_valid) > 100
+        assert len(par_valid) > 100
+
+        # Means should be similar (within 20%)
+        seq_mean = np.mean(seq_valid)
+        par_mean = np.mean(par_valid)
+        assert abs(seq_mean - par_mean) / seq_mean < 0.2, (
+            f"Means differ too much: seq={seq_mean:.3f}, par={par_mean:.3f}"
+        )
+
+        # Choice proportions should be similar
+        seq_ch = seq["choices"][seq["rts"] != -999].flatten()
+        par_ch = par["choices"][par["rts"] != -999].flatten()
+        seq_frac = (seq_ch == -1).mean()
+        par_frac = (par_ch == -1).mean()
+        assert abs(seq_frac - par_frac) < 0.1, (
+            f"Choice proportions differ: seq={seq_frac:.3f}, par={par_frac:.3f}"
+        )
+
+
 if __name__ == "__main__":
     # Run quick tests
     pytest.main([__file__, "-v", "-m", "not slow"])

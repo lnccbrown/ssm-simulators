@@ -126,7 +126,7 @@ def lba_vanilla(np.ndarray[float, ndim = 2] v,
         n_trials=n_trials
     )
 
-    sim_config = {'max_t': max_t}
+    sim_config = {'max_t': max_t, 'n_threads': 1}
     params = {'a': a, 'z': z, 'deadline': deadline, 'sd': sd, 't': t}
 
     full_meta = build_full_metadata(
@@ -237,7 +237,7 @@ def lba_angle(np.ndarray[float, ndim = 2] v,
         n_trials=n_trials
     )
 
-    sim_config = {'max_t': max_t}
+    sim_config = {'max_t': max_t, 'n_threads': 1}
     params = {'a': a, 'z': z, 'theta': theta, 'deadline': deadline, 'sd': sd, 't': t}
 
     full_meta = build_full_metadata(
@@ -368,7 +368,7 @@ def rlwm_lba_pw_v1(np.ndarray[float, ndim = 2] vRL,
         n_trials=n_trials
     )
 
-    sim_config = {'max_t': max_t}
+    sim_config = {'max_t': max_t, 'n_threads': 1}
     params = {'a': a, 'z': z, 'tWM': tWM, 't': t, 'deadline': deadline, 'sd': sd}
 
     full_meta = build_full_metadata(
@@ -490,7 +490,7 @@ def rlwm_lba_race(np.ndarray[float, ndim = 2] vRL, # RL drift parameters (np.arr
         n_trials=n_trials
     )
 
-    sim_config = {'max_t': max_t}
+    sim_config = {'max_t': max_t, 'n_threads': 1}
     params = {'a': a, 'z': z, 't': t, 'deadline': deadline, 'sd': sd}
 
     full_meta = build_full_metadata(

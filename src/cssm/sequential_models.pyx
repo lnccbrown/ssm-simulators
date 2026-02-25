@@ -372,7 +372,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             choices_view[n, k, 0] = choice_val
 
             # Enforce deadline
-            if rts_view[n, k, 0] > deadline_view[k]:
+            if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
 
     # Free per-thread GSL RNGs AFTER parallel block
@@ -666,7 +666,7 @@ def _ddm_flexbound_seq2_sequential(
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'zh': zh, 'zl1': zl1, 'zl2': zl2,
@@ -1057,7 +1057,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
@@ -1417,7 +1417,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
@@ -1772,7 +1772,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
@@ -2537,7 +2537,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     extra_arrays_dict = {'rts_high': rts_high, 'rts_low': rts_low}
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,

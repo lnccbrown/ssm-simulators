@@ -359,7 +359,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
 
     if return_option == 'full':
         # Augment minimal with full details
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'sz': sz, 'sv': sv, 'st': st,
@@ -600,7 +600,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'deadline': deadline, 's': s
@@ -1193,7 +1193,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     minimal_meta['drift_fun_type'] = boundary_fun.__name__
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'deadline': deadline, 's': s
@@ -1497,7 +1497,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     minimal_meta['drift_fun_type'] = boundary_fun.__name__
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 'g': g, 't': t,
             'deadline': deadline, 's': s
@@ -1841,7 +1841,7 @@ def ddm_flex_leak2(
     minimal_meta['drift_fun_type'] = boundary_fun.__name__
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'vt': vt, 'vd': vd, 'a': a, 'z': z,
             'gt': gt, 'gd': gd, 't': t,
@@ -2163,7 +2163,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'z_dist': z_dist, 'v_dist': v_dist, 't_dist': t_dist,
@@ -2484,7 +2484,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'sz': sz, 'sv': sv, 'st': st,
@@ -2780,7 +2780,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'sv': sv, 'deadline': deadline, 's': s
@@ -3061,7 +3061,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
@@ -3345,7 +3345,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'a': a, 'z': z, 't': t,
             'deadline': deadline, 's': s

@@ -83,6 +83,11 @@ static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
     return (float)gsl_ran_levy(state->rng, (double)c, (double)alpha);
 }
 
+/* Generate Gamma(shape, scale) variate using GSL */
+static inline float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale) {
+    return (float)gsl_ran_gamma(state->rng, (double)shape, (double)scale);
+}
+
 /* Generate uniform in (0, 1) */
 static inline double ssms_uniform(ssms_rng_state* state) {
     return gsl_rng_uniform_pos(state->rng);
@@ -122,6 +127,9 @@ static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) 
 }
 static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
     (void)state; (void)c; (void)alpha; return 0.0f;
+}
+static inline float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale) {
+    (void)state; (void)shape; (void)scale; return 1.0f;
 }
 static inline double ssms_uniform(ssms_rng_state* state) {
     (void)state; return 0.5;

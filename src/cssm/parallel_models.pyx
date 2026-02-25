@@ -347,7 +347,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             choices_view[n, k, 0] = choice_val
 
             # Enforce deadline
-            if rts_view[n, k, 0] > deadline_view[k]:
+            if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
 
     # Free per-thread GSL RNGs AFTER parallel block
@@ -600,7 +600,7 @@ def _ddm_flexbound_par2_sequential(
     extra_arrays_dict = {'rts_low': rts_low, 'rts_high': rts_high}
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {
             'vh': vh, 'vl1': vl1, 'vl2': vl2,
             'zh': zh, 'zl1': zl1, 'zl2': zl2,

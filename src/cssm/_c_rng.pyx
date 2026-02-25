@@ -19,11 +19,8 @@ Reference:
 
 from libc.stdint cimport uint64_t
 
-# RNG state structure - must match the C struct in gsl_rng.h
+# Raw C function declarations (struct and typedefs are in _c_rng.pxd)
 cdef extern from "gsl_rng.h" nogil:
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer
-
     void ssms_rng_alloc(ssms_rng_state* state)
     void ssms_rng_free(ssms_rng_state* state)
     void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
@@ -32,20 +29,17 @@ cdef extern from "gsl_rng.h" nogil:
     float ssms_gaussian_f32(ssms_rng_state* state)
     float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma)
     float ssms_levy_f32(ssms_rng_state* state, float c, float alpha)
+    float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale)
     double ssms_uniform(ssms_rng_state* state)
     uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type aliases for backward compatibility and clarity
-ctypedef ssms_rng_state Xoroshiro128PlusState
-ctypedef ssms_rng_state RngState
 
 # =============================================================================
 # WRAPPER FUNCTIONS (for internal Cython use)
 # =============================================================================
 
 cdef void rng_seed(Xoroshiro128PlusState* state, uint64_t seed) noexcept nogil:
-    """Initialize RNG state from a seed."""
-    ssms_rng_init(state, seed)
+    """Re-seed an already allocated RNG state."""
+    ssms_rng_seed(state, seed)
 
 cdef uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
     """Create unique seed for thread/trial combination."""
@@ -70,6 +64,10 @@ cdef double rng_levy(Xoroshiro128PlusState* state, double alpha) noexcept nogil:
 cdef float rng_levy_f32(Xoroshiro128PlusState* state, float alpha) noexcept nogil:
     """Generate alpha-stable random float."""
     return ssms_levy_f32(state, 1.0, alpha)
+
+cdef float rng_gamma_f32(Xoroshiro128PlusState* state, float shape, float scale) noexcept nogil:
+    """Generate Gamma(shape, scale) random float using GSL."""
+    return ssms_gamma_f32(state, shape, scale)
 
 cdef void rng_alloc(RngState* state) noexcept nogil:
     """Allocate GSL RNG - call once per thread before parallel block."""
@@ -203,6 +201,42 @@ def generate_levy_samples(int n, double alpha, uint64_t seed=42):
 
     for i in range(n):
         samples[i] = <double>ssms_levy_f32(&state, 1.0, <float>alpha)
+
+    ssms_rng_cleanup(&state)
+
+    return np.asarray(samples)
+
+
+def generate_gamma_samples(int n, float shape, float scale, uint64_t seed=42):
+    """
+    Generate Gamma(shape, scale) samples using GSL.
+
+    Parameters
+    ----------
+    n : int
+        Number of samples to generate
+    shape : float
+        Shape parameter (must be > 0)
+    scale : float
+        Scale parameter (must be > 0)
+    seed : int
+        Random seed
+
+    Returns
+    -------
+    np.ndarray
+        Array of Gamma random samples
+    """
+    import numpy as np
+
+    cdef ssms_rng_state state
+    ssms_rng_init(&state, seed)
+
+    cdef double[:] samples = np.zeros(n, dtype=np.float64)
+    cdef int i
+
+    for i in range(n):
+        samples[i] = <double>ssms_gamma_f32(&state, shape, scale)
 
     ssms_rng_cleanup(&state)
 

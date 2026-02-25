@@ -336,7 +336,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'z': z, 'g': g, 't': t,
             'deadline': deadline, 's': s

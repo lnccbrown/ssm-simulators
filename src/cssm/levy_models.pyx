@@ -369,7 +369,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
     )
 
     if return_option == 'full':
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {
             'v': v, 'z': z,
             't': t, 'alpha': alpha, 's': s,

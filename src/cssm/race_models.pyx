@@ -27,6 +27,7 @@ from cssm._utils import (
     set_seed,
     draw_uniform,
     draw_gaussian,
+    random_uniform,
     sign,
     csum,
     compute_boundary,
@@ -340,7 +341,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
             choices_view[n, k, 0] = argmax_stack(&particles[tid][0], c_n_particles)
 
             # Enforce deadline
-            if rts_view[n, k, 0] > deadline_view[k]:
+            if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
 
     # Free per-thread GSL RNGs AFTER parallel block
@@ -513,7 +514,7 @@ def _race_model_sequential(
         # Update possible_choices for full (n_particles-specific)
         minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
@@ -739,7 +740,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
             choices_view[n, k, 0] = argmax_stack(&particles[tid][0], c_n_particles)
 
             # Enforce deadline
-            if rts_view[n, k, 0] > deadline_view[k]:
+            if rts_view[n, k, 0] >= deadline_view[k]:
                 rts_view[n, k, 0] = -999.0
 
     # Free per-thread GSL RNGs AFTER parallel block
@@ -925,7 +926,7 @@ def _lca_sequential(
         # Update possible_choices for full (n_particles-specific)
         minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
@@ -946,9 +947,7 @@ def _lca_sequential(
         raise ValueError('return_option must be either "full" or "minimal"')
 # -----------------------------------------------------------------------------------------------
 
-# Simulate (rt, choice) tuples from: Racing Diffusion Model ----------------------------------
-# @cythonboundscheck(False)
-# @cythonwraparound(False)
+# Racing Diffusion Model ------------------------------------
 
 def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                   np.ndarray[float, ndim = 2] b,  # response boundaries (thresholds)
@@ -956,13 +955,14 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                   np.ndarray[float, ndim = 2] t,  # non-decision times
                   np.ndarray[float, ndim = 2] s,  # diffusion coefficients (within-trial noise)
                   np.ndarray[float, ndim = 1] deadline,
-                  float delta_t = 0.001, # time increment step
-                  float max_t = 20, # maximum rt allowed
+                  float delta_t = 0.001,
+                  float max_t = 20,
                   int n_samples = 2000,
                   int n_trials = 1,
                   random_state = None,
                   return_option = 'full',
                   smooth_unif = False,
+                  int n_threads = 1,
                   **kwargs):
     """
     Simulate reaction times and choices from the Racing Diffusion Model (RDM)
@@ -976,13 +976,13 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     v : np.ndarray
         Mean drift rates. Shape (n_trials, n_particles).
     b : np.ndarray
-        Response boundaries (thresholds), shared across particles within a trial. Shape (n_trials, 1).
+        Response boundaries (thresholds). Shape (n_trials, 1).
     A : np.ndarray
-        Upper bound of the uniform starting point distribution (U[0, A]) shared across particles within a trial. Shape (n_trials, 1).
+        Upper bound of the uniform starting point distribution U[0, A]. Shape (n_trials, 1).
     t : np.ndarray
         Non-decision times. Shape (n_trials, 1).
     s : np.ndarray
-        Diffusion coefficients (within-trial noise), shared across all particles in a trial. Shape (n_trials, 1).
+        Diffusion coefficients (within-trial noise). Shape (n_trials, 1).
     deadline : np.ndarray
         Maximum reaction time allowed for each trial. Shape (n_trials,).
     delta_t : float, optional
@@ -999,6 +999,8 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
         'full' for complete output, 'minimal' for basic output (default: 'full').
     smooth_unif : bool, optional
         Whether to apply uniform smoothing to reaction times (default: False).
+    n_threads : int, optional
+        Number of threads for parallel execution (default: 1).
     **kwargs : dict
         Additional keyword arguments.
 
@@ -1006,8 +1008,190 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     --------
     dict
         A dictionary containing simulated reaction times, choices, and metadata.
-        The exact contents depend on the 'return_option' parameter.
+
+    Raises:
+        ValueError: If n_particles > MAX_PARTICLES (16) for parallel execution.
     """
+    cdef int n_particles = v.shape[1]
+
+    # Check particle count limit for parallel execution
+    if n_threads > 1 and n_particles > MAX_PARTICLES:
+        raise ValueError(
+            f"racing_diffusion_model parallel execution requires n_particles <= {MAX_PARTICLES}, "
+            f"got {n_particles}. Use n_threads=1 for larger particle counts."
+        )
+
+    # Check OpenMP availability for parallel execution
+    if n_threads > 1:
+        from cssm._openmp_status import check_parallel_request
+        n_threads = check_parallel_request(n_threads)
+
+    # Sequential path (n_threads=1)
+    if n_threads == 1:
+        return _racing_diffusion_model_sequential(
+            v, b, A, t, s, deadline, delta_t, max_t, n_samples, n_trials,
+            random_state, return_option, smooth_unif
+        )
+
+    # Parallel path
+    cdef float[:, :] v_view = v
+    cdef float[:, :] b_view = b
+    cdef float[:, :] A_view = A
+    cdef float[:, :] t_view = t
+    cdef float[:, :] s_view = s
+    cdef float[:] deadline_view = deadline
+
+    cdef float delta_t_sqrt = sqrt(delta_t)
+    sqrt_st = delta_t_sqrt * s
+    cdef float[:, :] sqrt_st_view = sqrt_st
+
+    rts = np.zeros((n_samples, n_trials, 1), dtype=DTYPE)
+    cdef float[:, :, :] rts_view = rts
+    choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
+    cdef int[:, :, :] choices_view = choices
+
+    # Trajectory storage - disabled in parallel mode
+    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj[:, :] = -999
+    cdef float[:, :] traj_view = traj
+
+    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int c_n_samples = n_samples
+    cdef int c_n_particles = n_particles
+
+    # Pre-compute effective deadlines for all trials (outside nogil)
+    deadlines_tmp = np.zeros(n_trials, dtype=DTYPE)
+    cdef Py_ssize_t k_precomp
+    for k_precomp in range(n_trials):
+        deadlines_tmp[k_precomp] = compute_deadline_tmp(max_t, deadline_view[k_precomp], t_view[k_precomp, 0])
+    cdef float[:] deadlines_view = deadlines_tmp
+
+    # Per-thread RNG states for parallel execution
+    cdef RngState[MAX_THREADS] rng_states
+    cdef uint64_t base_seed = random_state if random_state is not None else np.random.randint(0, 2**31)
+    cdef uint64_t combined_seed
+    cdef int tid
+    cdef int i_thread
+    cdef int c_n_threads = n_threads
+
+    # Flattened parallel loop variables
+    cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
+    cdef Py_ssize_t flat_idx
+    cdef int ix, j, winner, winner_found
+    cdef float t_particle, deadline_tmp_k, noise
+    # Per-thread particle arrays to avoid race conditions
+    cdef float particles[MAX_THREADS][MAX_PARTICLES]
+
+    # Allocate per-thread GSL RNGs BEFORE parallel block
+    for i_thread in range(c_n_threads):
+        rng_alloc(&rng_states[i_thread])
+
+    # Parallel execution over FLATTENED iteration space
+    with nogil, parallel(num_threads=n_threads):
+        for flat_idx in prange(total_iterations, schedule='dynamic'):
+            # Get thread ID for per-thread RNG and particle array
+            tid = threadid()
+
+            k = flat_idx // c_n_samples  # trial index
+            n = flat_idx % c_n_samples   # sample index
+
+            # Re-seed per-thread RNG with unique seed for this (trial, sample)
+            combined_seed = rng_mix_seed(base_seed, <uint64_t>k, <uint64_t>n)
+            rng_seed(&rng_states[tid], combined_seed)
+
+            deadline_tmp_k = deadlines_view[k]
+
+            # Initialize starting points from U[0, A]
+            for j in range(c_n_particles):
+                particles[tid][j] = ssms_uniform(&rng_states[tid]) * A_view[k, 0]
+
+            t_particle = 0.0
+            ix = 0
+            winner = -1
+            winner_found = 0
+
+            # Race simulation (first-past-the-post, no reflecting boundary)
+            while not winner_found and t_particle <= deadline_tmp_k:
+                for j in range(c_n_particles):
+                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    particles[tid][j] = particles[tid][j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * noise
+
+                    # Check for a winner
+                    if particles[tid][j] >= b_view[k, 0]:
+                        winner_found = 1
+                        winner = j
+                        break
+
+                if winner_found:
+                    break
+
+                t_particle = t_particle + delta_t
+                ix = ix + 1
+                if ix >= num_steps:
+                    break
+
+            # Store results
+            if winner_found:
+                rts_view[n, k, 0] = t_particle + t_view[k, 0]
+                choices_view[n, k, 0] = winner
+            else:
+                rts_view[n, k, 0] = -999.0
+                choices_view[n, k, 0] = -1
+
+            # Enforce deadline (match sequential: reset choice to -1)
+            if rts_view[n, k, 0] >= deadline_view[k]:
+                rts_view[n, k, 0] = -999.0
+                choices_view[n, k, 0] = -1
+
+    # Free per-thread GSL RNGs AFTER parallel block
+    for i_thread in range(c_n_threads):
+        rng_free(&rng_states[i_thread])
+
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='rdm_simulator',
+        possible_choices=list(np.arange(0, n_particles, 1)),
+        n_samples=n_samples,
+        n_trials=n_trials,
+    )
+
+    if return_option == 'full':
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
+        params = {'v': v, 'b': b, 'A': A, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            traj=traj,
+            extra_params=v_dict
+        )
+        return build_return_dict(rts, choices, full_meta)
+
+    elif return_option == 'minimal':
+        return build_return_dict(rts, choices, minimal_meta)
+
+    else:
+        raise ValueError('return_option must be either "full" or "minimal"')
+
+
+def _racing_diffusion_model_sequential(
+    np.ndarray[float, ndim = 2] v,
+    np.ndarray[float, ndim = 2] b,
+    np.ndarray[float, ndim = 2] A,
+    np.ndarray[float, ndim = 2] t,
+    np.ndarray[float, ndim = 2] s,
+    np.ndarray[float, ndim = 1] deadline,
+    float delta_t,
+    float max_t,
+    int n_samples,
+    int n_trials,
+    random_state,
+    return_option,
+    smooth_unif
+):
+    """Sequential implementation of racing_diffusion_model (original code path)."""
 
     set_seed(random_state)
     # Param views
@@ -1041,15 +1225,17 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     cdef Py_ssize_t n, ix, j, k
     cdef Py_ssize_t m = 0
     cdef int winner = -1
-    cdef int winner_found = 0 # <-- FIX: Use 'int' (0=False, 1=True) instead of 'bool'
+    cdef int winner_found = 0
 
     cdef int num_steps = int((max_t / delta_t) + 1)
     cdef int num_draws = num_steps * n_particles
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
+    cdef Py_ssize_t mu = 0
+    cdef float[:] uniform_values = draw_uniform(num_draws)
 
     for k in range(n_trials):
 
-        deadline_tmp = min(max_t, deadline_view[k] - t_view[k, 0])
+        deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k, 0])
 
         # Loop over samples
         for n in range(n_samples):
@@ -1057,10 +1243,10 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
             for j in range(n_particles):
                 particles_view[j] = random_uniform() * A_view[k, 0]
 
-            t_particle = 0.0 # reset time
+            t_particle = 0.0
             ix = 0
-            winner = -1         # Reset winner for this sample
-            winner_found = 0    # <-- FIX: Reset to 0 (False)
+            winner = -1
+            winner_found = 0
 
             # Save initial trajectory
             if n == 0:
@@ -1068,28 +1254,24 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                     for j in range(n_particles):
                         traj_view[0, j] = particles[j]
 
-            # Random walker
-            while not winner_found and t_particle <= deadline_tmp: # <-- 'not 0' is True
+            # Random walker (first-past-the-post, no reflecting boundary)
+            while not winner_found and t_particle <= deadline_tmp:
                 for j in range(n_particles):
-                    # Standard Wiener diffusion process update
                     particles_view[j] += (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * gaussian_values[m]
 
-                    # No reflecting boundary for RDM
-                    # The line `particles_view[j] = fmax(0.0, particles_view[j])` is REMOVED.
-
                     m += 1
-                    if m == num_draws: # Resample random numbers if needed
+                    if m == num_draws:
                         m = 0
                         gaussian_values = draw_gaussian(num_draws)
 
-                    # Check for a winner (first-past-the-post)
+                    # Check for a winner
                     if particles_view[j] >= b_view[k, 0]:
-                        winner_found = 1 # <-- FIX: Set to 1 (True)
+                        winner_found = 1
                         winner = j
-                        break # Stop checking, we have a winner
+                        break
 
-                if winner_found: # <-- `if 1` is True
-                    break # Stop the while loop, a decision is made
+                if winner_found:
+                    break
 
                 t_particle += delta_t
                 ix += 1
@@ -1100,20 +1282,22 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 
-            # --- End of while loop ---
-
-            # Apply smoothing if specified (using shared utility for consistency)
-            smooth_u = compute_smooth_unif(t_particle, deadline_tmp, delta_t, smooth_unif)
+            # Apply smoothing
+            smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
+            mu += 1
+            if mu == num_draws:
+                uniform_values = draw_uniform(num_draws)
+                mu = 0
 
             # Store RT and choice
-            rts_view[n , k, 0] = t_particle + t[k, 0] + smooth_u
+            rts_view[n, k, 0] = t_particle + t[k, 0] + smooth_u
             choices_view[n, k, 0] = winner
 
             # Handle non-responses (deadline hit or no decision)
             enforce_deadline(rts_view, deadline_view, n, k, 0)
             if rts_view[n, k, 0] == -999 or (not winner_found):
                 rts_view[n, k, 0] = -999
-                choices_view[n, k, 0] = -1  # Ensure choice is also -1
+                choices_view[n, k, 0] = -1
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
@@ -1126,7 +1310,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     if return_option == 'full':
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
 
-        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'b': b, 'A': A, 't': t, 'deadline': deadline, 's': s}
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
