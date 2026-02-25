@@ -612,45 +612,36 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
             choices_view[n, k, 0] = winner
 
             # Handle non-responses (deadline hit or no decision)
-            if enforce_deadline(rts_view[n, k, 0], deadline_view[k]) or (not winner_found):
+            enforce_deadline(rts_view, deadline_view, n, k, 0)
+            if rts_view[n, k, 0] == -999 or (not winner_found):
                 rts_view[n, k, 0] = -999
                 choices_view[n, k, 0] = -1  # Ensure choice is also -1
 
-    # Create parameter dictionaries for metadata
-    v_dict = {}
-    for i in range(n_particles):
-        v_dict['v' + str(i)] = v[:, i]
-
-    # Build standardized metadata using utility functions for consistency
-    full_metadata = build_full_metadata(
-        simulator='rdm_simulator',
-        possible_choices=list(np.arange(0, n_particles, 1)),
-        n_samples=n_samples,
-        n_trials=n_trials,
-        b=b,
-        A=A,
-        t=t,
-        deadline=deadline,
-        s=s,
-        delta_t=delta_t,
-        max_t=max_t,
-        trajectory=traj,
-        **v_dict
-    )
-
-    minimal_metadata = build_minimal_metadata(
-        simulator='rdm_simulator',
+    # Build minimal metadata first
+    minimal_meta = build_minimal_metadata(
+        simulator_name='rdm_simulator',
         possible_choices=list(np.arange(0, n_particles, 1)),
         n_samples=n_samples,
         n_trials=n_trials,
     )
 
     if return_option == 'full':
-        metadata = full_metadata
+        v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
+
+        sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        params = {'v': v, 'b': b, 'A': A, 't': t, 'deadline': deadline, 's': s}
+        full_meta = build_full_metadata(
+            minimal_metadata=minimal_meta,
+            params=params,
+            sim_config=sim_config,
+            traj=traj,
+            extra_params=v_dict
+        )
+        return build_return_dict(rts, choices, full_meta)
+
     elif return_option == 'minimal':
-        metadata = minimal_metadata
+        return build_return_dict(rts, choices, minimal_meta)
+
     else:
         raise ValueError('return_option must be either "full" or "minimal"')
-
-    return build_return_dict(rts=rts, choices=choices, metadata=metadata)
 # -----------------------------------------------------------------------------------------------
