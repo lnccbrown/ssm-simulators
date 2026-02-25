@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssm-simulators"
-version = "0.12.0b2"
+version = "0.12.0"
 description = "SSMS is a package collecting simulators and training data generators for cognitive science, neuroscience, and approximate bayesian computation"
 authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">3.10,<3.14" # for compatibility with lanfactory
+requires-python = ">3.10,<3.14"
 dependencies = [
     "scipy >= 1.6.3",
     "pandas >= 1.0.0",
