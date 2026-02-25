@@ -33,7 +33,7 @@ from .sequential_models import (
     ddm_flexbound_mic2_ornstein_multinoise,
     ddm_flexbound_mic2_unnormalized_ornstein_multinoise,
 )
-from .parallel_models import ddm_flexbound_par2
+from .parallel_models import ddm_flexbound_par2, ddm_flexbound_par3
 
 from .levy_models import levy_flexbound
 
@@ -67,6 +67,7 @@ __all__ = [
     "ddm_flexbound_mic2_unnormalized_ornstein_multinoise",
     # Parallel models
     "ddm_flexbound_par2",
+    "ddm_flexbound_par3",
     # Levy models
     "levy_flexbound",
     # Ornstein models
