@@ -40,8 +40,11 @@ cdef extern from "gsl_rng.h" nogil:
 # =============================================================================
 # WRAPPER FUNCTIONS (for internal Cython use)
 # =============================================================================
+# Note: These use ssms_rng_state directly (not the Xoroshiro128PlusState/RngState
+# typedefs from the .pxd) so the .pyx is self-contained and doesn't depend on
+# the .pxd being discoverable by all Cython versions and build environments.
 
-cdef void rng_seed(Xoroshiro128PlusState* state, uint64_t seed) noexcept nogil:
+cdef void rng_seed(ssms_rng_state* state, uint64_t seed) noexcept nogil:
     """Re-seed an already allocated RNG state."""
     ssms_rng_seed(state, seed)
 
@@ -49,35 +52,35 @@ cdef uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t tria
     """Create unique seed for thread/trial combination."""
     return ssms_mix_seed(base_seed, thread_id, trial_id)
 
-cdef double rng_uniform(Xoroshiro128PlusState* state) noexcept nogil:
+cdef double rng_uniform(ssms_rng_state* state) noexcept nogil:
     """Generate uniform random number in (0, 1)."""
     return ssms_uniform(state)
 
-cdef double rng_gaussian(Xoroshiro128PlusState* state) noexcept nogil:
+cdef double rng_gaussian(ssms_rng_state* state) noexcept nogil:
     """Generate Gaussian random number using GSL Ziggurat algorithm."""
     return <double>ssms_gaussian_f32(state)
 
-cdef float rng_gaussian_f32(Xoroshiro128PlusState* state) noexcept nogil:
+cdef float rng_gaussian_f32(ssms_rng_state* state) noexcept nogil:
     """Generate Gaussian random float."""
     return ssms_gaussian_f32(state)
 
-cdef double rng_levy(Xoroshiro128PlusState* state, double alpha) noexcept nogil:
+cdef double rng_levy(ssms_rng_state* state, double alpha) noexcept nogil:
     """Generate alpha-stable (Lévy) random variate using GSL."""
     return <double>ssms_levy_f32(state, 1.0, <float>alpha)
 
-cdef float rng_levy_f32(Xoroshiro128PlusState* state, float alpha) noexcept nogil:
+cdef float rng_levy_f32(ssms_rng_state* state, float alpha) noexcept nogil:
     """Generate alpha-stable random float."""
     return ssms_levy_f32(state, 1.0, alpha)
 
-cdef float rng_gamma_f32(Xoroshiro128PlusState* state, float shape, float scale) noexcept nogil:
+cdef float rng_gamma_f32(ssms_rng_state* state, float shape, float scale) noexcept nogil:
     """Generate Gamma(shape, scale) random float using GSL."""
     return ssms_gamma_f32(state, shape, scale)
 
-cdef void rng_alloc(RngState* state) noexcept nogil:
+cdef void rng_alloc(ssms_rng_state* state) noexcept nogil:
     """Allocate GSL RNG - call once per thread before parallel block."""
     ssms_rng_alloc(state)
 
-cdef void rng_free(RngState* state) noexcept nogil:
+cdef void rng_free(ssms_rng_state* state) noexcept nogil:
     """Free GSL RNG - call once per thread after parallel block."""
     ssms_rng_free(state)
 
