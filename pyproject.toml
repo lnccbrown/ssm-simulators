@@ -233,4 +233,4 @@ generate = "ssms.cli.generate:app"
 
 [tool.setuptools.package-data]
 "ssms.cli" = ["config_network_training_lan.yaml"]
-"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd"]
+"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd", "*.pxi", "*.h"]

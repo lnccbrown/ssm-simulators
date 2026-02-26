@@ -46,39 +46,7 @@ from cssm._utils import (
 # Uses GSL's validated Ziggurat implementation for correct variance.
 # Per-thread RNG states are allocated before parallel block and freed after.
 
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type alias for consistency
-ctypedef ssms_rng_state RngState
-
-# Wrapper functions for GSL RNG
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
-    return ssms_mix_seed(base, t, n)
-
-cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
-    return ssms_gaussian_f32(state)
-
-cdef inline double rng_uniform(RngState* state) noexcept nogil:
-    return ssms_uniform(state)
+include "_rng_wrappers.pxi"
 
 DTYPE = np.float32
 
@@ -328,7 +296,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
                     break
 
                 for j in range(c_n_particles):
-                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     particles[tid][j] = particles[tid][j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, j] * noise
                     particles[tid][j] = fmax(0.0, particles[tid][j])  # Cut off at 0
 
@@ -725,7 +693,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
                 # Update particle positions with decay and inhibition
                 for i in range(c_n_particles):
                     particles_reduced_sum[tid][i] = (-1.0) * particles[tid][i] + particles_sum
-                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     particles[tid][i] = particles[tid][i] + ((v_view[k, i] - (g_view[k, 0] * particles[tid][i]) - \
                             (b_view[k, 0] * particles_reduced_sum[tid][i])) * delta_t) + \
                             (sqrt_st_view[k, i] * noise)
@@ -1103,7 +1071,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
 
             # Initialize starting points from U[0, A]
             for j in range(c_n_particles):
-                particles[tid][j] = ssms_uniform(&rng_states[tid]) * A_view[k, 0]
+                particles[tid][j] = rng_uniform_f32(&rng_states[tid]) * A_view[k, 0]
 
             t_particle = 0.0
             ix = 0
@@ -1113,7 +1081,7 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
             # Race simulation (first-past-the-post, no reflecting boundary)
             while not winner_found and t_particle <= deadline_tmp_k:
                 for j in range(c_n_particles):
-                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     particles[tid][j] = particles[tid][j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * noise
 
                     # Check for a winner

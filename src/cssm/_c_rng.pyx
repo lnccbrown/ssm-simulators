@@ -30,12 +30,12 @@ cdef extern from "gsl_rng.h" nogil:
     void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
     void ssms_rng_init(ssms_rng_state* state, uint64_t seed)
     void ssms_rng_cleanup(ssms_rng_state* state)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma)
-    float ssms_levy_f32(ssms_rng_state* state, float c, float alpha)
-    float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
+    float ssms_rng_gaussian_f32(ssms_rng_state* state)
+    float ssms_rng_gaussian_f32_sigma(ssms_rng_state* state, float sigma)
+    float ssms_rng_levy_f32(ssms_rng_state* state, float c, float alpha)
+    float ssms_rng_gamma_f32(ssms_rng_state* state, float shape, float scale)
+    float ssms_rng_uniform_f32(ssms_rng_state* state)
+    uint64_t ssms_rng_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
 
 # =============================================================================
 # WRAPPER FUNCTIONS (for internal Cython use)
@@ -50,31 +50,23 @@ cdef void rng_seed(ssms_rng_state* state, uint64_t seed) noexcept nogil:
 
 cdef uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
     """Create unique seed for thread/trial combination."""
-    return ssms_mix_seed(base_seed, thread_id, trial_id)
+    return ssms_rng_mix_seed(base_seed, thread_id, trial_id)
 
-cdef double rng_uniform(ssms_rng_state* state) noexcept nogil:
+cdef float rng_uniform_f32(ssms_rng_state* state) noexcept nogil:
     """Generate uniform random number in (0, 1)."""
-    return ssms_uniform(state)
-
-cdef double rng_gaussian(ssms_rng_state* state) noexcept nogil:
-    """Generate Gaussian random number using GSL Ziggurat algorithm."""
-    return <double>ssms_gaussian_f32(state)
+    return ssms_rng_uniform_f32(state)
 
 cdef float rng_gaussian_f32(ssms_rng_state* state) noexcept nogil:
     """Generate Gaussian random float."""
-    return ssms_gaussian_f32(state)
-
-cdef double rng_levy(ssms_rng_state* state, double alpha) noexcept nogil:
-    """Generate alpha-stable (Lévy) random variate using GSL."""
-    return <double>ssms_levy_f32(state, 1.0, <float>alpha)
+    return ssms_rng_gaussian_f32(state)
 
 cdef float rng_levy_f32(ssms_rng_state* state, float alpha) noexcept nogil:
     """Generate alpha-stable random float."""
-    return ssms_levy_f32(state, 1.0, alpha)
+    return ssms_rng_levy_f32(state, 1.0, alpha)
 
 cdef float rng_gamma_f32(ssms_rng_state* state, float shape, float scale) noexcept nogil:
     """Generate Gamma(shape, scale) random float using GSL."""
-    return ssms_gamma_f32(state, shape, scale)
+    return ssms_rng_gamma_f32(state, shape, scale)
 
 cdef void rng_alloc(ssms_rng_state* state) noexcept nogil:
     """Allocate GSL RNG - call once per thread before parallel block."""
@@ -96,13 +88,13 @@ def test_rng(seed=42, n=1000000):
     ssms_rng_init(&state, seed)
 
     # Generate samples
-    cdef double[:] uniforms = np.zeros(n, dtype=np.float64)
-    cdef double[:] gaussians = np.zeros(n, dtype=np.float64)
+    cdef float[:] uniforms = np.zeros(n, dtype=np.float32)
+    cdef float[:] gaussians = np.zeros(n, dtype=np.float32)
 
     cdef int i
     for i in range(n):
-        uniforms[i] = ssms_uniform(&state)
-        gaussians[i] = <double>ssms_gaussian_f32(&state)
+        uniforms[i] = ssms_rng_uniform_f32(&state)
+        gaussians[i] = ssms_rng_gaussian_f32(&state)
 
     ssms_rng_cleanup(&state)
 
@@ -136,11 +128,11 @@ def generate_gaussian_samples(int n, uint64_t seed=42):
     cdef ssms_rng_state state
     ssms_rng_init(&state, seed)
 
-    cdef double[:] samples = np.zeros(n, dtype=np.float64)
+    cdef float[:] samples = np.zeros(n, dtype=np.float32)
     cdef int i
 
     for i in range(n):
-        samples[i] = <double>ssms_gaussian_f32(&state)
+        samples[i] = ssms_rng_gaussian_f32(&state)
 
     ssms_rng_cleanup(&state)
 
@@ -168,18 +160,18 @@ def generate_uniform_samples(int n, uint64_t seed=42):
     cdef ssms_rng_state state
     ssms_rng_init(&state, seed)
 
-    cdef double[:] samples = np.zeros(n, dtype=np.float64)
+    cdef float[:] samples = np.zeros(n, dtype=np.float32)
     cdef int i
 
     for i in range(n):
-        samples[i] = ssms_uniform(&state)
+        samples[i] = ssms_rng_uniform_f32(&state)
 
     ssms_rng_cleanup(&state)
 
     return np.asarray(samples)
 
 
-def generate_levy_samples(int n, double alpha, uint64_t seed=42):
+def generate_levy_samples(int n, float alpha, uint64_t seed=42):
     """
     Generate alpha-stable (Lévy) samples using GSL.
 
@@ -203,11 +195,11 @@ def generate_levy_samples(int n, double alpha, uint64_t seed=42):
     cdef ssms_rng_state state
     ssms_rng_init(&state, seed)
 
-    cdef double[:] samples = np.zeros(n, dtype=np.float64)
+    cdef float[:] samples = np.zeros(n, dtype=np.float32)
     cdef int i
 
     for i in range(n):
-        samples[i] = <double>ssms_levy_f32(&state, 1.0, <float>alpha)
+        samples[i] = ssms_rng_levy_f32(&state, 1.0, alpha)
 
     ssms_rng_cleanup(&state)
 
@@ -239,11 +231,11 @@ def generate_gamma_samples(int n, float shape, float scale, uint64_t seed=42):
     cdef ssms_rng_state state
     ssms_rng_init(&state, seed)
 
-    cdef double[:] samples = np.zeros(n, dtype=np.float64)
+    cdef float[:] samples = np.zeros(n, dtype=np.float32)
     cdef int i
 
     for i in range(n):
-        samples[i] = <double>ssms_gamma_f32(&state, shape, scale)
+        samples[i] = ssms_rng_gamma_f32(&state, shape, scale)
 
     ssms_rng_cleanup(&state)
 
@@ -268,7 +260,7 @@ def py_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id):
     int
         Mixed seed value
     """
-    return ssms_mix_seed(base_seed, thread_id, trial_id)
+    return ssms_rng_mix_seed(base_seed, thread_id, trial_id)
 
 
 # =============================================================================
@@ -306,7 +298,7 @@ def test_parallel_alloc(int n_threads=4):
     print("  Seeding and generating samples...")
     for i in range(n_threads):
         ssms_rng_seed(&rng_states[i], 42 + i)
-        val = ssms_gaussian_f32(&rng_states[i])
+        val = ssms_rng_gaussian_f32(&rng_states[i])
         print(f"    State {i}: gaussian = {val:.4f}")
 
     # Step 3: Free

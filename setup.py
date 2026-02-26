@@ -46,7 +46,8 @@ OPENMP_MODULES = [
 ]
 
 # Modules that require GSL - only compiled when GSL is available.
-# _c_rng.pyx unconditionally includes gsl_rng.h which #errors without HAVE_GSL.
+# gsl_rng.h compiles with stubs when HAVE_GSL is not defined, but _c_rng
+# is only useful with real GSL, so we skip it entirely on non-GSL builds.
 GSL_MODULES = [
     "_c_rng",  # C random number generator wrapper (requires GSL)
 ]

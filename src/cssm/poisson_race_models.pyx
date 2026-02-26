@@ -36,45 +36,7 @@ from cssm._utils import (
 
 DTYPE = np.float32
 
-# =============================================================================
-# C-LEVEL GSL RNG (for parallel execution)
-# =============================================================================
-# Uses GSL's validated implementations for correct distributions.
-# Per-thread RNG states are allocated before parallel block and freed after.
-
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type alias for consistency
-ctypedef ssms_rng_state RngState
-
-# Wrapper functions for GSL RNG
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
-    return ssms_mix_seed(base, t, n)
-
-cdef inline float rng_gamma_f32(RngState* state, float shape, float scale) noexcept nogil:
-    return ssms_gamma_f32(state, shape, scale)
-
-cdef inline double rng_uniform(RngState* state) noexcept nogil:
-    return ssms_uniform(state)
+include "_rng_wrappers.pxi"
 
 # Include shared constants (MAX_THREADS, etc.)
 include "_constants.pxi"
@@ -231,7 +193,7 @@ def poisson_race(
                 choices_view[sample_n, trial_k, 0] = 1
             else:
                 # Tie: break with uniform random
-                if ssms_uniform(&rng_states[tid]) < 0.5:
+                if rng_uniform_f32(&rng_states[tid]) < 0.5:
                     rt_val = time0 + t_view[trial_k, 0]
                     choices_view[sample_n, trial_k, 0] = -1
                 else:

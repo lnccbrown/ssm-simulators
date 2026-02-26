@@ -17,7 +17,7 @@ Parallelization (n_threads parameter):
 """
 
 import cython
-from cython.parallel import prange, parallel
+from cython.parallel cimport prange, parallel, threadid
 from libc.math cimport sqrt, log, exp, fmax, fmin
 from libc.stdint cimport uint64_t
 
@@ -44,50 +44,8 @@ from cssm._utils import (
 # Import OpenMP status checker for graceful degradation
 from cssm._openmp_status import check_parallel_request
 
-# Import thread ID for per-thread RNG
-from cython.parallel cimport threadid
-
-# =============================================================================
-# C-LEVEL GSL RNG (for parallel execution)
-# =============================================================================
-# Uses GSL's validated Ziggurat implementation for correct variance.
-# Per-thread RNG states are allocated before parallel block and freed after.
-
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type alias
-ctypedef ssms_rng_state RngState
-
-# Include shared constants (MAX_THREADS, etc.)
+include "_rng_wrappers.pxi"
 include "_constants.pxi"
-
-# Wrapper functions
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
-    return ssms_mix_seed(base, t, n)
-
-cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
-    return ssms_gaussian_f32(state)
-
-# =============================================================================
 
 DTYPE = np.float32
 
@@ -311,8 +269,8 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                 v_disp = sv_k * rng_gaussian_f32(&rng_states[tid])
 
                 # Uniform for starting point and t variability: 2 * (U - 0.5) = range [-1, 1]
-                y_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * sz_k
-                t_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * st_k
+                y_disp = 2.0 * (rng_uniform_f32(&rng_states[tid]) - 0.5) * sz_k
+                t_disp = 2.0 * (rng_uniform_f32(&rng_states[tid]) - 0.5) * st_k
 
                 # Starting point: z * a + displacement
                 y = z_k * a_k + y_disp
@@ -2424,8 +2382,8 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                 v_disp = sv_k * rng_gaussian_f32(&rng_states[tid])  # Normal for drift variability
 
                 # Uniform for starting point and t variability: 2 * (U - 0.5) = range [-1, 1]
-                y_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * sz_k
-                t_disp = 2.0 * (<float>ssms_uniform(&rng_states[tid]) - 0.5) * st_k
+                y_disp = 2.0 * (rng_uniform_f32(&rng_states[tid]) - 0.5) * sz_k
+                t_disp = 2.0 * (rng_uniform_f32(&rng_states[tid]) - 0.5) * st_k
 
                 bound_val = boundaries_all[k, 0]
                 y = (-1.0) * bound_val + (z_k * 2.0 * bound_val) + y_disp

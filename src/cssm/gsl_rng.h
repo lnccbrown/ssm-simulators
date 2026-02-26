@@ -14,10 +14,10 @@
  * - ssms_rng_alloc: Allocate GSL RNG (call once per thread, before parallel)
  * - ssms_rng_free: Free GSL RNG (call once per thread, after parallel)
  * - ssms_rng_seed: Re-seed an allocated RNG (no allocation, safe in parallel)
- * - ssms_gaussian_f32: Generate Gaussian using GSL Ziggurat (variance = 1.0)
- * - ssms_levy_f32: Generate Levy alpha-stable
- * - ssms_uniform: Generate uniform in (0, 1)
- * - ssms_mix_seed: Mix seed with thread/trial IDs
+ * - ssms_rng_gaussian_f32: Generate Gaussian using GSL Ziggurat (variance = 1.0)
+ * - ssms_rng_levy_f32: Generate Levy alpha-stable
+ * - ssms_rng_uniform_f32: Generate uniform in (0, 1)
+ * - ssms_rng_mix_seed: Mix seed with thread/trial IDs
  */
 
 #ifndef SSMS_GSL_RNG_H
@@ -69,32 +69,32 @@ static inline void ssms_rng_cleanup(ssms_rng_state* state) {
 }
 
 /* Generate Gaussian using GSL's validated Ziggurat - variance = 1.0 */
-static inline float ssms_gaussian_f32(ssms_rng_state* state) {
+static inline float ssms_rng_gaussian_f32(ssms_rng_state* state) {
     return (float)gsl_ran_gaussian_ziggurat(state->rng, 1.0);
 }
 
 /* Generate Gaussian with given sigma */
-static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
+static inline float ssms_rng_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
     return (float)gsl_ran_gaussian_ziggurat(state->rng, (double)sigma);
 }
 
 /* Generate Levy alpha-stable using GSL */
-static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
+static inline float ssms_rng_levy_f32(ssms_rng_state* state, float c, float alpha) {
     return (float)gsl_ran_levy(state->rng, (double)c, (double)alpha);
 }
 
 /* Generate Gamma(shape, scale) variate using GSL */
-static inline float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale) {
+static inline float ssms_rng_gamma_f32(ssms_rng_state* state, float shape, float scale) {
     return (float)gsl_ran_gamma(state->rng, (double)shape, (double)scale);
 }
 
 /* Generate uniform in (0, 1) */
-static inline double ssms_uniform(ssms_rng_state* state) {
-    return gsl_rng_uniform_pos(state->rng);
+static inline float ssms_rng_uniform_f32(ssms_rng_state* state) {
+    return (float)gsl_rng_uniform_pos(state->rng);
 }
 
 /* Mix seed with thread/trial IDs for independent streams */
-static inline uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
+static inline uint64_t ssms_rng_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
     uint64_t z = base + t1 * 0x9E3779B97F4A7C15ULL + t2 * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
@@ -119,22 +119,22 @@ static inline void ssms_rng_init(ssms_rng_state* state, uint64_t seed) {
     (void)state; (void)seed;
 }
 static inline void ssms_rng_cleanup(ssms_rng_state* state) { (void)state; }
-static inline float ssms_gaussian_f32(ssms_rng_state* state) {
+static inline float ssms_rng_gaussian_f32(ssms_rng_state* state) {
     (void)state; return 0.0f;
 }
-static inline float ssms_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
+static inline float ssms_rng_gaussian_f32_sigma(ssms_rng_state* state, float sigma) {
     (void)state; (void)sigma; return 0.0f;
 }
-static inline float ssms_levy_f32(ssms_rng_state* state, float c, float alpha) {
+static inline float ssms_rng_levy_f32(ssms_rng_state* state, float c, float alpha) {
     (void)state; (void)c; (void)alpha; return 0.0f;
 }
-static inline float ssms_gamma_f32(ssms_rng_state* state, float shape, float scale) {
+static inline float ssms_rng_gamma_f32(ssms_rng_state* state, float shape, float scale) {
     (void)state; (void)shape; (void)scale; return 1.0f;
 }
-static inline double ssms_uniform(ssms_rng_state* state) {
-    (void)state; return 0.5;
+static inline float ssms_rng_uniform_f32(ssms_rng_state* state) {
+    (void)state; return 0.5f;
 }
-static inline uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
+static inline uint64_t ssms_rng_mix_seed(uint64_t base, uint64_t t1, uint64_t t2) {
     (void)t1; (void)t2; return base;
 }
 

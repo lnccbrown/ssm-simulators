@@ -38,45 +38,7 @@ from cssm._utils import (
     build_return_dict,
 )
 
-# =============================================================================
-# C-LEVEL GSL RNG (for parallel execution)
-# =============================================================================
-# Uses GSL's validated Ziggurat implementation for correct variance.
-# Per-thread RNG states are allocated before parallel block and freed after.
-
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type alias for consistency
-ctypedef ssms_rng_state RngState
-
-# Wrapper functions for GSL RNG
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
-    return ssms_mix_seed(base, t, n)
-
-cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
-    return ssms_gaussian_f32(state)
-
-cdef inline double rng_uniform(RngState* state) noexcept nogil:
-    return ssms_uniform(state)
+include "_rng_wrappers.pxi"
 
 DTYPE = np.float32
 
@@ -278,25 +240,25 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
             if t_particle >= max_t:
                 # At max_t, make stochastic choice
                 if bound_val <= 0.0:
-                    if rng_uniform(&rng_states[tid]) <= 0.5:
+                    if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                         choice_val = 2
-                elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
+                elif rng_uniform_f32(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
                     choice_val = 2
 
                 # Low dim choice random (a priori bias)
                 if choice_val == 0:
-                    if rng_uniform(&rng_states[tid]) <= zl1_view[k]:
+                    if rng_uniform_f32(&rng_states[tid]) <= zl1_view[k]:
                         choice_val = 1
                 else:
-                    if rng_uniform(&rng_states[tid]) <= zl2_view[k]:
+                    if rng_uniform_f32(&rng_states[tid]) <= zl2_view[k]:
                         choice_val = 3
                 decision_taken = 1
             else:
                 # High-dim choice based on position
                 if bound_val <= 0.0:
-                    if rng_uniform(&rng_states[tid]) <= 0.5:
+                    if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                         choice_val = 2
-                elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
+                elif rng_uniform_f32(&rng_states[tid]) <= ((y_h + bound_val) / (2.0 * bound_val)):
                     choice_val = 2
 
                 # Stage 2: Low-dimensional walker (only run the one determined by high-dim choice)
@@ -312,7 +274,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 if choice_val == 0:
                     # Check if already at boundary
                     if y_l1 >= bound_val or y_l1 <= (-1.0) * bound_val:
-                        if rng_uniform(&rng_states[tid]) < zl1_view[k]:
+                        if rng_uniform_f32(&rng_states[tid]) < zl1_view[k]:
                             choice_val = 1
                         decision_taken = 1
                     else:
@@ -332,7 +294,7 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 else:
                     # Check if already at boundary
                     if y_l2 >= bound_val or y_l2 <= (-1.0) * bound_val:
-                        if rng_uniform(&rng_states[tid]) < zl2_view[k]:
+                        if rng_uniform_f32(&rng_states[tid]) < zl2_view[k]:
                             choice_val = 3
                         decision_taken = 1
                     else:
@@ -356,16 +318,16 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                 if choice_val == 0:
                     # Low-dim choice based on y_l1 position
                     if bound_val <= 0.0:
-                        if rng_uniform(&rng_states[tid]) <= 0.5:
+                        if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                             choice_val = 1
-                    elif rng_uniform(&rng_states[tid]) <= ((y_l1 + bound_val) / (2.0 * bound_val)):
+                    elif rng_uniform_f32(&rng_states[tid]) <= ((y_l1 + bound_val) / (2.0 * bound_val)):
                         choice_val = 1
                 else:
                     # Low-dim choice based on y_l2 position
                     if bound_val <= 0.0:
-                        if rng_uniform(&rng_states[tid]) <= 0.5:
+                        if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                             choice_val = 3
-                    elif rng_uniform(&rng_states[tid]) <= ((y_l2 + bound_val) / (2.0 * bound_val)):
+                    elif rng_uniform_f32(&rng_states[tid]) <= ((y_l2 + bound_val) / (2.0 * bound_val)):
                         choice_val = 3
 
             rts_view[n, k, 0] = t_particle + t_view[k]

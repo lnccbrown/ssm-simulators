@@ -52,7 +52,7 @@ Understanding why each was chosen helps future developers make informed changes.
    |                          |                    | full control over|
    |                          |                    | numerical guards |
    +--------------------------+--------------------+------------------+
-   | GSL ``ssms_levy_f32``    | ~21–64             | Used in parallel |
+   | GSL ``ssms_rng_levy_f32``    | ~21–64             | Used in parallel |
    |                          |                    | path; comparable |
    |                          |                    | at most alpha    |
    +--------------------------+--------------------+------------------+
@@ -389,7 +389,7 @@ cpdef float[:] draw_random_stable(int n, float alpha):
       incurs ~6.7 ms of Python-level overhead per 100k samples from the
       ``rv_continuous`` dispatch layer.  3–7x slower overall.
     * This function (hand-rolled CMS):  ~37–62 M/s  — fastest or tied.
-    * GSL ``ssms_levy_f32`` (``_c_rng``):  ~21–64 M/s  — used in the parallel
+    * GSL ``ssms_rng_levy_f32`` (``_c_rng``):  ~21–64 M/s  — used in the parallel
       path; comparable at most alpha values.
 
     SciPy's overhead dominates and is not justified in a per-trial simulation

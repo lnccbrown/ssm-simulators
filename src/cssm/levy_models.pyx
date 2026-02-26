@@ -14,7 +14,7 @@ by allowing for heavy-tailed jump distributions.
 
 import cython
 from libc.math cimport log, sqrt, pow, fmax, fmin, tan, sin, cos
-from cython.parallel import prange, parallel
+from cython.parallel cimport prange, parallel, threadid
 from libc.stdint cimport uint64_t
 
 import numpy as np
@@ -36,51 +36,8 @@ from cssm._utils import (
     build_return_dict,
 )
 
-# =============================================================================
-# C-LEVEL GSL RNG (for parallel execution)
-# =============================================================================
-# Uses GSL's validated Ziggurat/Levy implementations for correct distributions.
-# Per-thread RNG states are allocated before parallel block and freed after.
-
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    float ssms_levy_f32(ssms_rng_state* state, float c, float alpha)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Use Cython's parallel module for thread ID
-from cython.parallel cimport threadid
-
-# Type alias for consistency
-ctypedef ssms_rng_state RngState
-
-# Include shared constants (MAX_THREADS, etc.)
+include "_rng_wrappers.pxi"
 include "_constants.pxi"
-
-# Wrapper functions
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base_seed, uint64_t thread_id, uint64_t trial_id) noexcept nogil:
-    return ssms_mix_seed(base_seed, thread_id, trial_id)
-
-cdef inline float rng_levy_f32(RngState* state, float alpha) noexcept nogil:
-    # GSL's gsl_ran_levy takes (rng, c, alpha) where c is scale parameter
-    # For our models, c=1.0 (unit scale)
-    return ssms_levy_f32(state, 1.0, alpha)
 
 # Import OpenMP status check
 from cssm._openmp_status import check_parallel_request

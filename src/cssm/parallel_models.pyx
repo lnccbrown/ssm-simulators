@@ -44,39 +44,7 @@ from cssm._utils import (
 # Uses GSL's validated Ziggurat implementation for correct variance.
 # Per-thread RNG states are allocated before parallel block and freed after.
 
-cdef extern from "gsl_rng.h" nogil:
-    # Struct with known size (pointer) so Cython can allocate arrays
-    ctypedef struct ssms_rng_state:
-        void* rng  # gsl_rng pointer (void* for Cython compatibility)
-
-    void ssms_rng_alloc(ssms_rng_state* state)
-    void ssms_rng_free(ssms_rng_state* state)
-    void ssms_rng_seed(ssms_rng_state* state, uint64_t seed)
-    float ssms_gaussian_f32(ssms_rng_state* state)
-    double ssms_uniform(ssms_rng_state* state)
-    uint64_t ssms_mix_seed(uint64_t base, uint64_t t1, uint64_t t2)
-
-# Type alias for consistency
-ctypedef ssms_rng_state RngState
-
-# Wrapper functions for GSL RNG
-cdef inline void rng_alloc(RngState* state) noexcept nogil:
-    ssms_rng_alloc(state)
-
-cdef inline void rng_free(RngState* state) noexcept nogil:
-    ssms_rng_free(state)
-
-cdef inline void rng_seed(RngState* state, uint64_t seed) noexcept nogil:
-    ssms_rng_seed(state, seed)
-
-cdef inline uint64_t rng_mix_seed(uint64_t base, uint64_t t, uint64_t n) noexcept nogil:
-    return ssms_mix_seed(base, t, n)
-
-cdef inline float rng_gaussian_f32(RngState* state) noexcept nogil:
-    return ssms_gaussian_f32(state)
-
-cdef inline double rng_uniform(RngState* state) noexcept nogil:
-    return ssms_uniform(state)
+include "_rng_wrappers.pxi"
 
 DTYPE = np.float32
 
@@ -274,7 +242,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 bound_h = boundaries_view[k, ix]
                 if y_h < (-1.0) * bound_h or y_h > bound_h or t_h > deadline_tmp_k:
                     break
-                noise = ssms_gaussian_f32(&rng_states[tid])
+                noise = rng_gaussian_f32(&rng_states[tid])
                 y_h = y_h + (vh_view[k] * delta_t) + (sqrt_st_k * noise)
                 t_h = t_h + delta_t
                 ix = ix + 1
@@ -284,9 +252,9 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
             # Determine high-dimensional choice
             bound_h = boundaries_view[k, ix] if ix < num_steps else 0.0
             if bound_h <= 0.0:
-                if rng_uniform(&rng_states[tid]) <= 0.5:
+                if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                     choice_val = 2
-            elif rng_uniform(&rng_states[tid]) <= ((y_h + bound_h) / (2.0 * bound_h)):
+            elif rng_uniform_f32(&rng_states[tid]) <= ((y_h + bound_h) / (2.0 * bound_h)):
                 choice_val = 2
 
             # OPTIMIZATION: Only simulate the RELEVANT low-dimensional walker
@@ -299,7 +267,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                     bound_l1 = boundaries_view[k, ix1]
                     if y_l1 < (-1.0) * bound_l1 or y_l1 > bound_l1 or t_l1 > deadline_tmp_k:
                         break
-                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y_l1 = y_l1 + (vl1_view[k] * delta_t) + (sqrt_st_k * noise)
                     t_l1 = t_l1 + delta_t
                     ix1 = ix1 + 1
@@ -311,9 +279,9 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 # Low-dim choice based on y_l1
                 bound_l1 = boundaries_view[k, ix1] if ix1 < num_steps else 0.0
                 if bound_l1 <= 0.0:
-                    if rng_uniform(&rng_states[tid]) <= 0.5:
+                    if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                         choice_val = 1
-                elif rng_uniform(&rng_states[tid]) <= ((y_l1 + bound_l1) / (2.0 * bound_l1)):
+                elif rng_uniform_f32(&rng_states[tid]) <= ((y_l1 + bound_l1) / (2.0 * bound_l1)):
                     choice_val = 1
                 # else choice_val remains 0
             else:
@@ -323,7 +291,7 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                     bound_l2 = boundaries_view[k, ix2]
                     if y_l2 < (-1.0) * bound_l2 or y_l2 > bound_l2 or t_l2 > deadline_tmp_k:
                         break
-                    noise = ssms_gaussian_f32(&rng_states[tid])
+                    noise = rng_gaussian_f32(&rng_states[tid])
                     y_l2 = y_l2 + (vl2_view[k] * delta_t) + (sqrt_st_k * noise)
                     t_l2 = t_l2 + delta_t
                     ix2 = ix2 + 1
@@ -335,10 +303,10 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                 # Low-dim choice based on y_l2: result will be 2 or 3
                 bound_l2 = boundaries_view[k, ix2] if ix2 < num_steps else 0.0
                 if bound_l2 <= 0.0:
-                    if rng_uniform(&rng_states[tid]) <= 0.5:
+                    if rng_uniform_f32(&rng_states[tid]) <= 0.5:
                         choice_val = 3  # high=1, low=1
                     # else choice_val stays 2
-                elif rng_uniform(&rng_states[tid]) <= ((y_l2 + bound_l2) / (2.0 * bound_l2)):
+                elif rng_uniform_f32(&rng_states[tid]) <= ((y_l2 + bound_l2) / (2.0 * bound_l2)):
                     choice_val = 3  # high=1, low=1
                 # else choice_val stays 2
 
