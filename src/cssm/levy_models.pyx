@@ -94,14 +94,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         ValueError: If n_threads exceeds the maximum supported (256).
     """
 
-    # Validate n_threads against compile-time maximum
-    if n_threads > MAX_THREADS:
-        raise ValueError(
-            f"n_threads={n_threads} exceeds maximum supported ({MAX_THREADS}). "
-            "Reduce n_threads or rebuild with higher MAX_THREADS."
-        )
-
-    # Check if parallel execution is requested and available
+    # Validate and clamp n_threads (handles <=0, >MAX_THREADS, missing OpenMP/GSL)
     n_threads = check_parallel_request(n_threads)
 
     # Get seed for reproducibility

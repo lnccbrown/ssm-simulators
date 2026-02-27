@@ -21,6 +21,7 @@ cimport numpy as np
 
 # OpenMP imports
 from cython.parallel cimport prange, parallel, threadid
+from cssm._openmp_status import check_parallel_request
 
 # Import utility functions from the _utils module
 from cssm._utils import (
@@ -184,17 +185,15 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     """
     cdef int n_particles = v.shape[1]
 
+    # Validate and clamp n_threads (handles <=0, missing OpenMP/GSL)
+    n_threads = check_parallel_request(n_threads)
+
     # Check particle count limit for parallel execution
     if n_threads > 1 and n_particles > MAX_PARTICLES:
         raise ValueError(
             f"race_model parallel execution requires n_particles <= {MAX_PARTICLES}, "
             f"got {n_particles}. Use n_threads=1 for larger particle counts."
         )
-
-    # Check OpenMP availability for parallel execution
-    if n_threads > 1:
-        from cssm._openmp_status import check_parallel_request
-        n_threads = check_parallel_request(n_threads)
 
     # Sequential path (n_threads=1)
     if n_threads == 1:
@@ -572,17 +571,15 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     """
     cdef int n_particles = v.shape[1]
 
+    # Validate and clamp n_threads (handles <=0, missing OpenMP/GSL)
+    n_threads = check_parallel_request(n_threads)
+
     # Check particle count limit for parallel execution
     if n_threads > 1 and n_particles > MAX_PARTICLES:
         raise ValueError(
             f"lca parallel execution requires n_particles <= {MAX_PARTICLES}, "
             f"got {n_particles}. Use n_threads=1 for larger particle counts."
         )
-
-    # Check OpenMP availability for parallel execution
-    if n_threads > 1:
-        from cssm._openmp_status import check_parallel_request
-        n_threads = check_parallel_request(n_threads)
 
     # Sequential path (n_threads=1)
     if n_threads == 1:
@@ -982,17 +979,15 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     """
     cdef int n_particles = v.shape[1]
 
+    # Validate and clamp n_threads (handles <=0, missing OpenMP/GSL)
+    n_threads = check_parallel_request(n_threads)
+
     # Check particle count limit for parallel execution
     if n_threads > 1 and n_particles > MAX_PARTICLES:
         raise ValueError(
             f"racing_diffusion_model parallel execution requires n_particles <= {MAX_PARTICLES}, "
             f"got {n_particles}. Use n_threads=1 for larger particle counts."
         )
-
-    # Check OpenMP availability for parallel execution
-    if n_threads > 1:
-        from cssm._openmp_status import check_parallel_request
-        n_threads = check_parallel_request(n_threads)
 
     # Sequential path (n_threads=1)
     if n_threads == 1:

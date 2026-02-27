@@ -22,6 +22,7 @@ cimport numpy as np
 
 # OpenMP imports
 from cython.parallel cimport prange, parallel, threadid
+from cssm._openmp_status import check_parallel_request
 
 # Import utility functions from the _utils module
 from cssm._utils import (
@@ -120,10 +121,8 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
         A dictionary containing simulated reaction times, choices, and metadata.
         The exact contents depend on the 'return_option' parameter.
     """
-    # Check OpenMP availability for parallel execution
-    if n_threads > 1:
-        from cssm._openmp_status import check_parallel_request
-        n_threads = check_parallel_request(n_threads)
+    # Validate and clamp n_threads (handles <=0, missing OpenMP/GSL)
+    n_threads = check_parallel_request(n_threads)
 
     # Sequential path (n_threads=1)
     if n_threads == 1:
