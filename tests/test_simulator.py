@@ -218,3 +218,40 @@ def test_make_boundary_dict_registry_path():
     assert "boundary_params" in result
     # "constant" boundary has params=["a"], so only "a" should be extracted
     assert result["boundary_params"] == {"a": 1.0}
+
+
+def test_make_boundary_dict_callable_path():
+    """make_boundary_dict extracts params when config carries a callable boundary."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    def my_boundary(t, a):
+        return a * (1.0 - 0.1 * t)
+
+    config = {"boundary": my_boundary, "boundary_params": ["a"]}
+    theta = {"a": 1.5, "v": 0.5, "z": 0.5}
+    result = make_boundary_dict(config, theta)
+    assert result["boundary_fun"] is my_boundary
+    assert result["boundary_params"] == {"a": 1.5}
+
+
+def test_make_boundary_dict_callable_warns_on_missing_params():
+    """UserWarning when callable boundary expects params absent from theta."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    def my_boundary(t, theta_param):
+        return 1.0
+
+    config = {"boundary": my_boundary, "boundary_params": ["theta_param"]}
+    theta = {"v": 0.5, "a": 1.0}
+    with pytest.warns(UserWarning, match="Callable boundary expects parameters"):
+        result = make_boundary_dict(config, theta)
+    assert result["boundary_params"] == {}
+
+
+def test_deprecated_get_lan_config_warns():
+    """get_lan_config() emits DeprecationWarning and returns same result as get_lan_kde_config()."""
+    from ssms.config import get_lan_config, get_lan_kde_config
+
+    with pytest.warns(DeprecationWarning, match="get_lan_config.*deprecated"):
+        result = get_lan_config()
+    assert result == get_lan_kde_config()
