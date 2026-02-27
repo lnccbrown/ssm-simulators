@@ -159,11 +159,17 @@ This system ensures new models are discoverable, validated, and work seamlessly 
    - `Cython` modules (`src/cssm/`): Production and high-performance
    - (Note: you are not strictly bound to `Cython` you may use `numba` or other libraries as well)
 
-4. **Configuration Builders**
+4. **Parallel Infrastructure** (optional -- for multi-threaded execution)
+   - `_rng_wrappers.pxi`: Shared GSL RNG inline wrappers, included by all OpenMP-capable `.pyx` files
+   - `_openmp_status.pyx`: Runtime detection of OpenMP/GSL availability, provides `check_parallel_request(n_threads)`
+   - `gsl_rng.h`: C header implementing a thread-safe RNG state wrapper around GSL (stubs when GSL absent)
+   - `_constants.pxi`: Shared compile-time constants (e.g., `MAX_THREADS=256`)
+
+5. **Configuration Builders**
    - `ModelConfigBuilder`: Constructs configs from names/overrides
    - Handles validation and defaults
 
-5. **Parameter Transforms** (unified pattern)
+6. **Parameter Transforms** (unified pattern)
    - Defined directly in model config under `parameter_transforms`
    - `sampling`: Applied during training data generation (e.g., ensure `a > z`)
    - `simulation`: Applied when using `Simulator` class (e.g., stack params into arrays)
@@ -198,6 +204,10 @@ ssm-simulators/
 │   └── cssm/
 │       ├── __init__.py            # Cython exports
 │       ├── ddm_models.pyx         # Example: DDM Cython
+│       ├── _rng_wrappers.pxi      # Shared parallel RNG wrappers (included by .pyx)
+│       ├── _constants.pxi         # Shared compile-time constants
+│       ├── _openmp_status.pyx     # Runtime OpenMP/GSL detection
+│       ├── gsl_rng.h              # C-level thread-safe RNG (GSL wrapper)
 │       └── your_model.pyx         # Your Cython implementation
 └── tests/
     └── test_your_model.py         # Your tests
@@ -709,7 +719,9 @@ cat src/cssm/ornstein_models.pyx  # OU process
 **Key patterns to notice**:
 - Type declarations: `np.ndarray[float, ndim=1] v`
 - Memory views: `cdef float[:] rts_view`
-- Utility functions: `set_seed()`, `draw_gaussian()`, `compute_boundary()`
+- Sequential-path utility functions: `set_seed()`, `draw_gaussian(n)`, `draw_uniform(n)`, `compute_boundary()`
+- Parallel infrastructure: `include "_rng_wrappers.pxi"`, `from cssm._openmp_status import check_parallel_request`
+- The `n_threads` parameter accepted by all simulator entry-point functions
 - Return format: Same as Python versions
 
 Try to reuse existing utilities as much as possible.
@@ -740,12 +752,17 @@ cimport numpy as np
 # Import utility functions
 from cssm._utils import (
     set_seed,
-    random_uniform,
     draw_gaussian,
+    draw_uniform,
     build_full_metadata,
     build_minimal_metadata,
     build_return_dict,
 )
+
+from cssm._openmp_status import check_parallel_request
+
+include "_rng_wrappers.pxi"
+include "_constants.pxi"
 
 DTYPE = np.float32
 
@@ -756,6 +773,8 @@ def shifted_wald(
     float max_t = 20.0,
     int n_samples = 20000,
     int n_trials = 1,
+    int n_threads = 1,
+    smooth_unif = True,
     random_state = None,
     return_option = 'full',
     **kwargs
@@ -772,8 +791,9 @@ def shifted_wald(
     cdef float mu, lam, nu, y, x, z
     cdef float wald_sample
 
-    # Set random seed
+    # Set random seed and validate thread count
     set_seed(random_state)
+    n_threads = check_parallel_request(n_threads)
 
     # Validate inputs
     if np.any(v <= 0):
@@ -807,7 +827,7 @@ def shifted_wald(
         # Sample using Michael, Schucany & Haas (1976)
         for sample_idx in range(n_samples):
             # Draw standard normal
-            nu = draw_gaussian()
+            nu = draw_gaussian(1)[0]
             y = nu * nu
 
             # Compute candidate x
@@ -815,7 +835,7 @@ def shifted_wald(
             x = x - (mu / (2.0 * lam)) * sqrt(4.0 * mu * lam * y + mu * mu * y * y)
 
             # Rejection sampling correction
-            z = random_uniform()
+            z = draw_uniform(1)[0]
             if z <= mu / (mu + x):
                 wald_sample = x
             else:
@@ -855,9 +875,30 @@ def shifted_wald(
     return build_return_dict(rts, choices, metadata)
 ```
 
-### Step 3: Export from Cython Module
+### Step 3: Register and Export Cython Module
 
-Edit `src/cssm/__init__.py`:
+**Register in `setup.py`**: Add your new `.pyx` module to the appropriate list in
+`setup.py`. Non-parallel modules go in `CYTHON_MODULES`; if your module uses OpenMP
+(i.e., it includes `_rng_wrappers.pxi` and calls `prange`), add it to
+`OPENMP_MODULES` instead:
+
+```python
+# In setup.py -- choose ONE of the two lists:
+
+# For non-parallel modules:
+CYTHON_MODULES = [
+    # ... existing entries ...
+    "shifted_wald_models",
+]
+
+# For parallel (OpenMP-capable) modules:
+OPENMP_MODULES = [
+    # ... existing entries ...
+    "shifted_wald_models",
+]
+```
+
+**Export from `src/cssm/__init__.py`**:
 
 ```python
 # Import from new module
@@ -957,6 +998,52 @@ def test_cython_matches_python():
     np.testing.assert_array_equal(result_python["rts"], result_cython["rts"])
     np.testing.assert_array_equal(result_python["choices"], result_cython["choices"])
 ```
+
+### Step 7: Adding Parallel Support (Advanced)
+
+All existing Cython simulator entry-point functions accept an `n_threads` parameter and
+call `check_parallel_request(n_threads)` unconditionally at the start of the function.
+Even if your model only implements a sequential path, you should follow this convention
+so that the API stays consistent.
+
+If you want to add a true parallel (OpenMP) path, study an existing implementation such
+as `ddm_models.pyx`, which demonstrates the full pattern:
+
+1. **Include shared infrastructure** at the top of your `.pyx` file:
+   ```cython
+   include "_rng_wrappers.pxi"
+   include "_constants.pxi"
+   ```
+   These provide per-thread GSL RNG state management (`RngState`, `rng_alloc`,
+   `rng_seed`, `rng_gaussian_f32`, `rng_uniform_f32`, etc.) and constants like
+   `MAX_THREADS`.
+
+2. **Import the OpenMP guard**:
+   ```cython
+   from cssm._openmp_status import check_parallel_request
+   ```
+
+3. **Validate `n_threads`** before entering any parallel region:
+   ```cython
+   n_threads = check_parallel_request(n_threads)
+   ```
+   This clamps invalid values (0, negative) to 1 and falls back to 1 when OpenMP/GSL
+   is unavailable.
+
+4. **Allocate per-thread RNG states** and use `prange` with `nogil`:
+   ```cython
+   cdef RngState rng_states[MAX_THREADS]
+   for i in range(n_threads):
+       rng_alloc(&rng_states[i])
+       rng_seed(&rng_states[i], seed + i)
+
+   for n in prange(n_trials, num_threads=n_threads, nogil=True):
+       tid = threadid()
+       # Use rng_gaussian_f32(&rng_states[tid]), etc.
+   ```
+
+5. **Register your module in `setup.py`**: Parallel-capable modules go in
+   `OPENMP_MODULES` (not `CYTHON_MODULES`). See the next step for details.
 
 ## 6. Testing Your Contribution
 

@@ -234,6 +234,20 @@ def test_make_boundary_dict_callable_path():
     assert result["boundary_params"] == {"a": 1.5}
 
 
+def test_make_boundary_dict_builtin_callable_uses_registry():
+    """Built-in configs with callable boundary but no boundary_params key use the registry."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+    from ssms.config import model_config
+
+    config = model_config["angle"]
+    theta = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.8}
+    result = make_boundary_dict(config, theta)
+    assert "a" in result["boundary_params"]
+    assert "theta" in result["boundary_params"]
+    assert result["boundary_params"]["a"] == 1.5
+    assert result["boundary_params"]["theta"] == 0.8
+
+
 def test_make_boundary_dict_callable_warns_on_missing_params():
     """UserWarning when callable boundary expects params absent from theta."""
     from ssms.basic_simulators.simulator import make_boundary_dict

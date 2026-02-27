@@ -267,13 +267,13 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
             - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
 
     """
-    if callable(config.get("boundary")):
-        # Model config carries the function directly (e.g. a custom boundary
-        # registered only in the current process).  Use it without a registry
-        # lookup so this also works inside multiprocessing workers that start
-        # with a fresh registry.
+    if callable(config.get("boundary")) and config.get("boundary_params"):
+        # Model config carries the function AND an explicit param-name list
+        # (e.g. a custom boundary registered only in the current process).
+        # Use it without a registry lookup so this also works inside
+        # multiprocessing workers that start with a fresh registry.
         boundary_fun = config["boundary"]
-        boundary_params_names = config.get("boundary_params", [])
+        boundary_params_names = config["boundary_params"]
         boundary_params = {
             param_name: value
             for param_name, value in theta.items()
