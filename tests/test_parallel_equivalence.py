@@ -76,8 +76,8 @@ def _assert_equivalent(seq: dict, par: dict, *, model: str = "") -> None:
     """Assert statistical equivalence between sequential and parallel outputs."""
     seq_rts = seq["rts"].ravel()
     par_rts = par["rts"].ravel()
-    seq_finite = seq_rts[np.isfinite(seq_rts)]
-    par_finite = par_rts[np.isfinite(par_rts)]
+    seq_finite = seq_rts[seq_rts > 0]
+    par_finite = par_rts[par_rts > 0]
 
     rt_diff = abs(seq_finite.mean() - par_finite.mean())
     assert rt_diff < RT_TOL, (

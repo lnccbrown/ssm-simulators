@@ -151,12 +151,13 @@ def poisson_race(
     cdef int tid
     cdef int i_thread
     cdef int c_n_threads = n_threads
+    cdef bint c_smooth_unif = smooth_unif
 
     # Flattened parallel loop variables
     cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
     cdef Py_ssize_t flat_idx
     cdef Py_ssize_t trial_k, sample_n
-    cdef float time0, time1, deadline_tmp_k, rt_val
+    cdef float time0, time1, deadline_tmp_k, rt_val, smooth_u, t_win
 
     # Allocate per-thread GSL RNGs BEFORE parallel block
     for i_thread in range(c_n_threads):
@@ -198,6 +199,15 @@ def poisson_race(
                 else:
                     rt_val = time1 + t_view[trial_k, 0]
                     choices_view[sample_n, trial_k, 0] = 1
+
+            # Apply smooth_unif jitter (winning time is min of the two gammas)
+            if time0 <= time1:
+                t_win = time0
+            else:
+                t_win = time1
+            smooth_u = smooth_unif_jitter(c_smooth_unif, t_win, deadline_tmp_k,
+                                          delta_t, rng_uniform_f32(&rng_states[tid]))
+            rt_val = rt_val + smooth_u
 
             # Check if the winning finish time exceeds deadline
             if time0 > deadline_tmp_k and time1 > deadline_tmp_k:

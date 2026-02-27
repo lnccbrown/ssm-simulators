@@ -145,6 +145,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
     cdef float noise, y_disp, v_disp, t_disp
     cdef int choice
     cdef int i_thread
+    cdef bint c_smooth_unif = smooth_unif
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -291,7 +292,9 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                     if ix >= num_steps:
                         break
 
-                rts_view[n, k, 0] = t_particle + t_tmp
+                smooth_u = smooth_unif_jitter(c_smooth_unif, t_particle, deadline_tmp,
+                                              delta_t, rng_uniform_f32(&rng_states[tid]))
+                rts_view[n, k, 0] = t_particle + t_tmp + smooth_u
 
                 if y < 0:
                     choice = 0
@@ -429,6 +432,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     cdef int tid  # Thread ID
     cdef int i_thread
     cdef int c_n_threads
+    cdef bint c_smooth_unif = smooth_unif
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -528,8 +532,10 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
                     y = y + drift_inc + sqrt_st_k * noise
                     t_particle = t_particle + delta_t
 
-                # Store results
-                rts_view[n, k, 0] = t_particle + t_k
+                # Store results with smooth_unif jitter
+                smooth_u = smooth_unif_jitter(c_smooth_unif, t_particle, deadline_tmp_k,
+                                              delta_t, rng_uniform_f32(&rng_states[tid]))
+                rts_view[n, k, 0] = t_particle + t_k + smooth_u
 
                 # Choice based on final position
                 if y >= a_k:
@@ -545,8 +551,6 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
         # Free per-thread GSL RNGs AFTER parallel block
         for i_thread in range(c_n_threads):
             rng_free(&rng_states[i_thread])
-
-        # Note: smooth_unif is not supported in parallel mode
 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(

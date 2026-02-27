@@ -193,12 +193,13 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     cdef int tid  # Thread ID
     cdef int i_thread
     cdef int c_n_threads = n_threads
+    cdef bint c_smooth_unif = smooth_unif
 
     # Flattened parallel loop variables
     cdef Py_ssize_t total_iterations = <Py_ssize_t>n_trials * <Py_ssize_t>n_samples
     cdef Py_ssize_t flat_idx
     cdef int ix, ix1, ix2
-    cdef float y_h, y_l1, y_l2, t_h, t_l1, t_l2, t_particle
+    cdef float y_h, y_l1, y_l2, t_h, t_l1, t_l2, t_particle, smooth_u
     cdef float deadline_tmp_k, sqrt_st_k
     cdef int choice_val
     cdef float bound_h, bound_l1, bound_l2, noise
@@ -309,7 +310,9 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
                     choice_val = 3  # high=1, low=1
                 # else choice_val stays 2
 
-            rts_view[n, k, 0] = t_particle + t_view[k]
+            smooth_u = smooth_unif_jitter(c_smooth_unif, t_particle, deadline_tmp_k,
+                                          delta_t, rng_uniform_f32(&rng_states[tid]))
+            rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
             rts_high_view[n, k, 0] = t_h + t_view[k]
             choices_view[n, k, 0] = choice_val
 

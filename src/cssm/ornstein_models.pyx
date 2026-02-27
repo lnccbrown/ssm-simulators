@@ -143,6 +143,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     cdef int tid  # Thread ID
     cdef int i_thread
     cdef int c_n_threads
+    cdef bint c_smooth_unif = smooth_unif
 
     # Flattened parallelization variables
     cdef Py_ssize_t flat_idx
@@ -268,7 +269,9 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                     if ix >= num_steps:
                         break
 
-                rts_view[n, k, 0] = t_particle + t_k
+                smooth_u = smooth_unif_jitter(c_smooth_unif, t_particle, deadline_tmp,
+                                              delta_t, rng_uniform_f32(&rng_states[tid]))
+                rts_view[n, k, 0] = t_particle + t_k + smooth_u
 
                 # Choice based on sign of y (same as sequential path)
                 if y > 0.0:

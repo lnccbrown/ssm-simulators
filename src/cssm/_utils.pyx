@@ -32,9 +32,10 @@ Understanding why each was chosen helps future developers make informed changes.
    100k calls.  Primary benefit is reproducibility: uniform draws now share
    the NumPy seed path set by ``set_seed()``.
 
-   ``random_uniform()`` (C stdlib ``rand()``) is retained for the 4 boundary-
-   decision coin flips inside the OpenMP parallel path (``parallel_models.pyx``)
-   where ``_global_rng`` is not thread-safe.
+   ``random_uniform()`` (C stdlib ``rand()``) is retained only for scalar
+   helpers such as ``random_exponential()`` and non-parallel call sites.
+   The OpenMP parallel paths now use per-thread GSL uniforms via
+   ``rng_uniform_f32()``.
 
 **3. Alpha-stable draws — `draw_random_stable(n, alpha)`**
    Implements the Chambers–Mallows–Stuck (CMS) algorithm using vectorised

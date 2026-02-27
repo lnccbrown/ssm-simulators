@@ -41,3 +41,16 @@ cdef inline float rng_levy_f32(RngState* state, float alpha) noexcept nogil:
 
 cdef inline float rng_gamma_f32(RngState* state, float shape, float scale) noexcept nogil:
     return ssms_rng_gamma_f32(state, shape, scale)
+
+cdef inline float smooth_unif_jitter(
+    bint smooth_unif, float t_particle, float deadline_tmp,
+    float delta_t, float u,
+) noexcept nogil:
+    if not smooth_unif:
+        return 0.0
+    if t_particle == 0.0:
+        return u * 0.5 * delta_t
+    elif t_particle < deadline_tmp:
+        return (0.5 - u) * delta_t
+    else:
+        return 0.0

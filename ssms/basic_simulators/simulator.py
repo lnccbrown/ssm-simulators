@@ -279,6 +279,16 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
             for param_name, value in theta.items()
             if param_name in boundary_params_names
         }
+        if not boundary_params and boundary_params_names:
+            import warnings
+
+            warnings.warn(
+                f"Callable boundary expects parameters {boundary_params_names} "
+                f"but none were found in theta (keys: {list(theta.keys())}). "
+                f"The boundary function may receive missing arguments.",
+                UserWarning,
+                stacklevel=2,
+            )
     else:
         boundary_name = config["boundary_name"]
         boundary_registry = get_boundary_registry()
