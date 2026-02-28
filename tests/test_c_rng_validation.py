@@ -1,0 +1,583 @@
+"""
+Validation tests for C-level random number generators.
+
+These tests verify that our custom C implementations (Ziggurat for Gaussian,
+CMS for alpha-stable) produce statistically correct distributions compared
+to reference implementations (NumPy/SciPy).
+
+These tests are marked with `pytest.mark.rng_validation` so they can be
+optionally run separately.
+
+Run with:
+    pytest tests/test_c_rng_validation.py -v
+    pytest tests/test_c_rng_validation.py -v -m "not slow"  # Skip slow tests
+"""
+
+import numpy as np
+import pytest
+from scipy import stats
+
+# Try to import the C RNG module
+try:
+    from cssm._c_rng import (
+        generate_gaussian_samples,
+        generate_uniform_samples,
+        generate_levy_samples,
+        py_mix_seed,
+    )
+
+    C_RNG_AVAILABLE = True
+except ImportError:
+    C_RNG_AVAILABLE = False
+
+
+# Custom markers for optional tests
+pytestmark = [
+    pytest.mark.rng_validation,
+]
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestZigguratGaussian:
+    """Tests for the Ziggurat Gaussian random number generator."""
+
+    def test_gaussian_mean(self):
+        """Test that Gaussian samples have approximately zero mean."""
+        samples = generate_gaussian_samples(100_000, seed=42)
+
+        # Mean should be close to 0
+        assert abs(np.mean(samples)) < 0.01, (
+            f"Mean {np.mean(samples):.4f} too far from 0"
+        )
+
+    def test_gaussian_std(self):
+        """Test that Gaussian samples have approximately unit standard deviation."""
+        samples = generate_gaussian_samples(100_000, seed=42)
+
+        # Std should be close to 1
+        assert abs(np.std(samples) - 1.0) < 0.02, (
+            f"Std {np.std(samples):.4f} too far from 1"
+        )
+
+    def test_gaussian_skewness(self):
+        """Test that Gaussian samples have approximately zero skewness."""
+        samples = generate_gaussian_samples(100_000, seed=42)
+
+        skewness = stats.skew(samples)
+        assert abs(skewness) < 0.05, f"Skewness {skewness:.4f} too far from 0"
+
+    def test_gaussian_kurtosis(self):
+        """Test that Gaussian samples have approximately zero excess kurtosis."""
+        samples = generate_gaussian_samples(100_000, seed=42)
+
+        # Fisher kurtosis (excess kurtosis, so Gaussian = 0)
+        kurt = stats.kurtosis(samples)
+        assert abs(kurt) < 0.1, f"Excess kurtosis {kurt:.4f} too far from 0"
+
+    @pytest.mark.slow
+    def test_gaussian_ks_test(self):
+        """Kolmogorov-Smirnov test against standard normal."""
+        samples = generate_gaussian_samples(50_000, seed=42)
+
+        # KS test against standard normal
+        statistic, pvalue = stats.kstest(samples, "norm")
+
+        # p-value should be > 0.01 (not significantly different from normal)
+        assert pvalue > 0.01, (
+            f"KS test failed: statistic={statistic:.4f}, p-value={pvalue:.4f}"
+        )
+
+    @pytest.mark.slow
+    def test_gaussian_anderson_darling(self):
+        """Anderson-Darling test for normality."""
+        samples = generate_gaussian_samples(10_000, seed=42)
+
+        result = stats.anderson(samples, dist="norm")
+
+        # Check against 5% significance level (index 2)
+        critical_5pct = result.critical_values[2]
+        assert result.statistic < critical_5pct, (
+            f"Anderson-Darling test failed: statistic={result.statistic:.4f} > {critical_5pct:.4f}"
+        )
+
+    def test_gaussian_multiple_seeds(self):
+        """Test that different seeds produce different but valid samples."""
+        samples1 = generate_gaussian_samples(10_000, seed=42)
+        samples2 = generate_gaussian_samples(10_000, seed=123)
+
+        # Different samples
+        assert not np.allclose(samples1, samples2)
+
+        # Both should be valid Gaussians
+        for samples in [samples1, samples2]:
+            assert abs(np.mean(samples)) < 0.05
+            assert abs(np.std(samples) - 1.0) < 0.05
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestXoroshiroUniform:
+    """Tests for the xoroshiro128+ uniform random number generator."""
+
+    def test_uniform_range(self):
+        """Test that uniform samples are in [0, 1)."""
+        samples = generate_uniform_samples(100_000, seed=42)
+
+        assert np.all(samples >= 0.0), "Some samples < 0"
+        assert np.all(samples < 1.0), "Some samples >= 1"
+
+    def test_uniform_mean(self):
+        """Test that uniform samples have mean ≈ 0.5."""
+        samples = generate_uniform_samples(100_000, seed=42)
+
+        expected_mean = 0.5
+        assert abs(np.mean(samples) - expected_mean) < 0.01, (
+            f"Mean {np.mean(samples):.4f} too far from {expected_mean}"
+        )
+
+    def test_uniform_std(self):
+        """Test that uniform samples have std ≈ 1/√12."""
+        samples = generate_uniform_samples(100_000, seed=42)
+
+        expected_std = 1.0 / np.sqrt(12)  # ≈ 0.2887
+        assert abs(np.std(samples) - expected_std) < 0.01, (
+            f"Std {np.std(samples):.4f} too far from {expected_std:.4f}"
+        )
+
+    @pytest.mark.slow
+    def test_uniform_ks_test(self):
+        """Kolmogorov-Smirnov test against uniform distribution."""
+        samples = generate_uniform_samples(50_000, seed=42)
+
+        statistic, pvalue = stats.kstest(samples, "uniform")
+
+        assert pvalue > 0.01, (
+            f"KS test failed: statistic={statistic:.4f}, p-value={pvalue:.4f}"
+        )
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestCMSAlphaStable:
+    """Tests for the Chambers-Mallows-Stuck alpha-stable generator."""
+
+    @pytest.fixture
+    def alpha_values(self):
+        """Common alpha values to test."""
+        return [1.2, 1.5, 1.8, 1.99]  # Various stability indices
+
+    def test_cms_symmetric(self, alpha_values):
+        """Test that symmetric alpha-stable samples are approximately symmetric."""
+        for alpha in alpha_values:
+            samples = generate_levy_samples(50_000, alpha, seed=42)
+
+            # Mean should be close to 0 for symmetric stable
+            # (though variance is infinite for alpha < 2)
+            median = np.median(samples)
+            assert abs(median) < 0.1, (
+                f"alpha={alpha}: Median {median:.4f} too far from 0"
+            )
+
+    def test_cms_scale(self, alpha_values):
+        """Test that samples have reasonable scale (IQR)."""
+        for alpha in alpha_values:
+            samples = generate_levy_samples(50_000, alpha, seed=42)
+
+            # IQR should be positive and reasonable
+            q75, q25 = np.percentile(samples, [75, 25])
+            iqr = q75 - q25
+
+            assert iqr > 0.5, f"alpha={alpha}: IQR {iqr:.4f} too small"
+            assert iqr < 10.0, f"alpha={alpha}: IQR {iqr:.4f} too large"
+
+    def test_cms_heavier_tails_for_lower_alpha(self):
+        """Test that lower alpha produces heavier tails."""
+        samples_12 = generate_levy_samples(50_000, alpha=1.2, seed=42)
+        samples_18 = generate_levy_samples(50_000, alpha=1.8, seed=42)
+
+        # Lower alpha should have more extreme values
+        # Use 99th percentile as a measure of tail heaviness
+        p99_12 = np.percentile(np.abs(samples_12), 99)
+        p99_18 = np.percentile(np.abs(samples_18), 99)
+
+        assert p99_12 > p99_18, (
+            f"alpha=1.2 should have heavier tails than alpha=1.8: {p99_12:.2f} vs {p99_18:.2f}"
+        )
+
+    @pytest.mark.slow
+    def test_cms_vs_scipy(self, alpha_values):
+        """Compare CMS distribution against SciPy's levy_stable."""
+        for alpha in alpha_values:
+            cms_samples = generate_levy_samples(20_000, alpha, seed=42)
+            scipy_samples = stats.levy_stable.rvs(
+                alpha, 0, size=20_000, random_state=42
+            )
+
+            # Compare quantiles
+            for q in [0.1, 0.25, 0.5, 0.75, 0.9]:
+                cms_q = np.percentile(cms_samples, q * 100)
+                scipy_q = np.percentile(scipy_samples, q * 100)
+
+                # Allow reasonable tolerance (these are different RNGs)
+                rel_diff = abs(cms_q - scipy_q) / (abs(scipy_q) + 0.1)
+                assert rel_diff < 0.3, (
+                    f"alpha={alpha}, quantile={q}: CMS={cms_q:.3f}, SciPy={scipy_q:.3f}"
+                )
+
+    def test_cms_different_seeds(self, alpha_values):
+        """Test that different seeds produce different samples."""
+        for alpha in alpha_values:
+            samples1 = generate_levy_samples(1000, alpha, seed=42)
+            samples2 = generate_levy_samples(1000, alpha, seed=123)
+
+            assert not np.allclose(samples1, samples2), (
+                f"alpha={alpha}: Seeds should differ"
+            )
+
+    def test_cms_gaussian_limit(self):
+        """Test that alpha=2 gives Gaussian distribution.
+
+        GSL's gsl_ran_levy(rng, c, alpha) for alpha=2 returns a Gaussian
+        with variance 2*c^2 (the S(2,0,c,0) stable parameterization).
+        With c=1.0, the expected std is sqrt(2) ≈ 1.4142.
+        """
+        samples = generate_levy_samples(50_000, alpha=2.0, seed=42)
+
+        assert abs(np.mean(samples)) < 0.05, (
+            f"Mean {np.mean(samples):.4f} too far from 0"
+        )
+        expected_std = np.sqrt(2.0)
+        assert abs(np.std(samples) - expected_std) < 0.05, (
+            f"Std {np.std(samples):.4f} too far from {expected_std:.4f}"
+        )
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestRNGSeedMixing:
+    """Tests for the seed mixing function."""
+
+    def test_mix_seed_deterministic(self):
+        """Test that seed mixing is deterministic."""
+        seed1 = py_mix_seed(42, 0, 0)
+        seed2 = py_mix_seed(42, 0, 0)
+
+        assert seed1 == seed2
+
+    def test_mix_seed_different_inputs(self):
+        """Test that different inputs produce different mixed seeds."""
+        seeds = set()
+        for base in [42, 123]:
+            for t1 in range(10):
+                for t2 in range(10):
+                    mixed = py_mix_seed(base, t1, t2)
+                    seeds.add(mixed)
+
+        # All combinations should produce unique seeds
+        expected_unique = 2 * 10 * 10
+        assert len(seeds) == expected_unique, (
+            f"Expected {expected_unique} unique seeds, got {len(seeds)}"
+        )
+
+
+# Integration test using actual simulator
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestSimulatorRNGIntegration:
+    """Integration tests verifying simulators use C RNG correctly."""
+
+    def test_ddm_parallel_reproducible(self):
+        """Test that DDM parallel produces reproducible results with same seed."""
+        from cssm.ddm_models import ddm_flexbound
+        from ssms.basic_simulators.boundary_functions import constant
+
+        n_trials = 10
+        v = np.array([0.5] * n_trials, dtype=np.float32)
+        a = np.array([1.5] * n_trials, dtype=np.float32)
+        z = np.array([0.5] * n_trials, dtype=np.float32)
+        t = np.array([0.3] * n_trials, dtype=np.float32)
+        deadline = np.array([10.0] * n_trials, dtype=np.float32)
+        s = np.array([1.0] * n_trials, dtype=np.float32)
+
+        boundary_params = {"a": a}
+
+        # Run twice with same seed
+        result1 = ddm_flexbound(
+            v,
+            a,
+            z,
+            t,
+            deadline,
+            s,
+            n_samples=100,
+            n_trials=n_trials,
+            boundary_fun=constant,
+            boundary_params=boundary_params,
+            random_state=42,
+            n_threads=4,
+        )
+        result2 = ddm_flexbound(
+            v,
+            a,
+            z,
+            t,
+            deadline,
+            s,
+            n_samples=100,
+            n_trials=n_trials,
+            boundary_fun=constant,
+            boundary_params=boundary_params,
+            random_state=42,
+            n_threads=4,
+        )
+
+        # Results should be identical
+        np.testing.assert_array_equal(result1["rts"], result2["rts"])
+        np.testing.assert_array_equal(result1["choices"], result2["choices"])
+
+    def test_ddm_different_seeds_differ(self):
+        """Test that different seeds produce different results."""
+        from cssm.ddm_models import ddm_flexbound
+        from ssms.basic_simulators.boundary_functions import constant
+
+        n_trials = 10
+        v = np.array([0.5] * n_trials, dtype=np.float32)
+        a = np.array([1.5] * n_trials, dtype=np.float32)
+        z = np.array([0.5] * n_trials, dtype=np.float32)
+        t = np.array([0.3] * n_trials, dtype=np.float32)
+        deadline = np.array([10.0] * n_trials, dtype=np.float32)
+        s = np.array([1.0] * n_trials, dtype=np.float32)
+
+        boundary_params = {"a": a}
+
+        result1 = ddm_flexbound(
+            v,
+            a,
+            z,
+            t,
+            deadline,
+            s,
+            n_samples=100,
+            n_trials=n_trials,
+            boundary_fun=constant,
+            boundary_params=boundary_params,
+            random_state=42,
+            n_threads=4,
+        )
+        result2 = ddm_flexbound(
+            v,
+            a,
+            z,
+            t,
+            deadline,
+            s,
+            n_samples=100,
+            n_trials=n_trials,
+            boundary_fun=constant,
+            boundary_params=boundary_params,
+            random_state=123,
+            n_threads=4,
+        )
+
+        # Results should be different
+        assert not np.allclose(result1["rts"], result2["rts"])
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestRacingDiffusionParallel:
+    """Integration tests for racing_diffusion_model parallel execution."""
+
+    @pytest.fixture
+    def rdm_params(self):
+        """Common RDM parameters for 3-particle, 5-trial setup."""
+        n_trials = 5
+        return {
+            "v": np.array([[1.0, 0.8, 0.5]] * n_trials, dtype=np.float32),
+            "b": np.array([[1.5]] * n_trials, dtype=np.float32),
+            "A": np.array([[0.5]] * n_trials, dtype=np.float32),
+            "t": np.array([[0.3]] * n_trials, dtype=np.float32),
+            "s": np.array([[1.0]] * n_trials, dtype=np.float32),
+            "deadline": np.array([10.0] * n_trials, dtype=np.float32),
+            "n_samples": 200,
+            "n_trials": n_trials,
+        }
+
+    def test_rdm_parallel_reproducible(self, rdm_params):
+        """Test that RDM parallel produces reproducible results with same seed."""
+        from cssm.race_models import racing_diffusion_model
+
+        r1 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+        r2 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        np.testing.assert_array_equal(r1["rts"], r2["rts"])
+        np.testing.assert_array_equal(r1["choices"], r2["choices"])
+
+    def test_rdm_parallel_different_seeds_differ(self, rdm_params):
+        """Test that different seeds produce different results."""
+        from cssm.race_models import racing_diffusion_model
+
+        r1 = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+        r2 = racing_diffusion_model(**rdm_params, random_state=123, n_threads=4)
+
+        assert not np.allclose(r1["rts"], r2["rts"])
+
+    def test_rdm_parallel_produces_valid_results(self, rdm_params):
+        """Test that RDM parallel results are statistically valid."""
+        from cssm.race_models import racing_diffusion_model
+
+        result = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        rts = result["rts"]
+        choices = result["choices"]
+
+        # Valid RTs should be positive (or -999 for deadline/no-response)
+        valid = rts[rts != -999]
+        assert len(valid) > 0, "Should produce some valid RTs"
+        assert (valid > 0).all(), "Valid RTs should be positive"
+
+        # Choices should be valid particle indices (0, 1, 2) or -1 for no-response
+        valid_choices = set(np.unique(choices))
+        expected_choices = {-1, 0, 1, 2}
+        assert valid_choices.issubset(expected_choices), (
+            f"Unexpected choices: {valid_choices - expected_choices}"
+        )
+
+        # When RT is -999, choice should be -1
+        deadline_mask = rts.flatten() == -999
+        if deadline_mask.any():
+            assert (choices.flatten()[deadline_mask] == -1).all(), (
+                "Choice should be -1 when RT is -999"
+            )
+
+    def test_rdm_parallel_matches_sequential_distribution(self, rdm_params):
+        """Test that parallel and sequential produce similar RT distributions."""
+        from cssm.race_models import racing_diffusion_model
+
+        rdm_params["n_samples"] = 2000
+
+        seq = racing_diffusion_model(**rdm_params, random_state=42, n_threads=1)
+        par = racing_diffusion_model(**rdm_params, random_state=42, n_threads=4)
+
+        # Compare valid RT distributions (not exact match, different RNGs)
+        seq_valid = seq["rts"][seq["rts"] != -999].flatten()
+        par_valid = par["rts"][par["rts"] != -999].flatten()
+
+        # Both should produce a reasonable fraction of valid trials
+        assert len(seq_valid) > 100
+        assert len(par_valid) > 100
+
+        # Means should be similar (within 20%)
+        seq_mean = np.mean(seq_valid)
+        par_mean = np.mean(par_valid)
+        assert abs(seq_mean - par_mean) / seq_mean < 0.2, (
+            f"Means differ too much: seq={seq_mean:.3f}, par={par_mean:.3f}"
+        )
+
+
+@pytest.mark.skipif(not C_RNG_AVAILABLE, reason="C RNG module not available")
+class TestPoissonRaceParallel:
+    """Integration tests for poisson_race parallel execution."""
+
+    @pytest.fixture
+    def pr_params(self):
+        """Common Poisson race parameters for 5-trial setup."""
+        n_trials = 5
+        return {
+            "r": np.array([[5.0, 3.0]] * n_trials, dtype=np.float32),
+            "k": np.array([[3.0, 3.0]] * n_trials, dtype=np.float32),
+            "t": np.array([[0.3, 0.3]] * n_trials, dtype=np.float32),
+            "deadline": np.array([10.0] * n_trials, dtype=np.float32),
+            "n_samples": 200,
+            "n_trials": n_trials,
+        }
+
+    def test_pr_parallel_reproducible(self, pr_params):
+        """Test that poisson_race parallel produces reproducible results."""
+        from cssm.poisson_race_models import poisson_race
+
+        r1 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+        r2 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        np.testing.assert_array_equal(r1["rts"], r2["rts"])
+        np.testing.assert_array_equal(r1["choices"], r2["choices"])
+
+    def test_pr_parallel_different_seeds_differ(self, pr_params):
+        """Test that different seeds produce different results."""
+        from cssm.poisson_race_models import poisson_race
+
+        r1 = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+        r2 = poisson_race(
+            **pr_params, random_state=123, n_threads=4, return_option="minimal"
+        )
+
+        assert not np.allclose(r1["rts"], r2["rts"])
+
+    def test_pr_parallel_produces_valid_results(self, pr_params):
+        """Test that poisson_race parallel results are statistically valid."""
+        from cssm.poisson_race_models import poisson_race
+
+        result = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        rts = result["rts"]
+        choices = result["choices"]
+
+        # Valid RTs should be positive
+        valid = rts[rts != -999]
+        assert len(valid) > 0, "Should produce some valid RTs"
+        assert (valid > 0).all(), "Valid RTs should be positive"
+
+        # Choices should be -1 or 1
+        valid_choices = set(np.unique(choices))
+        assert valid_choices.issubset({-1, 1}), f"Unexpected choices: {valid_choices}"
+
+        # Higher rate accumulator (r=5.0) should win more often
+        valid_mask = rts.flatten() != -999
+        valid_ch = choices.flatten()[valid_mask]
+        frac_minus1 = (valid_ch == -1).mean()  # accumulator 0 (rate=5.0)
+        assert frac_minus1 > 0.5, (
+            f"Faster accumulator (r=5) should win >50% but won {frac_minus1:.1%}"
+        )
+
+    def test_pr_parallel_matches_sequential_distribution(self, pr_params):
+        """Test that parallel and sequential produce similar RT distributions."""
+        from cssm.poisson_race_models import poisson_race
+
+        pr_params["n_samples"] = 2000
+
+        seq = poisson_race(
+            **pr_params, random_state=42, n_threads=1, return_option="minimal"
+        )
+        par = poisson_race(
+            **pr_params, random_state=42, n_threads=4, return_option="minimal"
+        )
+
+        seq_valid = seq["rts"][seq["rts"] != -999].flatten()
+        par_valid = par["rts"][par["rts"] != -999].flatten()
+
+        assert len(seq_valid) > 100
+        assert len(par_valid) > 100
+
+        # Means should be similar (within 20%)
+        seq_mean = np.mean(seq_valid)
+        par_mean = np.mean(par_valid)
+        assert abs(seq_mean - par_mean) / seq_mean < 0.2, (
+            f"Means differ too much: seq={seq_mean:.3f}, par={par_mean:.3f}"
+        )
+
+        # Choice proportions should be similar
+        seq_ch = seq["choices"][seq["rts"] != -999].flatten()
+        par_ch = par["choices"][par["rts"] != -999].flatten()
+        seq_frac = (seq_ch == -1).mean()
+        par_frac = (par_ch == -1).mean()
+        assert abs(seq_frac - par_frac) < 0.1, (
+            f"Choice proportions differ: seq={seq_frac:.3f}, par={par_frac:.3f}"
+        )
+
+
+if __name__ == "__main__":
+    # Run quick tests
+    pytest.main([__file__, "-v", "-m", "not slow"])

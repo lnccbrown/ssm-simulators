@@ -2,6 +2,10 @@
 This module defines a data generator class for use with LANs.
 The class defined below can be used to generate training data
 compatible with the expectations of LANs.
+
+Note: Multiprocessing start method is configured in ssms/__init__.py
+      to use 'spawn' by default for OpenMP safety. Override with
+      SSMS_MP_START_METHOD environment variable if needed.
 """
 
 import logging

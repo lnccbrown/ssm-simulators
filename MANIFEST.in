@@ -19,7 +19,7 @@ recursive-include ssms *.py
 recursive-include ssms/cli *.yaml
 
 # Include Cython source files
-recursive-include src *.pyx *.pxd
+recursive-include src *.pyx *.pxd *.pxi *.h
 
 # Exclude unwanted files
 global-exclude .gitignore

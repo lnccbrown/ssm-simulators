@@ -1,5 +1,6 @@
 from copy import deepcopy
 import logging
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -116,3 +117,155 @@ def test_simulator_runs(sim_input_data):
                     assert "metadata" in out
                     assert "rts" in out
                     assert "choices" in out
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        # ddm_models.pyx — ddm_flexbound (constant boundary)
+        "ddm",
+        # ddm_models.pyx — ddm_flexbound (angle boundary)
+        "angle",
+        # ddm_models.pyx — full_ddm
+        "full_ddm",
+        # levy_models.pyx — levy_flexbound
+        "levy",
+        # ornstein_models.pyx — ornstein_uhlenbeck
+        "ornstein",
+        # parallel_models.pyx — ddm_flexbound_par2
+        "ddm_par2",
+        # sequential_models.pyx — ddm_flexbound_seq2 (true parallel path)
+        "ddm_seq2",
+        # sequential_models.pyx — ddm_flexbound_mic2_ornstein (warning-only)
+        "ddm_mic2_adj",
+        # ddm_models.pyx — ddm_flexbound_tradeoff (warning-only)
+        "tradeoff_no_bias",
+        # race_models.pyx — race_model (warning-only)
+        "race_no_bias_2",
+        # lba_models.pyx — lba_vanilla
+        "lba2",
+        # race_models.pyx — lca
+        "lca_3",
+        # sequential_models.pyx — rlwm_lba_pw_v1 (warning-only)
+        "dev_rlwm_lba_pw_v1",
+    ],
+)
+def test_simulator_runs_parallel(model):
+    """Smoke test: n_threads=4 does not crash, covering every distinct Cython backend."""
+    cfg = model_config[model]
+    theta = {p: cfg["default_params"][i] for i, p in enumerate(cfg["params"])}
+    out = simulator(model=model, theta=theta, n_samples=10, n_threads=4)
+    assert isinstance(out, dict)
+    assert "rts" in out
+    assert "choices" in out
+    assert "metadata" in out
+
+
+def test_simulator_sigma_noise_conflict_raises():
+    """ValueError when 's' is in theta and sigma_noise is also explicitly passed."""
+    with pytest.raises(ValueError, match="sigma_noise parameter should be None"):
+        simulator(
+            model="ddm",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "s": 1.0},
+            sigma_noise=0.5,
+            n_samples=5,
+        )
+
+
+def test_simulator_no_noise_flag():
+    """no_noise=True suppresses diffusion noise (sigma_noise set to 0.0 internally)."""
+    out = simulator(
+        model="ddm",
+        theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
+        no_noise=True,
+        n_samples=50,
+    )
+    assert "rts" in out
+    assert "choices" in out
+
+
+def test_simulator_bad_return_type_raises():
+    """TypeError when the underlying simulator callable returns a non-dict."""
+    from ssms.config import ModelConfigBuilder
+
+    real_config = ModelConfigBuilder.from_model("ddm")
+    bad_config = dict(real_config)
+    bad_config["simulator"] = lambda **kwargs: [1, 2, 3]
+
+    # ModelConfigBuilder is imported locally inside simulator(), so patch at the source.
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=bad_config):
+        with pytest.raises(
+            TypeError, match="Expected simulator to return a dictionary"
+        ):
+            simulator(
+                model="ddm",
+                theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
+                n_samples=5,
+            )
+
+
+def test_make_boundary_dict_registry_path():
+    """make_boundary_dict uses boundary registry when 'boundary' key is not callable."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    # Old-style config: no callable "boundary" key, only "boundary_name"
+    # This exercises the else-branch (lines 283-291) that does a registry lookup.
+    config = {"boundary_name": "constant"}
+    theta = {"a": 1.0, "z": 0.5, "v": 1.0}
+    result = make_boundary_dict(config, theta)
+    assert "boundary_fun" in result
+    assert callable(result["boundary_fun"])
+    assert "boundary_params" in result
+    # "constant" boundary has params=["a"], so only "a" should be extracted
+    assert result["boundary_params"] == {"a": 1.0}
+
+
+def test_make_boundary_dict_callable_path():
+    """make_boundary_dict extracts params when config carries a callable boundary."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    def my_boundary(t, a):
+        return a * (1.0 - 0.1 * t)
+
+    config = {"boundary": my_boundary, "boundary_params": ["a"]}
+    theta = {"a": 1.5, "v": 0.5, "z": 0.5}
+    result = make_boundary_dict(config, theta)
+    assert result["boundary_fun"] is my_boundary
+    assert result["boundary_params"] == {"a": 1.5}
+
+
+def test_make_boundary_dict_builtin_callable_uses_registry():
+    """Built-in configs with callable boundary but no boundary_params key use the registry."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+    from ssms.config import model_config
+
+    config = model_config["angle"]
+    theta = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.8}
+    result = make_boundary_dict(config, theta)
+    assert "a" in result["boundary_params"]
+    assert "theta" in result["boundary_params"]
+    assert result["boundary_params"]["a"] == 1.5
+    assert result["boundary_params"]["theta"] == 0.8
+
+
+def test_make_boundary_dict_callable_warns_on_missing_params():
+    """UserWarning when callable boundary expects params absent from theta."""
+    from ssms.basic_simulators.simulator import make_boundary_dict
+
+    def my_boundary(t, theta_param):
+        return 1.0
+
+    config = {"boundary": my_boundary, "boundary_params": ["theta_param"]}
+    theta = {"v": 0.5, "a": 1.0}
+    with pytest.warns(UserWarning, match="Callable boundary expects parameters"):
+        result = make_boundary_dict(config, theta)
+    assert result["boundary_params"] == {}
+
+
+def test_deprecated_get_lan_config_warns():
+    """get_lan_config() emits DeprecationWarning and returns same result as get_lan_kde_config()."""
+    from ssms.config import get_lan_config, get_lan_kde_config
+
+    with pytest.warns(DeprecationWarning, match="get_lan_config.*deprecated"):
+        result = get_lan_config()
+    assert result == get_lan_kde_config()

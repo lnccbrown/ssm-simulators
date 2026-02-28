@@ -267,17 +267,38 @@ def make_boundary_dict(config: dict, theta: dict) -> dict:
             - boundary_fun (callable): The boundary function corresponding to the specified boundary name.
 
     """
-    boundary_name = config["boundary_name"]
-    boundary_registry = get_boundary_registry()
-    boundary_info = boundary_registry.get(boundary_name)
+    if callable(config.get("boundary")) and config.get("boundary_params"):
+        # Model config carries the function AND an explicit param-name list
+        # (e.g. a custom boundary registered only in the current process).
+        # Use it without a registry lookup so this also works inside
+        # multiprocessing workers that start with a fresh registry.
+        boundary_fun = config["boundary"]
+        boundary_params_names = config["boundary_params"]
+        boundary_params = {
+            param_name: value
+            for param_name, value in theta.items()
+            if param_name in boundary_params_names
+        }
+        if not boundary_params and boundary_params_names:
+            import warnings
 
-    boundary_params = {
-        param_name: value
-        for param_name, value in theta.items()
-        if param_name in boundary_info["params"]
-    }
-
-    boundary_fun = boundary_info["fun"]
+            warnings.warn(
+                f"Callable boundary expects parameters {boundary_params_names} "
+                f"but none were found in theta (keys: {list(theta.keys())}). "
+                f"The boundary function may receive missing arguments.",
+                UserWarning,
+                stacklevel=2,
+            )
+    else:
+        boundary_name = config["boundary_name"]
+        boundary_registry = get_boundary_registry()
+        boundary_info = boundary_registry.get(boundary_name)
+        boundary_params = {
+            param_name: value
+            for param_name, value in theta.items()
+            if param_name in boundary_info["params"]
+        }
+        boundary_fun = boundary_info["fun"]
     boundary_dict = {
         "boundary_params": boundary_params,
         "boundary_fun": boundary_fun,
@@ -571,6 +592,7 @@ def simulator(
     smooth_unif: bool = True,
     random_state: int | None = None,
     return_option: str = "full",
+    n_threads: int = 1,
 ) -> dict:
     """Basic data simulator for the models included in HDDM.
 
@@ -607,6 +629,17 @@ def simulator(
             metadata contains the model parameters and some additional
             information. 'metadata' is a simpler dictionary with less information
             if 'minimal' is chosen.
+        n_threads: int <default=1>
+            Number of threads for parallel execution. If > 1 and OpenMP is available,
+            uses multi-threaded simulation. Note: trajectory recording is only
+            available with n_threads=1. For models that don't support n_threads yet,
+            this parameter is silently ignored.
+
+            **Reproducibility note:** the sequential path (n_threads=1) uses NumPy's
+            RNG, while the parallel path (n_threads>1) uses a C-level GSL/Ziggurat
+            RNG. Results with a fixed ``random_state`` are reproducible *within* a
+            given ``n_threads`` value, but will differ *across* n_threads values.
+            Both paths produce statistically equivalent distributions.
 
     Return
     ------
@@ -649,6 +682,7 @@ def simulator(
         "random_state": random_state,
         "return_option": return_option,
         "smooth_unif": smooth_unif,
+        "n_threads": n_threads,
     }
 
     # Update all values of sim_param_dict that are defined in locals()

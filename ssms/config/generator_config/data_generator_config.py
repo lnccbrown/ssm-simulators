@@ -14,8 +14,11 @@ def get_kde_simulation_filters() -> dict:
     }
 
 
-def get_lan_config(model: str = "ddm") -> dict:
-    """Get LAN configuration in nested structure.
+def get_lan_kde_config(model: str = "ddm") -> dict:
+    """Get LAN-KDE pipeline configuration in nested structure.
+
+    This configuration is for LAN training data generation using
+    simulation + Kernel Density Estimation (KDE) for likelihood approximation.
 
     Returns configuration with clear separation of concerns:
     - 'pipeline': execution settings (n_parameter_sets, n_cpus, etc.)
@@ -34,7 +37,7 @@ def get_lan_config(model: str = "ddm") -> dict:
     Returns
     -------
     dict
-        Nested configuration dictionary for LAN training
+        Nested configuration dictionary for LAN training via simulation + KDE
     """
     return {
         "pipeline": {
@@ -70,6 +73,32 @@ def get_lan_config(model: str = "ddm") -> dict:
         },
         "model": model,
     }
+
+
+def get_lan_config(model: str = "ddm") -> dict:
+    """Deprecated: Use get_lan_kde_config() instead.
+
+    This function is kept for backward compatibility and will be removed
+    in a future version.
+
+    Parameters
+    ----------
+    model : str, default="ddm"
+        Model name, optionally with variant suffixes like "_deadline".
+
+    Returns
+    -------
+    dict
+        Nested configuration dictionary for LAN training via simulation + KDE
+    """
+    import warnings
+
+    warnings.warn(
+        "get_lan_config() is deprecated, use get_lan_kde_config() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return get_lan_kde_config(model=model)
 
 
 def get_ratio_estimator_config(model: str = "ddm") -> dict:
@@ -192,7 +221,7 @@ def get_default_generator_config(
     Only nested structure is supported. Flat configs are no longer accepted.
     """
     config_functions = {
-        "lan": get_lan_config,
+        "lan": get_lan_kde_config,
         "ratio_estimator": get_ratio_estimator_config,
         "defective_detector": get_defective_detector_config,
         "snpe": get_snpe_config,

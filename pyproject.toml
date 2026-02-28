@@ -36,6 +36,12 @@ classifiers = [
 [project.optional-dependencies]
 mlflow = ["mlflow>=3.6.0"]
 pyddm = ["pyddm>=0.9.0"]
+# Parallel backend optional dependencies
+numba = ["numba>=0.59.0"]
+jax = ["jax>=0.4.20", "jaxlib>=0.4.20"]
+jax-cuda = ["jax[cuda12]>=0.4.20"]  # For GPU support
+parallel = ["numba>=0.59.0", "jax>=0.4.20", "jaxlib>=0.4.20"]  # All CPU-based parallel backends
+parallel-all = ["numba>=0.59.0", "jax>=0.4.20", "jaxlib>=0.4.20", "maturin>=1.4"]  # Including Rust build tool
 dev = [
     "pytest",
     "mypy",
@@ -112,6 +118,9 @@ addopts = [
 ]
 markers = [
     "notebooks: mark test as a notebook test (skipped unless --run-notebooks is passed)",
+    "statistical: mark test as a statistical equivalence test (skipped unless --run-statistical is passed)",
+    "slow: mark test as slow (large sample sizes, may take several seconds)",
+    "rng_validation: mark test as an RNG validation test",
 ]
 
 [tool.ruff]
@@ -201,6 +210,8 @@ omit = [
     "*/setup.py",
     "*/__init__.py",
     "tests/*",
+    # Benchmark and reference scripts - not package code, not unit tests
+    "benchmarks/*",
     # Optional PyDDM dependency - exclude from coverage
     "ssms/dataset_generators/pipelines/pyddm_pipeline.py",
     "ssms/dataset_generators/strategies/pyddm_strategy.py",
@@ -222,4 +233,4 @@ generate = "ssms.cli.generate:app"
 
 [tool.setuptools.package-data]
 "ssms.cli" = ["config_network_training_lan.yaml"]
-"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd"]
+"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd", "*.pxi", "*.h"]

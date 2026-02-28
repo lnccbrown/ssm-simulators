@@ -372,6 +372,26 @@ class TestBackwardCompatibility:
         np.testing.assert_array_equal(legacy_results["choices"], new_results["choices"])
 
 
+class TestCustomBoundarySimulation:
+    """Test end-to-end simulation with callable boundary via Simulator class."""
+
+    def test_simulate_with_custom_boundary(self):
+        """Simulator with a callable boundary runs make_boundary_dict's callable path."""
+
+        def shrinking_boundary(t, a, **kwargs):
+            return a * np.maximum(1.0 - 0.05 * t, 0.1)
+
+        sim = Simulator("ddm", boundary=shrinking_boundary, boundary_params=["a"])
+        results = sim.simulate(
+            theta={"v": 0.5, "a": 1.5, "z": 0.5, "t": 0.3},
+            n_samples=10,
+            random_state=42,
+        )
+        assert "rts" in results
+        assert "choices" in results
+        assert len(results["rts"]) == 10
+
+
 class TestEdgeCases:
     """Test edge cases and error handling."""
 

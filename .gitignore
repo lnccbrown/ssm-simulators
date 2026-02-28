@@ -14,18 +14,11 @@ sysconfig.sh
 __marimo__/
 
 # Cython build outputs
-# Generated C++ files from Cython
+# Generated C/C++ files from Cython
 src/cssm/*.cpp
-# Generated C files from Cython
 src/cssm/*.c
-# Backup files
-*.bak
-
-# Cython build outputs
-# Generated C++ files from Cython
-src/cssm/*.cpp
-# Generated C files from Cython
-src/cssm/*.c
+ssms/parallel_backends/cython_parallel/*.c
+ssms/parallel_backends/cython_parallel/*.cpp
 # Backup files
 *.bak
 

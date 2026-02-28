@@ -24,7 +24,8 @@ from .generator_config.data_generator_config import (
     get_default_generator_config,
     get_defective_detector_config,
     get_kde_simulation_filters,
-    get_lan_config,
+    get_lan_config,  # Deprecated alias for get_lan_kde_config
+    get_lan_kde_config,
     get_ratio_estimator_config,
 )
 from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
@@ -75,7 +76,8 @@ __all__ = [
     "get_default_generator_config",
     "get_kde_simulation_filters",
     # Approach-specific configs (for advanced users)
-    "get_lan_config",
+    "get_lan_kde_config",
+    "get_lan_config",  # Deprecated alias for get_lan_kde_config
     "get_defective_detector_config",
     "get_ratio_estimator_config",
 ]

@@ -518,6 +518,7 @@ class Simulator:
         smooth_unif: bool = True,
         random_state: int | None = None,
         return_option: str = "full",
+        n_threads: int = 1,
     ) -> dict:
         """Run simulation with given parameters.
 
@@ -542,6 +543,10 @@ class Simulator:
             Random seed for reproducibility
         return_option : str, default="full"
             Output format: "full" or "minimal"
+        n_threads : int, default=1
+            Number of threads for parallel execution. If > 1 and OpenMP is available,
+            uses multi-threaded simulation. Note: trajectory recording is only
+            available with n_threads=1.
 
         Returns
         -------
@@ -583,6 +588,7 @@ class Simulator:
             "random_state": random_state,
             "return_option": return_option,
             "smooth_unif": smooth_unif,
+            "n_threads": n_threads,
         }
 
         # Handle noise

@@ -219,8 +219,13 @@ def test_strategy_log_likelihoods_are_reasonable(
     positive_rt_mask = rt_col >= 0
     positive_rt_liks = lik_col[positive_rt_mask]
 
-    # Log-likelihoods for positive RTs should be <= 0
-    assert np.all(positive_rt_liks <= 0)
+    # Log-likelihoods for positive RTs are typically <= 0.
+    # KDE density can legitimately exceed 1 near distribution peaks,
+    # producing small positive log-likelihoods. Allow a small tolerance.
+    assert np.all(positive_rt_liks <= 1.0), (
+        f"Unexpectedly large positive log-likelihoods found: "
+        f"max={positive_rt_liks.max():.4f}"
+    )
 
 
 def test_strategy_with_separate_response_channels(

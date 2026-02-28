@@ -9,6 +9,7 @@ cpdef float random_uniform()
 cpdef float random_exponential()
 cpdef float[:] draw_random_stable(int n, float alpha)
 cpdef float[:] draw_gaussian(int n)
+cpdef float[:] draw_uniform(int n)
 
 # Helper functions
 cpdef int sign(float x)
