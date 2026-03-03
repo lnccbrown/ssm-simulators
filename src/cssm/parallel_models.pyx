@@ -347,6 +347,8 @@ def ddm_flexbound_par3(np.ndarray[float, ndim = 1] vh,
     -----------
     vh, vl1, vl2 : np.ndarray
         Drift rates for high-dimensional and two low-dimensional choices.
+    coh : np.ndarray
+        Coherence magnitude that modulates position of high-dimensional and low-dimensional walkers. 
     a : np.ndarray
         Initial boundary separation.
     zh, zl1, zl2 : np.ndarray
@@ -458,7 +460,7 @@ def ddm_flexbound_par3(np.ndarray[float, ndim = 1] vh,
             # Random walks until y_h hits bound
             while (y_h >= (-1) * boundary_view[ix]) and (y_h <= boundary_view[ix]) and (t_h <= deadline_tmp):
                 extra = coh_view[k] * t_h * 0.05 
-                y_h += ((vh_view[k] - extra) * delta_t) + (sqrt_st * gaussian_values[m])
+                y_h += ((vh_view[k] + extra) * delta_t) + (sqrt_st * gaussian_values[m])
                 t_h += delta_t
                 ix += 1
                 m += 1
@@ -490,7 +492,13 @@ def ddm_flexbound_par3(np.ndarray[float, ndim = 1] vh,
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
                 ix1 = 0
                 while (y_l1 >= (-1) * boundary_view[ix1]) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
-                    y_l1 += (vl1_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+                    # Ensures that there is an additive effect of high coherence for irrelevant dimension
+                    if coh_view[k] < 0: 
+                        extra_l1 = -coh_view[k] * t_l1 * 0.05
+                    else:
+                        extra_l1 = 0
+
+                    y_l1 += ((vl1_view[k] + extra_l1) * delta_t) + (sqrt_st * gaussian_values[m])
                     t_l1 += delta_t
                     ix1 += 1
                     m += 1
@@ -506,7 +514,12 @@ def ddm_flexbound_par3(np.ndarray[float, ndim = 1] vh,
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
                 ix2 = 0
                 while (y_l2 >= (-1) * boundary_view[ix2]) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
-                    y_l2 += (vl2_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
+                    # If coherence is positive, then add to position. If negative, then should have no bearing on relevant dimension
+                    if coh_view[k] > 0: 
+                        extra_l2 = coh_view[k] * t_l2 * 0.05
+                    else:
+                        extra_l2 = 0
+                    y_l2 += ((vl2_view[k] + extra_l2) * delta_t) + (sqrt_st * gaussian_values[m])
                     t_l2 += delta_t
                     ix2 += 1
                     m += 1
