@@ -135,6 +135,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
     cdef int k, n, ix, d, flag, r1, r2
     cdef float y, t_particle, drift_val, deadline_tmp, sqrt_st
     cdef float mu1, mu2
+    cdef int m = 0
     cdef int mu = 0
 
     cdef float c_eta, c_kappa, c_a, c_z, c_t
@@ -195,6 +196,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
                                              d)
                 y += drift_val * delta_t + sqrt_st * gaussian_values[ix]
                 t_particle += delta_t
+                m += 1 
                 ix += 1 
 
                 if n == 0: 
