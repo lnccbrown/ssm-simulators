@@ -77,7 +77,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
                   # ---- simulation settings (not model params) ----
                   float gamma_shape = 6.0,
                   float gamma_scale = 0.1,
-                  int max_fixations = 1000,
+                  int max_fixations = 100,
                   float delta_t = 0.001,
                   float max_t = 20.0,
                   int n_samples = 1000,
