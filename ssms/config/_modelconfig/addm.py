@@ -8,7 +8,7 @@ def get_addm_constant_config():
     """Get the configuration for the ADDM model."""
     return { 
         "name": "addm",
-        "params": ["eta", "kappa", "a", "x0", "t"], 
+        "params": ["eta", "kappa", "a", "z", "t"], 
         "param_bounds": [[0.0, 0.0, -2.5, -2.5, 0.01], [3.0, 3.0, 2.5, 2.5, 1.0]],
         "boundary_name": "constant", 
         "boundary": bf.constant,

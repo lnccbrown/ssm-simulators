@@ -342,6 +342,7 @@ __all__ = [
     "get_ddm_mic2_multinoise_angle_no_bias_config",
     "get_ddm_mic2_multinoise_weibull_no_bias_config",
     "get_poisson_race_config",
+    "get_addm_config",
 ]
 
 # Validate

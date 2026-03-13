@@ -110,7 +110,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
     choices = setup['choices']
     cdef float[:, :] traj_view = traj 
     cdef float[:, :, :] rts_view     = rts
-    cdef float[:, :, :] choices_view = choices
+    cdef int[:, :, :] choices_view = choices
     cdef float[:] gaussian_values = setup['gaussian_values']
     cdef float[:] uniform_values  = setup['uniform_values']
     t_s = setup['t_s']
@@ -236,7 +236,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
             't': t,
             's': s
         }
-        full_meta = build_full_metadata(minimal_meta= minimal_meta, sim_config=sim_config, params=params, traj=traj)
+        full_meta = build_full_metadata(minimal_metadata= minimal_meta, sim_config=sim_config, params=params, traj=traj)
         return build_return_dict(rts, choices, full_meta)
 
     elif return_option == 'minimal': 
