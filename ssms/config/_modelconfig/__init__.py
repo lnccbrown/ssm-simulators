@@ -134,7 +134,7 @@ from .shrink import (
 )
 
 from .addm import (
-    get_addm_constant_config
+    get_addm_config
 )
 from .validation import get_invalid_configs
 
@@ -229,7 +229,7 @@ def get_model_config():
         "ddm_mic2_multinoise_conflict_gamma_no_bias": get_ddm_mic2_multinoise_conflict_gamma_no_bias_config(),
         "ddm_mic2_multinoise_angle_no_bias": get_ddm_mic2_multinoise_angle_no_bias_config(),
         "ddm_mic2_multinoise_weibull_no_bias": get_ddm_mic2_multinoise_weibull_no_bias_config(),
-        "addm_constant": get_addm_constant_config(),
+        "addm": get_addm_config(),
         "full_ddm": get_full_ddm_config(),
         "full_ddm_rv": get_full_ddm_rv_config(),
         "levy": get_levy_config(),

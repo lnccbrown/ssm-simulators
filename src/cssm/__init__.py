@@ -24,7 +24,7 @@ from .ddm_models import (
 )
 
 from .addm_models import (
-    addm_constant
+    addm
 )
 
 from .race_models import race_model, lca, racing_diffusion_model
@@ -57,7 +57,7 @@ __all__ = [
     "ddm_sdv",
     "ddm_flexbound_tradeoff",
     # ADDM model 
-    "addm_constant",
+    "addm",
     # Race models
     "race_model",
     "lca",

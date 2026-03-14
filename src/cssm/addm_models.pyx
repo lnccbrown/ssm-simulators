@@ -67,10 +67,11 @@ cdef double _piecewise_drift(double t,
 
 
 
-def addm_constant(np.ndarray[float, ndim=1] eta,
+def addm(np.ndarray[float, ndim=1] eta,
                   np.ndarray[float, ndim=1] kappa,
                   np.ndarray[float, ndim=1] a,
                   np.ndarray[float, ndim=1] z,
+                  np.ndarray[float, ndim=1] b,
                   np.ndarray[float, ndim=1] t,
                   np.ndarray[float, ndim=1] deadline,
                   np.ndarray[float, ndim=1] s,
@@ -78,7 +79,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
                   float gamma_shape = 6.0,
                   float gamma_scale = 0.1,
                   int max_fixations = 100,
-                  float delta_t = 0.001,
+                  float delta_t = 0.0001,
                   float max_t = 20.0,
                   int n_samples = 1000,
                   int n_trials = 10,
@@ -98,9 +99,6 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
     ddm_models.pyx.
     """
 
-    # ------------------------------------------------------------------
-    # 0.  Basic sizes / views
-    # ------------------------------------------------------------------
 
     cdef uint64_t seed = random_state if random_state is not None else np.random.randint(0, 2**31)
     rng = np.random.default_rng(seed)
@@ -117,16 +115,12 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
 
-
-    # ------------------------------------------------------------------
-    # 1.  Allocate output arrays  (n_samples × n_trials × 1)
-    # ------------------------------------------------------------------
-
     # Param Views 
     cdef float[:] eta_view   = eta
     cdef float[:] kappa_view = kappa
     cdef float[:] a_view     = a
     cdef float[:] z_view     = z
+    cdef float[:] b_view     = b
     cdef float[:] t_view     = t
     cdef float[:] s_view     = s
     cdef float[:] deadline_view = deadline
@@ -138,14 +132,10 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
     cdef int m = 0
     cdef int mu = 0
 
-    cdef float c_eta, c_kappa, c_a, c_z, c_t
-    cdef int choice
-    cdef float rt
     cdef double[::1] mu_view
     cdef double[::1] sacc_view
 
     for k in range(n_trials):
-        # --- per-trial constants (may vary across trials) ---
         deadline_tmp = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
         sqrt_st = delta_t_sqrt * s_view[k]
         for n in range(n_samples):
@@ -188,7 +178,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
             y = z_view[k]   # actual starting position
             t_particle = 0.0
             ix = 0
-            while y <= a_view[k] and y >= -a_view[k] and t_particle <= deadline_tmp:
+            while y <= a_view[k] - b_view[k] * t_particle and y >= -a_view[k] + b_view[k] * t_particle and t_particle <= deadline_tmp:
                 # --- step the particle ---
                 drift_val = _piecewise_drift(t_particle,
                                              &mu_view[0],
@@ -217,12 +207,8 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
             rts_view[n, k, 0] = t_particle + t_view[k] + smooth_u
             choices_view[n, k, 0] = sign(y)
         
-    # ------------------------------------------------------------------
-    # 4.  Build return dict (same keys the pipeline expects)
-    # ------------------------------------------------------------------
-
     minimal_meta = build_minimal_metadata(
-        simulator_name = 'addm_constant', 
+        simulator_name = 'addm', 
         possible_choices = [-1, 1],
         n_samples = n_samples, 
         n_trials = n_trials,
@@ -235,6 +221,7 @@ def addm_constant(np.ndarray[float, ndim=1] eta,
             'kappa': kappa,
             'a': a,
             'z': z,
+            'b': b,
             't': t,
             's': s
         }
