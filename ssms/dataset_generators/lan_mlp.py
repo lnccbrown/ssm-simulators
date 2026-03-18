@@ -20,7 +20,7 @@ from ssms.dataset_generators.protocols import (
     DataGenerationPipelineProtocol,
 )
 
-import pickle
+import cloudpickle as pickle
 import numpy as np
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
