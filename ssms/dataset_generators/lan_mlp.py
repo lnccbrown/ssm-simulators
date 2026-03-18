@@ -9,6 +9,7 @@ Note: Multiprocessing start method is configured in ssms/__init__.py
 """
 
 import logging
+import os
 import uuid
 import warnings
 from copy import deepcopy
@@ -314,12 +315,49 @@ class TrainingDataGenerator:  # noqa: N801
         )
 
         if n_cpus_config == "all":
-            n_cpus = psutil.cpu_count(logical=False)
+            n_cpus = None
+
+            # 1. Try process affinity first (best for SLURM/containers)
+            try:
+                if hasattr(os, "sched_getaffinity"):
+                    n_cpus = len(os.sched_getaffinity(0))
+                elif hasattr(
+                    os, "process_cpu_count"
+                ):  # pragma: no cover (Python 3.13+ without sched_getaffinity)
+                    n_cpus = os.process_cpu_count()
+            except Exception as e:
+                logger.debug("Could not get process affinity: %s", e)
+
+            # 2. Fallback to OS logical core count
+            if n_cpus is None:
+                try:
+                    n_cpus = os.cpu_count()
+                except Exception as e:
+                    logger.debug("os.cpu_count() failed: %s", e)
+
+            # 3. Fallback to psutil
+            if n_cpus is None:
+                try:
+                    n_cpus = psutil.cpu_count(logical=False) or psutil.cpu_count(
+                        logical=True
+                    )
+                except Exception as e:
+                    logger.debug("psutil.cpu_count() failed: %s", e)
+
+            # 4. Fail fast if we STILL don't know
+            if n_cpus is None:
+                raise RuntimeError(
+                    "Could not determine CPU count automatically. "
+                    "Please specify 'n_cpus' explicitly as an integer in your config."
+                )
+
+            # 5. Informative logging
+            logger.info("Resolved 'n_cpus'='all' to %d cores.", n_cpus)
         else:
             n_cpus = n_cpus_config
 
         # Update nested config
-        if "pipeline" not in self.generator_config:
+        if "pipeline" not in self.generator_config:  # pragma: no cover
             self.generator_config["pipeline"] = {}
         self.generator_config["pipeline"]["n_cpus"] = n_cpus
 
