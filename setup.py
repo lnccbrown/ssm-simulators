@@ -30,6 +30,7 @@ import numpy
 CYTHON_MODULES = [
     "_utils",
     "lba_models",
+    "addm_models"
 ]
 
 # Modules that benefit from OpenMP (will still build without it, but with OpenMP flags)
