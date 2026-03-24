@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ssms import OMISSION_SENTINEL
+from ssms.basic_simulators import OMISSION_SENTINEL
 from ssms.basic_simulators.simulator import simulator as ssm_simulator
 
 from .rl_config import RLSSMModelConfig
