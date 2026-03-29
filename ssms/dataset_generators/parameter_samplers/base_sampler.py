@@ -83,7 +83,7 @@ class AbstractParameterSampler(ABC):
         if rng is None:
             rng = np.random.default_rng()
 
-        samples = {}
+        samples: dict[str, np.ndarray] = {}
 
         # Sample in topological order (dependencies first)
         for param in self._sampling_order:

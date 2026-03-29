@@ -46,8 +46,8 @@ class KDELikelihoodEstimator:
             Default is False.
         """
         self.displace_t = displace_t
-        self._kde = None
-        self._metadata = None
+        self._kde: kde_class.LogKDE | None = None
+        self._metadata: dict[str, Any] | None = None
 
     def fit(self, simulations: dict[str, Any]) -> None:
         """Build KDE from simulation data.
@@ -136,9 +136,13 @@ class KDELikelihoodEstimator:
         samples = self._kde.kde_sample(n_samples=n_samples, random_state=random_state)
 
         # Flatten arrays to ensure shape (n_samples,) instead of (n_samples, 1)
+        rts = samples["rts"]
+        choices = samples["choices"]
+        assert isinstance(rts, np.ndarray)
+        assert isinstance(choices, np.ndarray)
         return {
-            "rts": samples["rts"].ravel(),
-            "choices": samples["choices"].ravel(),
+            "rts": rts.ravel(),
+            "choices": choices.ravel(),
         }
 
     def get_metadata(self) -> dict[str, Any]:

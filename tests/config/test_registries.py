@@ -8,6 +8,8 @@ This module tests all four registries:
 - ParameterAdapterRegistry
 """
 
+from typing import Any
+
 import pytest
 import numpy as np
 
@@ -304,7 +306,12 @@ class TestParameterAdapterRegistry:
 
         # Define a custom adaptation
         class TestAdaptation(ParameterAdaptation):
-            def apply(self, theta: dict, model_config: dict, n_trials: int) -> dict:
+            def apply(
+                self,
+                theta: dict[str, Any],
+                model_config: dict[str, Any] | None = None,
+                n_trials: int | None = None,
+            ) -> dict[str, Any]:
                 theta["test_param"] = 1.0
                 return theta
 

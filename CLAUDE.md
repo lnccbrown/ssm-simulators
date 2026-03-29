@@ -113,6 +113,11 @@ Changing this interface requires coordinating with HSSM.
 - **Max threads:** 256 (compile-time limit for per-thread RNG state arrays)
 - **22 model variants** across DDM, Angle, LBA, LCA, Race, Poisson Race, Racing Diffusion, Levy, Ornstein families
 
+## Skills
+
+- **add-ssm-model** — guided workflow for adding a new model: config creation,
+  optional boundary/drift functions, registration, and validation
+
 ## CI Workflows
 
 | Workflow | Purpose |

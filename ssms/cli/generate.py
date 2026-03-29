@@ -7,6 +7,7 @@ from collections import namedtuple
 from importlib.resources import files, as_file
 from pathlib import Path
 from pprint import pformat
+from typing import Any
 
 import tqdm
 import typer
@@ -25,7 +26,7 @@ def make_data_generator_configs(
     model_config_arg_dict={},
     save_name=None,
     save_folder="",
-):
+) -> dict[str, Any]:
     # Use ModelConfigBuilder.from_model() which handles variant suffixes like "_deadline"
     from ssms.config import ModelConfigBuilder
 
@@ -72,8 +73,8 @@ def parse_dict_as_namedtuple(d: dict, to_lowercase: bool = True):
     return namedtuple("Config", d.keys())(**d)
 
 
-def _make_data_folder_path(base_path: str | Path, basic_config: namedtuple) -> Path:
-    training_data_folder = (
+def _make_data_folder_path(base_path: str | Path, basic_config: Any) -> Path:
+    training_data_folder = Path(
         Path(base_path)
         / "data/training_data"
         / basic_config.generator_approach
@@ -103,7 +104,7 @@ def get_basic_config_from_yaml(
 
 def collect_data_generator_config(
     yaml_config_path=None, base_path=None, extra_configs={}
-):
+) -> dict[str, Any]:
     """Get the data generator configuration from a YAML file with nested structure."""
     bc, training_data_folder = get_basic_config_from_yaml(
         yaml_config_path, base_path=base_path
@@ -399,7 +400,7 @@ def log_to_mlflow(  # pragma: no cover
     mlflow.log_param("data_output_folder", str(output_folder))
 
     # Capture the list of generated files
-    generated_files = []
+    generated_files: list[dict[str, Any]] = []
     if output_folder.exists():
         # Get all pickle files in the training data directory
         generated_files = [
