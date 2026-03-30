@@ -14,7 +14,7 @@ _logger = logging.getLogger(__name__)
 def _extract_size_val(size: tuple | int) -> int:
     """Extract integer value from size, handling tuple or scalar."""
     if isinstance(size, tuple):
-        return size[0]
+        return int(size[0])
     return size
 
 
@@ -272,7 +272,8 @@ def _build_decorated_simulator(
         simulator_fun=simulator,
         model=model_name,
     )
-    return decorated_simulator(sim_wrapper)
+    result: Callable[..., Any] = decorated_simulator(sim_wrapper)
+    return result
 
 
 def get_simulator_fun_internal(simulator_fun: Callable | str):
@@ -363,7 +364,7 @@ def rng_fn(
     obs_dim_int: int,
     *args,
     **kwargs,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     Generate random variables from this distribution using the provided simulator function.
 
@@ -396,7 +397,7 @@ def rng_fn(
     )
     n_replicas = _calculate_n_replicas(is_all_args_scalar, size, new_data_size)
     seed = _get_seed(rng)
-    sims_out = simulator_fun(
+    sims_out: np.ndarray = simulator_fun(
         theta=theta,
         random_state=seed,
         n_replicas=n_replicas,

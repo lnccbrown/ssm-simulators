@@ -7,6 +7,7 @@ consistent with boundary functions that accept `a` and return the final boundary
 # External
 from collections.abc import Callable
 from functools import partial
+from typing import Any
 
 import numpy as np
 from scipy.stats import norm
@@ -76,7 +77,8 @@ def gamma_drift(
         * np.exp(-(shape - 1))
     )
     gamma_component = c * np.divide(num_, div_)
-    return v + gamma_component
+    result: np.ndarray | Any = v + gamma_component
+    return result
 
 
 def ds_support_analytic(
@@ -223,7 +225,8 @@ def attend_drift(
         (2 * pouter * a_outer) + (2 * pinner * a_inner) + (ptarget * a_target)
     )
 
-    return v + drift_component
+    result: np.ndarray | Any = v + drift_component
+    return result
 
 
 def attend_drift_simple(
@@ -269,7 +272,8 @@ def attend_drift_simple(
 
     drift_component = (2 * pouter * a_outer) + (2 * ptarget * a_target)
 
-    return v + drift_component
+    result: np.ndarray | Any = v + drift_component
+    return result
 
 
 def stimflex_support(
@@ -361,7 +365,8 @@ def conflict_dsstimflex_drift(
     w_d = ds_support_analytic(t=t, init_p=dinit, fix_point=0, slope=dslope)
     drift_component = (w_t * tcohs) + (w_d * dcohs)
 
-    return v + drift_component
+    result: np.ndarray | Any = v + drift_component
+    return result
 
 
 def conflict_stimflex_drift(

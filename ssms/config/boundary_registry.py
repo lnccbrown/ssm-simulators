@@ -256,11 +256,13 @@ def get_boundary_registry() -> BoundaryRegistry:
 # This uses the existing boundary_config dict which already defines all built-in boundaries
 # This way, when someone adds a new boundary function to base.py, it's automatically
 # registered here without needing to update this file
+from typing import cast, Callable
+
 from ssms.config._modelconfig.base import boundary_config
 
 for boundary_name, boundary_spec in boundary_config.items():
     register_boundary(
         name=boundary_name,
-        function=boundary_spec["fun"],
-        params=boundary_spec["params"],
+        function=cast(Callable[..., object], boundary_spec["fun"]),
+        params=cast(list[str], boundary_spec["params"]),
     )

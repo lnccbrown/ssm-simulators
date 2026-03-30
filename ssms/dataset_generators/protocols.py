@@ -23,7 +23,7 @@ class ParameterSamplerProtocol(Protocol):
     """
 
     def sample(
-        self, n_samples: int = 1, random_state: np.random.Generator | None = None
+        self, n_samples: int = 1, rng: np.random.Generator | None = None
     ) -> dict[str, np.ndarray]:  # pragma: no cover
         """Sample n_samples parameter sets.
 

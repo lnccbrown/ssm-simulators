@@ -6,8 +6,26 @@ model-specific modifications to sampled parameters.
 """
 
 import numpy as np
-from ssms import register_transform_class, register_transform_function
+from ssms.config import get_model_registry
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+
+# Transform registration API (local stubs until registry is implemented)
+_transform_registry: dict = {}
+
+
+def register_transform_function(name: str, func, **kwargs) -> None:
+    """Register a function-based parameter transform."""
+    _transform_registry[name] = {"type": "function", "func": func, **kwargs}
+
+
+def register_transform_class(name: str, cls, **kwargs) -> None:
+    """Register a class-based parameter transform."""
+    _transform_registry[name] = {"type": "class", "cls": cls, **kwargs}
+
+
+def get_registry():
+    """Return the model registry."""
+    return get_model_registry()
 
 
 # ============================================================================
@@ -204,10 +222,8 @@ def main():
     print("=" * 60)
 
     # Step 1: Register all custom transforms (already done above)
-    from ssms import get_registry
-
     registry = get_registry()
-    print(f"\n1. Registered transforms: {registry.list_transforms()}")
+    print(f"\n1. Registered transforms: {registry.list_models()}")
 
     # Step 2: Create a model config using custom transforms
     model_config = example_custom_model()

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path'); if [[ \"$FILE\" == *.py ]]; then cd \"$CLAUDE_PROJECT_DIR\" && uv run ruff format \"$FILE\" --quiet 2>/dev/null; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

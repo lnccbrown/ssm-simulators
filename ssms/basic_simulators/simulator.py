@@ -41,7 +41,7 @@ def _get_unique_seed() -> int:
     Generate a unique seed for the random number generator.
     """
     with _rng_lock:
-        return _global_rng.integers(0, 2**32 - 1)
+        return int(_global_rng.integers(0, 2**32 - 1))
 
 
 def _make_valid_dict(dict_in: dict) -> dict:
@@ -187,7 +187,7 @@ def _theta_array_to_dict(
 
 def _preprocess_theta_generic(
     theta: list | np.ndarray | dict | pd.DataFrame,
-) -> np.ndarray:
+) -> np.ndarray | dict:
     """
     Preprocess the input theta to a consistent format.
 
@@ -344,7 +344,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
 # TODO: Make useful as independent utility,
 # this is dropped from basic simulator call now
 def bin_simulator_output_pointwise(
-    out: tuple[np.ndarray, np.ndarray] = (np.array([0]), np.array([0])),
+    out: dict | None = None,
     bin_dt: float = 0.04,
     nbins: int = 0,
 ) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
@@ -352,7 +352,7 @@ def bin_simulator_output_pointwise(
 
     Arguments
     ---------
-        out: tuple
+        out: dict
             Output of the 'simulator' function
         bin_dt: float
             If nbins is 0, this determines the desired
@@ -368,6 +368,9 @@ def bin_simulator_output_pointwise(
         2d array. The first columns collects bin-identifiers
         by trial, the second column lists the corresponding choices.
     """
+    if out is None:
+        raise ValueError("out is not supplied")
+
     out_copy = deepcopy(out)
 
     # Generate bins
@@ -390,7 +393,10 @@ def bin_simulator_output_pointwise(
 
     out_copy[1][out_copy[1] == -1] = 0
 
-    return np.concatenate([out_copy[0], out_copy[1]], axis=-1).astype(np.int32)
+    result: np.ndarray = np.concatenate([out_copy[0], out_copy[1]], axis=-1).astype(
+        np.int32
+    )
+    return result
 
 
 def bin_simulator_output(
@@ -562,6 +568,7 @@ def make_noise_vec(
         np.ndarray: A noise vector with appropriate shape for the simulation,
             containing the replicated sigma_noise values.
     """
+    shape_tuple: int | tuple[int, int]
     if n_particles == 1 or n_particles is None:
         shape_tuple = n_trials
     else:
