@@ -23,6 +23,7 @@ dependencies = [
     "typer>=0.15.3",
     "pyyaml>=6.0.2",
     "tqdm>=4.67.1",
+    "cloudpickle",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
