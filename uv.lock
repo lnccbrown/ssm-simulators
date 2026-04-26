@@ -4349,9 +4349,10 @@ wheels = [
 
 [[package]]
 name = "ssm-simulators"
-version = "0.12.2"
+version = "0.12.3"
 source = { editable = "." }
 dependencies = [
+    { name = "cloudpickle" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -4456,6 +4457,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'" },
+    { name = "cloudpickle" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.29.5" },
     { name = "jax", marker = "extra == 'jax'", specifier = ">=0.4.20" },
     { name = "jax", marker = "extra == 'parallel'", specifier = ">=0.4.20" },
