@@ -301,6 +301,26 @@ def test_random_state_too_negative_raises_value_error():
         )
 
 
+def test_random_state_none_ok():
+    """random_state=None (the default) should not raise."""
+    out = simulator(
+        model="ddm",
+        theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.1},
+        n_samples=2,
+        random_state=None,
+    )
+    assert "rts" in out
+
+
+def test_random_state_non_integer_skips_validation():
+    """Non-integer random_state should skip the C-long range check without raising."""
+    from ssms.basic_simulators.simulator import _validate_random_state_for_c_rng
+
+    # A numpy Generator is not an integer, so validation should be a no-op
+    rng = np.random.default_rng(42)
+    _validate_random_state_for_c_rng(rng)  # should not raise
+
+
 def test_random_state_boundary_max_ok():
     """Largest valid integer seed should not raise from validation."""
     out = simulator(
