@@ -269,3 +269,44 @@ def test_deprecated_get_lan_config_warns():
     with pytest.warns(DeprecationWarning, match="get_lan_config.*deprecated"):
         result = get_lan_config()
     assert result == get_lan_kde_config()
+
+
+def test_get_unique_seed_fits_signed_32bit_c_long():
+    """Auto-generated seeds must not overflow Windows C long (see set_seed in _utils.pyx)."""
+    from ssms.basic_simulators.simulator import _get_unique_seed
+
+    for _ in range(500):
+        s = _get_unique_seed()
+        assert 0 <= s <= 2**31 - 1
+
+
+def test_random_state_too_large_raises_value_error():
+    """User-supplied seeds above 32-bit signed C long must fail fast with a clear error."""
+    with pytest.raises(ValueError, match="random_state"):
+        simulator(
+            model="ddm",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.1},
+            n_samples=1,
+            random_state=2**31,
+        )
+
+
+def test_random_state_too_negative_raises_value_error():
+    with pytest.raises(ValueError, match="random_state"):
+        simulator(
+            model="ddm",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.1},
+            n_samples=1,
+            random_state=-(2**31) - 1,
+        )
+
+
+def test_random_state_boundary_max_ok():
+    """Largest valid integer seed should not raise from validation."""
+    out = simulator(
+        model="ddm",
+        theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.1},
+        n_samples=2,
+        random_state=2**31 - 1,
+    )
+    assert "rts" in out

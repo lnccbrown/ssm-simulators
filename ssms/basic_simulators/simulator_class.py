@@ -18,6 +18,7 @@ from ssms.basic_simulators.simulator import (
     _get_unique_seed,
     _preprocess_theta_deadline,
     _preprocess_theta_generic,
+    _validate_random_state_for_c_rng,
     make_boundary_dict,
     make_drift_dict,
     make_noise_vec,
@@ -540,7 +541,9 @@ class Simulator:
         smooth_unif : bool, default=True
             Whether to add uniform smoothing to RTs
         random_state : int or None
-            Random seed for reproducibility
+            Integer seed for the C-level RNG. Must lie in ``[-2**31, 2**31 - 1]`` (fits
+            a 32-bit signed C ``long``, required on Windows). ``None`` picks a seed in
+            ``[0, 2**31 - 1]`` automatically.
         return_option : str, default="full"
             Output format: "full" or "minimal"
         n_threads : int, default=1
@@ -572,6 +575,7 @@ class Simulator:
 
         if random_state is None:
             random_state = _get_unique_seed()
+        _validate_random_state_for_c_rng(random_state)
 
         # Preprocess theta
         theta = _preprocess_theta_generic(theta)
