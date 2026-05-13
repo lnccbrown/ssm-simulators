@@ -40,8 +40,8 @@ class TaskEnvironment(Protocol):
         ``rng`` is the NumPy Generator for reproducible reward generation."""
         ...
 
-    def generate_reward(self, action: int, trial_idx: int) -> float:
-        """Generate reward for the given action on the given trial.
+    def generate_reward(self, response: int, trial_idx: int) -> float:
+        """Generate reward for the given response label on the given trial.
         Returns reward value (e.g., 0.0 or 1.0 for Bernoulli)."""
         ...
 
@@ -62,7 +62,7 @@ class TwoArmedBandit:
         P(reward=1) for each arm. Length must equal len(choices).
         Default [0.7, 0.3].
     choices : list[int]
-        Action values in task space. Default [0, 1].
+        Response labels in task space. Default [0, 1].
     """
 
     def __init__(
@@ -97,10 +97,10 @@ class TwoArmedBandit:
     def reset(self, rng: np.random.Generator | None = None) -> None:
         self._rng = rng or np.random.default_rng()
 
-    def generate_reward(self, action: int, trial_idx: int) -> float:
+    def generate_reward(self, response: int, trial_idx: int) -> float:
         if self._rng is None:
             raise RuntimeError("Call reset() before generate_reward()")
-        idx = self._choices.index(action)
+        idx = self._choices.index(response)
         return float(self._rng.random() < self._reward_probabilities[idx])
 
     def get_extra_data(self, trial_idx: int) -> dict[str, float]:
@@ -112,7 +112,7 @@ class TaskConfig:
     """Convenience configuration for common task paradigms.
 
     Use ``build_environment()`` to construct the appropriate ``TaskEnvironment``.
-    Accepted by ``RLSSMModelConfig`` in place of a ``TaskEnvironment`` instance —
+    Accepted by ``ModelConfig`` in place of a ``TaskEnvironment`` instance —
     auto-converted in ``__post_init__``.
 
     Parameters
@@ -124,7 +124,7 @@ class TaskConfig:
     reward_probs : list[float] | None
         Per-arm reward probabilities for Bernoulli tasks.
     choices : list[int] | None
-        Action values. Default: [0, 1, ..., n_arms-1].
+        Response labels. Default: [0, 1, ..., n_arms-1].
     """
 
     n_arms: int = 2

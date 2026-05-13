@@ -4,39 +4,37 @@ from __future__ import annotations
 
 from typing import Callable
 
-from .rl_config import RLSSMModelConfig
+from .config import ModelConfig
 
-_RLSSM_PRESETS: dict[str, Callable[[], RLSSMModelConfig]] = {}
+_PRESETS: dict[str, Callable[[], ModelConfig]] = {}
 
 
-def register_rlssm_preset(
-    name: str, factory: Callable[[], RLSSMModelConfig]
-) -> None:
+def register(name: str, factory: Callable[[], ModelConfig]) -> None:
     """Register a named RLSSM preset."""
-    _RLSSM_PRESETS[name] = factory
+    _PRESETS[name] = factory
 
 
-def get_rlssm_preset(name: str) -> RLSSMModelConfig:
+def get(name: str) -> ModelConfig:
     """Get a named RLSSM preset config. Returns a fresh instance."""
-    if name not in _RLSSM_PRESETS:
-        available = sorted(_RLSSM_PRESETS.keys())
+    if name not in _PRESETS:
+        available = sorted(_PRESETS.keys())
         raise KeyError(f"Unknown RLSSM preset '{name}'. Available: {available}")
-    return _RLSSM_PRESETS[name]()
+    return _PRESETS[name]()
 
 
-def list_rlssm_presets() -> list[str]:
+def list() -> list[str]:
     """List available RLSSM preset names."""
-    return sorted(_RLSSM_PRESETS.keys())
+    return sorted(_PRESETS.keys())
 
 
 # --- v1 Built-in Presets ---
 
 
-def _make_rlssm1() -> RLSSMModelConfig:
-    from .learning_process import RescorlaWagnerDeltaRule
-    from .task_environment import TwoArmedBandit
+def _make_rlssm1() -> ModelConfig:
+    from .env import TwoArmedBandit
+    from .learning import RescorlaWagnerDeltaRule
 
-    return RLSSMModelConfig(
+    return ModelConfig(
         model_name="rlssm1",
         description=(
             "RLSSM: Rescorla-Wagner delta rule + angle SSM + "
@@ -50,4 +48,4 @@ def _make_rlssm1() -> RLSSMModelConfig:
     )
 
 
-register_rlssm_preset("rlssm1", _make_rlssm1)
+register("rlssm1", _make_rlssm1)

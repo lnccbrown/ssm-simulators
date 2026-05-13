@@ -1,4 +1,4 @@
-"""RLSSMModelConfig — structural model specification for RLSSM simulation."""
+"""ModelConfig — structural model specification for RLSSM simulation."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import Any
 
 from ssms.config.model_config_builder import ModelConfigBuilder
 
-from .learning_process import LearningProcess
-from .task_environment import TaskConfig, TaskEnvironment
+from .env import TaskConfig, TaskEnvironment
+from .learning import LearningProcess
 
 
 # Fields that to_hssm_config_dict() must emit — kept as a constant
@@ -27,13 +27,13 @@ _HSSM_SHARED_FIELDS = (
 
 
 @dataclass
-class RLSSMModelConfig:
+class ModelConfig:
     """RLSSM model configuration for ssm-simulators.
 
     Describes the *structural specification* of an RLSSM model:
     which learning process, which decision process (SSM), and which task
     environment. Concrete parameter values are NOT stored here — they
-    are passed as ``theta`` to ``RLSSMSimulator.simulate()``.
+    are passed as ``theta`` to ``Simulator.simulate()``.
 
     Parameters
     ----------
@@ -144,9 +144,7 @@ class RLSSMModelConfig:
             computed_ssm_params.add(ssm_name)
 
         self._computed_ssm_params = list(computed_ssm_params)
-        self._fixed_ssm_params = [
-            p for p in ssm_params if p not in computed_ssm_params
-        ]
+        self._fixed_ssm_params = [p for p in ssm_params if p not in computed_ssm_params]
 
     def _derive_list_params(self) -> list[str]:
         """RL free params + fixed SSM params (in that order)."""
@@ -186,7 +184,7 @@ class RLSSMModelConfig:
         return defaults
 
     def validate(self) -> None:
-        """Validate config consistency. Called by RLSSMSimulator.__init__().
+        """Validate config consistency. Called by Simulator.__init__().
 
         Checks:
         1. decision_process exists in ssm-simulators registry
@@ -269,5 +267,5 @@ class RLSSMModelConfig:
             "ssm_logp_func": None,
             "learning_process": {},
             "decision_process_loglik_kind": "approx_differentiable",
-            "learning_process_loglik_kind": "blackbox",
+            "learning_process_kind": "blackbox",
         }

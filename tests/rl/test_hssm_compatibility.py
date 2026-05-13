@@ -1,32 +1,24 @@
 """Contract tests verifying output is consumable by HSSM."""
 
-import numpy as np
 import pandas as pd
 import pytest
 
-from ssms.rl import (
-    RLSSMModelConfig,
-    RLSSMSimulator,
-    RescorlaWagnerDeltaRule,
-    TwoArmedBandit,
-    get_rlssm_preset,
-    list_rlssm_presets,
-)
-from ssms.rl.rl_config import _HSSM_SHARED_FIELDS
+import ssms.rl as rl
+from ssms.rl.config import _HSSM_SHARED_FIELDS
 
 
 @pytest.fixture()
 def sim_data():
-    config = RLSSMModelConfig(
+    config = rl.ModelConfig(
         model_name="test_compat",
         description="Compatibility test",
         decision_process="angle",
-        learning_process=RescorlaWagnerDeltaRule(),
-        task_environment=TwoArmedBandit(
+        learning_process=rl.learning.RescorlaWagnerDeltaRule(),
+        task_environment=rl.env.TwoArmedBandit(
             reward_probabilities=[0.7, 0.3], choices=[-1, 1]
         ),
     )
-    sim = RLSSMSimulator(config)
+    sim = rl.Simulator(config)
     data = sim.simulate(
         theta={
             "rl_alpha": 0.2,
@@ -97,21 +89,24 @@ class TestToHssmConfigDictSchema:
         d = config.to_hssm_config_dict()
         assert "ssm_logp_func" in d
         assert "learning_process" in d
+        assert "learning_process_kind" in d
+        assert "learning_process_loglik_kind" not in d
 
 
 class TestRegistry:
     def test_list_presets(self):
-        presets = list_rlssm_presets()
+        presets = rl.preset.list()
         assert "rlssm1" in presets
 
     def test_get_rlssm1_preset(self):
-        config = get_rlssm_preset("rlssm1")
+        config = rl.preset.get("rlssm1")
+        assert isinstance(config, rl.ModelConfig)
         assert config.model_name == "rlssm1"
         assert config.decision_process == "angle"
 
     def test_rlssm1_preset_simulates(self):
-        config = get_rlssm_preset("rlssm1")
-        sim = RLSSMSimulator(config)
+        config = rl.preset.get("rlssm1")
+        sim = rl.Simulator(config)
         data = sim.simulate(
             theta={
                 "rl_alpha": 0.2,
@@ -129,4 +124,36 @@ class TestRegistry:
 
     def test_unknown_preset_raises(self):
         with pytest.raises(KeyError, match="Unknown RLSSM preset"):
-            get_rlssm_preset("nonexistent")
+            rl.preset.get("nonexistent")
+
+    def test_register_custom_preset(self):
+        def factory():
+            return rl.ModelConfig(
+                model_name="custom",
+                description="Custom preset",
+                decision_process="angle",
+                learning_process=rl.learning.RescorlaWagnerDeltaRule(),
+                task_environment=rl.env.TwoArmedBandit(choices=[-1, 1]),
+            )
+
+        rl.preset.register("custom_test", factory)
+        assert "custom_test" in rl.preset.list()
+        assert rl.preset.get("custom_test").model_name == "custom"
+
+
+class TestPublicApiSurface:
+    def test_public_exports_are_small(self):
+        assert rl.__all__ == ["Simulator", "ModelConfig", "env", "learning", "preset"]
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "RLSSMSimulator",
+            "RLSSMModelConfig",
+            "get_rlssm_preset",
+            "list_rlssm_presets",
+            "register_rlssm_preset",
+        ],
+    )
+    def test_old_developmental_names_are_not_exported(self, name):
+        assert not hasattr(rl, name)

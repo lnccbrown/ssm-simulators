@@ -1,14 +1,11 @@
-"""Tests for RLSSMSimulator."""
+"""Tests for rl.Simulator."""
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from ssms import OMISSION_SENTINEL
-from ssms.rl.learning_process import RescorlaWagnerDeltaRule
-from ssms.rl.rl_config import RLSSMModelConfig
-from ssms.rl.rl_simulator import RLSSMSimulator
-from ssms.rl.task_environment import TwoArmedBandit
+import ssms.rl as rl
 
 
 def _make_simulator(**config_overrides):
@@ -17,15 +14,17 @@ def _make_simulator(**config_overrides):
         model_name="test_rlssm",
         description="Test RLSSM",
         decision_process="angle",
-        learning_process=RescorlaWagnerDeltaRule(n_choices=2, initial_q=0.5),
+        learning_process=rl.learning.RescorlaWagnerDeltaRule(
+            n_choices=2, initial_q=0.5
+        ),
         # Use choices [-1, 1] to match angle model's SSM output
-        task_environment=TwoArmedBandit(
+        task_environment=rl.env.TwoArmedBandit(
             reward_probabilities=[0.7, 0.3], choices=[-1, 1]
         ),
     )
     defaults.update(config_overrides)
-    config = RLSSMModelConfig(**defaults)
-    return RLSSMSimulator(config)
+    config = rl.ModelConfig(**defaults)
+    return rl.Simulator(config)
 
 
 # Default theta for angle model (v is computed by learning process)
@@ -39,9 +38,7 @@ class TestSimulateOutput:
 
     @pytest.fixture()
     def data(self, sim):
-        return sim.simulate(
-            theta=THETA, n_trials=10, n_participants=3, random_state=42
-        )
+        return sim.simulate(theta=THETA, n_trials=10, n_participants=3, random_state=42)
 
     def test_returns_dataframe(self, data):
         assert isinstance(data, pd.DataFrame)
@@ -56,12 +53,8 @@ class TestSimulateOutput:
         assert expected.issubset(set(data.columns))
 
     def test_sorted_order(self, data):
-        assert (
-            data.equals(
-                data.sort_values(["participant_id", "trial_id"]).reset_index(
-                    drop=True
-                )
-            )
+        assert data.equals(
+            data.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
         )
 
     def test_participant_ids(self, data):
@@ -110,17 +103,13 @@ class TestValidation:
 class TestEdgeCases:
     def test_single_participant(self):
         sim = _make_simulator()
-        df = sim.simulate(
-            theta=THETA, n_trials=5, n_participants=1, random_state=42
-        )
+        df = sim.simulate(theta=THETA, n_trials=5, n_participants=1, random_state=42)
         assert len(df) == 5
         assert df["participant_id"].unique().tolist() == [0]
 
     def test_single_trial(self):
         sim = _make_simulator()
-        df = sim.simulate(
-            theta=THETA, n_trials=1, n_participants=2, random_state=42
-        )
+        df = sim.simulate(theta=THETA, n_trials=1, n_participants=2, random_state=42)
         assert len(df) == 2
 
 
@@ -147,7 +136,7 @@ class TestOmissionHandling:
                 "choices": np.array([[1]]),
             }
 
-        with patch("ssms.rl.rl_simulator.ssm_simulator", side_effect=mock_simulator):
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
             df = sim.simulate(
                 theta=THETA, n_trials=5, n_participants=1, random_state=42
             )
@@ -161,3 +150,43 @@ class TestOmissionHandling:
         non_omission = df[df["rt"] != OMISSION_SENTINEL]
         assert (non_omission["rt"] == 0.5).all()
         assert set(non_omission["response"].unique()) == {1}
+
+
+class TestResponseActionMapping:
+    def test_response_labels_are_mapped_to_learning_action_indices(self):
+        """Angle/DDM response labels [-1, 1] map to learning actions [0, 1]."""
+        from unittest.mock import patch
+
+        sim = _make_simulator(
+            task_environment=rl.env.TwoArmedBandit(
+                reward_probabilities=[1.0, 0.0], choices=[-1, 1]
+            )
+        )
+        choices = iter([-1, 1])
+        theta = {**THETA, "rl_alpha": 1.0}
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=theta, n_trials=2, n_participants=1)
+
+        assert df["response"].tolist() == [-1, 1]
+        np.testing.assert_allclose(
+            sim.config.learning_process.q_values, np.array([1.0, 0.0])
+        )
+
+    def test_unknown_response_label_raises(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator()
+
+        def mock_simulator(**kwargs):
+            return {"rts": np.array([[0.5]]), "choices": np.array([[0]])}
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            with pytest.raises(ValueError, match="not a valid task choice"):
+                sim.simulate(theta=THETA, n_trials=1, n_participants=1)

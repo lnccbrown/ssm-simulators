@@ -64,7 +64,7 @@ class LearningProcess(Protocol):
     ) -> None:
         """Update learning state given the choice outcome.
         Called AFTER the SSM runs and reward is generated.
-        ``action`` is in task-action space (e.g., 0 or 1)."""
+        ``action`` is the zero-based learning action index."""
         ...
 
 

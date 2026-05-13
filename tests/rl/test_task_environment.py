@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from ssms.rl.task_environment import TaskConfig, TaskEnvironment, TwoArmedBandit
+from ssms.rl.env import TaskConfig, TaskEnvironment, TwoArmedBandit
 
 
 class TestTwoArmedBandit:

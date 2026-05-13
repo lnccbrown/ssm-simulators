@@ -1,4 +1,4 @@
-"""RLSSMSimulator — interleaved learning + SSM decision simulation."""
+"""Simulator — interleaved learning + SSM decision simulation."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ import pandas as pd
 from ssms.basic_simulators import OMISSION_SENTINEL
 from ssms.basic_simulators.simulator import simulator as ssm_simulator
 
-from .rl_config import RLSSMModelConfig
+from .config import ModelConfig
 
 
-class RLSSMSimulator:
+class Simulator:
     """RLSSM simulator composing a learning process with an SSM decision process.
 
     Runs the interleaved trial-by-trial loop:
@@ -23,11 +23,11 @@ class RLSSMSimulator:
 
     Parameters
     ----------
-    config : RLSSMModelConfig
+    config : ModelConfig
         Structural model configuration. Validated on construction.
     """
 
-    def __init__(self, config: RLSSMModelConfig):
+    def __init__(self, config: ModelConfig):
         self.config = config
         config.validate()
 
@@ -144,11 +144,13 @@ class RLSSMSimulator:
                 rows.append(row)
                 continue
 
-            # MAP CHOICE: SSM choice -> task action
-            action = ssm_choice
+            # Use the SSM choice label as the recorded response, but convert it
+            # to a zero-based action index for the learning rule.
+            response = ssm_choice
+            action = self._response_to_action_index(response)
 
             # REWARD
-            reward = env.generate_reward(action, t)
+            reward = env.generate_reward(response, t)
 
             # UPDATE learning process
             lp.update(action, reward, rl_params)
@@ -158,10 +160,20 @@ class RLSSMSimulator:
                 "participant_id": subject_id,
                 "trial_id": t,
                 "rt": rt,
-                "response": action,
+                "response": response,
                 "feedback": reward,
             }
             row.update(env.get_extra_data(t))
             rows.append(row)
 
         return rows
+
+    def _response_to_action_index(self, response: int) -> int:
+        """Map an SSM response label to the learning process action index."""
+        choices = self.config.task_environment.choices
+        if response not in choices:
+            raise ValueError(
+                f"SSM response {response} is not a valid task choice. "
+                f"Expected one of: {choices}."
+            )
+        return choices.index(response)

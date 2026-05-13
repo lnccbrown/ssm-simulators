@@ -1,11 +1,9 @@
-"""Tests for RLSSMModelConfig."""
+"""Tests for rl.ModelConfig."""
 
-import numpy as np
 import pytest
 
-from ssms.rl.learning_process import RescorlaWagnerDeltaRule
-from ssms.rl.rl_config import RLSSMModelConfig, _HSSM_SHARED_FIELDS
-from ssms.rl.task_environment import TaskConfig, TwoArmedBandit
+import ssms.rl as rl
+from ssms.rl.config import _HSSM_SHARED_FIELDS
 
 
 def _make_default_config(**overrides):
@@ -14,11 +12,13 @@ def _make_default_config(**overrides):
         model_name="test_rlssm",
         description="Test RLSSM config",
         decision_process="angle",
-        learning_process=RescorlaWagnerDeltaRule(n_choices=2, initial_q=0.5),
-        task_environment=TwoArmedBandit(reward_probabilities=[0.7, 0.3]),
+        learning_process=rl.learning.RescorlaWagnerDeltaRule(
+            n_choices=2, initial_q=0.5
+        ),
+        task_environment=rl.env.TwoArmedBandit(reward_probabilities=[0.7, 0.3]),
     )
     defaults.update(overrides)
-    return RLSSMModelConfig(**defaults)
+    return rl.ModelConfig(**defaults)
 
 
 class TestAutoDerivation:
@@ -119,11 +119,11 @@ class TestHandshakeValidation:
 class TestTaskConfigAutoBuild:
     def test_task_config_auto_build(self):
         config = _make_default_config(
-            task_environment=TaskConfig(
+            task_environment=rl.env.TaskConfig(
                 reward_type="bernoulli", reward_probs=[0.6, 0.4]
             ),
         )
-        assert isinstance(config.task_environment, TwoArmedBandit)
+        assert isinstance(config.task_environment, rl.env.TwoArmedBandit)
         assert config.choices == (0, 1)
 
 
@@ -141,7 +141,8 @@ class TestToHssmConfigDict:
         assert d["ssm_logp_func"] is None
         assert d["learning_process"] == {}
         assert d["decision_process_loglik_kind"] == "approx_differentiable"
-        assert d["learning_process_loglik_kind"] == "blackbox"
+        assert d["learning_process_kind"] == "blackbox"
+        assert "learning_process_loglik_kind" not in d
 
     def test_contract_consistency(self):
         """list_params length == params_default length, all have bounds."""
