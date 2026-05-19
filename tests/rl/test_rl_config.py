@@ -13,9 +13,9 @@ def _make_default_config(**overrides):
         description="Test RLSSM config",
         decision_process="angle",
         learning_process=rl.learning.RescorlaWagnerDeltaRule(
-            n_choices=2, initial_q=0.5
+            n_actions=2, initial_q=0.5
         ),
-        task_environment=rl.env.TwoArmedBandit(reward_probabilities=[0.7, 0.3]),
+        task_environment=rl.env.Bandit.bernoulli(probabilities=[0.7, 0.3]),
     )
     defaults.update(overrides)
     return rl.ModelConfig(**defaults)
@@ -57,6 +57,12 @@ class TestAutoDerivation:
     def test_auto_derive_choices(self):
         config = _make_default_config()
         assert config.choices == (0, 1)
+
+    def test_auto_response_mapping(self):
+        config = _make_default_config(
+            task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1])
+        )
+        assert config.response_to_action == {-1: 0, 1: 1}
 
     def test_auto_derive_extra_fields(self):
         config = _make_default_config()
@@ -151,22 +157,71 @@ class TestTaskConfigAutoBuild:
     def test_task_config_auto_build(self):
         config = _make_default_config(
             task_environment=rl.env.TaskConfig(
-                reward_type="bernoulli", reward_probabilities=[0.6, 0.4]
+                task="bandit", reward="bernoulli", probabilities=[0.6, 0.4]
             ),
         )
-        assert isinstance(config.task_environment, rl.env.TwoArmedBandit)
+        assert isinstance(config.task_environment, rl.env.Bandit)
         assert config.choices == (0, 1)
 
     def test_gaussian_task_config_auto_build(self):
         config = _make_default_config(
             task_environment=rl.env.TaskConfig(
-                reward_type="gaussian",
-                reward_means=[1.0, 0.0],
-                reward_sds=[0.25, 0.5],
+                task="bandit",
+                reward="gaussian",
+                means=[1.0, 0.0],
+                sds=[0.25, 0.5],
             ),
         )
-        assert isinstance(config.task_environment, rl.env.GaussianBandit)
+        assert isinstance(config.task_environment, rl.env.Bandit)
         assert config.choices == (0, 1)
+
+
+class TestResponseMapping:
+    def test_explicit_reversed_mapping(self):
+        config = _make_default_config(
+            task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+            response_mapping={-1: 1, 1: 0},
+        )
+        assert config.response_to_action == {-1: 1, 1: 0}
+
+    def test_missing_mapping_label_raises(self):
+        with pytest.raises(ValueError, match="cover response labels exactly"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+                response_mapping={-1: 0},
+            )
+
+    def test_extra_mapping_label_raises(self):
+        with pytest.raises(ValueError, match="cover response labels exactly"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+                response_mapping={-1: 0, 1: 1, 0: 0},
+            )
+
+    def test_duplicate_mapping_values_raise(self):
+        with pytest.raises(ValueError, match="must be unique"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+                response_mapping={-1: 0, 1: 0},
+            )
+
+    def test_out_of_range_mapping_values_raise(self):
+        with pytest.raises(ValueError, match="must be exactly"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+                response_mapping={-1: 0, 1: 2},
+            )
+
+    def test_choices_must_match_response_labels(self):
+        with pytest.raises(ValueError, match="choices must match"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
+                choices=(0, 1),
+            )
+
+    def test_include_action_defaults_false(self):
+        config = _make_default_config()
+        assert config.include_action is False
 
 
 class TestToHssmConfigDict:
@@ -201,3 +256,4 @@ class TestToHssmConfigDict:
         assert d["decision_process"] == config.decision_process
         assert d["choices"] == config.choices
         assert d["response"] == config.response
+        assert d["response_mapping"] == config.response_to_action

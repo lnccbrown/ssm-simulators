@@ -31,7 +31,7 @@ def list() -> list[str]:
 
 
 def _make_rlssm1() -> ModelConfig:
-    from .env import TwoArmedBandit
+    from .env import Bandit
     from .learning import RescorlaWagnerDeltaRule
 
     return ModelConfig(
@@ -41,9 +41,9 @@ def _make_rlssm1() -> ModelConfig:
             "two-armed Bernoulli bandit. Matches HSSM's rlssm1 preset."
         ),
         decision_process="angle",
-        learning_process=RescorlaWagnerDeltaRule(n_choices=2, initial_q=0.5),
-        task_environment=TwoArmedBandit(
-            reward_probabilities=[0.7, 0.3], choices=[-1, 1]
+        learning_process=RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5),
+        task_environment=Bandit.bernoulli(
+            probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
     )
 

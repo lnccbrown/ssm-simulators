@@ -79,15 +79,17 @@ class RescorlaWagnerDeltaRule:
 
     Parameters
     ----------
-    n_choices : int
+    n_actions : int
         Number of choice alternatives. Default 2.
     initial_q : float
         Initial Q-value for all alternatives. Default 0.5.
         Matches HSSM's ``jnp.ones(2) * 0.5``.
     """
 
-    def __init__(self, n_choices: int = 2, initial_q: float = 0.5):
-        self._n_choices = n_choices
+    def __init__(self, n_actions: int = 2, initial_q: float = 0.5):
+        if n_actions < 2:
+            raise ValueError("n_actions must be at least 2")
+        self._n_actions = n_actions
         self._initial_q = initial_q
         self._q_values: np.ndarray | None = None
 
@@ -113,7 +115,7 @@ class RescorlaWagnerDeltaRule:
         return self._q_values.copy() if self._q_values is not None else None
 
     def reset(self, **kwargs) -> None:
-        self._q_values = np.full(self._n_choices, self._initial_q, dtype=np.float64)
+        self._q_values = np.full(self._n_actions, self._initial_q, dtype=np.float64)
 
     def compute_ssm_params(self, trial_params: dict[str, float]) -> dict[str, float]:
         """Drift = (Q[1] - Q[0]) * scaler.

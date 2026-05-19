@@ -1,174 +1,233 @@
-"""Tests for TaskEnvironment protocol, built-in bandits, and TaskConfig."""
+"""Tests for TaskEnvironment protocol, Bandit, and TaskConfig."""
 
 import numpy as np
 import pytest
 
-from ssms.rl.env import GaussianBandit, TaskConfig, TaskEnvironment, TwoArmedBandit
+from ssms.rl.env import Bandit, TaskConfig, TaskEnvironment, registered_tasks
 
 
-class TestTwoArmedBandit:
-    def test_reward_statistics(self):
-        """With reward_probabilities=[0.8, 0.2], empirical rates should match."""
-        bandit = TwoArmedBandit(reward_probabilities=[0.8, 0.2])
+class TestBernoulliBandit:
+    def test_reward_statistics_two_arms(self):
+        bandit = Bandit.bernoulli(probabilities=[0.8, 0.2])
         bandit.reset(rng=np.random.default_rng(42))
 
         n = 10_000
-        rewards_0 = [bandit.generate_reward(0, t) for t in range(n)]
+        rewards_0 = [bandit.sample_reward(0, t) for t in range(n)]
         bandit.reset(rng=np.random.default_rng(43))
-        rewards_1 = [bandit.generate_reward(1, t) for t in range(n)]
+        rewards_1 = [bandit.sample_reward(1, t) for t in range(n)]
 
         assert np.mean(rewards_0) == pytest.approx(0.8, abs=0.02)
         assert np.mean(rewards_1) == pytest.approx(0.2, abs=0.02)
 
+    def test_reward_statistics_three_arms(self):
+        bandit = Bandit.bernoulli(probabilities=[0.8, 0.5, 0.2])
+        n = 10_000
+
+        means = []
+        for action in range(3):
+            bandit.reset(rng=np.random.default_rng(42 + action))
+            rewards = [bandit.sample_reward(action, t) for t in range(n)]
+            means.append(np.mean(rewards))
+
+        assert means[0] == pytest.approx(0.8, abs=0.02)
+        assert means[1] == pytest.approx(0.5, abs=0.02)
+        assert means[2] == pytest.approx(0.2, abs=0.02)
+
     def test_reproducibility(self):
-        """Same seed → same reward sequence."""
-        bandit = TwoArmedBandit()
+        bandit = Bandit.bernoulli()
         bandit.reset(rng=np.random.default_rng(99))
-        seq1 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq1 = [bandit.sample_reward(0, t) for t in range(50)]
         bandit.reset(rng=np.random.default_rng(99))
-        seq2 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq2 = [bandit.sample_reward(0, t) for t in range(50)]
         assert seq1 == seq2
 
     def test_different_seeds(self):
-        """Different seeds → (very likely) different sequences."""
-        bandit = TwoArmedBandit()
+        bandit = Bandit.bernoulli()
         bandit.reset(rng=np.random.default_rng(1))
-        seq1 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq1 = [bandit.sample_reward(0, t) for t in range(50)]
         bandit.reset(rng=np.random.default_rng(2))
-        seq2 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq2 = [bandit.sample_reward(0, t) for t in range(50)]
         assert seq1 != seq2
 
-    def test_invalid_reward_probabilities_out_of_range(self):
+    def test_invalid_probability_out_of_range(self):
         with pytest.raises(ValueError, match="not in \\[0, 1\\]"):
-            TwoArmedBandit(reward_probabilities=[1.5, 0.3])
+            Bandit.bernoulli(probabilities=[1.5, 0.3])
 
-    def test_invalid_reward_probabilities_length_mismatch(self):
-        with pytest.raises(ValueError, match="must match choices length"):
-            TwoArmedBandit(reward_probabilities=[0.7], choices=[0, 1])
+    def test_invalid_probability_too_few_arms(self):
+        with pytest.raises(ValueError, match="at least 2 arms"):
+            Bandit.bernoulli(probabilities=[0.7])
+
+    def test_response_labels_length_mismatch(self):
+        with pytest.raises(ValueError, match="response_labels length"):
+            Bandit.bernoulli(probabilities=[0.7, 0.3], response_labels=[0])
+
+    def test_duplicate_response_labels(self):
+        with pytest.raises(ValueError, match="response_labels must be unique"):
+            Bandit.bernoulli(probabilities=[0.7, 0.3], response_labels=[1, 1])
 
     def test_reset_required(self):
-        bandit = TwoArmedBandit()
+        bandit = Bandit.bernoulli()
         with pytest.raises(RuntimeError, match="Call reset"):
-            bandit.generate_reward(0, 0)
+            bandit.sample_reward(0, 0)
+
+    def test_action_out_of_range(self):
+        bandit = Bandit.bernoulli()
+        bandit.reset()
+        with pytest.raises(ValueError, match="out of range"):
+            bandit.sample_reward(2, 0)
 
     def test_protocol_compliance(self):
-        assert isinstance(TwoArmedBandit(), TaskEnvironment)
+        assert isinstance(Bandit.bernoulli(), TaskEnvironment)
 
     def test_extra_fields_empty(self):
-        bandit = TwoArmedBandit()
+        bandit = Bandit.bernoulli()
         assert bandit.extra_fields == []
         bandit.reset()
         assert bandit.get_extra_data(0) == {}
 
-    def test_n_choices_and_choices(self):
-        bandit = TwoArmedBandit(choices=[0, 1])
-        assert bandit.n_choices == 2
-        assert bandit.choices == [0, 1]
+    def test_n_arms_and_response_labels(self):
+        bandit = Bandit.bernoulli(
+            probabilities=[0.4, 0.3, 0.2], response_labels=[-1, 0, 1]
+        )
+        assert bandit.n_arms == 3
+        assert bandit.response_labels == [-1, 0, 1]
 
-    def test_choices_returns_copy(self):
-        bandit = TwoArmedBandit(choices=[0, 1])
-        c = bandit.choices
-        c.append(999)
-        assert bandit.choices == [0, 1]
+    def test_response_labels_returns_copy(self):
+        bandit = Bandit.bernoulli(response_labels=[0, 1])
+        labels = bandit.response_labels
+        labels.append(999)
+        assert bandit.response_labels == [0, 1]
 
 
-class TestGaussianBandit:
-    def test_reward_statistics(self):
-        bandit = GaussianBandit(reward_means=[1.5, -0.5], reward_sds=[0.2, 0.8])
+class TestGaussianRewards:
+    def test_reward_statistics_two_arms(self):
+        bandit = Bandit.gaussian(means=[1.5, -0.5], sds=[0.2, 0.8])
         bandit.reset(rng=np.random.default_rng(42))
 
         n = 20_000
-        rewards_0 = np.array([bandit.generate_reward(0, t) for t in range(n)])
+        rewards_0 = np.array([bandit.sample_reward(0, t) for t in range(n)])
         bandit.reset(rng=np.random.default_rng(43))
-        rewards_1 = np.array([bandit.generate_reward(1, t) for t in range(n)])
+        rewards_1 = np.array([bandit.sample_reward(1, t) for t in range(n)])
 
         assert rewards_0.mean() == pytest.approx(1.5, abs=0.01)
         assert rewards_0.std() == pytest.approx(0.2, abs=0.01)
         assert rewards_1.mean() == pytest.approx(-0.5, abs=0.02)
         assert rewards_1.std() == pytest.approx(0.8, abs=0.02)
 
+    def test_reward_statistics_three_arms(self):
+        bandit = Bandit.gaussian(means=[1.5, 0.5, -0.5], sds=[0.2, 0.4, 0.8])
+        n = 20_000
+
+        observed = []
+        for action in range(3):
+            bandit.reset(rng=np.random.default_rng(42 + action))
+            rewards = np.array([bandit.sample_reward(action, t) for t in range(n)])
+            observed.append((rewards.mean(), rewards.std()))
+
+        assert observed[0][0] == pytest.approx(1.5, abs=0.01)
+        assert observed[0][1] == pytest.approx(0.2, abs=0.01)
+        assert observed[1][0] == pytest.approx(0.5, abs=0.01)
+        assert observed[1][1] == pytest.approx(0.4, abs=0.01)
+        assert observed[2][0] == pytest.approx(-0.5, abs=0.02)
+        assert observed[2][1] == pytest.approx(0.8, abs=0.02)
+
     def test_reproducibility(self):
-        bandit = GaussianBandit()
+        bandit = Bandit.gaussian()
         bandit.reset(rng=np.random.default_rng(99))
-        seq1 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq1 = [bandit.sample_reward(0, t) for t in range(50)]
         bandit.reset(rng=np.random.default_rng(99))
-        seq2 = [bandit.generate_reward(0, t) for t in range(50)]
+        seq2 = [bandit.sample_reward(0, t) for t in range(50)]
         assert seq1 == seq2
 
-    def test_invalid_reward_means_length_mismatch(self):
-        with pytest.raises(ValueError, match="reward_means length"):
-            GaussianBandit(reward_means=[1.0], choices=[0, 1])
+    def test_invalid_means_too_few_arms(self):
+        with pytest.raises(ValueError, match="at least 2 arms"):
+            Bandit.gaussian(means=[1.0], sds=[1.0])
 
-    def test_invalid_reward_sds_length_mismatch(self):
-        with pytest.raises(ValueError, match="reward_sds length"):
-            GaussianBandit(reward_sds=[1.0], choices=[0, 1])
+    def test_invalid_sds_length_mismatch(self):
+        with pytest.raises(ValueError, match="means length"):
+            Bandit.gaussian(means=[1.0, 0.0], sds=[1.0])
 
-    def test_invalid_reward_sd_non_positive(self):
+    def test_invalid_sd_non_positive(self):
         with pytest.raises(ValueError, match="must be positive"):
-            GaussianBandit(reward_sds=[1.0, 0.0])
+            Bandit.gaussian(sds=[1.0, 0.0])
 
     def test_reset_required(self):
-        bandit = GaussianBandit()
+        bandit = Bandit.gaussian()
         with pytest.raises(RuntimeError, match="Call reset"):
-            bandit.generate_reward(0, 0)
+            bandit.sample_reward(0, 0)
 
     def test_protocol_compliance(self):
-        assert isinstance(GaussianBandit(), TaskEnvironment)
+        assert isinstance(Bandit.gaussian(), TaskEnvironment)
 
-    def test_n_choices_and_choices(self):
-        bandit = GaussianBandit(choices=[-1, 1])
-        assert bandit.n_choices == 2
-        assert bandit.choices == [-1, 1]
-
-    def test_choices_returns_copy(self):
-        bandit = GaussianBandit(choices=[0, 1])
-        c = bandit.choices
-        c.append(999)
-        assert bandit.choices == [0, 1]
+    def test_n_arms_and_response_labels(self):
+        bandit = Bandit.gaussian(
+            means=[1.0, 0.0, -1.0],
+            sds=[0.2, 0.4, 0.6],
+            response_labels=[-1, 0, 1],
+        )
+        assert bandit.n_arms == 3
+        assert bandit.response_labels == [-1, 0, 1]
 
 
 class TestTaskConfig:
-    def test_builds_bernoulli(self):
-        env = TaskConfig(
-            reward_type="bernoulli", reward_probabilities=[0.6, 0.4]
-        ).build_environment()
-        assert isinstance(env, TwoArmedBandit)
-        assert env.n_choices == 2
-
     def test_default_build(self):
         env = TaskConfig().build_environment()
-        assert isinstance(env, TwoArmedBandit)
-        assert env.n_choices == 2
+        assert isinstance(env, Bandit)
+        assert env.n_arms == 2
+
+    def test_registered_tasks(self):
+        assert "bandit" in registered_tasks()
+
+    def test_builds_bernoulli(self):
+        env = TaskConfig(
+            task="bandit",
+            reward="bernoulli",
+            probabilities=[0.6, 0.4],
+        ).build_environment()
+        assert isinstance(env, Bandit)
+        assert env.n_arms == 2
 
     def test_builds_gaussian(self):
         env = TaskConfig(
-            reward_type="gaussian",
-            reward_means=[2.0, -1.0],
-            reward_sds=[0.5, 1.5],
+            task="bandit",
+            reward="gaussian",
+            means=[2.0, -1.0],
+            sds=[0.5, 1.5],
         ).build_environment()
-        assert isinstance(env, GaussianBandit)
-        assert env.n_choices == 2
+        assert isinstance(env, Bandit)
+        assert env.n_arms == 2
 
-    def test_unsupported_type(self):
-        with pytest.raises(ValueError, match="Unsupported reward_type"):
-            TaskConfig(reward_type="exponential").build_environment()
-
-    def test_custom_choices(self):
+    def test_custom_response_labels(self):
         env = TaskConfig(
-            n_arms=3,
-            reward_probabilities=[0.5, 0.3, 0.2],
-            choices=[10, 20, 30],
+            task="bandit",
+            reward="bernoulli",
+            probabilities=[0.5, 0.3, 0.2],
+            response_labels=[10, 20, 30],
         ).build_environment()
-        assert env.choices == [10, 20, 30]
-        assert env.n_choices == 3
+        assert env.response_labels == [10, 20, 30]
+        assert env.n_arms == 3
 
-    def test_gaussian_custom_choices(self):
+    def test_gaussian_custom_response_labels(self):
         env = TaskConfig(
-            n_arms=3,
-            reward_type="gaussian",
-            reward_means=[2.0, 1.0, 0.0],
-            reward_sds=[0.2, 0.4, 0.6],
-            choices=[10, 20, 30],
+            task="bandit",
+            reward="gaussian",
+            means=[2.0, 1.0, 0.0],
+            sds=[0.2, 0.4, 0.6],
+            response_labels=[10, 20, 30],
         ).build_environment()
-        assert env.choices == [10, 20, 30]
-        assert env.n_choices == 3
+        assert env.response_labels == [10, 20, 30]
+        assert env.n_arms == 3
+
+    def test_unknown_task(self):
+        with pytest.raises(ValueError, match="Unknown task"):
+            TaskConfig(task="maze").build_environment()
+
+    def test_unknown_bandit_reward(self):
+        with pytest.raises(ValueError, match="Unknown bandit reward"):
+            TaskConfig(task="bandit", reward="exponential").build_environment()
+
+    def test_unknown_option(self):
+        with pytest.raises(TypeError, match="Unsupported options"):
+            TaskConfig(
+                task="bandit", reward="bernoulli", means=[1.0, 0.0]
+            ).build_environment()

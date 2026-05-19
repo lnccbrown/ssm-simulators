@@ -140,17 +140,19 @@ class Simulator:
                     "response": -999,
                     "feedback": 0.0,
                 }
+                if config.include_action:
+                    row["action"] = -999
                 row.update(env.get_extra_data(t))
                 rows.append(row)
                 continue
 
             # Use the SSM choice label as the recorded response, but convert it
-            # to a zero-based action index for the learning rule.
+            # to a zero-based action index for the task environment and learning rule.
             response = ssm_choice
             action = self._response_to_action_index(response)
 
             # REWARD
-            reward = env.generate_reward(response, t)
+            reward = env.sample_reward(action, t)
 
             # UPDATE learning process
             lp.update(action, reward, rl_params)
@@ -163,6 +165,8 @@ class Simulator:
                 "response": response,
                 "feedback": reward,
             }
+            if config.include_action:
+                row["action"] = action
             row.update(env.get_extra_data(t))
             rows.append(row)
 
@@ -170,10 +174,10 @@ class Simulator:
 
     def _response_to_action_index(self, response: int) -> int:
         """Map an SSM response label to the learning process action index."""
-        choices = self.config.task_environment.choices
-        if response not in choices:
+        response_to_action = self.config.response_to_action
+        if response not in response_to_action:
             raise ValueError(
-                f"SSM response {response} is not a valid task choice. "
-                f"Expected one of: {choices}."
+                f"SSM response {response} is not in response_mapping. "
+                f"Expected one of: {sorted(response_to_action)}."
             )
-        return choices.index(response)
+        return response_to_action[response]

@@ -12,7 +12,7 @@ from ssms.rl.learning import (
 
 class TestRescorlaWagnerDeltaRule:
     def setup_method(self):
-        self.rw = RescorlaWagnerDeltaRule(n_choices=2, initial_q=0.5)
+        self.rw = RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5)
         self.rw.reset()
 
     def test_initial_q_values(self):
@@ -139,10 +139,14 @@ class TestRescorlaWagnerDeltaRule:
         defaults = self.rw.default_params
         assert defaults == {"rl_alpha": 0.2, "scaler": 2.0}
 
+    def test_invalid_n_actions(self):
+        with pytest.raises(ValueError, match="n_actions"):
+            RescorlaWagnerDeltaRule(n_actions=1)
+
 
 class TestRescorlaWagnerDualAlphaRule:
     def setup_method(self):
-        self.rw = RescorlaWagnerDualAlphaRule(n_choices=2, initial_q=0.5)
+        self.rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
         self.rw.reset()
 
     def test_protocol_compliance(self):

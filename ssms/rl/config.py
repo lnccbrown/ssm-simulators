@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from ssms.config.model_config_builder import ModelConfigBuilder
 
@@ -22,6 +22,7 @@ _HSSM_SHARED_FIELDS = (
     "choices",
     "decision_process",
     "response",
+    "response_mapping",
     "extra_fields",
 )
 
@@ -58,9 +59,15 @@ class ModelConfig:
     params_default : list[float] | None
         Default values in same order as list_params. If None, auto-derived.
     choices : tuple[int, ...] | None
-        Task-space choice values (e.g., (0, 1)). If None, taken from task_environment.
+        SSM response labels (e.g., (-1, 1)). If None, taken from task_environment.
     response : list[str]
         Response column names. Default ["rt", "response"].
+    response_mapping : Literal["auto"] | dict[int, int]
+        Mapping from SSM response labels to zero-based learning actions.
+        ``"auto"`` maps labels by ``task_environment.response_labels`` order.
+    include_action : bool
+        Whether simulator output includes the derived zero-based ``action`` column.
+        Default False.
     extra_fields : list[str] | None
         Extra data columns beyond response. Default: ["feedback"] + task_environment.extra_fields.
     computed_param_mapping : dict[str, str] | None
@@ -85,6 +92,8 @@ class ModelConfig:
     params_default: list[float] | None = None
     choices: tuple[int, ...] | None = None
     response: list[str] = field(default_factory=lambda: ["rt", "response"])
+    response_mapping: Literal["auto"] | dict[int, int] = "auto"
+    include_action: bool = False
     extra_fields: list[str] | None = None
 
     # Optional handshake override
@@ -106,7 +115,9 @@ class ModelConfig:
 
         # Auto-derive fields if not provided
         if self.choices is None:
-            self.choices = tuple(self.task_environment.choices)
+            self.choices = tuple(self.task_environment.response_labels)
+
+        self.response_to_action = self._normalize_response_mapping()
 
         if self.extra_fields is None:
             base_extra = ["feedback"]
@@ -125,6 +136,45 @@ class ModelConfig:
             self.bounds = self._derive_bounds()
         if self.params_default is None:
             self.params_default = self._derive_params_default()
+
+    def _normalize_response_mapping(self) -> dict[int, int]:
+        """Normalize response labels to zero-based action indices."""
+        response_labels = list(self.task_environment.response_labels)
+        n_arms = self.task_environment.n_arms
+        if tuple(response_labels) != tuple(self.choices):
+            raise ValueError(
+                "choices must match task_environment.response_labels. "
+                f"Got choices={self.choices} and response_labels={response_labels}."
+            )
+
+        if self.response_mapping == "auto":
+            return {label: action for action, label in enumerate(response_labels)}
+
+        mapping = {
+            int(response): int(action)
+            for response, action in self.response_mapping.items()
+        }
+        label_set = set(response_labels)
+        mapping_labels = set(mapping)
+        if mapping_labels != label_set:
+            missing = sorted(label_set - mapping_labels)
+            extra = sorted(mapping_labels - label_set)
+            raise ValueError(
+                "response_mapping must cover response labels exactly. "
+                f"Missing: {missing}; extra: {extra}."
+            )
+
+        values = list(mapping.values())
+        expected_actions = set(range(n_arms))
+        action_set = set(values)
+        if len(action_set) != len(values):
+            raise ValueError("response_mapping action values must be unique")
+        if action_set != expected_actions:
+            raise ValueError(
+                "response_mapping action values must be exactly "
+                f"{sorted(expected_actions)}. Got {sorted(action_set)}."
+            )
+        return mapping
 
     def _resolve_handshake(self):
         """Resolve which SSM params are computed by learning vs fixed by user.
@@ -262,6 +312,7 @@ class ModelConfig:
             "params_default": list(self.params_default),
             "choices": tuple(self.choices),
             "response": list(self.response),
+            "response_mapping": dict(self.response_to_action),
             "extra_fields": list(self.extra_fields) if self.extra_fields else [],
             # Inference-only placeholders (user fills on HSSM side)
             "ssm_logp_func": None,

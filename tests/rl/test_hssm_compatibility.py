@@ -14,8 +14,8 @@ def sim_data():
         description="Compatibility test",
         decision_process="angle",
         learning_process=rl.learning.RescorlaWagnerDeltaRule(),
-        task_environment=rl.env.TwoArmedBandit(
-            reward_probabilities=[0.7, 0.3], choices=[-1, 1]
+        task_environment=rl.env.Bandit.bernoulli(
+            probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
     )
     sim = rl.Simulator(config)
@@ -82,6 +82,7 @@ class TestToHssmConfigDictSchema:
         assert isinstance(d["params_default"], list)
         assert isinstance(d["choices"], tuple)
         assert isinstance(d["response"], list)
+        assert isinstance(d["response_mapping"], dict)
         assert isinstance(d["extra_fields"], list)
 
     def test_inference_placeholders_present(self, sim_data):
@@ -133,7 +134,7 @@ class TestRegistry:
                 description="Custom preset",
                 decision_process="angle",
                 learning_process=rl.learning.RescorlaWagnerDeltaRule(),
-                task_environment=rl.env.TwoArmedBandit(choices=[-1, 1]),
+                task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
             )
 
         rl.preset.register("custom_test", factory)

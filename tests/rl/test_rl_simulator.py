@@ -15,11 +15,11 @@ def _make_simulator(**config_overrides):
         description="Test RLSSM",
         decision_process="angle",
         learning_process=rl.learning.RescorlaWagnerDeltaRule(
-            n_choices=2, initial_q=0.5
+            n_actions=2, initial_q=0.5
         ),
-        # Use choices [-1, 1] to match angle model's SSM output
-        task_environment=rl.env.TwoArmedBandit(
-            reward_probabilities=[0.7, 0.3], choices=[-1, 1]
+        # Use response labels [-1, 1] to match angle model's SSM output
+        task_environment=rl.env.Bandit.bernoulli(
+            probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
     )
     defaults.update(config_overrides)
@@ -61,6 +61,9 @@ class TestSimulateOutput:
         expected = {"participant_id", "trial_id", "rt", "response", "feedback"}
         assert expected.issubset(set(data.columns))
 
+    def test_default_excludes_action(self, data):
+        assert "action" not in data.columns
+
     def test_sorted_order(self, data):
         assert data.equals(
             data.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
@@ -78,7 +81,7 @@ class TestSimulateOutput:
         non_omission = data[data["rt"] != OMISSION_SENTINEL]
         assert (non_omission["rt"] > 0).all()
 
-    def test_response_in_choices(self, data):
+    def test_response_in_labels(self, data):
         non_omission = data[data["response"] != -999]
         assert set(non_omission["response"].unique()).issubset({-1, 1})
 
@@ -167,8 +170,8 @@ class TestResponseActionMapping:
         from unittest.mock import patch
 
         sim = _make_simulator(
-            task_environment=rl.env.TwoArmedBandit(
-                reward_probabilities=[1.0, 0.0], choices=[-1, 1]
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[1.0, 0.0], response_labels=[-1, 1]
             )
         )
         choices = iter([-1, 1])
@@ -197,8 +200,54 @@ class TestResponseActionMapping:
             return {"rts": np.array([[0.5]]), "choices": np.array([[0]])}
 
         with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
-            with pytest.raises(ValueError, match="not a valid task choice"):
+            with pytest.raises(ValueError, match="not in response_mapping"):
                 sim.simulate(theta=THETA, n_trials=1, n_participants=1)
+
+    def test_include_action_emits_derived_action(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(include_action=True)
+        choices = iter([-1, 1])
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=THETA, n_trials=2, n_participants=1)
+
+        assert df["response"].tolist() == [-1, 1]
+        assert df["action"].tolist() == [0, 1]
+
+    def test_reversed_mapping_changes_learning_updates(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[1.0, 0.0], response_labels=[-1, 1]
+            ),
+            response_mapping={-1: 1, 1: 0},
+            include_action=True,
+        )
+        choices = iter([-1, 1])
+        theta = {**THETA, "rl_alpha": 1.0}
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=theta, n_trials=2, n_participants=1)
+
+        assert df["response"].tolist() == [-1, 1]
+        assert df["action"].tolist() == [1, 0]
+        np.testing.assert_allclose(
+            sim.config.learning_process.q_values, np.array([1.0, 0.0])
+        )
 
 
 class TestMilestone2Integration:
@@ -227,10 +276,10 @@ class TestMilestone2Integration:
 
     def test_gaussian_bandit_simulates_continuous_feedback(self):
         sim = _make_simulator(
-            task_environment=rl.env.GaussianBandit(
-                reward_means=[1.0, 0.0],
-                reward_sds=[0.2, 0.2],
-                choices=[-1, 1],
+            task_environment=rl.env.Bandit.gaussian(
+                means=[1.0, 0.0],
+                sds=[0.2, 0.2],
+                response_labels=[-1, 1],
             )
         )
 
@@ -245,10 +294,10 @@ class TestMilestone2Integration:
         from unittest.mock import patch
 
         sim = _make_simulator(
-            task_environment=rl.env.GaussianBandit(
-                reward_means=[1.0, 0.0],
-                reward_sds=[1e-12, 1e-12],
-                choices=[-1, 1],
+            task_environment=rl.env.Bandit.gaussian(
+                means=[1.0, 0.0],
+                sds=[1e-12, 1e-12],
+                response_labels=[-1, 1],
             )
         )
         choices = iter([-1, 1])
