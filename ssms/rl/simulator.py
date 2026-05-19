@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
 
@@ -9,6 +11,7 @@ from ssms.basic_simulators import OMISSION_SENTINEL
 from ssms.basic_simulators.simulator import simulator as ssm_simulator
 
 from .config import ModelConfig
+from .env import TaskEnvironment
 
 
 class Simulator:
@@ -91,7 +94,7 @@ class Simulator:
         """Simulate one participant's trial sequence."""
         config = self.config
         lp = config.learning_process
-        env = config.task_environment
+        env = cast(TaskEnvironment, config.task_environment)
 
         # Split theta into RL params and fixed SSM params
         rl_params = {k: theta[k] for k in lp.free_params}
@@ -180,4 +183,4 @@ class Simulator:
                 f"SSM response {response} is not in response_mapping. "
                 f"Expected one of: {sorted(response_to_action)}."
             )
-        return response_to_action[response]
+        return int(response_to_action[response])

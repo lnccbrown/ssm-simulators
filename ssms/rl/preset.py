@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Callable
 
 from .config import ModelConfig
@@ -22,7 +23,7 @@ def get(name: str) -> ModelConfig:
     return _PRESETS[name]()
 
 
-def list() -> list[str]:
+def list() -> builtins.list[str]:
     """List available RLSSM preset names."""
     return sorted(_PRESETS.keys())
 

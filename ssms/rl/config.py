@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from ssms.config.model_config_builder import ModelConfigBuilder
 
@@ -139,8 +139,9 @@ class ModelConfig:
 
     def _normalize_response_mapping(self) -> dict[int, int]:
         """Normalize response labels to zero-based action indices."""
-        response_labels = list(self.task_environment.response_labels)
-        n_arms = self.task_environment.n_arms
+        task_environment = cast(TaskEnvironment, self.task_environment)
+        response_labels = list(task_environment.response_labels)
+        n_arms = task_environment.n_arms
         if tuple(response_labels) != tuple(self.choices):
             raise ValueError(
                 "choices must match task_environment.response_labels. "
@@ -183,22 +184,24 @@ class ModelConfig:
         - self._computed_ssm_params: SSM param names filled by learning process
         - self._fixed_ssm_params: SSM param names user must provide in theta
         """
-        ssm_params = self._ssm_config["params"]
+        ssm_params: list[str] = list(self._ssm_config["params"])
         learning_outputs = self.learning_process.computed_params
 
         # Apply computed_param_mapping if provided
         mapping = self.computed_param_mapping or {}
-        computed_ssm_params = set()
+        computed_ssm_params: set[str] = set()
         for output_name in learning_outputs:
             ssm_name = mapping.get(output_name, output_name)
             computed_ssm_params.add(ssm_name)
 
         self._computed_ssm_params = list(computed_ssm_params)
-        self._fixed_ssm_params = [p for p in ssm_params if p not in computed_ssm_params]
+        self._fixed_ssm_params: list[str] = [
+            p for p in ssm_params if p not in computed_ssm_params
+        ]
 
     def _derive_list_params(self) -> list[str]:
         """RL free params + fixed SSM params (in that order)."""
-        return self.learning_process.free_params + self._fixed_ssm_params
+        return list(self.learning_process.free_params) + self._fixed_ssm_params
 
     def _derive_bounds(self) -> dict[str, tuple[float, float]]:
         """Merge RL param bounds + SSM param bounds for fixed params."""
