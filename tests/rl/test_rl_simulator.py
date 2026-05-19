@@ -29,6 +29,15 @@ def _make_simulator(**config_overrides):
 
 # Default theta for angle model (v is computed by learning process)
 THETA = {"rl_alpha": 0.2, "scaler": 2.0, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.2}
+THETA_DUAL = {
+    "rl_alpha": 0.2,
+    "rl_alpha_neg": 0.1,
+    "scaler": 2.0,
+    "a": 1.5,
+    "z": 0.5,
+    "t": 0.3,
+    "theta": 0.2,
+}
 
 
 class TestSimulateOutput:
@@ -190,3 +199,73 @@ class TestResponseActionMapping:
         with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
             with pytest.raises(ValueError, match="not a valid task choice"):
                 sim.simulate(theta=THETA, n_trials=1, n_participants=1)
+
+
+class TestMilestone2Integration:
+    def test_dual_alpha_learning_rule_simulates(self):
+        sim = _make_simulator(
+            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+        )
+
+        df = sim.simulate(
+            theta=THETA_DUAL,
+            n_trials=10,
+            n_participants=2,
+            random_state=42,
+        )
+
+        assert len(df) == 20
+        assert sim.config.list_params == [
+            "rl_alpha",
+            "rl_alpha_neg",
+            "scaler",
+            "a",
+            "z",
+            "t",
+            "theta",
+        ]
+
+    def test_gaussian_bandit_simulates_continuous_feedback(self):
+        sim = _make_simulator(
+            task_environment=rl.env.GaussianBandit(
+                reward_means=[1.0, 0.0],
+                reward_sds=[0.2, 0.2],
+                choices=[-1, 1],
+            )
+        )
+
+        df = sim.simulate(theta=THETA, n_trials=30, n_participants=2, random_state=42)
+        non_omission = df[df["rt"] != OMISSION_SENTINEL]
+
+        assert len(df) == 60
+        assert pd.api.types.is_float_dtype(df["feedback"])
+        assert not set(non_omission["feedback"].unique()).issubset({0.0, 1.0})
+
+    def test_gaussian_response_labels_map_to_learning_action_indices(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(
+            task_environment=rl.env.GaussianBandit(
+                reward_means=[1.0, 0.0],
+                reward_sds=[1e-12, 1e-12],
+                choices=[-1, 1],
+            )
+        )
+        choices = iter([-1, 1])
+        theta = {**THETA, "rl_alpha": 1.0}
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=theta, n_trials=2, n_participants=1)
+
+        assert df["response"].tolist() == [-1, 1]
+        np.testing.assert_allclose(
+            sim.config.learning_process.q_values,
+            np.array([1.0, 0.0]),
+            atol=1e-9,
+        )

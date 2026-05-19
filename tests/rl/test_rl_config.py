@@ -63,6 +63,37 @@ class TestAutoDerivation:
         assert config.extra_fields == ["feedback"]
 
 
+class TestDualAlphaAutoDerivation:
+    def test_auto_derive_list_params(self):
+        config = _make_default_config(
+            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+        )
+        assert config.list_params == [
+            "rl_alpha",
+            "rl_alpha_neg",
+            "scaler",
+            "a",
+            "z",
+            "t",
+            "theta",
+        ]
+
+    def test_auto_derive_bounds(self):
+        config = _make_default_config(
+            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+        )
+        assert config.bounds["rl_alpha"] == (0.0, 1.0)
+        assert config.bounds["rl_alpha_neg"] == (0.0, 1.0)
+        assert config.bounds["scaler"] == (0.001, 10.0)
+        assert "v" not in config.bounds
+
+    def test_auto_derive_params_default(self):
+        config = _make_default_config(
+            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+        )
+        assert config.params_default[:3] == [0.2, 0.2, 2.0]
+
+
 class TestHandshakeValidation:
     def test_valid_config_validates(self):
         config = _make_default_config()
@@ -120,10 +151,21 @@ class TestTaskConfigAutoBuild:
     def test_task_config_auto_build(self):
         config = _make_default_config(
             task_environment=rl.env.TaskConfig(
-                reward_type="bernoulli", reward_probs=[0.6, 0.4]
+                reward_type="bernoulli", reward_probabilities=[0.6, 0.4]
             ),
         )
         assert isinstance(config.task_environment, rl.env.TwoArmedBandit)
+        assert config.choices == (0, 1)
+
+    def test_gaussian_task_config_auto_build(self):
+        config = _make_default_config(
+            task_environment=rl.env.TaskConfig(
+                reward_type="gaussian",
+                reward_means=[1.0, 0.0],
+                reward_sds=[0.25, 0.5],
+            ),
+        )
+        assert isinstance(config.task_environment, rl.env.GaussianBandit)
         assert config.choices == (0, 1)
 
 

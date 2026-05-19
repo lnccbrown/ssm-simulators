@@ -107,6 +107,69 @@ class TwoArmedBandit:
         return {}
 
 
+class GaussianBandit:
+    """Gaussian bandit task environment with continuous rewards.
+
+    Parameters
+    ----------
+    reward_means : list[float]
+        Per-arm reward means. Length must equal len(choices). Default [1.0, 0.0].
+    reward_sds : list[float]
+        Per-arm reward standard deviations. Length must equal len(choices).
+        Values must be positive. Default [1.0, 1.0].
+    choices : list[int]
+        Response labels in task space. Default [0, 1].
+    """
+
+    def __init__(
+        self,
+        reward_means: list[float] | None = None,
+        reward_sds: list[float] | None = None,
+        choices: list[int] | None = None,
+    ):
+        self._reward_means = reward_means or [1.0, 0.0]
+        self._reward_sds = reward_sds or [1.0, 1.0]
+        self._choices = choices or [0, 1]
+        if len(self._reward_means) != len(self._choices):
+            raise ValueError(
+                f"reward_means length ({len(self._reward_means)}) "
+                f"must match choices length ({len(self._choices)})"
+            )
+        if len(self._reward_sds) != len(self._choices):
+            raise ValueError(
+                f"reward_sds length ({len(self._reward_sds)}) "
+                f"must match choices length ({len(self._choices)})"
+            )
+        for sd in self._reward_sds:
+            if sd <= 0.0:
+                raise ValueError(f"Reward standard deviation {sd} must be positive")
+        self._rng: np.random.Generator | None = None
+
+    @property
+    def n_choices(self) -> int:
+        return len(self._choices)
+
+    @property
+    def choices(self) -> list[int]:
+        return list(self._choices)
+
+    @property
+    def extra_fields(self) -> list[str]:
+        return []
+
+    def reset(self, rng: np.random.Generator | None = None) -> None:
+        self._rng = rng or np.random.default_rng()
+
+    def generate_reward(self, response: int, trial_idx: int) -> float:
+        if self._rng is None:
+            raise RuntimeError("Call reset() before generate_reward()")
+        idx = self._choices.index(response)
+        return float(self._rng.normal(self._reward_means[idx], self._reward_sds[idx]))
+
+    def get_extra_data(self, trial_idx: int) -> dict[str, float]:
+        return {}
+
+
 @dataclass
 class TaskConfig:
     """Convenience configuration for common task paradigms.
@@ -121,24 +184,33 @@ class TaskConfig:
         Number of arms/choices. Default 2.
     reward_type : str
         "bernoulli" (v1) or "gaussian" (v2).
-    reward_probs : list[float] | None
+    reward_probabilities : list[float] | None
         Per-arm reward probabilities for Bernoulli tasks.
+    reward_means : list[float] | None
+        Per-arm reward means for Gaussian tasks.
+    reward_sds : list[float] | None
+        Per-arm reward standard deviations for Gaussian tasks.
     choices : list[int] | None
         Response labels. Default: [0, 1, ..., n_arms-1].
     """
 
     n_arms: int = 2
     reward_type: str = "bernoulli"
-    reward_probs: list[float] | None = None
+    reward_probabilities: list[float] | None = None
+    reward_means: list[float] | None = None
+    reward_sds: list[float] | None = None
     choices: list[int] | None = None
 
     def build_environment(self) -> TaskEnvironment:
         choices = self.choices or list(range(self.n_arms))
         if self.reward_type == "bernoulli":
-            probs = self.reward_probs or [0.7, 0.3]
+            probs = self.reward_probabilities or [0.7, 0.3]
             return TwoArmedBandit(reward_probabilities=probs, choices=choices)
-        else:
-            raise ValueError(
-                f"Unsupported reward_type '{self.reward_type}'. "
-                f"v1 supports: 'bernoulli'."
-            )
+        if self.reward_type == "gaussian":
+            means = self.reward_means or [1.0, 0.0]
+            sds = self.reward_sds or [1.0, 1.0]
+            return GaussianBandit(reward_means=means, reward_sds=sds, choices=choices)
+        raise ValueError(
+            f"Unsupported reward_type '{self.reward_type}'. "
+            f"Supported reward types: 'bernoulli', 'gaussian'."
+        )

@@ -132,3 +132,36 @@ class RescorlaWagnerDeltaRule:
         alpha = trial_params["rl_alpha"]
         delta = reward - self._q_values[action]
         self._q_values[action] += alpha * delta
+
+
+class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
+    """Rescorla-Wagner delta learning rule with separate learning rates.
+
+    Positive prediction errors use ``rl_alpha`` and negative prediction errors
+    use ``rl_alpha_neg``. Drift computation and Q-value initialization match
+    ``RescorlaWagnerDeltaRule``.
+    """
+
+    @property
+    def free_params(self) -> list[str]:
+        return ["rl_alpha", "rl_alpha_neg", "scaler"]
+
+    @property
+    def param_bounds(self) -> dict[str, tuple[float, float]]:
+        return {
+            "rl_alpha": (0.0, 1.0),
+            "rl_alpha_neg": (0.0, 1.0),
+            "scaler": (0.001, 10.0),
+        }
+
+    @property
+    def default_params(self) -> dict[str, float]:
+        return {"rl_alpha": 0.2, "rl_alpha_neg": 0.2, "scaler": 2.0}
+
+    def update(
+        self, action: int, reward: float, trial_params: dict[str, float]
+    ) -> None:
+        """Update Q[action] with sign-dependent learning rates."""
+        delta = reward - self._q_values[action]
+        alpha = trial_params["rl_alpha_neg"] if delta < 0 else trial_params["rl_alpha"]
+        self._q_values[action] += alpha * delta

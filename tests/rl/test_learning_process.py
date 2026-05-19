@@ -1,9 +1,13 @@
-"""Tests for LearningProcess protocol and RescorlaWagnerDeltaRule."""
+"""Tests for LearningProcess protocol and Rescorla-Wagner learning rules."""
 
 import numpy as np
 import pytest
 
-from ssms.rl.learning import LearningProcess, RescorlaWagnerDeltaRule
+from ssms.rl.learning import (
+    LearningProcess,
+    RescorlaWagnerDeltaRule,
+    RescorlaWagnerDualAlphaRule,
+)
 
 
 class TestRescorlaWagnerDeltaRule:
@@ -134,3 +138,78 @@ class TestRescorlaWagnerDeltaRule:
     def test_default_params(self):
         defaults = self.rw.default_params
         assert defaults == {"rl_alpha": 0.2, "scaler": 2.0}
+
+
+class TestRescorlaWagnerDualAlphaRule:
+    def setup_method(self):
+        self.rw = RescorlaWagnerDualAlphaRule(n_choices=2, initial_q=0.5)
+        self.rw.reset()
+
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerDualAlphaRule(), LearningProcess)
+
+    def test_initial_q_values(self):
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+
+    def test_q_values_property_returns_copy(self):
+        q = self.rw.q_values
+        q[0] = 999.0
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+
+    def test_reset_clears_state(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        self.rw.update(action=0, reward=1.0, trial_params=params)
+        assert not np.array_equal(self.rw.q_values, [0.5, 0.5])
+        self.rw.reset()
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+
+    def test_free_params(self):
+        assert self.rw.free_params == ["rl_alpha", "rl_alpha_neg", "scaler"]
+
+    def test_param_bounds(self):
+        bounds = self.rw.param_bounds
+        assert bounds["rl_alpha"] == (0.0, 1.0)
+        assert bounds["rl_alpha_neg"] == (0.0, 1.0)
+        assert bounds["scaler"] == (0.001, 10.0)
+
+    def test_default_params(self):
+        assert self.rw.default_params == {
+            "rl_alpha": 0.2,
+            "rl_alpha_neg": 0.2,
+            "scaler": 2.0,
+        }
+
+    def test_positive_prediction_error_uses_rl_alpha(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        self.rw.update(action=0, reward=1.0, trial_params=params)
+        np.testing.assert_allclose(self.rw.q_values, [0.8, 0.5])
+
+    def test_negative_prediction_error_uses_rl_alpha_neg(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        self.rw.update(action=0, reward=0.0, trial_params=params)
+        np.testing.assert_allclose(self.rw.q_values, [0.45, 0.5])
+
+    def test_drift_before_update_ordering(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
+        v_before = self.rw.compute_ssm_params(params)["v"]
+        assert v_before == 0.0
+        self.rw.update(action=0, reward=1.0, trial_params=params)
+        v_after = self.rw.compute_ssm_params(params)["v"]
+        assert v_after == pytest.approx(-0.6)
+
+    def test_multiple_updates_trajectory(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
+        sequence = [(0, 1.0), (0, 0.0), (1, 1.0), (1, 0.0)]
+        expected_v_before = [0.0, -0.6, -0.44, 0.16]
+        expected_q = [
+            [0.8, 0.5],
+            [0.72, 0.5],
+            [0.72, 0.8],
+            [0.72, 0.72],
+        ]
+
+        for i, (action, reward) in enumerate(sequence):
+            v = self.rw.compute_ssm_params(params)["v"]
+            assert v == pytest.approx(expected_v_before[i], abs=1e-12)
+            self.rw.update(action=action, reward=reward, trial_params=params)
+            np.testing.assert_allclose(self.rw.q_values, expected_q[i], atol=1e-12)
