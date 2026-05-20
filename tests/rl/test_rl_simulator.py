@@ -6,6 +6,7 @@ import pytest
 
 from ssms import OMISSION_SENTINEL
 import ssms.rl as rl
+from ssms.rl.simulator import MISSING_RESPONSE_SENTINEL
 
 
 def _make_simulator(**config_overrides):
@@ -82,7 +83,7 @@ class TestSimulateOutput:
         assert (non_omission["rt"] > 0).all()
 
     def test_response_in_labels(self, data):
-        non_omission = data[data["response"] != -999]
+        non_omission = data[data["response"] != MISSING_RESPONSE_SENTINEL]
         assert set(non_omission["response"].unique()).issubset({-1, 1})
 
     def test_feedback_binary(self, data):
@@ -156,12 +157,31 @@ class TestOmissionHandling:
         assert len(df) == 5
         omissions = df[df["rt"] == OMISSION_SENTINEL]
         assert len(omissions) == 2
-        assert (omissions["response"] == -999).all()
+        assert (omissions["response"] == MISSING_RESPONSE_SENTINEL).all()
         assert (omissions["feedback"] == 0.0).all()
         # Non-omission rows should have valid data
         non_omission = df[df["rt"] != OMISSION_SENTINEL]
         assert (non_omission["rt"] == 0.5).all()
         assert set(non_omission["response"].unique()) == {1}
+
+    def test_omission_action_uses_missing_response_sentinel(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(include_action=True)
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[OMISSION_SENTINEL]]),
+                "choices": np.array([[-1]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(
+                theta=THETA, n_trials=1, n_participants=1, random_state=42
+            )
+
+        assert df.loc[0, "response"] == MISSING_RESPONSE_SENTINEL
+        assert df.loc[0, "action"] == MISSING_RESPONSE_SENTINEL
 
 
 class TestResponseActionMapping:

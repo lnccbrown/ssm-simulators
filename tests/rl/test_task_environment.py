@@ -57,6 +57,10 @@ class TestBernoulliBandit:
         with pytest.raises(ValueError, match="at least 2 arms"):
             Bandit.bernoulli(probabilities=[0.7])
 
+    def test_empty_probabilities_are_invalid(self):
+        with pytest.raises(ValueError, match="at least 2 arms"):
+            Bandit.bernoulli(probabilities=[])
+
     def test_response_labels_length_mismatch(self):
         with pytest.raises(ValueError, match="response_labels length"):
             Bandit.bernoulli(probabilities=[0.7, 0.3], response_labels=[0])
@@ -143,9 +147,17 @@ class TestGaussianRewards:
         with pytest.raises(ValueError, match="at least 2 arms"):
             Bandit.gaussian(means=[1.0], sds=[1.0])
 
+    def test_empty_means_are_invalid(self):
+        with pytest.raises(ValueError, match="at least 2 arms"):
+            Bandit.gaussian(means=[], sds=[])
+
     def test_invalid_sds_length_mismatch(self):
         with pytest.raises(ValueError, match="means length"):
             Bandit.gaussian(means=[1.0, 0.0], sds=[1.0])
+
+    def test_empty_sds_are_invalid(self):
+        with pytest.raises(ValueError, match="means length"):
+            Bandit.gaussian(means=[1.0, 0.0], sds=[])
 
     def test_invalid_sd_non_positive(self):
         with pytest.raises(ValueError, match="must be positive"):

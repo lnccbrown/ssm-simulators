@@ -116,8 +116,10 @@ class Bandit:
         response_labels: list[int] | None = None,
     ) -> Bandit:
         """Build a Bernoulli-reward bandit."""
+        if probabilities is None:
+            probabilities = [0.7, 0.3]
         return cls(
-            rewards=_BernoulliRewards(probabilities or [0.7, 0.3]),
+            rewards=_BernoulliRewards(probabilities),
             response_labels=response_labels,
         )
 
@@ -129,8 +131,10 @@ class Bandit:
         response_labels: list[int] | None = None,
     ) -> Bandit:
         """Build a Gaussian-reward bandit."""
-        means = means or [1.0, 0.0]
-        sds = sds or [1.0] * len(means)
+        if means is None:
+            means = [1.0, 0.0]
+        if sds is None:
+            sds = [1.0] * len(means)
         return cls(
             rewards=_GaussianRewards(means, sds), response_labels=response_labels
         )

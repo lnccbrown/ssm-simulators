@@ -143,6 +143,10 @@ class TestRescorlaWagnerDeltaRule:
         with pytest.raises(ValueError, match="n_actions"):
             RescorlaWagnerDeltaRule(n_actions=1)
 
+    def test_rejects_more_than_two_actions(self):
+        with pytest.raises(ValueError, match="two-action"):
+            RescorlaWagnerDeltaRule(n_actions=3)
+
 
 class TestRescorlaWagnerDualAlphaRule:
     def setup_method(self):

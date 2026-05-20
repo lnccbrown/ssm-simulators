@@ -15,7 +15,9 @@ def _make_default_config(**overrides):
         learning_process=rl.learning.RescorlaWagnerDeltaRule(
             n_actions=2, initial_q=0.5
         ),
-        task_environment=rl.env.Bandit.bernoulli(probabilities=[0.7, 0.3]),
+        task_environment=rl.env.Bandit.bernoulli(
+            probabilities=[0.7, 0.3], response_labels=[-1, 1]
+        ),
     )
     defaults.update(overrides)
     return rl.ModelConfig(**defaults)
@@ -56,7 +58,7 @@ class TestAutoDerivation:
 
     def test_auto_derive_choices(self):
         config = _make_default_config()
-        assert config.choices == (0, 1)
+        assert config.choices == (-1, 1)
 
     def test_auto_response_mapping(self):
         config = _make_default_config(
@@ -152,16 +154,43 @@ class TestHandshakeValidation:
         config.validate()  # Should not raise
         assert "v" not in config.bounds  # v is computed, not fixed
 
+    def test_computed_param_mapping_collision_raises(self):
+        """Multiple learning outputs cannot map to one SSM parameter."""
+
+        class CollidingLearning:
+            computed_params = ["drift_left", "drift_right"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+
+            def reset(self, **kwargs):
+                pass
+
+            def compute_ssm_params(self, trial_params):
+                return {"drift_left": 0.0, "drift_right": 0.0}
+
+            def update(self, action, reward, trial_params):
+                pass
+
+        with pytest.raises(ValueError, match="computed_param_mapping"):
+            _make_default_config(
+                learning_process=CollidingLearning(),
+                computed_param_mapping={"drift_left": "v", "drift_right": "v"},
+            )
+
 
 class TestTaskConfigAutoBuild:
     def test_task_config_auto_build(self):
         config = _make_default_config(
             task_environment=rl.env.TaskConfig(
-                task="bandit", reward="bernoulli", probabilities=[0.6, 0.4]
+                task="bandit",
+                reward="bernoulli",
+                probabilities=[0.6, 0.4],
+                response_labels=[-1, 1],
             ),
         )
         assert isinstance(config.task_environment, rl.env.Bandit)
-        assert config.choices == (0, 1)
+        assert config.choices == (-1, 1)
 
     def test_gaussian_task_config_auto_build(self):
         config = _make_default_config(
@@ -170,10 +199,11 @@ class TestTaskConfigAutoBuild:
                 reward="gaussian",
                 means=[1.0, 0.0],
                 sds=[0.25, 0.5],
+                response_labels=[-1, 1],
             ),
         )
         assert isinstance(config.task_environment, rl.env.Bandit)
-        assert config.choices == (0, 1)
+        assert config.choices == (-1, 1)
 
 
 class TestResponseMapping:
@@ -219,9 +249,25 @@ class TestResponseMapping:
                 choices=(0, 1),
             )
 
+    def test_response_labels_must_match_ssm_choices(self):
+        with pytest.raises(ValueError, match="SSM choices"):
+            _make_default_config(
+                task_environment=rl.env.Bandit.bernoulli(
+                    probabilities=[0.7, 0.3], response_labels=[0, 1]
+                ),
+                choices=(0, 1),
+            )
+
     def test_include_action_defaults_false(self):
         config = _make_default_config()
         assert config.include_action is False
+
+
+class TestListParamsValidation:
+    def test_list_params_must_include_required_params(self):
+        config = _make_default_config(list_params=["rl_alpha", "scaler"])
+        with pytest.raises(ValueError, match="list_params must match"):
+            config.validate()
 
 
 class TestToHssmConfigDict:

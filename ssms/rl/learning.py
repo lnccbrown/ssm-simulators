@@ -87,11 +87,18 @@ class RescorlaWagnerDeltaRule:
     """
 
     def __init__(self, n_actions: int = 2, initial_q: float = 0.5):
-        if n_actions < 2:
-            raise ValueError("n_actions must be at least 2")
+        if n_actions != 2:
+            raise ValueError(
+                "n_actions must be 2; RescorlaWagnerDeltaRule supports "
+                "two-action tasks only"
+            )
         self._n_actions = n_actions
         self._initial_q = initial_q
         self._q_values: np.ndarray | None = None
+
+    @property
+    def n_actions(self) -> int:
+        return self._n_actions
 
     @property
     def computed_params(self) -> list[str]:

@@ -118,6 +118,7 @@ class ModelConfig:
             self.choices = tuple(self.task_environment.response_labels)
 
         self.response_to_action = self._normalize_response_mapping()
+        self._validate_ssm_choices()
 
         if self.extra_fields is None:
             base_extra = ["feedback"]
@@ -177,6 +178,19 @@ class ModelConfig:
             )
         return mapping
 
+    def _validate_ssm_choices(self) -> None:
+        """Ensure task response labels match the decision simulator labels."""
+        ssm_choices = self._ssm_config.get("choices")
+        if ssm_choices is None:
+            return
+        ssm_choices_tuple = tuple(int(choice) for choice in ssm_choices)
+        if tuple(self.choices) != ssm_choices_tuple:
+            raise ValueError(
+                "choices and task_environment.response_labels must match SSM choices "
+                f"for decision_process='{self.decision_process}'. "
+                f"Got choices={self.choices}; SSM choices={ssm_choices_tuple}."
+            )
+
     def _resolve_handshake(self):
         """Resolve which SSM params are computed by learning vs fixed by user.
 
@@ -189,15 +203,26 @@ class ModelConfig:
 
         # Apply computed_param_mapping if provided
         mapping = self.computed_param_mapping or {}
-        computed_ssm_params: set[str] = set()
+        computed_ssm_params: list[str] = []
         for output_name in learning_outputs:
             ssm_name = mapping.get(output_name, output_name)
-            computed_ssm_params.add(ssm_name)
+            computed_ssm_params.append(ssm_name)
 
-        self._computed_ssm_params = list(computed_ssm_params)
+        if len(set(computed_ssm_params)) != len(computed_ssm_params):
+            raise ValueError(
+                "computed_param_mapping must map learning outputs to unique "
+                f"SSM parameter names. Got mapped params: {computed_ssm_params}."
+            )
+
+        self._computed_ssm_params = computed_ssm_params
         self._fixed_ssm_params: list[str] = [
             p for p in ssm_params if p not in computed_ssm_params
         ]
+
+    @property
+    def required_params(self) -> list[str]:
+        """Parameters that simulation requires from ``theta``."""
+        return list(self.learning_process.free_params) + list(self._fixed_ssm_params)
 
     def _derive_list_params(self) -> list[str]:
         """RL free params + fixed SSM params (in that order)."""
@@ -292,6 +317,30 @@ class ModelConfig:
             missing_bounds = [p for p in self.list_params if p not in self.bounds]
             if missing_bounds:
                 raise ValueError(f"Missing bounds for params: {missing_bounds}")
+
+        required_params = self.required_params
+        if self.list_params:
+            missing_required = sorted(set(required_params) - set(self.list_params))
+            extra_params = sorted(set(self.list_params) - set(required_params))
+            has_duplicates = len(set(self.list_params)) != len(self.list_params)
+            if missing_required or extra_params or has_duplicates:
+                raise ValueError(
+                    "list_params must match required params from the learning "
+                    "process and fixed SSM parameters. "
+                    f"Missing: {missing_required}; extra: {extra_params}; "
+                    f"required: {required_params}."
+                )
+
+        task_environment = cast(TaskEnvironment, self.task_environment)
+        learning_n_actions = getattr(self.learning_process, "n_actions", None)
+        if (
+            learning_n_actions is not None
+            and learning_n_actions != task_environment.n_arms
+        ):
+            raise ValueError(
+                "learning_process.n_actions must match task_environment.n_arms. "
+                f"Got n_actions={learning_n_actions}, n_arms={task_environment.n_arms}."
+            )
 
     def to_hssm_config_dict(self) -> dict[str, Any]:
         """Produce a dict compatible with HSSM's RLSSMConfig.from_rlssm_dict().

@@ -14,6 +14,9 @@ from .config import ModelConfig
 from .env import TaskEnvironment
 
 
+MISSING_RESPONSE_SENTINEL = -999
+
+
 class Simulator:
     """RLSSM simulator composing a learning process with an SSM decision process.
 
@@ -46,8 +49,8 @@ class Simulator:
         Parameters
         ----------
         theta : dict[str, float]
-            Concrete parameter values. Must contain all params in
-            ``config.list_params``.
+            Concrete parameter values. Must contain all params required by the
+            learning process and fixed SSM parameters.
         n_trials : int
             Number of trials per participant. Default 200.
         n_participants : int
@@ -77,11 +80,12 @@ class Simulator:
 
     def _validate_theta(self, theta: dict[str, float]) -> None:
         """Check that theta contains all required params."""
-        missing = [p for p in self.config.list_params if p not in theta]
+        required_params = self.config.required_params
+        missing = [p for p in required_params if p not in theta]
         if missing:
             raise ValueError(
                 f"theta is missing required params: {missing}. "
-                f"Expected all of: {self.config.list_params}"
+                f"Expected all of: {required_params}"
             )
 
     def _simulate_subject(
@@ -140,11 +144,11 @@ class Simulator:
                     "participant_id": subject_id,
                     "trial_id": t,
                     "rt": OMISSION_SENTINEL,
-                    "response": -999,
+                    "response": MISSING_RESPONSE_SENTINEL,
                     "feedback": 0.0,
                 }
                 if config.include_action:
-                    row["action"] = -999
+                    row["action"] = MISSING_RESPONSE_SENTINEL
                 row.update(env.get_extra_data(t))
                 rows.append(row)
                 continue
