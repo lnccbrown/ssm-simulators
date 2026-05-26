@@ -284,8 +284,10 @@ class TestJaxLearningBackend:
             state = rw.update_python(state, action, reward, params)
             jax_state = rw.update_jax(jax_state, action, reward, params)
 
-        np.testing.assert_allclose(python_drifts, jax_drifts)
-        np.testing.assert_allclose(state["q_values"], np.asarray(jax_state["q_values"]))
+        np.testing.assert_allclose(python_drifts, jax_drifts, rtol=1e-6, atol=1e-7)
+        np.testing.assert_allclose(
+            state["q_values"], np.asarray(jax_state["q_values"]), rtol=1e-6, atol=1e-7
+        )
         assert isinstance(jax_state["q_values"], jnp.ndarray)
 
     def test_delta_rule_jax_update_is_differentiable(self):

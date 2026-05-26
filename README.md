@@ -30,6 +30,12 @@ A number of tutorial notebooks are available under the `/notebooks` directory.
 pip install ssm-simulators
 ```
 
+Install the optional JAX backend for differentiable RLSSM learning processes:
+
+```sh
+pip install "ssm-simulators[jax]"
+```
+
 **Recommended: Install via conda-forge for full parallel support:**
 
 ```sh

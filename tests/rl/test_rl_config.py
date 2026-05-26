@@ -313,7 +313,7 @@ class TestToHssmConfigDict:
             assert d[field_name] is not None, f"Field {field_name} is None"
 
     def test_inference_placeholders(self):
-        config = _make_default_config()
+        config = _make_default_config(learning_backend="python")
         d = config.to_hssm_config_dict()
         assert d["ssm_logp_func"] is None
         assert d["learning_process"] == {}
@@ -322,6 +322,18 @@ class TestToHssmConfigDict:
         assert d["learning_backend"] == "python"
         assert d["gradient"] == "unavailable"
         assert "learning_process_loglik_kind" not in d
+
+    def test_learning_process_kind_reflects_resolved_gradient(self):
+        config = _make_default_config()
+        d = config.to_hssm_config_dict()
+        expected_kind = (
+            "approx_differentiable"
+            if config.resolved_gradient == "available"
+            else "blackbox"
+        )
+        assert d["learning_process_kind"] == expected_kind
+        assert d["learning_backend"] == config.resolved_learning_backend
+        assert d["gradient"] == config.resolved_gradient
 
     def test_contract_consistency(self):
         """list_params length == params_default length, all have bounds."""
