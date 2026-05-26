@@ -107,20 +107,20 @@ class Simulator:
         # Build the computed_param_mapping (learning output -> SSM param name)
         mapping = config.computed_param_mapping or {}
 
-        # Reset learning process and task environment
-        lp.reset()
+        # Initialize explicit learning state and task environment.
+        learning_state = self._init_learning_state()
         env.reset(rng=rng)
 
         rows = []
         for t in range(n_trials):
             # COMPUTE: learning process produces SSM params from current state
-            computed_raw = lp.compute_ssm_params(rl_params)
+            computed_raw = self._compute_learning_params(learning_state, rl_params)
 
             # Apply mapping: learning output name -> SSM param name
             computed_ssm = {}
             for output_name, value in computed_raw.items():
                 ssm_name = mapping.get(output_name, output_name)
-                computed_ssm[ssm_name] = value
+                computed_ssm[ssm_name] = float(value)
 
             # MERGE: fixed SSM params + computed SSM params
             full_theta = {**fixed_ssm_params, **computed_ssm}
@@ -162,7 +162,10 @@ class Simulator:
             reward = env.sample_reward(action, t)
 
             # UPDATE learning process
-            lp.update(action, reward, rl_params)
+            learning_state = self._update_learning_state(
+                learning_state, action, reward, rl_params
+            )
+            self._store_learning_state(learning_state)
 
             # RECORD
             row = {
@@ -178,6 +181,48 @@ class Simulator:
             rows.append(row)
 
         return rows
+
+    def _init_learning_state(self):
+        """Initialize participant learning state for the configured backend."""
+        lp = self.config.learning_process
+        backend = self.config.resolved_learning_backend
+        if backend == "jax" and hasattr(lp, "init_jax_state"):
+            state = lp.init_jax_state()
+        elif hasattr(lp, "init_state"):
+            state = lp.init_state()
+        else:
+            lp.reset()
+            state = None
+        self._store_learning_state(state)
+        return state
+
+    def _compute_learning_params(self, state, rl_params: dict[str, float]):
+        """Compute SSM params from the current explicit learning state."""
+        lp = self.config.learning_process
+        backend = self.config.resolved_learning_backend
+        if backend == "jax" and hasattr(lp, "compute_jax"):
+            return lp.compute_jax(state, rl_params)
+        if hasattr(lp, "compute_python"):
+            return lp.compute_python(state, rl_params)
+        return lp.compute_ssm_params(rl_params)
+
+    def _update_learning_state(
+        self, state, action: int, reward: float, rl_params: dict[str, float]
+    ):
+        """Return the next learning state after observing action and reward."""
+        lp = self.config.learning_process
+        backend = self.config.resolved_learning_backend
+        if backend == "jax" and hasattr(lp, "update_jax"):
+            return lp.update_jax(state, action, reward, rl_params)
+        if hasattr(lp, "update_python"):
+            return lp.update_python(state, action, reward, rl_params)
+        lp.update(action, reward, rl_params)
+        return state
+
+    def _store_learning_state(self, state) -> None:
+        """Keep built-in mutable inspection properties in sync during transition."""
+        if hasattr(self.config.learning_process, "_state"):
+            self.config.learning_process._state = state
 
     def _response_to_action_index(self, response: int) -> int:
         """Map an SSM response label to the learning process action index."""

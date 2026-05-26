@@ -3,6 +3,7 @@
 import pytest
 
 import ssms.rl as rl
+from ssms.rl import config as rl_config
 from ssms.rl.config import _HSSM_SHARED_FIELDS
 
 
@@ -263,6 +264,39 @@ class TestResponseMapping:
         assert config.include_action is False
 
 
+class TestLearningBackendPolicy:
+    def test_auto_backend_uses_python_for_python_only_learning_process(self):
+        class PythonOnlyLearning:
+            computed_params = ["v"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+
+            def init_state(self):
+                return {"value": 0.0}
+
+            def compute_python(self, state, trial_params):
+                return {"v": 0.0}
+
+            def update_python(self, state, action, reward, trial_params):
+                return state
+
+        config = _make_default_config(learning_process=PythonOnlyLearning())
+
+        assert config.resolved_learning_backend == "python"
+        assert config.resolved_gradient == "unavailable"
+
+    def test_requested_jax_backend_raises_when_jax_is_unavailable(self, monkeypatch):
+        monkeypatch.setattr(rl_config, "_jax_available", lambda: False)
+
+        with pytest.raises(ValueError, match="JAX backend requested"):
+            _make_default_config(learning_backend="jax")
+
+    def test_requested_gradient_requires_jax_backend(self):
+        with pytest.raises(ValueError, match="gradient='available'"):
+            _make_default_config(learning_backend="python", gradient="available")
+
+
 class TestListParamsValidation:
     def test_list_params_must_include_required_params(self):
         config = _make_default_config(list_params=["rl_alpha", "scaler"])
@@ -285,6 +319,8 @@ class TestToHssmConfigDict:
         assert d["learning_process"] == {}
         assert d["decision_process_loglik_kind"] == "approx_differentiable"
         assert d["learning_process_kind"] == "blackbox"
+        assert d["learning_backend"] == "python"
+        assert d["gradient"] == "unavailable"
         assert "learning_process_loglik_kind" not in d
 
     def test_contract_consistency(self):

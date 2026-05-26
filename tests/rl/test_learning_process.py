@@ -35,6 +35,33 @@ class TestRescorlaWagnerDeltaRule:
         result = self.rw.compute_ssm_params(params)
         assert result["v"] == pytest.approx(-0.5)
 
+    def test_python_state_api_returns_new_state_without_mutating_input(self):
+        params = {"rl_alpha": 0.5, "scaler": 2.0}
+        state = self.rw.init_state()
+
+        computed = self.rw.compute_python(state, params)
+        next_state = self.rw.update_python(
+            state, action=0, reward=1.0, trial_params=params
+        )
+
+        assert computed == {"v": 0.0}
+        np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
+        np.testing.assert_allclose(next_state["q_values"], [0.75, 0.5])
+        assert next_state is not state
+
+    def test_mutable_api_delegates_to_python_state_api(self):
+        params = {"rl_alpha": 0.5, "scaler": 2.0}
+        self.rw.reset()
+
+        assert self.rw.compute_ssm_params(params) == {"v": 0.0}
+        self.rw.update(action=0, reward=1.0, trial_params=params)
+
+        np.testing.assert_allclose(self.rw.q_values, [0.75, 0.5])
+
+    def test_backend_metadata(self):
+        assert self.rw.available_backends == ("python", "jax")
+        assert self.rw.supports_gradient is True
+
     def test_drift_before_update_ordering(self):
         """compute_ssm_params returns drift BEFORE the update
         (matching HSSM's scan ordering)."""
@@ -192,6 +219,21 @@ class TestRescorlaWagnerDualAlphaRule:
         self.rw.update(action=0, reward=1.0, trial_params=params)
         np.testing.assert_allclose(self.rw.q_values, [0.8, 0.5])
 
+    def test_python_state_api_uses_sign_dependent_learning_rates(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        state = self.rw.init_state()
+
+        positive_state = self.rw.update_python(
+            state, action=0, reward=1.0, trial_params=params
+        )
+        negative_state = self.rw.update_python(
+            positive_state, action=0, reward=0.0, trial_params=params
+        )
+
+        np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
+        np.testing.assert_allclose(positive_state["q_values"], [0.8, 0.5])
+        np.testing.assert_allclose(negative_state["q_values"], [0.72, 0.5])
+
     def test_negative_prediction_error_uses_rl_alpha_neg(self):
         params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
         self.rw.update(action=0, reward=0.0, trial_params=params)
@@ -221,3 +263,27 @@ class TestRescorlaWagnerDualAlphaRule:
             assert v == pytest.approx(expected_v_before[i], abs=1e-12)
             self.rw.update(action=action, reward=reward, trial_params=params)
             np.testing.assert_allclose(self.rw.q_values, expected_q[i], atol=1e-12)
+
+
+class TestJaxLearningBackend:
+    def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
+        state = rw.init_state()
+        jax_state = rw.init_jax_state()
+
+        actions = [0, 0, 1, 1]
+        rewards = [1.0, 0.0, 1.0, 0.0]
+        python_drifts = []
+        jax_drifts = []
+        for action, reward in zip(actions, rewards):
+            python_drifts.append(rw.compute_python(state, params)["v"])
+            jax_drifts.append(float(rw.compute_jax(jax_state, params)["v"]))
+            state = rw.update_python(state, action, reward, params)
+            jax_state = rw.update_jax(jax_state, action, reward, params)
+
+        np.testing.assert_allclose(python_drifts, jax_drifts)
+        np.testing.assert_allclose(state["q_values"], np.asarray(jax_state["q_values"]))
+        assert isinstance(jax_state["q_values"], jnp.ndarray)

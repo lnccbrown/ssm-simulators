@@ -270,6 +270,69 @@ class TestResponseActionMapping:
         )
 
 
+class TestFunctionalLearningBackend:
+    def test_simulator_uses_explicit_learning_state_api(self):
+        from unittest.mock import patch
+
+        class FunctionalLearning:
+            computed_params = ["v"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+            n_actions = 2
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def __init__(self):
+                self.seen_states = []
+
+            def init_state(self):
+                return {"q_values": np.array([0.5, 0.5], dtype=np.float64)}
+
+            def compute_python(self, state, trial_params):
+                self.seen_states.append(state["q_values"].copy())
+                return {"v": float(state["q_values"][1] - state["q_values"][0])}
+
+            def update_python(self, state, action, reward, trial_params):
+                next_q = state["q_values"].copy()
+                next_q[action] += trial_params["alpha"] * (reward - next_q[action])
+                return {"q_values": next_q}
+
+            def reset(self, **kwargs):
+                raise AssertionError("mutable reset should not be called")
+
+            def compute_ssm_params(self, trial_params):
+                raise AssertionError("mutable compute should not be called")
+
+            def update(self, action, reward, trial_params):
+                raise AssertionError("mutable update should not be called")
+
+        learning = FunctionalLearning()
+        sim = _make_simulator(
+            learning_process=learning,
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[1.0, 0.0], response_labels=[-1, 1]
+            ),
+        )
+        choices = iter([-1, 1])
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            sim.simulate(
+                theta={"alpha": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.2},
+                n_trials=2,
+                n_participants=1,
+            )
+
+        np.testing.assert_allclose(learning.seen_states[0], [0.5, 0.5])
+        np.testing.assert_allclose(learning.seen_states[1], [1.0, 0.5])
+
+
 class TestMilestone2Integration:
     def test_dual_alpha_learning_rule_simulates(self):
         sim = _make_simulator(

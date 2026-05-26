@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import importlib.util
 from typing import Any, Literal, cast
 
 from ssms.config.model_config_builder import ModelConfigBuilder
@@ -23,8 +24,14 @@ _HSSM_SHARED_FIELDS = (
     "decision_process",
     "response",
     "response_mapping",
+    "learning_backend",
+    "gradient",
     "extra_fields",
 )
+
+
+def _jax_available() -> bool:
+    return importlib.util.find_spec("jax") is not None
 
 
 @dataclass
@@ -65,6 +72,12 @@ class ModelConfig:
     response_mapping : Literal["auto"] | dict[int, int]
         Mapping from SSM response labels to zero-based learning actions.
         ``"auto"`` maps labels by ``task_environment.response_labels`` order.
+    learning_backend : Literal["auto", "python", "jax"]
+        Learning-process backend used for simulation and exported HSSM metadata.
+        ``"auto"`` selects JAX when the process implements it and JAX is installed;
+        otherwise it selects Python.
+    gradient : Literal["auto", "available", "unavailable"]
+        Gradient-support policy for HSSM integration metadata.
     include_action : bool
         Whether simulator output includes the derived zero-based ``action`` column.
         Default False.
@@ -93,6 +106,8 @@ class ModelConfig:
     choices: tuple[int, ...] | None = None
     response: list[str] = field(default_factory=lambda: ["rt", "response"])
     response_mapping: Literal["auto"] | dict[int, int] = "auto"
+    learning_backend: Literal["auto", "python", "jax"] = "auto"
+    gradient: Literal["auto", "available", "unavailable"] = "auto"
     include_action: bool = False
     extra_fields: list[str] | None = None
 
@@ -119,6 +134,8 @@ class ModelConfig:
 
         self.response_to_action = self._normalize_response_mapping()
         self._validate_ssm_choices()
+        self.resolved_learning_backend = self._resolve_learning_backend()
+        self.resolved_gradient = self._resolve_gradient()
 
         if self.extra_fields is None:
             base_extra = ["feedback"]
@@ -177,6 +194,77 @@ class ModelConfig:
                 f"{sorted(expected_actions)}. Got {sorted(action_set)}."
             )
         return mapping
+
+    def _available_learning_backends(self) -> tuple[str, ...]:
+        """Return the learning process backends declared or implied by methods."""
+        declared = getattr(self.learning_process, "available_backends", None)
+        if declared is not None:
+            return tuple(declared)
+
+        backends: list[str] = []
+        if hasattr(self.learning_process, "compute_python") and hasattr(
+            self.learning_process, "update_python"
+        ):
+            backends.append("python")
+        if hasattr(self.learning_process, "compute_jax") and hasattr(
+            self.learning_process, "update_jax"
+        ):
+            backends.append("jax")
+        if not backends:
+            backends.append("python")
+        return tuple(backends)
+
+    def _resolve_learning_backend(self) -> Literal["python", "jax"]:
+        """Resolve the requested learning backend to a concrete backend."""
+        if self.learning_backend not in {"auto", "python", "jax"}:
+            raise ValueError(
+                "learning_backend must be one of 'auto', 'python', or 'jax'. "
+                f"Got {self.learning_backend!r}."
+            )
+
+        available = self._available_learning_backends()
+        if self.learning_backend == "auto":
+            if "jax" in available and _jax_available():
+                return "jax"
+            return "python"
+
+        if self.learning_backend not in available:
+            raise ValueError(
+                f"Learning process does not implement the {self.learning_backend!r} "
+                f"backend. Available backends: {available}."
+            )
+        if self.learning_backend == "jax" and not _jax_available():
+            raise ValueError(
+                "JAX backend requested, but JAX is not installed. Install "
+                "ssm-simulators with the 'jax' extra or use learning_backend='python'."
+            )
+        return self.learning_backend
+
+    def _resolve_gradient(self) -> Literal["available", "unavailable"]:
+        """Resolve gradient policy from backend and learning-process declaration."""
+        if self.gradient not in {"auto", "available", "unavailable"}:
+            raise ValueError(
+                "gradient must be one of 'auto', 'available', or 'unavailable'. "
+                f"Got {self.gradient!r}."
+            )
+
+        supports_gradient = bool(
+            getattr(self.learning_process, "supports_gradient", False)
+        )
+        if self.gradient == "auto":
+            if self.resolved_learning_backend == "jax" and supports_gradient:
+                return "available"
+            return "unavailable"
+
+        if self.gradient == "available":
+            if self.resolved_learning_backend != "jax" or not supports_gradient:
+                raise ValueError(
+                    "gradient='available' requires a JAX learning backend with "
+                    "declared gradient support."
+                )
+            return "available"
+
+        return "unavailable"
 
     def _validate_ssm_choices(self) -> None:
         """Ensure task response labels match the decision simulator labels."""
@@ -365,10 +453,16 @@ class ModelConfig:
             "choices": tuple(self.choices),
             "response": list(self.response),
             "response_mapping": dict(self.response_to_action),
+            "learning_backend": self.resolved_learning_backend,
+            "gradient": self.resolved_gradient,
             "extra_fields": list(self.extra_fields) if self.extra_fields else [],
             # Inference-only placeholders (user fills on HSSM side)
             "ssm_logp_func": None,
             "learning_process": {},
             "decision_process_loglik_kind": "approx_differentiable",
-            "learning_process_kind": "blackbox",
+            "learning_process_kind": (
+                "approx_differentiable"
+                if self.resolved_gradient == "available"
+                else "blackbox"
+            ),
         }
