@@ -287,3 +287,40 @@ class TestJaxLearningBackend:
         np.testing.assert_allclose(python_drifts, jax_drifts)
         np.testing.assert_allclose(state["q_values"], np.asarray(jax_state["q_values"]))
         assert isinstance(jax_state["q_values"], jnp.ndarray)
+
+    def test_delta_rule_jax_update_is_differentiable(self):
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5)
+
+        def drift_after_update(alpha):
+            state = rw.init_jax_state()
+            params = {"rl_alpha": alpha, "scaler": jnp.asarray(2.0)}
+            state = rw.update_jax(state, action=0, reward=1.0, trial_params=params)
+            return rw.compute_jax(state, params)["v"]
+
+        grad = jax.jit(jax.grad(drift_after_update))(jnp.asarray(0.6))
+
+        assert grad == pytest.approx(-1.0)
+
+    def test_dual_alpha_jax_update_is_differentiable_through_negative_delta(self):
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
+
+        def drift_after_negative_update(alpha_neg):
+            state = rw.init_jax_state()
+            params = {
+                "rl_alpha": jnp.asarray(0.6),
+                "rl_alpha_neg": alpha_neg,
+                "scaler": jnp.asarray(2.0),
+            }
+            state = rw.update_jax(state, action=0, reward=1.0, trial_params=params)
+            state = rw.update_jax(state, action=0, reward=0.0, trial_params=params)
+            return rw.compute_jax(state, params)["v"]
+
+        grad = jax.jit(jax.grad(drift_after_negative_update))(jnp.asarray(0.1))
+
+        assert grad == pytest.approx(1.6)

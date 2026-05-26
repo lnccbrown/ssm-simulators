@@ -295,7 +295,12 @@ class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
         reward: float,
         trial_params: dict[str, float],
     ) -> LearningState:
+        jnp = _import_jax_numpy()
         q_values = state["q_values"]
         delta = reward - q_values[action]
-        alpha = trial_params["rl_alpha_neg"] if delta < 0 else trial_params["rl_alpha"]
+        alpha = jnp.where(
+            delta < 0,
+            trial_params["rl_alpha_neg"],
+            trial_params["rl_alpha"],
+        )
         return {"q_values": q_values.at[action].add(alpha * delta)}
