@@ -60,6 +60,7 @@ plugins:
             signature_crossrefs: true
 
 theme:
+  logo: images/navlogo.png
   name: material
   custom_dir: docs/overrides
   features:
