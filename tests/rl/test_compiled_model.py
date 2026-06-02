@@ -72,16 +72,15 @@ class TestCompiledModel:
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
         )
-        compute = compiled.make_subject_wise_function(
-            input_fields=["rl_alpha", "scaler", "action", "feedback"],
-            action_field="action",
-            reward_field="feedback",
+        compute = compiled.compile_participant_fn(
+            input_fields=["rl_alpha", "scaler", "response", "feedback"],
+            outcome_field="feedback",
         )
         trials = np.asarray(
             [
-                [0.5, 2.0, 0.0, 1.0],
+                [0.5, 2.0, -1.0, 1.0],
                 [0.5, 2.0, 1.0, 0.0],
-                [0.5, 2.0, 0.0, 1.0],
+                [0.5, 2.0, -1.0, 1.0],
                 [0.5, 2.0, 1.0, 1.0],
             ],
             dtype=np.float64,
@@ -95,13 +94,12 @@ class TestCompiledModel:
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
         )
-        compute = compiled.make_subject_wise_function(
-            input_fields=["rl_alpha", "scaler", "action", "feedback"],
-            action_field="action",
-            reward_field="feedback",
+        compute = compiled.compile_participant_fn(
+            input_fields=["rl_alpha", "scaler", "response", "feedback"],
+            outcome_field="feedback",
             output="dict",
         )
-        trials = np.asarray([[0.5, 2.0, 0.0, 1.0]], dtype=np.float64)
+        trials = np.asarray([[0.5, 2.0, -1.0, 1.0]], dtype=np.float64)
 
         values = compute(trials)
 
@@ -112,10 +110,9 @@ class TestCompiledModel:
         compiled = _make_default_config(
             learning_backend="python", response_mapping={-1: 1, 1: 0}
         ).compile(backend="python")
-        compute = compiled.make_subject_wise_function(
+        compute = compiled.compile_participant_fn(
             input_fields=["rl_alpha", "scaler", "response", "feedback"],
-            response_field="response",
-            reward_field="feedback",
+            outcome_field="feedback",
         )
         trials = np.asarray(
             [
@@ -133,16 +130,15 @@ class TestCompiledModel:
         jnp = pytest.importorskip("jax.numpy")
 
         compiled = _make_default_config(learning_backend="jax").compile(backend="jax")
-        compute = compiled.make_subject_wise_function(
-            input_fields=["rl_alpha", "scaler", "action", "feedback"],
-            action_field="action",
-            reward_field="feedback",
+        compute = compiled.compile_participant_fn(
+            input_fields=["rl_alpha", "scaler", "response", "feedback"],
+            outcome_field="feedback",
         )
         trials = jnp.asarray(
             [
-                [0.5, 2.0, 0.0, 1.0],
+                [0.5, 2.0, -1.0, 1.0],
                 [0.5, 2.0, 1.0, 0.0],
-                [0.5, 2.0, 0.0, 1.0],
+                [0.5, 2.0, -1.0, 1.0],
                 [0.5, 2.0, 1.0, 1.0],
             ]
         )
@@ -171,3 +167,54 @@ class TestCompiledModel:
 
         with pytest.raises(ValueError, match="does not implement the 'jax' backend"):
             config.compile(backend="jax")
+
+    def test_outcome_field_must_be_explicit(self):
+        compiled = _make_default_config(learning_backend="python").compile(
+            backend="python"
+        )
+
+        with pytest.raises(TypeError, match="outcome_field"):
+            compiled.compile_participant_fn(
+                input_fields=["rl_alpha", "scaler", "response"]
+            )
+
+    def test_outcome_field_none_supports_outcome_free_learning(self):
+        class ChoiceOnlyLearning:
+            computed_params = ["v"]
+            free_params = ["bias"]
+            param_bounds = {"bias": (-5.0, 5.0)}
+            default_params = {"bias": 0.0}
+            available_backends = ("python",)
+            supports_gradient = False
+            n_actions = 2
+
+            def init_state(self):
+                return {"count": 0}
+
+            def compute_python(self, state, trial_params):
+                return {"v": float(trial_params["bias"] + state["count"])}
+
+            def update_python(self, state, action, outcome, trial_params):
+                assert outcome is None
+                return {"count": state["count"] + action}
+
+        compiled = _make_default_config(
+            learning_backend="python",
+            learning_process=ChoiceOnlyLearning(),
+        ).compile(backend="python")
+        compute = compiled.compile_participant_fn(
+            input_fields=["bias", "response"],
+            outcome_field=None,
+        )
+        trials = np.asarray(
+            [
+                [0.5, -1.0],
+                [0.5, 1.0],
+                [0.5, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+        values = compute(trials)
+
+        np.testing.assert_allclose(values, [0.5, 0.5, 1.5])

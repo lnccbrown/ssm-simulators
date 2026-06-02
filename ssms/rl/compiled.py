@@ -77,21 +77,20 @@ class CompiledModel:
             response_to_action=dict(config.response_to_action),
         )
 
-    def make_subject_wise_function(
+    def compile_participant_fn(
         self,
         input_fields: Sequence[str],
         *,
-        action_field: str | None = "action",
-        response_field: str | None = None,
-        reward_field: str = "feedback",
+        outcome_field: str | None,
+        response_field: str = "response",
         output: CompiledFunctionOutput = "array",
     ) -> Callable[[Any], Any]:
-        """Generate a subject-wise computed-parameter function.
+        """Compile a participant-wise computed-parameter function.
 
         The returned function accepts a ``(n_trials, n_fields)`` array whose
         columns match ``input_fields``. It computes SSM parameters before each
-        learning update, then updates learning state from either a zero-based
-        ``action_field`` or a response label mapped through ``response_field``.
+        learning update, maps response labels to zero-based action indices, and
+        updates learning state from the response and optional outcome.
         """
         if output not in {"array", "dict"}:
             raise ValueError("output must be 'array' or 'dict'")
@@ -107,21 +106,9 @@ class CompiledModel:
             raise ValueError(
                 f"input_fields is missing learning parameters: {missing_params}"
             )
-        if reward_field not in field_to_idx:
-            raise ValueError(f"input_fields is missing reward_field={reward_field!r}")
-        if action_field is None and response_field is None:
-            raise ValueError("Either action_field or response_field must be provided")
-        resolved_action_field = action_field
-        if action_field is not None and action_field not in field_to_idx:
-            if response_field is not None:
-                resolved_action_field = None
-            else:
-                raise ValueError(
-                    f"input_fields is missing action_field={action_field!r}"
-                )
-        if resolved_action_field is None and response_field is None:
-            raise ValueError(f"input_fields is missing action_field={action_field!r}")
-        if response_field is not None and response_field not in field_to_idx:
+        if outcome_field is not None and outcome_field not in field_to_idx:
+            raise ValueError(f"input_fields is missing outcome_field={outcome_field!r}")
+        if response_field not in field_to_idx:
             raise ValueError(
                 f"input_fields is missing response_field={response_field!r}"
             )
@@ -129,16 +116,14 @@ class CompiledModel:
         if self.learning_backend == "jax":
             return self._make_jax_subject_wise_function(
                 field_to_idx=field_to_idx,
-                action_field=resolved_action_field,
                 response_field=response_field,
-                reward_field=reward_field,
+                outcome_field=outcome_field,
                 output=output,
             )
         return self._make_python_subject_wise_function(
             field_to_idx=field_to_idx,
-            action_field=resolved_action_field,
             response_field=response_field,
-            reward_field=reward_field,
+            outcome_field=outcome_field,
             output=output,
         )
 
@@ -146,9 +131,8 @@ class CompiledModel:
         self,
         *,
         field_to_idx: dict[str, int],
-        action_field: str | None,
-        response_field: str | None,
-        reward_field: str,
+        response_field: str,
+        outcome_field: str | None,
         output: CompiledFunctionOutput,
     ) -> Callable[[Any], Any]:
         lp = self.config.learning_process
@@ -172,11 +156,14 @@ class CompiledModel:
                 action = self._extract_python_action(
                     row=row,
                     field_to_idx=field_to_idx,
-                    action_field=action_field,
                     response_field=response_field,
                 )
-                reward = float(row[field_to_idx[reward_field]])
-                state = lp.update_python(state, action, reward, trial_params)
+                outcome = (
+                    None
+                    if outcome_field is None
+                    else float(row[field_to_idx[outcome_field]])
+                )
+                state = lp.update_python(state, action, outcome, trial_params)
             return self._format_python_output(collected, output)
 
         return compute
@@ -185,9 +172,8 @@ class CompiledModel:
         self,
         *,
         field_to_idx: dict[str, int],
-        action_field: str | None,
-        response_field: str | None,
-        reward_field: str,
+        response_field: str,
+        outcome_field: str | None,
         output: CompiledFunctionOutput,
     ) -> Callable[[Any], Any]:
         import jax.numpy as jnp
@@ -207,13 +193,14 @@ class CompiledModel:
                 action = self._extract_jax_action(
                     row=row,
                     field_to_idx=field_to_idx,
-                    action_field=action_field,
                     response_field=response_field,
                     response_labels=response_labels,
                     response_actions=response_actions,
                 )
-                reward = row[field_to_idx[reward_field]]
-                state = lp.update_jax(state, action, reward, trial_params)
+                outcome = (
+                    None if outcome_field is None else row[field_to_idx[outcome_field]]
+                )
+                state = lp.update_jax(state, action, outcome, trial_params)
                 return state, {name: computed[name] for name in self.computed_params}
 
             _, values = scan(step, lp.init_jax_state(), subject_trials)
@@ -236,11 +223,8 @@ class CompiledModel:
         *,
         row,
         field_to_idx: dict[str, int],
-        action_field: str | None,
-        response_field: str | None,
+        response_field: str,
     ) -> int:
-        if action_field is not None:
-            return int(row[field_to_idx[action_field]])
         response = int(row[field_to_idx[response_field]])
         return int(self.response_to_action[response])
 
@@ -249,15 +233,12 @@ class CompiledModel:
         *,
         row,
         field_to_idx: dict[str, int],
-        action_field: str | None,
-        response_field: str | None,
+        response_field: str,
         response_labels,
         response_actions,
     ):
         import jax.numpy as jnp
 
-        if action_field is not None:
-            return jnp.asarray(row[field_to_idx[action_field]], dtype=jnp.int32)
         response = row[field_to_idx[response_field]]
         matches = response_labels == response.astype(response_labels.dtype)
         return jnp.asarray(
