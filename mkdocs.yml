@@ -24,6 +24,7 @@ nav:
 
   - API:
       - ssms: api/ssms.md
+      - RLSSM (ssms.rl): api/rlssm.md
       - basic simulators: api/basic_simulators.md
       - config: api/config.md
       - data generators: api/dataset_generators.md
