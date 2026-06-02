@@ -9,11 +9,17 @@ from typing import Any, Literal
 import numpy as np
 
 from . import preset
-from .config import ModelConfig, _jax_available
+from .config import (
+    DEFAULT_RESPONSE_FIELD,
+    ModelConfig,
+    _jax_available,
+    derive_participant_contract,
+)
 
 
 CompiledFunctionOutput = Literal["array", "dict"]
 LearningBackend = Literal["auto", "python", "jax"]
+_USE_CONFIG = object()
 
 
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
@@ -77,15 +83,39 @@ class CompiledModel:
             response_to_action=dict(config.response_to_action),
         )
 
+    def participant_input_fields(
+        self,
+        *,
+        response_field: str = DEFAULT_RESPONSE_FIELD,
+        outcome_field: str | None | object = _USE_CONFIG,
+    ) -> list[str]:
+        """Return the default participant input columns derived from the config."""
+        resolved_outcome = (
+            self.config.outcome_field if outcome_field is _USE_CONFIG else outcome_field
+        )
+        contract = derive_participant_contract(
+            self.config,
+            response_field=response_field,
+        )
+        if resolved_outcome != contract.outcome_field:
+            input_fields = list(contract.trial_params) + [response_field]
+            if resolved_outcome is not None:
+                input_fields.append(resolved_outcome)
+            return input_fields
+        return list(contract.input_fields)
+
     def compile_participant_fn(
         self,
-        input_fields: Sequence[str],
+        input_fields: Sequence[str] | None = None,
         *,
-        outcome_field: str | None,
-        response_field: str = "response",
+        outcome_field: str | None | object = _USE_CONFIG,
+        response_field: str = DEFAULT_RESPONSE_FIELD,
         output: CompiledFunctionOutput = "array",
     ) -> Callable[[Any], Any]:
         """Compile a participant-wise computed-parameter function.
+
+        By default, ``input_fields`` and ``outcome_field`` are derived from the
+        model config. Pass explicit values only for non-standard layouts.
 
         The returned function accepts a ``(n_trials, n_fields)`` array whose
         columns match ``input_fields``. It computes SSM parameters before each
@@ -94,6 +124,17 @@ class CompiledModel:
         """
         if output not in {"array", "dict"}:
             raise ValueError("output must be 'array' or 'dict'")
+
+        resolved_outcome = (
+            self.config.outcome_field if outcome_field is _USE_CONFIG else outcome_field
+        )
+        if input_fields is None:
+            input_fields = self.participant_input_fields(
+                response_field=response_field,
+                outcome_field=resolved_outcome,
+            )
+        else:
+            input_fields = list(input_fields)
 
         field_to_idx = {name: idx for idx, name in enumerate(input_fields)}
         if len(field_to_idx) != len(input_fields):
@@ -106,8 +147,10 @@ class CompiledModel:
             raise ValueError(
                 f"input_fields is missing learning parameters: {missing_params}"
             )
-        if outcome_field is not None and outcome_field not in field_to_idx:
-            raise ValueError(f"input_fields is missing outcome_field={outcome_field!r}")
+        if resolved_outcome is not None and resolved_outcome not in field_to_idx:
+            raise ValueError(
+                f"input_fields is missing outcome_field={resolved_outcome!r}"
+            )
         if response_field not in field_to_idx:
             raise ValueError(
                 f"input_fields is missing response_field={response_field!r}"
@@ -117,13 +160,13 @@ class CompiledModel:
             return self._make_jax_subject_wise_function(
                 field_to_idx=field_to_idx,
                 response_field=response_field,
-                outcome_field=outcome_field,
+                outcome_field=resolved_outcome,
                 output=output,
             )
         return self._make_python_subject_wise_function(
             field_to_idx=field_to_idx,
             response_field=response_field,
-            outcome_field=outcome_field,
+            outcome_field=resolved_outcome,
             output=output,
         )
 

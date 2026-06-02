@@ -62,7 +62,8 @@ class Simulator:
         -------
         pd.DataFrame
             Balanced panel with columns: participant_id, trial_id, rt, response,
-            feedback, plus any extra_fields from the task environment.
+            the configured outcome column when ``outcome_field`` is set, plus
+            any ``extra_fields`` from the task environment.
         """
         self._validate_theta(theta)
 
@@ -112,6 +113,7 @@ class Simulator:
         env.reset(rng=rng)
 
         rows = []
+        outcome_field = config.outcome_field
         for t in range(n_trials):
             # COMPUTE: learning process produces SSM params from current state
             computed_raw = self._compute_learning_params(learning_state, rl_params)
@@ -145,8 +147,9 @@ class Simulator:
                     "trial_id": t,
                     "rt": OMISSION_SENTINEL,
                     "response": MISSING_RESPONSE_SENTINEL,
-                    "feedback": 0.0,
                 }
+                if outcome_field is not None:
+                    row[outcome_field] = 0.0
                 if config.include_action:
                     row["action"] = MISSING_RESPONSE_SENTINEL
                 row.update(env.get_extra_data(t))
@@ -173,8 +176,9 @@ class Simulator:
                 "trial_id": t,
                 "rt": rt,
                 "response": response,
-                "feedback": reward,
             }
+            if outcome_field is not None:
+                row[outcome_field] = reward
             if config.include_action:
                 row["action"] = action
             row.update(env.get_extra_data(t))

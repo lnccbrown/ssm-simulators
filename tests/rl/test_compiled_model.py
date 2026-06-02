@@ -72,10 +72,7 @@ class TestCompiledModel:
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
         )
-        compute = compiled.compile_participant_fn(
-            input_fields=["rl_alpha", "scaler", "response", "feedback"],
-            outcome_field="feedback",
-        )
+        compute = compiled.compile_participant_fn()
         trials = np.asarray(
             [
                 [0.5, 2.0, -1.0, 1.0],
@@ -94,11 +91,7 @@ class TestCompiledModel:
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
         )
-        compute = compiled.compile_participant_fn(
-            input_fields=["rl_alpha", "scaler", "response", "feedback"],
-            outcome_field="feedback",
-            output="dict",
-        )
+        compute = compiled.compile_participant_fn(output="dict")
         trials = np.asarray([[0.5, 2.0, -1.0, 1.0]], dtype=np.float64)
 
         values = compute(trials)
@@ -110,10 +103,7 @@ class TestCompiledModel:
         compiled = _make_default_config(
             learning_backend="python", response_mapping={-1: 1, 1: 0}
         ).compile(backend="python")
-        compute = compiled.compile_participant_fn(
-            input_fields=["rl_alpha", "scaler", "response", "feedback"],
-            outcome_field="feedback",
-        )
+        compute = compiled.compile_participant_fn()
         trials = np.asarray(
             [
                 [0.5, 2.0, -1.0, 1.0],
@@ -130,10 +120,7 @@ class TestCompiledModel:
         jnp = pytest.importorskip("jax.numpy")
 
         compiled = _make_default_config(learning_backend="jax").compile(backend="jax")
-        compute = compiled.compile_participant_fn(
-            input_fields=["rl_alpha", "scaler", "response", "feedback"],
-            outcome_field="feedback",
-        )
+        compute = compiled.compile_participant_fn()
         trials = jnp.asarray(
             [
                 [0.5, 2.0, -1.0, 1.0],
@@ -168,15 +155,29 @@ class TestCompiledModel:
         with pytest.raises(ValueError, match="does not implement the 'jax' backend"):
             config.compile(backend="jax")
 
-    def test_outcome_field_must_be_explicit(self):
+    def test_participant_input_fields_derived_from_config(self):
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
         )
 
-        with pytest.raises(TypeError, match="outcome_field"):
-            compiled.compile_participant_fn(
-                input_fields=["rl_alpha", "scaler", "response"]
-            )
+        assert compiled.participant_input_fields() == [
+            "rl_alpha",
+            "scaler",
+            "response",
+            "feedback",
+        ]
+
+    def test_zero_config_compile_participant_fn(self):
+        compiled = _make_default_config(learning_backend="python").compile(
+            backend="python"
+        )
+
+        compute = compiled.compile_participant_fn()
+        trials = np.asarray([[0.5, 2.0, -1.0, 1.0]], dtype=np.float64)
+
+        values = compute(trials)
+
+        np.testing.assert_allclose(values, [0.0])
 
     def test_outcome_field_none_supports_outcome_free_learning(self):
         class ChoiceOnlyLearning:
@@ -201,11 +202,10 @@ class TestCompiledModel:
         compiled = _make_default_config(
             learning_backend="python",
             learning_process=ChoiceOnlyLearning(),
-        ).compile(backend="python")
-        compute = compiled.compile_participant_fn(
-            input_fields=["bias", "response"],
             outcome_field=None,
-        )
+            extra_fields=[],
+        ).compile(backend="python")
+        compute = compiled.compile_participant_fn()
         trials = np.asarray(
             [
                 [0.5, -1.0],
@@ -218,3 +218,69 @@ class TestCompiledModel:
         values = compute(trials)
 
         np.testing.assert_allclose(values, [0.5, 0.5, 1.5])
+
+    def test_custom_outcome_field_name(self):
+        compiled = _make_default_config(
+            learning_backend="python",
+            outcome_field="reward",
+        ).compile(backend="python")
+
+        assert compiled.participant_input_fields() == [
+            "rl_alpha",
+            "scaler",
+            "response",
+            "reward",
+        ]
+        compute = compiled.compile_participant_fn()
+        trials = np.asarray([[0.5, 2.0, -1.0, 1.0]], dtype=np.float64)
+
+        values = compute(trials)
+
+        np.testing.assert_allclose(values, [0.0])
+
+    def test_multi_output_learning_with_mapping(self):
+        class DualOutputLearning:
+            computed_params = ["drift", "urgency"]
+            free_params = ["gain"]
+            param_bounds = {"gain": (0.0, 1.0)}
+            default_params = {"gain": 0.5}
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def init_state(self):
+                return {"step": 0}
+
+            def compute_python(self, state, trial_params):
+                step = state["step"]
+                gain = trial_params["gain"]
+                return {
+                    "drift": float(gain * step),
+                    "urgency": float(0.1 * step),
+                }
+
+            def update_python(self, state, action, outcome, trial_params):
+                return {"step": state["step"] + 1}
+
+        config = _make_default_config(
+            learning_backend="python",
+            learning_process=DualOutputLearning(),
+            computed_param_mapping={"drift": "v", "urgency": "theta"},
+            outcome_field=None,
+            extra_fields=[],
+        )
+        compiled = config.compile(backend="python")
+        compute = compiled.compile_participant_fn(output="dict")
+        trials = np.asarray(
+            [
+                [0.5, -1.0],
+                [0.5, 1.0],
+                [0.5, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+        values = compute(trials)
+
+        assert set(values) == {"v", "theta"}
+        np.testing.assert_allclose(values["v"], [0.0, 0.5, 1.0])
+        np.testing.assert_allclose(values["theta"], [0.0, 0.1, 0.2])

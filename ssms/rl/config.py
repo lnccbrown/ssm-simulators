@@ -34,6 +34,48 @@ def _jax_available() -> bool:
     return importlib.util.find_spec("jax") is not None
 
 
+DEFAULT_RESPONSE_FIELD = "response"
+
+
+@dataclass(frozen=True)
+class _ParticipantContract:
+    """Internal participant-history layout derived from ``ModelConfig``."""
+
+    trial_params: tuple[str, ...]
+    computed_outputs: tuple[str, ...]
+    response_field: str
+    outcome_field: str | None
+    input_fields: tuple[str, ...]
+
+
+def derive_participant_contract(
+    config: ModelConfig,
+    *,
+    response_field: str = DEFAULT_RESPONSE_FIELD,
+) -> _ParticipantContract:
+    """Derive the participant input layout from a structural RLSSM config."""
+    if response_field not in config.response:
+        raise ValueError(
+            f"response_field={response_field!r} must appear in config.response. "
+            f"Got response={config.response}."
+        )
+
+    trial_params = tuple(config.learning_process.free_params)
+    computed_outputs = tuple(config.learning_process.computed_params)
+    outcome_field = config.outcome_field
+    input_fields: list[str] = list(trial_params) + [response_field]
+    if outcome_field is not None:
+        input_fields.append(outcome_field)
+
+    return _ParticipantContract(
+        trial_params=trial_params,
+        computed_outputs=computed_outputs,
+        response_field=response_field,
+        outcome_field=outcome_field,
+        input_fields=tuple(input_fields),
+    )
+
+
 @dataclass
 class ModelConfig:
     """RLSSM model configuration for ssm-simulators.
@@ -81,8 +123,12 @@ class ModelConfig:
     include_action : bool
         Whether simulator output includes the derived zero-based ``action`` column.
         Default False.
+    outcome_field : str | None
+        Name of the reward/outcome column used for learning updates and simulator
+        output. Default ``"feedback"``. Set to ``None`` for outcome-free learning.
     extra_fields : list[str] | None
-        Extra data columns beyond response. Default: ["feedback"] + task_environment.extra_fields.
+        Extra data columns beyond response. Default: ``[outcome_field]`` when set,
+        plus ``task_environment.extra_fields``.
     computed_param_mapping : dict[str, str] | None
         Optional override for non-name-matching handshakes.
         Maps learning process output name -> SSM param name.
@@ -109,6 +155,7 @@ class ModelConfig:
     learning_backend: Literal["auto", "python", "jax"] = "auto"
     gradient: Literal["auto", "available", "unavailable"] = "auto"
     include_action: bool = False
+    outcome_field: str | None = "feedback"
     extra_fields: list[str] | None = None
 
     # Optional handshake override
@@ -138,10 +185,10 @@ class ModelConfig:
         self.resolved_gradient = self._resolve_gradient()
 
         if self.extra_fields is None:
-            base_extra = ["feedback"]
             env_extra = self.task_environment.extra_fields or []
+            base_extra = [self.outcome_field] if self.outcome_field is not None else []
             self.extra_fields = base_extra + [
-                f for f in env_extra if f not in base_extra
+                field_name for field_name in env_extra if field_name not in base_extra
             ]
 
         # Resolve the handshake: which SSM params are computed vs fixed
@@ -430,6 +477,26 @@ class ModelConfig:
                 f"Got n_actions={learning_n_actions}, n_arms={task_environment.n_arms}."
             )
 
+        if DEFAULT_RESPONSE_FIELD not in self.response:
+            raise ValueError(
+                f"response must include {DEFAULT_RESPONSE_FIELD!r} for learning "
+                f"updates. Got response={self.response}."
+            )
+
+        if self.outcome_field is not None:
+            extra_fields = self.extra_fields or []
+            if self.outcome_field not in extra_fields:
+                raise ValueError(
+                    f"outcome_field={self.outcome_field!r} must appear in "
+                    f"extra_fields. Got extra_fields={extra_fields}."
+                )
+
+    def participant_contract(
+        self, *, response_field: str = DEFAULT_RESPONSE_FIELD
+    ) -> _ParticipantContract:
+        """Return the derived participant input layout for this config."""
+        return derive_participant_contract(self, response_field=response_field)
+
     def to_hssm_config_dict(self) -> dict[str, Any]:
         """Produce a dict compatible with HSSM's RLSSMConfig.from_rlssm_dict().
 
@@ -442,6 +509,7 @@ class ModelConfig:
             Dict ready for ``RLSSMConfig.from_rlssm_dict(result)`` after user
             fills in inference-only fields.
         """
+        contract = self.participant_contract()
         return {
             # Shared structural fields
             "model_name": self.model_name,
@@ -456,6 +524,13 @@ class ModelConfig:
             "learning_backend": self.resolved_learning_backend,
             "gradient": self.resolved_gradient,
             "extra_fields": list(self.extra_fields) if self.extra_fields else [],
+            "participant_contract": {
+                "trial_params": list(contract.trial_params),
+                "computed_outputs": list(contract.computed_outputs),
+                "response_field": contract.response_field,
+                "outcome_field": contract.outcome_field,
+                "input_fields": list(contract.input_fields),
+            },
             # Inference-only placeholders (user fills on HSSM side)
             "ssm_logp_func": None,
             "learning_process": {},
