@@ -466,3 +466,9 @@ class ModelConfig:
                 else "blackbox"
             ),
         }
+
+    def compile(self, backend: Literal["auto", "python", "jax"] = "auto"):
+        """Return a validated executable compiled model."""
+        from .compiled import CompiledModel
+
+        return CompiledModel.from_config(self, backend=backend)

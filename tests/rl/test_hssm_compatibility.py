@@ -144,7 +144,15 @@ class TestRegistry:
 
 class TestPublicApiSurface:
     def test_public_exports_are_small(self):
-        assert rl.__all__ == ["Simulator", "ModelConfig", "env", "learning", "preset"]
+        assert rl.__all__ == [
+            "Simulator",
+            "ModelConfig",
+            "CompiledModel",
+            "resolve_model",
+            "env",
+            "learning",
+            "preset",
+        ]
 
     @pytest.mark.parametrize(
         "name",
