@@ -86,6 +86,54 @@ data = sim.simulate(
 Passing `n_participants` explicitly is allowed, but it must match the
 participant-wise theta length.
 
+## Simulation modes
+
+`Simulator.simulate()` supports two modes:
+
+- `mode="generative"` — the default unconstrained simulation loop. The simulator
+  samples responses, task outcomes, and learning updates end to end.
+- `mode="ppc"` — observed-history-conditioned posterior predictive simulation.
+  The simulator generates new RT/response values for each observed trial, copies
+  the observed outcome column into the output, and updates learning state from
+  the observed response/outcome history.
+
+PPC mode requires an observed balanced panel with `participant_id`, `trial_id`,
+`response`, and the configured outcome column:
+
+```python
+observed = sim.simulate(
+    theta={
+        "rl_alpha": 0.2,
+        "scaler": 2.0,
+        "a": 1.5,
+        "z": 0.5,
+        "t": 0.3,
+        "theta": 0.2,
+    },
+    n_trials=200,
+    n_participants=20,
+    random_state=1,
+)
+
+ppc = sim.simulate(
+    theta={
+        "rl_alpha": 0.2,
+        "scaler": 2.0,
+        "a": 1.5,
+        "z": 0.5,
+        "t": 0.3,
+        "theta": 0.2,
+    },
+    mode="ppc",
+    observed_data=observed,
+    random_state=2,
+)
+```
+
+Within each participant, `trial_id` values must be contiguous and zero-based.
+The observed response history is used only to condition learning state; PPC
+output responses are newly simulated.
+
 ### Outcome column naming
 
 By default, simulator output includes a `"feedback"` column and compiled
