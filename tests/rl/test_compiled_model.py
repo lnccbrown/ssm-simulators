@@ -24,10 +24,10 @@ def _make_default_config(**overrides):
 
 class TestResolveModel:
     def test_resolves_preset_name_to_fresh_model_config(self):
-        config = rl.resolve_model("rlssm1")
+        config = rl.resolve_model("2AB_RW_Angle")
 
         assert isinstance(config, rl.ModelConfig)
-        assert config.model_name == "rlssm1"
+        assert config.model_name == "2AB_RW_Angle"
 
     def test_validates_and_passes_through_model_config(self):
         config = _make_default_config()
@@ -62,10 +62,10 @@ class TestCompiledModel:
         assert compiled.gradient == "unavailable"
 
     def test_resolve_model_can_compile_preset_name(self):
-        compiled = rl.resolve_model("rlssm1").compile(backend="python")
+        compiled = rl.resolve_model("2AB_RW_Angle").compile(backend="python")
 
         assert isinstance(compiled, rl.CompiledModel)
-        assert compiled.model_name == "rlssm1"
+        assert compiled.model_name == "2AB_RW_Angle"
         assert compiled.computed_params == ["v"]
 
     def test_python_subject_wise_function_matches_manual_rw_trajectory(self):

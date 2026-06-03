@@ -10,7 +10,8 @@ compatible with HSSM inference.
 ```python
 import ssms.rl as rl
 
-config = rl.preset.get("rlssm1")
+print(rl.preset.info("2AB_RW_Angle"))
+config = rl.preset.get("2AB_RW_Angle")
 sim = rl.Simulator(config)
 data = sim.simulate(
     theta={
@@ -40,7 +41,7 @@ for presets, custom components, response mapping, and plots.
 | `resolve_model` | Resolve preset name or validate a `ModelConfig` |
 | `env` | Task environments (`Bandit`, `TaskConfig`, …) |
 | `learning` | Learning processes (`RescorlaWagnerDeltaRule`, …) |
-| `preset` | Preset registry (`get`, `list`, `register`) |
+| `preset` | Preset registry (`get`, `list`, `info`, `register`) |
 
 Import style: `import ssms.rl as rl`.
 
@@ -102,7 +103,7 @@ compute_params = compiled.compile_participant_fn()
 Advanced resolution:
 
 ```python
-config = rl.resolve_model("rlssm1")  # str or ModelConfig
+config = rl.resolve_model("2AB_RW_Angle")  # str or ModelConfig
 compiled = config.compile(backend="auto")
 ```
 

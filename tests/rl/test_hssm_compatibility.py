@@ -97,16 +97,17 @@ class TestToHssmConfigDictSchema:
 class TestRegistry:
     def test_list_presets(self):
         presets = rl.preset.list()
-        assert "rlssm1" in presets
+        assert "2AB_RW_Angle" in presets
+        assert "rlssm1" not in presets
 
-    def test_get_rlssm1_preset(self):
-        config = rl.preset.get("rlssm1")
+    def test_get_two_arm_rw_angle_preset(self):
+        config = rl.preset.get("2AB_RW_Angle")
         assert isinstance(config, rl.ModelConfig)
-        assert config.model_name == "rlssm1"
+        assert config.model_name == "2AB_RW_Angle"
         assert config.decision_process == "angle"
 
-    def test_rlssm1_preset_simulates(self):
-        config = rl.preset.get("rlssm1")
+    def test_two_arm_rw_angle_preset_simulates(self):
+        config = rl.preset.get("2AB_RW_Angle")
         sim = rl.Simulator(config)
         data = sim.simulate(
             theta={
@@ -122,6 +123,37 @@ class TestRegistry:
             random_state=42,
         )
         assert len(data) == 20
+
+    def test_old_rlssm1_preset_name_is_not_public(self):
+        with pytest.raises(KeyError, match="Unknown RLSSM preset"):
+            rl.preset.get("rlssm1")
+
+    def test_preset_info_contains_readable_metadata(self):
+        info = rl.preset.info("2AB_RW_Angle")
+
+        assert info["name"] == "2AB_RW_Angle"
+        assert info["task"] == "two-armed Bernoulli bandit"
+        assert info["learning_process"] == "RescorlaWagnerDeltaRule"
+        assert info["decision_process"] == "angle"
+        assert info["required_parameters"] == [
+            "rl_alpha",
+            "scaler",
+            "a",
+            "z",
+            "t",
+            "theta",
+        ]
+        assert info["default_parameters"]["rl_alpha"] == 0.2
+        assert info["bounds"]["rl_alpha"] == (0.0, 1.0)
+        assert info["response_labels"] == (-1, 1)
+        assert info["outcome_field"] == "feedback"
+        assert info["hssm_compatibility"]["participant_contract"] is True
+        assert info["learning_backend"] in {"python", "jax"}
+        assert info["gradient"] in {"available", "unavailable"}
+
+        rendered = str(info)
+        assert "2AB_RW_Angle" in rendered
+        assert "required parameters" in rendered.lower()
 
     def test_unknown_preset_raises(self):
         with pytest.raises(KeyError, match="Unknown RLSSM preset"):
