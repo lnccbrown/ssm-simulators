@@ -97,8 +97,34 @@ participant-wise theta length.
   the observed outcome column into the output, and updates learning state from
   the observed response/outcome history.
 
-PPC mode requires an observed balanced panel with `participant_id`, `trial_id`,
-`response`, and the configured outcome column:
+PPC mode uses the same data contract as inference validation (see below). The
+observed panel must include `participant_id`, `trial_id`, all `config.response`
+columns (default `rt` and `response`), and the configured outcome column (default
+`feedback`):
+
+## Data validation
+
+Validate empirical or simulated panels before PPC or HSSM handoff:
+
+```python
+report = config.validate_data(data)
+report.print()
+report.raise_for_errors()
+```
+
+Required columns are derived from the model config:
+
+- `participant_id`, `trial_id`
+- every name in `config.response` (default `rt`, `response`)
+- every name in `config.extra_fields` (includes `outcome_field`, default `feedback`)
+
+The validator checks balanced panels, contiguous participant blocks, contiguous
+zero-based `trial_id` within each participant, response labels compatible with
+`config.choices` and `response_mapping`, missing values, and omission sentinels.
+Errors include repair hints, for example renaming a reward column or setting
+`ModelConfig(outcome_field="reward")`.
+
+PPC mode example (observed data must satisfy the same contract):
 
 ```python
 observed = sim.simulate(
