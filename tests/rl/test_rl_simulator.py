@@ -112,6 +112,81 @@ class TestValidation:
         with pytest.raises(ValueError, match="theta is missing"):
             sim.simulate(theta=incomplete, n_trials=5, n_participants=1)
 
+    def test_unknown_theta_param(self):
+        sim = _make_simulator()
+        with pytest.raises(ValueError, match="theta contains unknown params"):
+            sim.simulate(theta={**THETA, "unused": 1.0}, n_trials=5, n_participants=1)
+
+
+class TestParticipantWiseTheta:
+    def test_scalar_theta_is_shared_across_participants(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator()
+        seen_theta = []
+
+        def mock_simulator(**kwargs):
+            seen_theta.append(kwargs["theta"])
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=THETA, n_trials=1, n_participants=2)
+
+        assert df["participant_id"].tolist() == [0, 1]
+        assert [theta["a"] for theta in seen_theta] == [1.5, 1.5]
+
+    def test_participant_wise_theta_values_are_applied_by_participant(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator()
+        seen_theta = []
+
+        def mock_simulator(**kwargs):
+            seen_theta.append(kwargs["theta"])
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        theta = {**THETA, "a": [1.1, 1.7], "rl_alpha": np.array([0.1, 0.9])}
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=theta, n_trials=2, n_participants=2)
+
+        assert df.groupby("participant_id").size().to_dict() == {0: 2, 1: 2}
+        assert [call_theta["a"] for call_theta in seen_theta] == [1.1, 1.1, 1.7, 1.7]
+
+    def test_participant_count_is_inferred_from_theta_length(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator()
+
+        def mock_simulator(**kwargs):
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        theta = {**THETA, "a": [1.1, 1.5, 1.9]}
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            df = sim.simulate(theta=theta, n_trials=1)
+
+        assert df["participant_id"].tolist() == [0, 1, 2]
+
+    def test_participant_wise_theta_lengths_must_match(self):
+        sim = _make_simulator()
+        theta = {**THETA, "a": [1.1, 1.5], "z": [0.4, 0.5, 0.6]}
+
+        with pytest.raises(ValueError, match="participant-wise theta values"):
+            sim.simulate(theta=theta, n_trials=1)
+
+    def test_explicit_participant_count_must_match_theta_length(self):
+        sim = _make_simulator()
+        theta = {**THETA, "a": [1.1, 1.5]}
+
+        with pytest.raises(ValueError, match="n_participants=3"):
+            sim.simulate(theta=theta, n_trials=1, n_participants=3)
+
+    def test_multidimensional_theta_values_are_rejected(self):
+        sim = _make_simulator()
+        theta = {**THETA, "a": np.array([[1.1, 1.5]])}
+
+        with pytest.raises(ValueError, match="scalar or a one-dimensional"):
+            sim.simulate(theta=theta, n_trials=1)
+
 
 class TestEdgeCases:
     def test_single_participant(self):

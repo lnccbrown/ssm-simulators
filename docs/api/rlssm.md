@@ -61,6 +61,31 @@ Important fields:
   to `None` for outcome-free learning processes
 - `extra_fields` — extra data columns; defaults to `[outcome_field]` plus task extras
 
+## Participant-wise parameters
+
+`Simulator.simulate()` accepts scalar theta values shared by all participants
+and one-dimensional participant-wise values. When any theta value is
+participant-wise, all participant-wise values must have the same length. If
+`n_participants` is omitted, that length is used as the participant count:
+
+```python
+data = sim.simulate(
+    theta={
+        "rl_alpha": [0.15, 0.25, 0.35],
+        "scaler": 2.0,
+        "a": [1.1, 1.4, 1.7],
+        "z": 0.5,
+        "t": 0.3,
+        "theta": 0.2,
+    },
+    n_trials=200,
+    random_state=42,
+)
+```
+
+Passing `n_participants` explicitly is allowed, but it must match the
+participant-wise theta length.
+
 ### Outcome column naming
 
 By default, simulator output includes a `"feedback"` column and compiled

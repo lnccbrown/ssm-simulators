@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+from numbers import Integral
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -39,22 +40,25 @@ class Simulator:
 
     def simulate(
         self,
-        theta: dict[str, float],
+        theta: dict[str, Any],
         n_trials: int = 200,
-        n_participants: int = 20,
+        n_participants: int | None = None,
         random_state: int | None = None,
     ) -> pd.DataFrame:
         """Run full RLSSM simulation.
 
         Parameters
         ----------
-        theta : dict[str, float]
+        theta : dict[str, Any]
             Concrete parameter values. Must contain all params required by the
-            learning process and fixed SSM parameters.
+            learning process and fixed SSM parameters. Each value can be a scalar
+            shared by all participants or a one-dimensional list/array with one
+            value per participant.
         n_trials : int
             Number of trials per participant. Default 200.
-        n_participants : int
-            Number of participants to simulate. Default 20.
+        n_participants : int | None
+            Number of participants to simulate. If None, inferred from
+            participant-wise theta values when present; otherwise defaults to 20.
         random_state : int | None
             Seed for reproducibility. If None, non-deterministic.
 
@@ -65,22 +69,26 @@ class Simulator:
             the configured outcome column when ``outcome_field`` is set, plus
             any ``extra_fields`` from the task environment.
         """
-        self._validate_theta(theta)
+        participant_theta, resolved_n_participants = self._normalize_theta(
+            theta, n_participants
+        )
 
         rng = np.random.default_rng(random_state)
-        child_rngs = rng.spawn(n_participants)
+        child_rngs = rng.spawn(resolved_n_participants)
 
         all_rows = []
-        for p in range(n_participants):
-            rows = self._simulate_subject(p, theta, n_trials, child_rngs[p])
+        for p in range(resolved_n_participants):
+            rows = self._simulate_subject(
+                p, participant_theta[p], n_trials, child_rngs[p]
+            )
             all_rows.extend(rows)
 
         df = pd.DataFrame(all_rows)
         df = df.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
         return df
 
-    def _validate_theta(self, theta: dict[str, float]) -> None:
-        """Check that theta contains all required params."""
+    def _validate_theta_keys(self, theta: dict[str, Any]) -> None:
+        """Check that theta contains exactly the required params."""
         required_params = self.config.required_params
         missing = [p for p in required_params if p not in theta]
         if missing:
@@ -88,6 +96,98 @@ class Simulator:
                 f"theta is missing required params: {missing}. "
                 f"Expected all of: {required_params}"
             )
+        unknown = sorted(set(theta) - set(required_params))
+        if unknown:
+            raise ValueError(
+                f"theta contains unknown params: {unknown}. "
+                f"Expected only: {required_params}"
+            )
+
+    def _normalize_theta(
+        self,
+        theta: dict[str, Any],
+        n_participants: int | None,
+    ) -> tuple[list[dict[str, float]], int]:
+        """Normalize scalar and participant-wise theta values.
+
+        Downstream learning backends and SSM simulators receive scalar parameter
+        values for a single participant. This method accepts the public API's
+        scalar-or-vector theta form and expands it into one scalar dict per
+        participant.
+        """
+        self._validate_theta_keys(theta)
+        if n_participants is not None:
+            if not isinstance(n_participants, Integral) or n_participants <= 0:
+                raise ValueError(
+                    "n_participants must be a positive integer or None. "
+                    f"Got {n_participants!r}."
+                )
+            n_participants = int(n_participants)
+
+        scalar_values: dict[str, float] = {}
+        participant_values: dict[str, list[float]] = {}
+        participant_lengths: dict[str, int] = {}
+
+        for param in self.config.required_params:
+            values = self._theta_value_to_array(param, theta[param])
+            if values.ndim == 0:
+                scalar_values[param] = float(values.item())
+                continue
+            if values.ndim != 1:
+                raise ValueError(
+                    f"theta[{param!r}] must be a scalar or a one-dimensional "
+                    f"participant-wise value. Got shape {values.shape}."
+                )
+            if values.size == 0:
+                raise ValueError(
+                    f"theta[{param!r}] participant-wise value must not be empty."
+                )
+            participant_values[param] = [float(value) for value in values]
+            participant_lengths[param] = int(values.size)
+
+        unique_lengths = sorted(set(participant_lengths.values()))
+        if len(unique_lengths) > 1:
+            raise ValueError(
+                "participant-wise theta values must all have the same length. "
+                f"Got lengths by param: {participant_lengths}."
+            )
+
+        inferred_n_participants = unique_lengths[0] if unique_lengths else None
+        if n_participants is None:
+            resolved_n_participants = inferred_n_participants or 20
+        elif (
+            inferred_n_participants is not None
+            and n_participants != inferred_n_participants
+        ):
+            raise ValueError(
+                f"n_participants={n_participants} does not match the "
+                f"participant-wise theta length {inferred_n_participants}."
+            )
+        else:
+            resolved_n_participants = n_participants
+
+        participant_theta = []
+        for participant_idx in range(resolved_n_participants):
+            values_for_participant = {}
+            for param in self.config.required_params:
+                if param in participant_values:
+                    values_for_participant[param] = participant_values[param][
+                        participant_idx
+                    ]
+                else:
+                    values_for_participant[param] = scalar_values[param]
+            participant_theta.append(values_for_participant)
+
+        return participant_theta, resolved_n_participants
+
+    def _theta_value_to_array(self, param: str, value: Any) -> np.ndarray:
+        """Convert a public theta value to a numeric ndarray for validation."""
+        try:
+            return np.asarray(value, dtype=float)
+        except (TypeError, ValueError) as err:
+            raise ValueError(
+                f"theta[{param!r}] must be numeric and scalar or one-dimensional."
+            ) from err
 
     def _simulate_subject(
         self,
