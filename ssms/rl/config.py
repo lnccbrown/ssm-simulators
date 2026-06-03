@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import importlib.util
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
+
+import pandas as pd
 
 from ssms.config.model_config_builder import ModelConfigBuilder
+
+if TYPE_CHECKING:
+    from .validation import DataValidationReport
 
 from .env import TaskConfig, TaskEnvironment
 from .learning import LearningProcess
@@ -395,6 +400,17 @@ class ModelConfig:
             else:
                 raise ValueError(f"No default value for param '{p}'")
         return defaults
+
+    def validate_data(self, data: pd.DataFrame) -> DataValidationReport:
+        """Validate trial-level data against this model's RLSSM contract.
+
+        Returns a report with readable ``print()`` output and
+        ``raise_for_errors()`` for fail-fast usage.
+        """
+        from .validation import validate_rlssm_data
+
+        self.validate()
+        return validate_rlssm_data(self, data)
 
     def validate(self) -> None:
         """Validate config consistency. Called by Simulator.__init__().
