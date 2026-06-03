@@ -129,6 +129,78 @@ class TestSimulationMode:
             sim.simulate(theta=THETA, n_trials=1, n_participants=1, mode="other")
 
 
+class TestPPCMode:
+    def test_ppc_requires_observed_data(self):
+        sim = _make_simulator()
+
+        with pytest.raises(ValueError, match="observed_data is required"):
+            sim.simulate(theta=THETA, mode="ppc")
+
+    def test_ppc_requires_observed_columns(self):
+        sim = _make_simulator()
+        observed = pd.DataFrame(
+            {"participant_id": [0], "trial_id": [0], "response": [-1]}
+        )
+
+        with pytest.raises(ValueError, match="observed_data is missing required"):
+            sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
+
+    def test_ppc_requires_contiguous_trial_ids_per_participant(self):
+        sim = _make_simulator()
+        observed = pd.DataFrame(
+            {
+                "participant_id": [0, 0],
+                "trial_id": [0, 2],
+                "response": [-1, 1],
+                "feedback": [1.0, 0.0],
+            }
+        )
+
+        with pytest.raises(ValueError, match="contiguous zero-based trial_id"):
+            sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
+
+    def test_ppc_copies_observed_outcome_and_updates_from_observed_response(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[0.0, 0.0], response_labels=[-1, 1]
+            )
+        )
+        observed = pd.DataFrame(
+            {
+                "participant_id": [0, 0],
+                "trial_id": [0, 1],
+                "response": [-1, 1],
+                "feedback": [1.0, 0.0],
+            }
+        )
+        simulated_choices = iter([1, -1])
+        seen_v = []
+
+        def mock_simulator(**kwargs):
+            seen_v.append(kwargs["theta"]["v"])
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(simulated_choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            data = sim.simulate(
+                theta={**THETA, "rl_alpha": 1.0},
+                mode="ppc",
+                observed_data=observed,
+                random_state=42,
+            )
+
+        assert data["response"].tolist() == [1, -1]
+        assert data["feedback"].tolist() == [1.0, 0.0]
+        np.testing.assert_allclose(seen_v, [0.0, -1.0])
+        np.testing.assert_allclose(
+            sim.config.learning_process.q_values, np.array([1.0, 0.0])
+        )
+
+
 class TestValidation:
     def test_missing_theta_param(self):
         sim = _make_simulator()

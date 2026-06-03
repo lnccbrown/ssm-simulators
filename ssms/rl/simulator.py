@@ -45,6 +45,7 @@ class Simulator:
         n_participants: int | None = None,
         random_state: int | None = None,
         mode: Literal["generative", "ppc"] = "generative",
+        observed_data: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """Run full RLSSM simulation.
 
@@ -64,8 +65,10 @@ class Simulator:
             Seed for reproducibility. If None, non-deterministic.
         mode : {"generative", "ppc"}
             Simulation mode. ``"generative"`` runs the unconstrained simulator
-            loop. ``"ppc"`` is reserved for observed-history-conditioned
-            posterior predictive simulation.
+            loop. ``"ppc"`` runs observed-history-conditioned posterior
+            predictive simulation.
+        observed_data : pd.DataFrame | None
+            Observed participant history required for ``mode="ppc"``.
 
         Returns
         -------
@@ -75,6 +78,14 @@ class Simulator:
             any ``extra_fields`` from the task environment.
         """
         self._validate_mode(mode)
+        if mode == "ppc":
+            return self._simulate_ppc(
+                theta=theta,
+                observed_data=observed_data,
+                n_participants=n_participants,
+                random_state=random_state,
+            )
+
         participant_theta, resolved_n_participants = self._normalize_theta(
             theta, n_participants
         )
@@ -99,10 +110,90 @@ class Simulator:
             raise ValueError(
                 f"mode must be one of 'generative' or 'ppc'. Got {mode!r}."
             )
-        if mode == "ppc":
-            raise NotImplementedError(
-                "mode='ppc' is not implemented yet. Use mode='generative'."
+
+    def _simulate_ppc(
+        self,
+        theta: dict[str, Any],
+        observed_data: pd.DataFrame | None,
+        n_participants: int | None,
+        random_state: int | None,
+    ) -> pd.DataFrame:
+        """Run observed-history-conditioned posterior predictive simulation."""
+        observed, participant_ids = self._validate_observed_data(observed_data)
+        observed_n_participants = len(participant_ids)
+        if (
+            n_participants is not None
+            and int(n_participants) != observed_n_participants
+        ):
+            raise ValueError(
+                f"n_participants={n_participants} does not match observed_data "
+                f"participant count {observed_n_participants}."
             )
+
+        participant_theta, _ = self._normalize_theta(theta, observed_n_participants)
+        rng = np.random.default_rng(random_state)
+        child_rngs = rng.spawn(observed_n_participants)
+
+        all_rows = []
+        for participant_idx, participant_id in enumerate(participant_ids):
+            observed_subject = observed[observed["participant_id"] == participant_id]
+            rows = self._simulate_subject_ppc(
+                int(participant_id),
+                participant_theta[participant_idx],
+                observed_subject,
+                child_rngs[participant_idx],
+            )
+            all_rows.extend(rows)
+
+        df = pd.DataFrame(all_rows)
+        df = df.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
+        return df
+
+    def _validate_observed_data(
+        self, observed_data: pd.DataFrame | None
+    ) -> tuple[pd.DataFrame, list[int]]:
+        """Validate and sort observed participant history for PPC mode."""
+        if observed_data is None:
+            raise ValueError("observed_data is required when mode='ppc'.")
+        if not isinstance(observed_data, pd.DataFrame):
+            raise ValueError("observed_data must be a pandas DataFrame.")
+        if observed_data.empty:
+            raise ValueError("observed_data must contain at least one trial.")
+
+        required_columns = {"participant_id", "trial_id", "response"}
+        if self.config.outcome_field is not None:
+            required_columns.add(self.config.outcome_field)
+        missing = sorted(required_columns - set(observed_data.columns))
+        if missing:
+            raise ValueError(f"observed_data is missing required columns: {missing}.")
+
+        if observed_data.duplicated(["participant_id", "trial_id"]).any():
+            raise ValueError(
+                "observed_data must contain unique participant_id/trial_id pairs."
+            )
+
+        observed = observed_data.sort_values(["participant_id", "trial_id"])
+        observed = observed.reset_index(drop=True)
+
+        participant_ids = [int(value) for value in observed["participant_id"].unique()]
+        trial_counts: set[int] = set()
+        for participant_id, group in observed.groupby("participant_id", sort=True):
+            trial_ids = [int(value) for value in group["trial_id"].tolist()]
+            expected = list(range(len(trial_ids)))
+            if trial_ids != expected:
+                raise ValueError(
+                    "observed_data must use contiguous zero-based trial_id values "
+                    f"within each participant. Participant {participant_id!r} has "
+                    f"{trial_ids}; expected {expected}."
+                )
+            trial_counts.add(len(trial_ids))
+        if len(trial_counts) != 1:
+            raise ValueError(
+                "observed_data must be balanced with the same number of trials "
+                "for every participant."
+            )
+
+        return observed, participant_ids
 
     def _validate_theta_keys(self, theta: dict[str, Any]) -> None:
         """Check that theta contains exactly the required params."""
@@ -245,17 +336,7 @@ class Simulator:
             full_theta = {**fixed_ssm_params, **computed_ssm}
 
             # SIMULATE: one SSM trial
-            trial_seed = int(rng.integers(0, 2**31))
-            result = ssm_simulator(
-                theta=full_theta,
-                model=config.decision_process,
-                n_samples=1,
-                random_state=trial_seed,
-                **config.ssm_kwargs,
-            )
-
-            rt = float(result["rts"].item())
-            ssm_choice = int(result["choices"].item())
+            rt, ssm_choice = self._simulate_decision_trial(full_theta, rng)
 
             # OMISSION CHECK
             if rt == OMISSION_SENTINEL:
@@ -302,6 +383,87 @@ class Simulator:
             rows.append(row)
 
         return rows
+
+    def _simulate_subject_ppc(
+        self,
+        subject_id: int,
+        theta: dict[str, float],
+        observed_subject: pd.DataFrame,
+        rng: np.random.Generator,
+    ) -> list[dict]:
+        """Simulate one participant conditioned on observed trial history."""
+        config = self.config
+        lp = config.learning_process
+        env = cast(TaskEnvironment, config.task_environment)
+
+        rl_params = {k: theta[k] for k in lp.free_params}
+        fixed_ssm_params = {k: theta[k] for k in config._fixed_ssm_params}
+        mapping = config.computed_param_mapping or {}
+
+        learning_state = self._init_learning_state()
+        env.reset(rng=rng)
+
+        rows = []
+        outcome_field = config.outcome_field
+        for t, observed_trial in enumerate(observed_subject.itertuples(index=False)):
+            computed_raw = self._compute_learning_params(learning_state, rl_params)
+
+            computed_ssm = {}
+            for output_name, value in computed_raw.items():
+                ssm_name = mapping.get(output_name, output_name)
+                computed_ssm[ssm_name] = float(value)
+
+            full_theta = {**fixed_ssm_params, **computed_ssm}
+            rt, ssm_choice = self._simulate_decision_trial(full_theta, rng)
+
+            if rt == OMISSION_SENTINEL:
+                response = MISSING_RESPONSE_SENTINEL
+                simulated_action = MISSING_RESPONSE_SENTINEL
+            else:
+                response = ssm_choice
+                simulated_action = self._response_to_action_index(response)
+
+            observed_response = int(getattr(observed_trial, "response"))
+            observed_action = self._response_to_action_index(observed_response)
+            reward = (
+                float(getattr(observed_trial, outcome_field))
+                if outcome_field is not None
+                else 0.0
+            )
+
+            learning_state = self._update_learning_state(
+                learning_state, observed_action, reward, rl_params
+            )
+            self._store_learning_state(learning_state)
+
+            row = {
+                "participant_id": subject_id,
+                "trial_id": int(getattr(observed_trial, "trial_id")),
+                "rt": rt,
+                "response": response,
+            }
+            if outcome_field is not None:
+                row[outcome_field] = reward
+            if config.include_action:
+                row["action"] = simulated_action
+            row.update(env.get_extra_data(t))
+            rows.append(row)
+
+        return rows
+
+    def _simulate_decision_trial(
+        self, theta: dict[str, float], rng: np.random.Generator
+    ) -> tuple[float, int]:
+        """Simulate one SSM decision trial and unpack scalar RT/choice."""
+        trial_seed = int(rng.integers(0, 2**31))
+        result = ssm_simulator(
+            theta=theta,
+            model=self.config.decision_process,
+            n_samples=1,
+            random_state=trial_seed,
+            **self.config.ssm_kwargs,
+        )
+        return float(result["rts"].item()), int(result["choices"].item())
 
     def _init_learning_state(self):
         """Initialize participant learning state for the configured backend."""
