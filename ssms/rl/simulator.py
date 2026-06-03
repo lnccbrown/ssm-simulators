@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from numbers import Integral
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -44,6 +44,7 @@ class Simulator:
         n_trials: int = 200,
         n_participants: int | None = None,
         random_state: int | None = None,
+        mode: Literal["generative", "ppc"] = "generative",
     ) -> pd.DataFrame:
         """Run full RLSSM simulation.
 
@@ -61,6 +62,10 @@ class Simulator:
             participant-wise theta values when present; otherwise defaults to 20.
         random_state : int | None
             Seed for reproducibility. If None, non-deterministic.
+        mode : {"generative", "ppc"}
+            Simulation mode. ``"generative"`` runs the unconstrained simulator
+            loop. ``"ppc"`` is reserved for observed-history-conditioned
+            posterior predictive simulation.
 
         Returns
         -------
@@ -69,6 +74,7 @@ class Simulator:
             the configured outcome column when ``outcome_field`` is set, plus
             any ``extra_fields`` from the task environment.
         """
+        self._validate_mode(mode)
         participant_theta, resolved_n_participants = self._normalize_theta(
             theta, n_participants
         )
@@ -86,6 +92,17 @@ class Simulator:
         df = pd.DataFrame(all_rows)
         df = df.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
         return df
+
+    def _validate_mode(self, mode: str) -> None:
+        """Validate the public simulation mode."""
+        if mode not in {"generative", "ppc"}:
+            raise ValueError(
+                f"mode must be one of 'generative' or 'ppc'. Got {mode!r}."
+            )
+        if mode == "ppc":
+            raise NotImplementedError(
+                "mode='ppc' is not implemented yet. Use mode='generative'."
+            )
 
     def _validate_theta_keys(self, theta: dict[str, Any]) -> None:
         """Check that theta contains exactly the required params."""

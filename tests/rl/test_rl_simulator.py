@@ -105,6 +105,30 @@ class TestReproducibility:
         assert not df1["rt"].equals(df2["rt"])
 
 
+class TestSimulationMode:
+    def test_generative_mode_matches_default_behavior(self):
+        sim = _make_simulator()
+
+        default = sim.simulate(
+            theta=THETA, n_trials=5, n_participants=2, random_state=42
+        )
+        generative = sim.simulate(
+            theta=THETA,
+            n_trials=5,
+            n_participants=2,
+            random_state=42,
+            mode="generative",
+        )
+
+        pd.testing.assert_frame_equal(default, generative)
+
+    def test_unknown_mode_raises(self):
+        sim = _make_simulator()
+
+        with pytest.raises(ValueError, match="mode must be one of"):
+            sim.simulate(theta=THETA, n_trials=1, n_participants=1, mode="other")
+
+
 class TestValidation:
     def test_missing_theta_param(self):
         sim = _make_simulator()
