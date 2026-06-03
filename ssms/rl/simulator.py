@@ -13,6 +13,7 @@ from ssms.basic_simulators.simulator import simulator as ssm_simulator
 
 from .config import ModelConfig
 from .env import TaskEnvironment
+from .validation import validate_rlssm_data
 
 
 MISSING_RESPONSE_SENTINEL = -999
@@ -155,44 +156,12 @@ class Simulator:
         """Validate and sort observed participant history for PPC mode."""
         if observed_data is None:
             raise ValueError("observed_data is required when mode='ppc'.")
-        if not isinstance(observed_data, pd.DataFrame):
-            raise ValueError("observed_data must be a pandas DataFrame.")
-        if observed_data.empty:
-            raise ValueError("observed_data must contain at least one trial.")
-
-        required_columns = {"participant_id", "trial_id", "response"}
-        if self.config.outcome_field is not None:
-            required_columns.add(self.config.outcome_field)
-        missing = sorted(required_columns - set(observed_data.columns))
-        if missing:
-            raise ValueError(f"observed_data is missing required columns: {missing}.")
-
-        if observed_data.duplicated(["participant_id", "trial_id"]).any():
-            raise ValueError(
-                "observed_data must contain unique participant_id/trial_id pairs."
-            )
+        report = validate_rlssm_data(self.config, observed_data)
+        report.raise_for_errors()
 
         observed = observed_data.sort_values(["participant_id", "trial_id"])
         observed = observed.reset_index(drop=True)
-
         participant_ids = [int(value) for value in observed["participant_id"].unique()]
-        trial_counts: set[int] = set()
-        for participant_id, group in observed.groupby("participant_id", sort=True):
-            trial_ids = [int(value) for value in group["trial_id"].tolist()]
-            expected = list(range(len(trial_ids)))
-            if trial_ids != expected:
-                raise ValueError(
-                    "observed_data must use contiguous zero-based trial_id values "
-                    f"within each participant. Participant {participant_id!r} has "
-                    f"{trial_ids}; expected {expected}."
-                )
-            trial_counts.add(len(trial_ids))
-        if len(trial_counts) != 1:
-            raise ValueError(
-                "observed_data must be balanced with the same number of trials "
-                "for every participant."
-            )
-
         return observed, participant_ids
 
     def _validate_theta_keys(self, theta: dict[str, Any]) -> None:

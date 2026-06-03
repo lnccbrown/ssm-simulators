@@ -139,10 +139,15 @@ class TestPPCMode:
     def test_ppc_requires_observed_columns(self):
         sim = _make_simulator()
         observed = pd.DataFrame(
-            {"participant_id": [0], "trial_id": [0], "response": [-1]}
+            {
+                "participant_id": [0],
+                "trial_id": [0],
+                "rt": [0.5],
+                "response": [-1],
+            }
         )
 
-        with pytest.raises(ValueError, match="observed_data is missing required"):
+        with pytest.raises(ValueError, match="missing_column"):
             sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
 
     def test_ppc_requires_contiguous_trial_ids_per_participant(self):
@@ -151,12 +156,13 @@ class TestPPCMode:
             {
                 "participant_id": [0, 0],
                 "trial_id": [0, 2],
+                "rt": [0.5, 0.6],
                 "response": [-1, 1],
                 "feedback": [1.0, 0.0],
             }
         )
 
-        with pytest.raises(ValueError, match="contiguous zero-based trial_id"):
+        with pytest.raises(ValueError, match="invalid_trial_ids"):
             sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
 
     def test_ppc_copies_observed_outcome_and_updates_from_observed_response(self):
@@ -171,6 +177,7 @@ class TestPPCMode:
             {
                 "participant_id": [0, 0],
                 "trial_id": [0, 1],
+                "rt": [0.5, 0.6],
                 "response": [-1, 1],
                 "feedback": [1.0, 0.0],
             }
