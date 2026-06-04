@@ -28,8 +28,8 @@ data = sim.simulate(
 )
 ```
 
-See the [RLSSM Simulator tutorial](../core_tutorials/rlssm_simulator_demo.ipynb)
-for presets, custom components, response mapping, and plots.
+See the [RLSSM tutorial](../core_tutorials/rlssm_tutorial.ipynb)
+for presets, building a model, simulating participants, validation, and plots.
 
 ## Public API
 
