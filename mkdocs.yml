@@ -15,6 +15,7 @@ nav:
       - Custom Models: core_tutorials/tutorial_custom_models.ipynb
       - Data Generators: core_tutorials/tutorial_data_generators.ipynb
       - RLSSM Tutorial: core_tutorials/rlssm_tutorial.ipynb
+      - RLSSM Tutorial (Advanced): core_tutorials/rlssm_advanced_tutorial.ipynb
       - KDE Class: core_tutorials/kde_class.ipynb
       - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
       - Using MLflow: core_tutorials/using_mlflow.md
