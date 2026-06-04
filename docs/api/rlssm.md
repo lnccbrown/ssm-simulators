@@ -206,18 +206,36 @@ config = rl.resolve_model("2AB_RW_Angle")  # str or ModelConfig
 compiled = config.compile(backend="auto")
 ```
 
-## HSSM config bridge
+## HSSM bridge
 
-`ModelConfig.to_hssm_config_dict()` exports structural fields for HSSM's
-`RLSSMConfig.from_rlssm_dict()`, plus:
+The active HSSM handoff path is HSSM's bridge factory:
+
+```python
+import hssm
+import ssms.rl as rl
+
+ssms_config = rl.preset.get("2AB_RW_Angle")
+hssm_config = hssm.rl.RLSSMConfig.from_ssms_model(ssms_config)
+model = hssm.RLSSM(data=data, model_config=hssm_config)
+```
+
+`RLSSMConfig.from_ssms_model(...)` resolves the `ssms.rl` model, compiles it
+with the JAX backend, checks gradient support, and wraps
+`CompiledModel.compile_participant_fn(output="dict")` for HSSM's annotated
+computed-parameter contract.
+
+`ModelConfig.to_hssm_config_dict()` remains useful for structural inspection
+and compatibility with lower-level HSSM config workflows. It exports shared
+structural fields, plus:
 
 - `learning_backend`, `gradient`, `learning_process_kind`
 - `participant_contract` — derived trial input layout (`trial_params`,
   `response_field`, `outcome_field`, `input_fields`)
 
-Inference-only placeholders (`ssm_logp_func`, `learning_process`) remain for
-HSSM to fill. A higher-level `hssm.RLSSM(data, model=...)` wrapper that consumes
-`ssms.rl` directly is planned separately in HSSM.
+Inference-only placeholders in `to_hssm_config_dict()` (`ssm_logp_func`,
+`learning_process`) are not a complete model by themselves. A higher-level
+`hssm.RLSSM(data, model=...)` wrapper that consumes `ssms.rl` directly is
+planned separately in HSSM.
 
 ## Module reference
 
