@@ -106,6 +106,12 @@ class TestAutoDerivation:
             "feedback",
         )
 
+    def test_participant_contract_requires_configured_response_field(self):
+        config = _make_default_config()
+
+        with pytest.raises(ValueError, match="must appear in config.response"):
+            rl_config.derive_participant_contract(config, response_field="choice")
+
 
 class TestDualAlphaAutoDerivation:
     def test_auto_derive_list_params(self):
@@ -300,6 +306,14 @@ class TestResponseMapping:
 
 
 class TestLearningBackendPolicy:
+    def test_invalid_learning_backend_policy_raises(self):
+        with pytest.raises(ValueError, match="learning_backend must be"):
+            _make_default_config(learning_backend="numpy")
+
+    def test_invalid_gradient_policy_raises(self):
+        with pytest.raises(ValueError, match="gradient must be"):
+            _make_default_config(gradient="maybe")
+
     def test_auto_backend_uses_python_for_python_only_learning_process(self):
         class PythonOnlyLearning:
             computed_params = ["v"]
@@ -333,9 +347,72 @@ class TestLearningBackendPolicy:
 
 
 class TestListParamsValidation:
+    def test_list_params_without_default_value_raises(self):
+        with pytest.raises(ValueError, match="No default value"):
+            _make_default_config(
+                list_params=["rl_alpha", "scaler", "a", "z", "t", "theta", "missing"]
+            )
+
+    def test_list_params_length_must_match_params_default_length(self):
+        config = _make_default_config(
+            list_params=["rl_alpha", "scaler", "a", "z", "t", "theta"],
+            params_default=[0.2],
+        )
+
+        with pytest.raises(ValueError, match="params_default length"):
+            config.validate()
+
+    def test_list_params_must_have_bounds(self):
+        config = _make_default_config(
+            list_params=["rl_alpha", "scaler", "a", "z", "t", "theta"],
+            bounds={"rl_alpha": (0.0, 1.0), "scaler": (0.001, 10.0)},
+        )
+
+        with pytest.raises(ValueError, match="Missing bounds"):
+            config.validate()
+
     def test_list_params_must_include_required_params(self):
         config = _make_default_config(list_params=["rl_alpha", "scaler"])
         with pytest.raises(ValueError, match="list_params must match"):
+            config.validate()
+
+
+class TestModelConfigValidation:
+    def test_computed_and_fixed_params_must_not_overlap(self):
+        config = _make_default_config()
+        config._fixed_ssm_params = ["v", "a", "z", "t", "theta"]
+
+        with pytest.raises(ValueError, match="both computed"):
+            config.validate()
+
+    def test_learning_process_action_count_must_match_task(self):
+        class ThreeActionLearning:
+            computed_params = ["v"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+            n_actions = 3
+
+            def reset(self, **kwargs):
+                pass
+
+            def compute_ssm_params(self, trial_params):
+                return {"v": 0.0}
+
+            def update(self, action, reward, trial_params):
+                pass
+
+        config = _make_default_config(
+            learning_process=ThreeActionLearning(),
+        )
+
+        with pytest.raises(ValueError, match="n_actions must match"):
+            config.validate()
+
+    def test_response_schema_must_include_response_column(self):
+        config = _make_default_config(response=["rt"])
+
+        with pytest.raises(ValueError, match="response"):
             config.validate()
 
 

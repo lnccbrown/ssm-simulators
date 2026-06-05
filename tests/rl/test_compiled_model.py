@@ -167,6 +167,53 @@ class TestCompiledModel:
             "feedback",
         ]
 
+    def test_participant_input_fields_can_override_outcome_field(self):
+        compiled = _make_default_config(learning_backend="python").compile(
+            backend="python"
+        )
+
+        assert compiled.participant_input_fields(outcome_field=None) == [
+            "rl_alpha",
+            "scaler",
+            "response",
+        ]
+        assert compiled.participant_input_fields(outcome_field="reward") == [
+            "rl_alpha",
+            "scaler",
+            "response",
+            "reward",
+        ]
+
+    @pytest.mark.parametrize(
+        "kwargs,match",
+        [
+            ({"output": "frame"}, "output must be"),
+            (
+                {"input_fields": ["rl_alpha", "rl_alpha", "response", "feedback"]},
+                "input_fields must be unique",
+            ),
+            (
+                {"input_fields": ["rl_alpha", "response", "feedback"]},
+                "missing learning parameters",
+            ),
+            (
+                {"input_fields": ["rl_alpha", "scaler", "response"]},
+                "missing outcome_field",
+            ),
+            (
+                {"input_fields": ["rl_alpha", "scaler", "feedback"]},
+                "missing response_field",
+            ),
+        ],
+    )
+    def test_compile_participant_fn_validates_layout(self, kwargs, match):
+        compiled = _make_default_config(learning_backend="python").compile(
+            backend="python"
+        )
+
+        with pytest.raises(ValueError, match=match):
+            compiled.compile_participant_fn(**kwargs)
+
     def test_zero_config_compile_participant_fn(self):
         compiled = _make_default_config(learning_backend="python").compile(
             backend="python"
@@ -284,3 +331,68 @@ class TestCompiledModel:
         assert set(values) == {"v", "theta"}
         np.testing.assert_allclose(values["v"], [0.0, 0.5, 1.0])
         np.testing.assert_allclose(values["theta"], [0.0, 0.1, 0.2])
+
+    def test_multi_output_learning_can_return_array(self):
+        class DualOutputLearning:
+            computed_params = ["drift", "urgency"]
+            free_params = ["gain"]
+            param_bounds = {"gain": (0.0, 1.0)}
+            default_params = {"gain": 0.5}
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def init_state(self):
+                return {"step": 0}
+
+            def compute_python(self, state, trial_params):
+                step = state["step"]
+                gain = trial_params["gain"]
+                return {"drift": gain * step, "urgency": 0.1 * step}
+
+            def update_python(self, state, action, outcome, trial_params):
+                return {"step": state["step"] + 1}
+
+        config = _make_default_config(
+            learning_backend="python",
+            learning_process=DualOutputLearning(),
+            computed_param_mapping={"drift": "v", "urgency": "theta"},
+            outcome_field=None,
+            extra_fields=[],
+        )
+        compute = config.compile(backend="python").compile_participant_fn()
+        trials = np.asarray([[0.5, -1.0], [0.5, 1.0]], dtype=np.float64)
+
+        values = compute(trials)
+
+        np.testing.assert_allclose(values, [[0.0, 0.0], [0.5, 0.1]])
+
+    def test_missing_computed_param_mapping_output_raises(self):
+        class IncompleteLearning:
+            computed_params = ["drift", "urgency"]
+            free_params = ["gain"]
+            param_bounds = {"gain": (0.0, 1.0)}
+            default_params = {"gain": 0.5}
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def init_state(self):
+                return {}
+
+            def compute_python(self, state, trial_params):
+                return {"drift": trial_params["gain"]}
+
+            def update_python(self, state, action, outcome, trial_params):
+                return state
+
+        config = _make_default_config(
+            learning_backend="python",
+            learning_process=IncompleteLearning(),
+            computed_param_mapping={"drift": "v", "urgency": "theta"},
+            outcome_field=None,
+            extra_fields=[],
+        )
+        compute = config.compile(backend="python").compile_participant_fn()
+        trials = np.asarray([[0.5, -1.0]], dtype=np.float64)
+
+        with pytest.raises(ValueError, match="Learning process did not compute"):
+            compute(trials)

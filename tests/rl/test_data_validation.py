@@ -100,6 +100,12 @@ class TestHappyPath:
 
 
 class TestColumns:
+    def test_empty_dataframe(self, config):
+        report = config.validate_data(pd.DataFrame())
+
+        assert not report.ok
+        assert any(issue.code == "empty_data" for issue in report.issues)
+
     def test_missing_rt(self, config):
         data = _valid_panel().drop(columns=["rt"])
         report = config.validate_data(data)
@@ -132,6 +138,14 @@ class TestColumns:
 
 
 class TestPanelStructure:
+    def test_null_participant_id(self, config):
+        data = _valid_panel()
+        data.loc[0, "participant_id"] = np.nan
+        report = config.validate_data(data)
+
+        assert not report.ok
+        assert any(issue.code == "null_participant_id" for issue in report.issues)
+
     def test_duplicate_keys(self, config):
         data = _valid_panel()
         duplicate = data.iloc[[0]].copy()
@@ -199,6 +213,15 @@ class TestValues:
         assert not report.ok
         assert any(issue.code == "invalid_response_labels" for issue in report.issues)
 
+    def test_unmapped_response_label(self, config):
+        data = _valid_panel()
+        config.response_to_action = {-1: 0}
+
+        report = config.validate_data(data)
+
+        assert not report.ok
+        assert any(issue.code == "unmapped_response_labels" for issue in report.issues)
+
     def test_omission_rt(self, config):
         data = _valid_panel()
         data.loc[0, "rt"] = OMISSION_SENTINEL
@@ -214,6 +237,27 @@ class TestValues:
 
         assert not report.ok
         assert any(issue.code == "omission_response" for issue in report.issues)
+
+    def test_all_omissions_skip_response_and_rt_value_checks(self, config):
+        data = _valid_panel()
+        data["rt"] = OMISSION_SENTINEL
+        data["response"] = MISSING_RESPONSE_SENTINEL
+
+        report = config.validate_data(data)
+
+        codes = {issue.code for issue in report.issues}
+        assert {"omission_rt", "omission_response"}.issubset(codes)
+        assert "invalid_response_labels" not in codes
+        assert "non_positive_rt" not in codes
+
+    def test_non_finite_rt(self, config):
+        data = _valid_panel()
+        data.loc[0, "rt"] = np.inf
+
+        report = config.validate_data(data)
+
+        assert not report.ok
+        assert any(issue.code == "invalid_rt" for issue in report.issues)
 
     def test_non_positive_rt(self, config):
         data = _valid_panel()
@@ -246,6 +290,16 @@ class TestReportAPI:
         with contextlib.redirect_stdout(io.StringIO()) as captured:
             report.print()
         assert "missing_column" in captured.getvalue()
+
+    def test_print_includes_panel_shape_for_valid_report(self, config):
+        report = config.validate_data(_valid_panel(n_participants=2, n_trials=3))
+
+        with contextlib.redirect_stdout(io.StringIO()) as captured:
+            report.print()
+
+        output = captured.getvalue()
+        assert "participants=2" in output
+        assert "trials_per_participant=3" in output
 
     def test_invalid_input_type(self, config):
         report = validate_rlssm_data(config, [[1, 2]])

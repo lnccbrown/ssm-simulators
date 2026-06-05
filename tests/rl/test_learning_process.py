@@ -154,6 +154,18 @@ class TestRescorlaWagnerDeltaRule:
         rw = RescorlaWagnerDeltaRule()
         assert rw.q_values is None
 
+    def test_compute_requires_reset(self):
+        rw = RescorlaWagnerDeltaRule()
+
+        with pytest.raises(RuntimeError, match="Call reset"):
+            rw.compute_ssm_params({"rl_alpha": 0.2, "scaler": 2.0})
+
+    def test_update_requires_reset(self):
+        rw = RescorlaWagnerDeltaRule()
+
+        with pytest.raises(RuntimeError, match="Call reset"):
+            rw.update(action=0, reward=1.0, trial_params={"rl_alpha": 0.2})
+
     def test_free_params(self):
         assert self.rw.free_params == ["rl_alpha", "scaler"]
 
@@ -238,6 +250,16 @@ class TestRescorlaWagnerDualAlphaRule:
         params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
         self.rw.update(action=0, reward=0.0, trial_params=params)
         np.testing.assert_allclose(self.rw.q_values, [0.45, 0.5])
+
+    def test_update_requires_reset(self):
+        rw = RescorlaWagnerDualAlphaRule()
+
+        with pytest.raises(RuntimeError, match="Call reset"):
+            rw.update(
+                action=0,
+                reward=1.0,
+                trial_params={"rl_alpha": 0.6, "rl_alpha_neg": 0.1},
+            )
 
     def test_drift_before_update_ordering(self):
         params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}

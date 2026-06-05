@@ -165,6 +165,26 @@ class TestPPCMode:
         with pytest.raises(ValueError, match="invalid_trial_ids"):
             sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
 
+    def test_ppc_participant_count_must_match_observed_data(self):
+        sim = _make_simulator()
+        observed = pd.DataFrame(
+            {
+                "participant_id": [0, 1],
+                "trial_id": [0, 0],
+                "rt": [0.5, 0.6],
+                "response": [-1, 1],
+                "feedback": [1.0, 0.0],
+            }
+        )
+
+        with pytest.raises(ValueError, match="participant count 2"):
+            sim.simulate(
+                theta=THETA,
+                mode="ppc",
+                observed_data=observed,
+                n_participants=3,
+            )
+
     def test_ppc_copies_observed_outcome_and_updates_from_observed_response(self):
         from unittest.mock import patch
 
@@ -206,6 +226,39 @@ class TestPPCMode:
         np.testing.assert_allclose(
             sim.config.learning_process.q_values, np.array([1.0, 0.0])
         )
+
+    def test_ppc_omission_emits_missing_action_but_copies_observed_outcome(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator(include_action=True)
+        observed = pd.DataFrame(
+            {
+                "participant_id": [0],
+                "trial_id": [0],
+                "rt": [0.5],
+                "response": [1],
+                "feedback": [1.0],
+            }
+        )
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[OMISSION_SENTINEL]]),
+                "choices": np.array([[-1]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            data = sim.simulate(
+                theta=THETA,
+                mode="ppc",
+                observed_data=observed,
+                random_state=42,
+            )
+
+        assert data.loc[0, "rt"] == OMISSION_SENTINEL
+        assert data.loc[0, "response"] == MISSING_RESPONSE_SENTINEL
+        assert data.loc[0, "action"] == MISSING_RESPONSE_SENTINEL
+        assert data.loc[0, "feedback"] == 1.0
 
 
 class TestValidation:
@@ -269,11 +322,25 @@ class TestParticipantWiseTheta:
 
         assert df["participant_id"].tolist() == [0, 1, 2]
 
+    @pytest.mark.parametrize("n_participants", [0, -1, 1.5])
+    def test_participant_count_must_be_positive_integer(self, n_participants):
+        sim = _make_simulator()
+
+        with pytest.raises(ValueError, match="positive integer"):
+            sim.simulate(theta=THETA, n_trials=1, n_participants=n_participants)
+
     def test_participant_wise_theta_lengths_must_match(self):
         sim = _make_simulator()
         theta = {**THETA, "a": [1.1, 1.5], "z": [0.4, 0.5, 0.6]}
 
         with pytest.raises(ValueError, match="participant-wise theta values"):
+            sim.simulate(theta=theta, n_trials=1)
+
+    def test_participant_wise_theta_values_must_not_be_empty(self):
+        sim = _make_simulator()
+        theta = {**THETA, "a": []}
+
+        with pytest.raises(ValueError, match="must not be empty"):
             sim.simulate(theta=theta, n_trials=1)
 
     def test_explicit_participant_count_must_match_theta_length(self):
@@ -288,6 +355,13 @@ class TestParticipantWiseTheta:
         theta = {**THETA, "a": np.array([[1.1, 1.5]])}
 
         with pytest.raises(ValueError, match="scalar or a one-dimensional"):
+            sim.simulate(theta=theta, n_trials=1)
+
+    def test_theta_values_must_be_numeric(self):
+        sim = _make_simulator()
+        theta = {**THETA, "a": "wide"}
+
+        with pytest.raises(ValueError, match="must be numeric"):
             sim.simulate(theta=theta, n_trials=1)
 
 
@@ -509,6 +583,58 @@ class TestFunctionalLearningBackend:
 
         np.testing.assert_allclose(learning.seen_states[0], [0.5, 0.5])
         np.testing.assert_allclose(learning.seen_states[1], [1.0, 0.5])
+
+    def test_simulator_supports_legacy_mutable_learning_api(self):
+        from unittest.mock import patch
+
+        class MutableLearning:
+            computed_params = ["v"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+            n_actions = 2
+
+            def __init__(self):
+                self.q_values = None
+                self.seen_v = []
+
+            def reset(self, **kwargs):
+                self.q_values = np.array([0.5, 0.5], dtype=np.float64)
+
+            def compute_ssm_params(self, trial_params):
+                v = float(self.q_values[1] - self.q_values[0])
+                self.seen_v.append(v)
+                return {"v": v}
+
+            def update(self, action, reward, trial_params):
+                self.q_values[action] += trial_params["alpha"] * (
+                    reward - self.q_values[action]
+                )
+
+        learning = MutableLearning()
+        sim = _make_simulator(
+            learning_process=learning,
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[1.0, 0.0], response_labels=[-1, 1]
+            ),
+        )
+        choices = iter([-1, 1])
+
+        def mock_simulator(**kwargs):
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            sim.simulate(
+                theta={"alpha": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.2},
+                n_trials=2,
+                n_participants=1,
+            )
+
+        np.testing.assert_allclose(learning.seen_v, [0.0, -0.5])
+        np.testing.assert_allclose(learning.q_values, [1.0, 0.0])
 
 
 class TestMilestone2Integration:
