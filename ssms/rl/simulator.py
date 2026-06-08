@@ -458,9 +458,7 @@ class Simulator:
             return lp.compute_python(state, rl_params, context)
         return lp.compute_ssm_params(rl_params)
 
-    def _update_learning_state(
-        self, state, rl_params: dict[str, float], context: dict
-    ):
+    def _update_learning_state(self, state, rl_params: dict[str, float], context: dict):
         """Return the next learning state after observing one trial context."""
         lp = self.config.learning_process
         backend = self.config.resolved_learning_backend

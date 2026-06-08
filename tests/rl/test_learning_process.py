@@ -312,7 +312,9 @@ class TestJaxLearningBackend:
                 "feedback": jnp.asarray(reward),
             }
             python_drifts.append(rw.compute_python(state, params, context)["v"])
-            jax_drifts.append(float(rw.compute_jax(jax_state, params, jax_context)["v"]))
+            jax_drifts.append(
+                float(rw.compute_jax(jax_state, params, jax_context)["v"])
+            )
             state = rw.update_python(state, params, context)
             jax_state = rw.update_jax(jax_state, params, jax_context)
 

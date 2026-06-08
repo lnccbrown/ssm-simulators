@@ -139,7 +139,9 @@ class CompiledModel:
             if field_name not in field_to_idx
         ]
         if missing_context:
-            raise ValueError(f"input_fields is missing context fields: {missing_context}")
+            raise ValueError(
+                f"input_fields is missing context fields: {missing_context}"
+            )
         if response_field not in field_to_idx:
             raise ValueError(
                 f"input_fields is missing response_field={response_field!r}"

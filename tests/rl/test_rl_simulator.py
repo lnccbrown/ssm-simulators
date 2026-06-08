@@ -692,9 +692,7 @@ class TestMilestone4Generalization:
                 feedback = float(context["feedback"])
                 next_q = state["q_values"].copy()
                 old_value = next_q[condition, choice]
-                next_q[condition, choice] += params["alpha"] * (
-                    feedback - old_value
-                )
+                next_q[condition, choice] += params["alpha"] * (feedback - old_value)
                 return {"q_values": next_q}
 
         sim = _make_simulator(
