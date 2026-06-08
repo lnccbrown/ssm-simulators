@@ -100,9 +100,7 @@ class Simulator:
             )
             all_rows.extend(rows)
 
-        df = pd.DataFrame(all_rows)
-        df = df.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
-        return df
+        return pd.DataFrame(all_rows).reset_index(drop=True)
 
     def _validate_mode(self, mode: str) -> None:
         """Validate the public simulation mode."""
@@ -145,21 +143,18 @@ class Simulator:
             )
             all_rows.extend(rows)
 
-        df = pd.DataFrame(all_rows)
-        df = df.sort_values(["participant_id", "trial_id"]).reset_index(drop=True)
-        return df
+        return pd.DataFrame(all_rows).reset_index(drop=True)
 
     def _validate_observed_data(
         self, observed_data: pd.DataFrame | None
     ) -> tuple[pd.DataFrame, list[int]]:
-        """Validate and sort observed participant history for PPC mode."""
+        """Validate observed participant history for PPC mode."""
         if observed_data is None:
             raise ValueError("observed_data is required when mode='ppc'.")
         report = validate_rlssm_data(self.config, observed_data)
         report.raise_for_errors()
 
-        observed = observed_data.sort_values(["participant_id", "trial_id"])
-        observed = observed.reset_index(drop=True)
+        observed = observed_data.reset_index(drop=True)
         participant_ids = [int(value) for value in observed["participant_id"].unique()]
         return observed, participant_ids
 

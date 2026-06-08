@@ -150,20 +150,27 @@ class TestPPCMode:
         with pytest.raises(ValueError, match="missing_column"):
             sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
 
-    def test_ppc_requires_contiguous_trial_ids_per_participant(self):
+    def test_ppc_preserves_observed_row_order_with_arbitrary_trial_ids(self):
+        from unittest.mock import patch
+
         sim = _make_simulator()
         observed = pd.DataFrame(
             {
                 "participant_id": [0, 0],
-                "trial_id": [0, 2],
+                "trial_id": [2, 0],
                 "rt": [0.5, 0.6],
                 "response": [-1, 1],
                 "feedback": [1.0, 0.0],
             }
         )
 
-        with pytest.raises(ValueError, match="invalid_trial_ids"):
-            sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
+        def mock_simulator(**kwargs):
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            data = sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
+
+        assert data["trial_id"].tolist() == [2, 0]
 
     def test_ppc_participant_count_must_match_observed_data(self):
         sim = _make_simulator()
@@ -637,6 +644,139 @@ class TestFunctionalLearningBackend:
 
         np.testing.assert_allclose(learning.seen_v, [0.0, -0.5])
         np.testing.assert_allclose(learning.q_values, [1.0, 0.0])
+
+
+class TestMilestone4Generalization:
+    def test_context_fields_support_condition_specific_learning_state(self):
+        from unittest.mock import patch
+
+        class AlternatingConditionBandit:
+            n_arms = 2
+            context_fields = ["condition", "feedback"]
+
+            @property
+            def response_labels(self):
+                return [-1, 1]
+
+            def reset(self, rng=None):
+                pass
+
+            def get_trial_context(self, trial_idx):
+                return {"condition": float(trial_idx % 2)}
+
+            def sample_context(self, context, trial_idx):
+                feedback = int(context["condition"]) == int(context["choice"])
+                return {"feedback": float(feedback)}
+
+        class ConditionSpecificLearning:
+            computed_params = ["v"]
+            free_params = ["alpha", "scaler"]
+            param_bounds = {"alpha": (0.0, 1.0), "scaler": (0.001, 10.0)}
+            default_params = {"alpha": 0.2, "scaler": 2.0}
+            n_actions = 2
+            required_context_fields = ["condition", "choice", "feedback"]
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def init_state(self):
+                return {"q_values": np.full((2, 2), 0.5, dtype=np.float64)}
+
+            def compute_python(self, state, params, context):
+                condition = int(context["condition"])
+                q_values = state["q_values"][condition]
+                return {"v": float(params["scaler"] * (q_values[1] - q_values[0]))}
+
+            def update_python(self, state, params, context):
+                condition = int(context["condition"])
+                choice = int(context["choice"])
+                feedback = float(context["feedback"])
+                next_q = state["q_values"].copy()
+                old_value = next_q[condition, choice]
+                next_q[condition, choice] += params["alpha"] * (
+                    feedback - old_value
+                )
+                return {"q_values": next_q}
+
+        sim = _make_simulator(
+            learning_process=ConditionSpecificLearning(),
+            task_environment=AlternatingConditionBandit(),
+        )
+        choices = iter([-1, 1, -1, 1])
+        seen_v = []
+
+        def mock_simulator(**kwargs):
+            seen_v.append(kwargs["theta"]["v"])
+            return {
+                "rts": np.array([[0.5]]),
+                "choices": np.array([[next(choices)]]),
+            }
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            data = sim.simulate(
+                theta={
+                    "alpha": 1.0,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "theta": 0.2,
+                },
+                n_trials=4,
+                n_participants=1,
+            )
+
+        np.testing.assert_allclose(seen_v, [0.0, 0.0, -1.0, 1.0])
+        assert data["condition"].tolist() == [0.0, 1.0, 0.0, 1.0]
+        assert data["feedback"].tolist() == [1.0, 1.0, 1.0, 1.0]
+
+    def test_simulator_maps_multiple_learning_outputs_to_decision_parameters(self):
+        from unittest.mock import patch
+
+        class ControlLearning:
+            computed_params = ["drift", "threshold"]
+            free_params = ["gain"]
+            param_bounds = {"gain": (0.0, 2.0)}
+            default_params = {"gain": 0.5}
+            n_actions = 2
+            required_context_fields = ["choice"]
+            available_backends = ("python",)
+            supports_gradient = False
+
+            def init_state(self):
+                return {"step": 0}
+
+            def compute_python(self, state, params, context):
+                return {
+                    "drift": float(params["gain"] * state["step"]),
+                    "threshold": float(1.0 + 0.1 * state["step"]),
+                }
+
+            def update_python(self, state, params, context):
+                return {"step": state["step"] + 1}
+
+        sim = _make_simulator(
+            learning_process=ControlLearning(),
+            computed_param_mapping={"drift": "v", "threshold": "a"},
+            task_environment=rl.env.Bandit.bernoulli(
+                probabilities=[1.0, 0.0], response_labels=[-1, 1]
+            ),
+        )
+        seen_theta = []
+
+        def mock_simulator(**kwargs):
+            seen_theta.append(kwargs["theta"])
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            sim.simulate(
+                theta={"gain": 0.5, "z": 0.5, "t": 0.3, "theta": 0.2},
+                n_trials=2,
+                n_participants=1,
+            )
+
+        assert sim.config.list_params == ["gain", "z", "t", "theta"]
+        np.testing.assert_allclose([theta["v"] for theta in seen_theta], [0.0, 0.5])
+        np.testing.assert_allclose([theta["a"] for theta in seen_theta], [1.0, 1.1])
 
 
 class TestMilestone2Integration:
