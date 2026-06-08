@@ -58,6 +58,12 @@ We are committed to providing a welcoming and inclusive environment for all cont
    cd ssm-simulators
    uv pip install -e ".[dev]"
    ```
+   The development dependencies include JAX so RLSSM differentiable-backend
+   tests can run locally. For a minimal editable install with only the optional
+   JAX backend, use:
+   ```bash
+   uv pip install -e ".[jax]"
+   ```
    Or, if you want to sync *all* dependency groups for development:
    ```bash
    uv sync --all-groups
