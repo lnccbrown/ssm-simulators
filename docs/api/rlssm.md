@@ -55,11 +55,12 @@ Important fields:
 - `decision_process` — SSM name (`"angle"`, `"ddm"`, …)
 - `learning_process` — instance satisfying the `LearningProcess` protocol
 - `task_environment` — bandit or other task environment (or `TaskConfig` shorthand)
-- `response_mapping` — map SSM response labels to zero-based learning actions
+- `response_to_choice` — map SSM response labels to zero-based learning choices
 - `learning_backend` / `gradient` — backend policy for simulation and HSSM export
-- **`outcome_field`** — reward/outcome column name (default `"feedback"`); set
-  to `None` for outcome-free learning processes
-- `extra_fields` — extra data columns; defaults to `[outcome_field]` plus task extras
+- `context_fields` — observable per-trial context columns such as `"feedback"`,
+  `"condition"`, `"block"`, or `"stimulus_id"`
+- `include_choice` — optionally include the derived zero-based `choice` column in
+  simulator output
 
 ## Participant-wise parameters
 
@@ -98,9 +99,9 @@ participant-wise theta length.
   the observed response/outcome history.
 
 PPC mode uses the same data contract as inference validation (see below). The
-observed panel must include `participant_id`, `trial_id`, all `config.response`
-columns (default `rt` and `response`), and the configured outcome column (default
-`feedback`):
+observed panel must include `participant_id`, all `config.response` columns
+(default `rt` and `response`), and every configured context field (default
+`feedback` for the built-in bandit):
 
 ## Data validation
 
@@ -114,15 +115,16 @@ report.raise_for_errors()
 
 Required columns are derived from the model config:
 
-- `participant_id`, `trial_id`
+- `participant_id`
 - every name in `config.response` (default `rt`, `response`)
-- every name in `config.extra_fields` (includes `outcome_field`, default `feedback`)
+- every name in `config.context_fields` (default `feedback` for the built-in bandit)
 
-The validator checks balanced panels, contiguous participant blocks, contiguous
-zero-based `trial_id` within each participant, response labels compatible with
-`config.choices` and `response_mapping`, missing values, and omission sentinels.
-Errors include repair hints, for example renaming a reward column or setting
-`ModelConfig(outcome_field="reward")`.
+The validator checks balanced panels, contiguous participant blocks, response labels
+compatible with `config.choices` and `response_to_choice`, missing values, and
+omission sentinels. Within each participant, rows are processed in their existing
+order. `trial_id` is an ordinary data/context column, not a reserved reset or ordering
+field. Errors include repair hints, for example renaming a reward column or adding it
+to `ModelConfig(context_fields=[...])`.
 
 PPC mode example (observed data must satisfy the same contract):
 
@@ -156,30 +158,32 @@ ppc = sim.simulate(
 )
 ```
 
-Within each participant, `trial_id` values must be contiguous and zero-based.
-The observed response history is used only to condition learning state; PPC
-output responses are newly simulated.
+The observed response history is used only to condition learning state; PPC output
+responses are newly simulated.
 
-### Outcome column naming
+### Context fields
 
-By default, simulator output includes a `"feedback"` column and compiled
-participant functions expect that column in participant history arrays. Use a
-custom name when needed:
+Outcome-like values are ordinary context fields. By default, built-in bandits emit a
+`"feedback"` column and built-in Rescorla-Wagner learners require `context["feedback"]`
+for updates. Use a custom feedback field by configuring both the learner and the model
+context:
 
 ```python
 config = rl.ModelConfig(
     ...,
-    outcome_field="reward",
+    learning_process=rl.learning.RescorlaWagnerDeltaRule(feedback_field="reward"),
+    context_fields=["reward"],
 )
 ```
 
-For learning processes that update from choices only:
+For learning processes that update from choices only, declare `required_context_fields`
+with runtime fields such as `"choice"` and use no observable context fields:
 
 ```python
 config = rl.ModelConfig(
     ...,
-    outcome_field=None,
-    extra_fields=[],
+    learning_process=choice_only_learning,
+    context_fields=[],
 )
 ```
 
@@ -197,7 +201,9 @@ compute_params = compiled.compile_participant_fn()
 ```
 
 `compile_participant_fn()` accepts optional overrides (`input_fields`,
-`response_field`, `outcome_field`) for non-standard layouts.
+`response_field`) for non-standard layouts. Runtime context fields such as `choice`
+are derived internally from `response_to_choice`; observable context fields such as
+`feedback` come from `config.context_fields`.
 
 Advanced resolution:
 
@@ -230,7 +236,7 @@ structural fields, plus:
 
 - `learning_backend`, `gradient`, `learning_process_kind`
 - `participant_contract` — derived trial input layout (`trial_params`,
-  `response_field`, `outcome_field`, `input_fields`)
+  `response_field`, `context_fields`, `input_fields`)
 
 Inference-only placeholders in `to_hssm_config_dict()` (`ssm_logp_func`,
 `learning_process`) are not a complete model by themselves. A higher-level
