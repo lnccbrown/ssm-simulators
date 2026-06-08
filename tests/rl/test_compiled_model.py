@@ -55,9 +55,9 @@ class TestCompiledModel:
         assert compiled.params_default == config.params_default
         assert compiled.response == ["rt", "response"]
         assert compiled.choices == (-1, 1)
-        assert compiled.extra_fields == ["feedback"]
+        assert compiled.context_fields == ["feedback"]
         assert compiled.computed_params == ["v"]
-        assert compiled.response_to_action == {-1: 0, 1: 1}
+        assert compiled.response_to_choice == {-1: 0, 1: 1}
         assert compiled.learning_backend == "python"
         assert compiled.gradient == "unavailable"
 
@@ -101,7 +101,7 @@ class TestCompiledModel:
 
     def test_subject_wise_function_uses_response_mapping_when_action_is_absent(self):
         compiled = _make_default_config(
-            learning_backend="python", response_mapping={-1: 1, 1: 0}
+            learning_backend="python", response_to_choice={-1: 1, 1: 0}
         ).compile(backend="python")
         compute = compiled.compile_participant_fn()
         trials = np.asarray(

@@ -55,9 +55,9 @@ class CompiledModel:
     params_default: list[float]
     response: list[str]
     choices: tuple[int, ...]
-    extra_fields: list[str]
+    context_fields: list[str]
     computed_params: list[str]
-    response_to_action: dict[int, int]
+    response_to_choice: dict[int, int]
 
     @classmethod
     def from_config(
@@ -78,44 +78,34 @@ class CompiledModel:
             params_default=list(config.params_default),
             response=list(config.response),
             choices=tuple(config.choices),
-            extra_fields=list(config.extra_fields) if config.extra_fields else [],
+            context_fields=list(config.context_fields) if config.context_fields else [],
             computed_params=list(config._computed_ssm_params),
-            response_to_action=dict(config.response_to_action),
+            response_to_choice=dict(config.response_to_choice),
         )
 
     def participant_input_fields(
         self,
         *,
         response_field: str = DEFAULT_RESPONSE_FIELD,
-        outcome_field: str | None | object = _USE_CONFIG,
     ) -> list[str]:
         """Return the default participant input columns derived from the config."""
-        resolved_outcome = (
-            self.config.outcome_field if outcome_field is _USE_CONFIG else outcome_field
-        )
         contract = derive_participant_contract(
             self.config,
             response_field=response_field,
         )
-        if resolved_outcome != contract.outcome_field:
-            input_fields = list(contract.trial_params) + [response_field]
-            if resolved_outcome is not None:
-                input_fields.append(resolved_outcome)
-            return input_fields
         return list(contract.input_fields)
 
     def compile_participant_fn(
         self,
         input_fields: Sequence[str] | None = None,
         *,
-        outcome_field: str | None | object = _USE_CONFIG,
         response_field: str = DEFAULT_RESPONSE_FIELD,
         output: CompiledFunctionOutput = "array",
     ) -> Callable[[Any], Any]:
         """Compile a participant-wise computed-parameter function.
 
-        By default, ``input_fields`` and ``outcome_field`` are derived from the
-        model config. Pass explicit values only for non-standard layouts.
+        By default, ``input_fields`` are derived from the model config. Pass
+        explicit values only for non-standard layouts.
 
         The returned function accepts a ``(n_trials, n_fields)`` array whose
         columns match ``input_fields``. It computes SSM parameters before each
@@ -125,13 +115,9 @@ class CompiledModel:
         if output not in {"array", "dict"}:
             raise ValueError("output must be 'array' or 'dict'")
 
-        resolved_outcome = (
-            self.config.outcome_field if outcome_field is _USE_CONFIG else outcome_field
-        )
         if input_fields is None:
             input_fields = self.participant_input_fields(
                 response_field=response_field,
-                outcome_field=resolved_outcome,
             )
         else:
             input_fields = list(input_fields)
@@ -147,10 +133,13 @@ class CompiledModel:
             raise ValueError(
                 f"input_fields is missing learning parameters: {missing_params}"
             )
-        if resolved_outcome is not None and resolved_outcome not in field_to_idx:
-            raise ValueError(
-                f"input_fields is missing outcome_field={resolved_outcome!r}"
-            )
+        missing_context = [
+            field_name
+            for field_name in self.context_fields
+            if field_name not in field_to_idx
+        ]
+        if missing_context:
+            raise ValueError(f"input_fields is missing context fields: {missing_context}")
         if response_field not in field_to_idx:
             raise ValueError(
                 f"input_fields is missing response_field={response_field!r}"
@@ -160,13 +149,11 @@ class CompiledModel:
             return self._make_jax_subject_wise_function(
                 field_to_idx=field_to_idx,
                 response_field=response_field,
-                outcome_field=resolved_outcome,
                 output=output,
             )
         return self._make_python_subject_wise_function(
             field_to_idx=field_to_idx,
             response_field=response_field,
-            outcome_field=resolved_outcome,
             output=output,
         )
 
@@ -175,11 +162,11 @@ class CompiledModel:
         *,
         field_to_idx: dict[str, int],
         response_field: str,
-        outcome_field: str | None,
         output: CompiledFunctionOutput,
     ) -> Callable[[Any], Any]:
         lp = self.config.learning_process
         free_params = list(lp.free_params)
+        context_fields = list(self.context_fields)
 
         def compute(subject_trials):
             trials = np.asarray(subject_trials)
@@ -191,22 +178,26 @@ class CompiledModel:
                 trial_params = {
                     name: float(row[field_to_idx[name]]) for name in free_params
                 }
+                context = {
+                    name: float(row[field_to_idx[name]]) for name in context_fields
+                }
                 computed = self._map_computed_params(
-                    lp.compute_python(state, trial_params)
+                    lp.compute_python(state, trial_params, context)
                 )
                 for name in self.computed_params:
                     collected[name].append(float(computed[name]))
-                action = self._extract_python_action(
+                choice = self._extract_python_choice(
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
                 )
-                outcome = (
-                    None
-                    if outcome_field is None
-                    else float(row[field_to_idx[outcome_field]])
+                context.update(
+                    {
+                        "response": int(row[field_to_idx[response_field]]),
+                        "choice": choice,
+                    }
                 )
-                state = lp.update_python(state, action, outcome, trial_params)
+                state = lp.update_python(state, trial_params, context)
             return self._format_python_output(collected, output)
 
         return compute
@@ -216,7 +207,6 @@ class CompiledModel:
         *,
         field_to_idx: dict[str, int],
         response_field: str,
-        outcome_field: str | None,
         output: CompiledFunctionOutput,
     ) -> Callable[[Any], Any]:
         import jax.numpy as jnp
@@ -224,26 +214,31 @@ class CompiledModel:
 
         lp = self.config.learning_process
         free_params = list(lp.free_params)
-        response_labels = jnp.asarray(list(self.response_to_action.keys()))
-        response_actions = jnp.asarray(list(self.response_to_action.values()))
+        context_fields = list(self.context_fields)
+        response_labels = jnp.asarray(list(self.response_to_choice.keys()))
+        response_choices = jnp.asarray(list(self.response_to_choice.values()))
 
         def compute(subject_trials):
             def step(state, row):
                 trial_params = {name: row[field_to_idx[name]] for name in free_params}
+                context = {name: row[field_to_idx[name]] for name in context_fields}
                 computed = self._map_computed_params(
-                    lp.compute_jax(state, trial_params)
+                    lp.compute_jax(state, trial_params, context)
                 )
-                action = self._extract_jax_action(
+                choice = self._extract_jax_choice(
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
                     response_labels=response_labels,
-                    response_actions=response_actions,
+                    response_choices=response_choices,
                 )
-                outcome = (
-                    None if outcome_field is None else row[field_to_idx[outcome_field]]
+                context.update(
+                    {
+                        "response": row[field_to_idx[response_field]],
+                        "choice": choice,
+                    }
                 )
-                state = lp.update_jax(state, action, outcome, trial_params)
+                state = lp.update_jax(state, trial_params, context)
                 return state, {name: computed[name] for name in self.computed_params}
 
             _, values = scan(step, lp.init_jax_state(), subject_trials)
@@ -261,7 +256,7 @@ class CompiledModel:
             raise ValueError(f"Learning process did not compute params: {missing}")
         return mapped
 
-    def _extract_python_action(
+    def _extract_python_choice(
         self,
         *,
         row,
@@ -269,23 +264,23 @@ class CompiledModel:
         response_field: str,
     ) -> int:
         response = int(row[field_to_idx[response_field]])
-        return int(self.response_to_action[response])
+        return int(self.response_to_choice[response])
 
-    def _extract_jax_action(
+    def _extract_jax_choice(
         self,
         *,
         row,
         field_to_idx: dict[str, int],
         response_field: str,
         response_labels,
-        response_actions,
+        response_choices,
     ):
         import jax.numpy as jnp
 
         response = row[field_to_idx[response_field]]
         matches = response_labels == response.astype(response_labels.dtype)
         return jnp.asarray(
-            jnp.sum(jnp.where(matches, response_actions, 0)), dtype=jnp.int32
+            jnp.sum(jnp.where(matches, response_choices, 0)), dtype=jnp.int32
         )
 
     def _format_python_output(
