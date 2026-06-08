@@ -71,12 +71,20 @@ class LearningProcess(Protocol):
         """Whether the differentiable backend supports gradient-based inference."""
         ...
 
+    @property
+    def required_context_fields(self) -> list[str]:
+        """Context keys this process needs for compute/update."""
+        ...
+
     def init_state(self) -> LearningState:
         """Return an explicit initial learning state for one participant."""
         ...
 
     def compute_python(
-        self, state: LearningState, trial_params: dict[str, float]
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> dict[str, float]:
         """Compute SSM parameters from explicit Python/NumPy state."""
         ...
@@ -84,9 +92,8 @@ class LearningProcess(Protocol):
     def update_python(
         self,
         state: LearningState,
-        action: int,
-        reward: float,
-        trial_params: dict[str, float],
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> LearningState:
         """Return the next explicit Python/NumPy state."""
         ...
@@ -130,7 +137,12 @@ class RescorlaWagnerDeltaRule:
         Matches HSSM's ``jnp.ones(2) * 0.5``.
     """
 
-    def __init__(self, n_actions: int = 2, initial_q: float = 0.5):
+    def __init__(
+        self,
+        n_actions: int = 2,
+        initial_q: float = 0.5,
+        feedback_field: str = "feedback",
+    ):
         if n_actions != 2:
             raise ValueError(
                 "n_actions must be 2; RescorlaWagnerDeltaRule supports "
@@ -138,6 +150,7 @@ class RescorlaWagnerDeltaRule:
             )
         self._n_actions = n_actions
         self._initial_q = initial_q
+        self._feedback_field = feedback_field
         self._state: LearningState | None = None
 
     @property
@@ -169,6 +182,10 @@ class RescorlaWagnerDeltaRule:
         return True
 
     @property
+    def required_context_fields(self) -> list[str]:
+        return ["choice", self._feedback_field]
+
+    @property
     def q_values(self) -> np.ndarray | None:
         """Current Q-values. None if reset() has not been called."""
         if self._state is None:
@@ -183,42 +200,52 @@ class RescorlaWagnerDeltaRule:
         return {"q_values": jnp.full((self._n_actions,), self._initial_q)}
 
     def compute_python(
-        self, state: LearningState, trial_params: dict[str, float]
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> dict[str, float]:
-        scaler = trial_params["scaler"]
+        scaler = params["scaler"]
         q_values = state["q_values"]
         v = float((q_values[1] - q_values[0]) * scaler)
         return {"v": v}
 
-    def compute_jax(self, state: LearningState, trial_params: dict[str, float]):
-        scaler = trial_params["scaler"]
+    def compute_jax(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ):
+        scaler = params["scaler"]
         q_values = state["q_values"]
         return {"v": (q_values[1] - q_values[0]) * scaler}
 
     def update_python(
         self,
         state: LearningState,
-        action: int,
-        reward: float,
-        trial_params: dict[str, float],
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> LearningState:
-        alpha = trial_params["rl_alpha"]
+        choice = int(context["choice"])
+        feedback = float(context[self._feedback_field])
+        alpha = params["rl_alpha"]
         q_values = np.asarray(state["q_values"], dtype=np.float64).copy()
-        delta = reward - q_values[action]
-        q_values[action] += alpha * delta
+        delta = feedback - q_values[choice]
+        q_values[choice] += alpha * delta
         return {"q_values": q_values}
 
     def update_jax(
         self,
         state: LearningState,
-        action: int,
-        reward: float,
-        trial_params: dict[str, float],
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> LearningState:
-        alpha = trial_params["rl_alpha"]
+        choice = context["choice"]
+        feedback = context[self._feedback_field]
+        alpha = params["rl_alpha"]
         q_values = state["q_values"]
-        delta = reward - q_values[action]
-        return {"q_values": q_values.at[action].add(alpha * delta)}
+        delta = feedback - q_values[choice]
+        return {"q_values": q_values.at[choice].add(alpha * delta)}
 
     def reset(self, **kwargs) -> None:
         self._state = self.init_state()
@@ -231,7 +258,7 @@ class RescorlaWagnerDeltaRule:
         """
         if self._state is None:
             raise RuntimeError("Call reset() before compute_ssm_params()")
-        return self.compute_python(self._state, trial_params)
+        return self.compute_python(self._state, trial_params, context={})
 
     def update(
         self, action: int, reward: float, trial_params: dict[str, float]
@@ -239,7 +266,11 @@ class RescorlaWagnerDeltaRule:
         """Q[action] += alpha * (reward - Q[action])."""
         if self._state is None:
             raise RuntimeError("Call reset() before update()")
-        self._state = self.update_python(self._state, action, reward, trial_params)
+        self._state = self.update_python(
+            self._state,
+            trial_params,
+            context={"choice": action, self._feedback_field: reward},
+        )
 
 
 class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
@@ -272,35 +303,41 @@ class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
         """Update Q[action] with sign-dependent learning rates."""
         if self._state is None:
             raise RuntimeError("Call reset() before update()")
-        self._state = self.update_python(self._state, action, reward, trial_params)
+        self._state = self.update_python(
+            self._state,
+            trial_params,
+            context={"choice": action, self._feedback_field: reward},
+        )
 
     def update_python(
         self,
         state: LearningState,
-        action: int,
-        reward: float,
-        trial_params: dict[str, float],
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> LearningState:
         """Update Q[action] with sign-dependent learning rates."""
+        choice = int(context["choice"])
+        feedback = float(context[self._feedback_field])
         q_values = np.asarray(state["q_values"], dtype=np.float64).copy()
-        delta = reward - q_values[action]
-        alpha = trial_params["rl_alpha_neg"] if delta < 0 else trial_params["rl_alpha"]
-        q_values[action] += alpha * delta
+        delta = feedback - q_values[choice]
+        alpha = params["rl_alpha_neg"] if delta < 0 else params["rl_alpha"]
+        q_values[choice] += alpha * delta
         return {"q_values": q_values}
 
     def update_jax(
         self,
         state: LearningState,
-        action: int,
-        reward: float,
-        trial_params: dict[str, float],
+        params: dict[str, float],
+        context: dict[str, Any],
     ) -> LearningState:
         jnp = _import_jax_numpy()
+        choice = context["choice"]
+        feedback = context[self._feedback_field]
         q_values = state["q_values"]
-        delta = reward - q_values[action]
+        delta = feedback - q_values[choice]
         alpha = jnp.where(
             delta < 0,
-            trial_params["rl_alpha_neg"],
-            trial_params["rl_alpha"],
+            params["rl_alpha_neg"],
+            params["rl_alpha"],
         )
-        return {"q_values": q_values.at[action].add(alpha * delta)}
+        return {"q_values": q_values.at[choice].add(alpha * delta)}

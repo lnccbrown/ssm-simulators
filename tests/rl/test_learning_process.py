@@ -39,15 +39,20 @@ class TestRescorlaWagnerDeltaRule:
         params = {"rl_alpha": 0.5, "scaler": 2.0}
         state = self.rw.init_state()
 
-        computed = self.rw.compute_python(state, params)
+        computed = self.rw.compute_python(state, params, context={})
         next_state = self.rw.update_python(
-            state, action=0, reward=1.0, trial_params=params
+            state,
+            params,
+            context={"choice": 0, "feedback": 1.0},
         )
 
         assert computed == {"v": 0.0}
         np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
         np.testing.assert_allclose(next_state["q_values"], [0.75, 0.5])
         assert next_state is not state
+
+    def test_declares_required_context_fields(self):
+        assert self.rw.required_context_fields == ["choice", "feedback"]
 
     def test_mutable_api_delegates_to_python_state_api(self):
         params = {"rl_alpha": 0.5, "scaler": 2.0}

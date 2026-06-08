@@ -28,10 +28,10 @@ _HSSM_SHARED_FIELDS = (
     "choices",
     "decision_process",
     "response",
-    "response_mapping",
+    "response_to_choice",
     "learning_backend",
     "gradient",
-    "extra_fields",
+    "context_fields",
 )
 
 
@@ -49,7 +49,7 @@ class _ParticipantContract:
     trial_params: tuple[str, ...]
     computed_outputs: tuple[str, ...]
     response_field: str
-    outcome_field: str | None
+    context_fields: tuple[str, ...]
     input_fields: tuple[str, ...]
 
 
@@ -67,16 +67,14 @@ def derive_participant_contract(
 
     trial_params = tuple(config.learning_process.free_params)
     computed_outputs = tuple(config.learning_process.computed_params)
-    outcome_field = config.outcome_field
-    input_fields: list[str] = list(trial_params) + [response_field]
-    if outcome_field is not None:
-        input_fields.append(outcome_field)
+    context_fields = tuple(config.context_fields or [])
+    input_fields: list[str] = list(trial_params) + [response_field, *context_fields]
 
     return _ParticipantContract(
         trial_params=trial_params,
         computed_outputs=computed_outputs,
         response_field=response_field,
-        outcome_field=outcome_field,
+        context_fields=context_fields,
         input_fields=tuple(input_fields),
     )
 
@@ -116,8 +114,8 @@ class ModelConfig:
         SSM response labels (e.g., (-1, 1)). If None, taken from task_environment.
     response : list[str]
         Response column names. Default ["rt", "response"].
-    response_mapping : Literal["auto"] | dict[int, int]
-        Mapping from SSM response labels to zero-based learning actions.
+    response_to_choice : Literal["auto"] | dict[int, int]
+        Mapping from SSM response labels to zero-based learning choices.
         ``"auto"`` maps labels by ``task_environment.response_labels`` order.
     learning_backend : Literal["auto", "python", "jax"]
         Learning-process backend used for simulation and exported HSSM metadata.
@@ -125,15 +123,12 @@ class ModelConfig:
         otherwise it selects Python.
     gradient : Literal["auto", "available", "unavailable"]
         Gradient-support policy for HSSM integration metadata.
-    include_action : bool
-        Whether simulator output includes the derived zero-based ``action`` column.
+    include_choice : bool
+        Whether simulator output includes the derived zero-based ``choice`` column.
         Default False.
-    outcome_field : str | None
-        Name of the reward/outcome column used for learning updates and simulator
-        output. Default ``"feedback"``. Set to ``None`` for outcome-free learning.
-    extra_fields : list[str] | None
-        Extra data columns beyond response. Default: ``[outcome_field]`` when set,
-        plus ``task_environment.extra_fields``.
+    context_fields : list[str] | None
+        Data/context columns beyond response required by the environment or learning
+        process. Default derives a union from component declarations.
     computed_param_mapping : dict[str, str] | None
         Optional override for non-name-matching handshakes.
         Maps learning process output name -> SSM param name.
@@ -156,12 +151,11 @@ class ModelConfig:
     params_default: list[float] | None = None
     choices: tuple[int, ...] | None = None
     response: list[str] = field(default_factory=lambda: ["rt", "response"])
-    response_mapping: Literal["auto"] | dict[int, int] = "auto"
+    response_to_choice: Literal["auto"] | dict[int, int] = "auto"
     learning_backend: Literal["auto", "python", "jax"] = "auto"
     gradient: Literal["auto", "available", "unavailable"] = "auto"
-    include_action: bool = False
-    outcome_field: str | None = "feedback"
-    extra_fields: list[str] | None = None
+    include_choice: bool = False
+    context_fields: list[str] | None = None
 
     # Optional handshake override
     computed_param_mapping: dict[str, str] | None = None
@@ -184,17 +178,12 @@ class ModelConfig:
         if self.choices is None:
             self.choices = tuple(self.task_environment.response_labels)
 
-        self.response_to_action = self._normalize_response_mapping()
+        self.response_to_choice = self._normalize_response_to_choice()
         self._validate_ssm_choices()
         self.resolved_learning_backend = self._resolve_learning_backend()
         self.resolved_gradient = self._resolve_gradient()
 
-        if self.extra_fields is None:
-            env_extra = self.task_environment.extra_fields or []
-            base_extra = [self.outcome_field] if self.outcome_field is not None else []
-            self.extra_fields = base_extra + [
-                field_name for field_name in env_extra if field_name not in base_extra
-            ]
+        self.context_fields = self._normalize_context_fields()
 
         # Resolve the handshake: which SSM params are computed vs fixed
         self._resolve_handshake()
@@ -207,8 +196,8 @@ class ModelConfig:
         if self.params_default is None:
             self.params_default = self._derive_params_default()
 
-    def _normalize_response_mapping(self) -> dict[int, int]:
-        """Normalize response labels to zero-based action indices."""
+    def _normalize_response_to_choice(self) -> dict[int, int]:
+        """Normalize response labels to zero-based choice indices."""
         task_environment = cast(TaskEnvironment, self.task_environment)
         response_labels = list(task_environment.response_labels)
         n_arms = task_environment.n_arms
@@ -218,12 +207,12 @@ class ModelConfig:
                 f"Got choices={self.choices} and response_labels={response_labels}."
             )
 
-        if self.response_mapping == "auto":
-            return {label: action for action, label in enumerate(response_labels)}
+        if self.response_to_choice == "auto":
+            return {label: choice for choice, label in enumerate(response_labels)}
 
         mapping = {
-            int(response): int(action)
-            for response, action in self.response_mapping.items()
+            int(response): int(choice)
+            for response, choice in self.response_to_choice.items()
         }
         label_set = set(response_labels)
         mapping_labels = set(mapping)
@@ -231,21 +220,55 @@ class ModelConfig:
             missing = sorted(label_set - mapping_labels)
             extra = sorted(mapping_labels - label_set)
             raise ValueError(
-                "response_mapping must cover response labels exactly. "
+                "response_to_choice must cover response labels exactly. "
                 f"Missing: {missing}; extra: {extra}."
             )
 
         values = list(mapping.values())
-        expected_actions = set(range(n_arms))
+        expected_choices = set(range(n_arms))
         action_set = set(values)
         if len(action_set) != len(values):
-            raise ValueError("response_mapping action values must be unique")
-        if action_set != expected_actions:
+            raise ValueError("response_to_choice values must be unique")
+        if action_set != expected_choices:
             raise ValueError(
-                "response_mapping action values must be exactly "
-                f"{sorted(expected_actions)}. Got {sorted(action_set)}."
+                "response_to_choice values must be exactly "
+                f"{sorted(expected_choices)}. Got {sorted(action_set)}."
             )
         return mapping
+
+    def _normalize_context_fields(self) -> list[str]:
+        """Derive or validate observable context fields from model components."""
+        runtime_fields = {"choice", DEFAULT_RESPONSE_FIELD, "rt"}
+        task_environment = cast(TaskEnvironment, self.task_environment)
+        env_fields = list(getattr(task_environment, "context_fields", []) or [])
+        required_fields = [
+            field_name
+            for field_name in getattr(
+                self.learning_process, "required_context_fields", []
+            )
+            if field_name not in runtime_fields
+        ]
+        if self.context_fields is None:
+            fields_out: list[str] = []
+            for field_name in [*env_fields, *required_fields]:
+                if field_name not in fields_out:
+                    fields_out.append(field_name)
+            return fields_out
+
+        fields_out = list(self.context_fields)
+        missing = [
+            field_name
+            for field_name in [*env_fields, *required_fields]
+            if field_name not in fields_out
+        ]
+        if missing:
+            raise ValueError(
+                "context_fields must include all environment-provided and "
+                f"learning-required observable fields. Missing: {missing}."
+            )
+        if len(set(fields_out)) != len(fields_out):
+            raise ValueError("context_fields must be unique")
+        return fields_out
 
     def _available_learning_backends(self) -> tuple[str, ...]:
         """Return the learning process backends declared or implied by methods."""
@@ -499,13 +522,14 @@ class ModelConfig:
                 f"updates. Got response={self.response}."
             )
 
-        if self.outcome_field is not None:
-            extra_fields = self.extra_fields or []
-            if self.outcome_field not in extra_fields:
-                raise ValueError(
-                    f"outcome_field={self.outcome_field!r} must appear in "
-                    f"extra_fields. Got extra_fields={extra_fields}."
-                )
+        self._validate_context_fields()
+
+    def _validate_context_fields(self) -> None:
+        """Validate the derived context field contract."""
+        if self.context_fields is None:
+            raise ValueError("context_fields must be derived before validation.")
+        if len(set(self.context_fields)) != len(self.context_fields):
+            raise ValueError("context_fields must be unique")
 
     def participant_contract(
         self, *, response_field: str = DEFAULT_RESPONSE_FIELD
@@ -536,15 +560,15 @@ class ModelConfig:
             "params_default": list(self.params_default),
             "choices": tuple(self.choices),
             "response": list(self.response),
-            "response_mapping": dict(self.response_to_action),
+            "response_to_choice": dict(self.response_to_choice),
             "learning_backend": self.resolved_learning_backend,
             "gradient": self.resolved_gradient,
-            "extra_fields": list(self.extra_fields) if self.extra_fields else [],
+            "context_fields": list(self.context_fields) if self.context_fields else [],
             "participant_contract": {
                 "trial_params": list(contract.trial_params),
                 "computed_outputs": list(contract.computed_outputs),
                 "response_field": contract.response_field,
-                "outcome_field": contract.outcome_field,
+                "context_fields": list(contract.context_fields),
                 "input_fields": list(contract.input_fields),
             },
             # Inference-only placeholders (user fills on HSSM side)

@@ -85,9 +85,19 @@ class TestBernoulliBandit:
 
     def test_extra_fields_empty(self):
         bandit = Bandit.bernoulli()
-        assert bandit.extra_fields == []
+        assert bandit.context_fields == ["feedback"]
         bandit.reset()
-        assert bandit.get_extra_data(0) == {}
+        assert bandit.get_trial_context(0) == {}
+
+    def test_two_phase_context_api_samples_feedback(self):
+        bandit = Bandit.bernoulli(probabilities=[1.0, 0.0])
+        bandit.reset(rng=np.random.default_rng(42))
+
+        pre_context = bandit.get_trial_context(trial_idx=0)
+        outcome_context = bandit.sample_context({"choice": 0}, trial_idx=0)
+
+        assert pre_context == {}
+        assert outcome_context == {"feedback": 1.0}
 
     def test_n_arms_and_response_labels(self):
         bandit = Bandit.bernoulli(

@@ -18,29 +18,29 @@ class TaskEnvironment(Protocol):
 
     @property
     def n_arms(self) -> int:
-        """Number of available zero-based learning actions."""
+        """Number of available zero-based learning choices."""
         ...
 
     @property
     def response_labels(self) -> list[int]:
-        """SSM response labels corresponding to actions in order."""
+        """SSM response labels corresponding to choices in order."""
         ...
 
     @property
-    def extra_fields(self) -> list[str]:
-        """Names of additional per-trial data columns this environment provides."""
+    def context_fields(self) -> list[str]:
+        """Names of per-trial context columns this environment provides."""
         ...
 
     def reset(self, rng: np.random.Generator | None = None) -> None:
         """Reset environment state for a new participant."""
         ...
 
-    def sample_reward(self, action: int, trial_idx: int) -> float:
-        """Sample reward for a zero-based learning action on the given trial."""
+    def get_trial_context(self, trial_idx: int) -> dict[str, float]:
+        """Return pre-decision per-trial context columns."""
         ...
 
-    def get_extra_data(self, trial_idx: int) -> dict[str, float]:
-        """Return additional per-trial data columns."""
+    def sample_context(self, context: dict, trial_idx: int) -> dict[str, float]:
+        """Return post-decision context columns for learning/output."""
         ...
 
 
@@ -48,7 +48,7 @@ class _RewardDistribution(Protocol):
     @property
     def n_arms(self) -> int: ...
 
-    def sample(self, action: int, rng: np.random.Generator) -> float: ...
+    def sample(self, choice: int, rng: np.random.Generator) -> float: ...
 
 
 class _BernoulliRewards:
@@ -64,8 +64,8 @@ class _BernoulliRewards:
     def n_arms(self) -> int:
         return len(self._probabilities)
 
-    def sample(self, action: int, rng: np.random.Generator) -> float:
-        return float(rng.random() < self._probabilities[action])
+    def sample(self, choice: int, rng: np.random.Generator) -> float:
+        return float(rng.random() < self._probabilities[choice])
 
 
 class _GaussianRewards:
@@ -86,16 +86,16 @@ class _GaussianRewards:
     def n_arms(self) -> int:
         return len(self._means)
 
-    def sample(self, action: int, rng: np.random.Generator) -> float:
-        return float(rng.normal(self._means[action], self._sds[action]))
+    def sample(self, choice: int, rng: np.random.Generator) -> float:
+        return float(rng.normal(self._means[choice], self._sds[choice]))
 
 
 class Bandit:
     """Generic bandit task environment.
 
     Public constructors are ``Bandit.bernoulli(...)`` and
-    ``Bandit.gaussian(...)``. Rewards are sampled by zero-based action index;
-    ``response_labels`` define the SSM labels mapped onto those actions.
+    ``Bandit.gaussian(...)``. Rewards are sampled by zero-based choice index;
+    ``response_labels`` define the SSM labels mapped onto those choices.
     """
 
     def __init__(
@@ -165,23 +165,32 @@ class Bandit:
         return list(self._response_labels)
 
     @property
-    def extra_fields(self) -> list[str]:
-        return []
+    def context_fields(self) -> list[str]:
+        return ["feedback"]
 
     def reset(self, rng: np.random.Generator | None = None) -> None:
         self._rng = rng or np.random.default_rng()
 
-    def sample_reward(self, action: int, trial_idx: int) -> float:
+    def get_trial_context(self, trial_idx: int) -> dict[str, float]:
+        return {}
+
+    def sample_context(self, context: dict, trial_idx: int) -> dict[str, float]:
         if self._rng is None:
-            raise RuntimeError("Call reset() before sample_reward()")
-        if action < 0 or action >= self.n_arms:
+            raise RuntimeError("Call reset() before sample_context()")
+        choice = int(context["choice"])
+        if choice < 0 or choice >= self.n_arms:
             raise ValueError(
-                f"Action {action} is out of range for bandit with {self.n_arms} arms"
+                f"Choice {choice} is out of range for bandit with {self.n_arms} arms"
             )
-        return self._rewards.sample(action, self._rng)
+        return {"feedback": self._rewards.sample(choice, self._rng)}
+
+    def sample_reward(self, action: int, trial_idx: int) -> float:
+        """Compatibility wrapper around ``sample_context``."""
+        return self.sample_context({"choice": action}, trial_idx)["feedback"]
 
     def get_extra_data(self, trial_idx: int) -> dict[str, float]:
-        return {}
+        """Compatibility wrapper around ``get_trial_context``."""
+        return self.get_trial_context(trial_idx)
 
 
 TaskEnvironmentBuilder = Callable[[str | None, dict], TaskEnvironment]

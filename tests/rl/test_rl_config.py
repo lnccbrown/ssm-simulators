@@ -61,34 +61,15 @@ class TestAutoDerivation:
         config = _make_default_config()
         assert config.choices == (-1, 1)
 
-    def test_auto_response_mapping(self):
+    def test_auto_response_to_choice(self):
         config = _make_default_config(
             task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1])
         )
-        assert config.response_to_action == {-1: 0, 1: 1}
+        assert config.response_to_choice == {-1: 0, 1: 1}
 
-    def test_auto_derive_extra_fields(self):
+    def test_auto_derive_context_fields(self):
         config = _make_default_config()
-        assert config.extra_fields == ["feedback"]
-        assert config.outcome_field == "feedback"
-
-    def test_outcome_field_reward_derives_extra_fields(self):
-        config = _make_default_config(outcome_field="reward")
-
-        assert config.extra_fields == ["reward"]
-        assert config.outcome_field == "reward"
-
-    def test_outcome_field_none_derives_no_reward_column(self):
-        config = _make_default_config(outcome_field=None, extra_fields=[])
-
-        assert config.outcome_field is None
-        assert config.extra_fields == []
-
-    def test_validate_requires_outcome_field_in_extra_fields(self):
-        config = _make_default_config(extra_fields=[])
-
-        with pytest.raises(ValueError, match="outcome_field='feedback'"):
-            config.validate()
+        assert config.context_fields == ["feedback"]
 
     def test_participant_contract_derived_from_config(self):
         config = _make_default_config()
@@ -98,7 +79,7 @@ class TestAutoDerivation:
         assert contract.trial_params == ("rl_alpha", "scaler")
         assert contract.computed_outputs == ("v",)
         assert contract.response_field == "response"
-        assert contract.outcome_field == "feedback"
+        assert contract.context_fields == ("feedback",)
         assert contract.input_fields == (
             "rl_alpha",
             "scaler",
