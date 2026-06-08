@@ -164,14 +164,13 @@ class TestPanelStructure:
         assert not report.ok
         assert any(issue.code == "null_participant_id" for issue in report.issues)
 
-    def test_duplicate_keys(self, config):
+    def test_duplicate_trial_ids_are_allowed(self, config):
         data = _valid_panel()
         duplicate = data.iloc[[0]].copy()
         data = pd.concat([data, duplicate], ignore_index=True)
         report = config.validate_data(data)
 
-        assert not report.ok
-        assert any(issue.code == "duplicate_keys" for issue in report.issues)
+        assert not any(issue.code == "duplicate_keys" for issue in report.issues)
 
     def test_unbalanced_panel(self, config):
         participant_0 = _valid_panel(n_participants=1, n_trials=2)
@@ -183,13 +182,12 @@ class TestPanelStructure:
         assert not report.ok
         assert any(issue.code == "unbalanced_panel" for issue in report.issues)
 
-    def test_invalid_trial_ids(self, config):
+    def test_arbitrary_trial_ids_are_allowed(self, config):
         data = _valid_panel()
         data.loc[data["participant_id"] == 0, "trial_id"] = [0, 2, 0]
         report = config.validate_data(data)
 
-        assert not report.ok
-        assert any(issue.code == "invalid_trial_ids" for issue in report.issues)
+        assert not any(issue.code == "invalid_trial_ids" for issue in report.issues)
 
     def test_interleaved_participants(self, config):
         data = pd.DataFrame(
@@ -206,12 +204,17 @@ class TestPanelStructure:
         assert not report.ok
         assert any(issue.code == "interleaved_participants" for issue in report.issues)
 
-    def test_unsorted_rows(self, config):
+    def test_within_participant_row_order_is_preserved_not_sorted(self, config):
         data = _valid_panel().sort_values("rt").reset_index(drop=True)
         report = config.validate_data(data)
 
-        assert not report.ok
-        assert any(issue.code == "unsorted_rows" for issue in report.issues)
+        assert not any(issue.code == "unsorted_rows" for issue in report.issues)
+
+    def test_trial_id_is_not_required_unless_context_field(self, config):
+        data = _valid_panel().drop(columns=["trial_id"])
+        report = config.validate_data(data)
+
+        assert report.ok
 
 
 class TestValues:

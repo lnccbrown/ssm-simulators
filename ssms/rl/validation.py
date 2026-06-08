@@ -81,7 +81,7 @@ class DataValidationReport:
 
 
 def _required_columns(config: ModelConfig) -> list[str]:
-    columns = [PARTICIPANT_COL, TRIAL_COL, *config.response]
+    columns = [PARTICIPANT_COL, *config.response]
     context_fields = config.context_fields or []
     for name in context_fields:
         if name not in columns:
@@ -178,19 +178,6 @@ def _check_null_participants(data: pd.DataFrame, report: DataValidationReport) -
         )
 
 
-def _check_duplicates(data: pd.DataFrame, report: DataValidationReport) -> None:
-    if PARTICIPANT_COL not in data.columns or TRIAL_COL not in data.columns:
-        return
-    if data.duplicated([PARTICIPANT_COL, TRIAL_COL]).any():
-        _add_issue(
-            report,
-            level="error",
-            code="duplicate_keys",
-            message=("data must contain unique participant_id/trial_id pairs."),
-            hint="Remove or relabel duplicate rows before validation.",
-        )
-
-
 def _check_row_contiguity(data: pd.DataFrame, report: DataValidationReport) -> None:
     if PARTICIPANT_COL not in data.columns:
         return
@@ -210,24 +197,6 @@ def _check_row_contiguity(data: pd.DataFrame, report: DataValidationReport) -> N
             hint=(
                 'Sort the data with data.sort_values(["participant_id", "trial_id"]) '
                 "before passing it to RLSSM."
-            ),
-        )
-
-
-def _check_sorted_order(data: pd.DataFrame, report: DataValidationReport) -> None:
-    if PARTICIPANT_COL not in data.columns or TRIAL_COL not in data.columns:
-        return
-    sorted_data = data.sort_values([PARTICIPANT_COL, TRIAL_COL])
-    if not data.reset_index(drop=True).equals(sorted_data.reset_index(drop=True)):
-        _add_issue(
-            report,
-            level="error",
-            code="unsorted_rows",
-            message=(
-                "data row order does not match sort by participant_id and trial_id."
-            ),
-            hint=(
-                'Use data.sort_values(["participant_id", "trial_id"]).reset_index(drop=True).'
             ),
         )
 
@@ -256,32 +225,6 @@ def _check_balanced_panel(
         return int(len(counts)), None
 
     return int(len(counts)), int(counts.iloc[0])
-
-
-def _check_trial_ids_per_participant(
-    data: pd.DataFrame, report: DataValidationReport
-) -> None:
-    if PARTICIPANT_COL not in data.columns or TRIAL_COL not in data.columns:
-        return
-
-    for participant_id, group in data.groupby(PARTICIPANT_COL, sort=True):
-        trial_ids = [int(value) for value in group[TRIAL_COL].tolist()]
-        expected = list(range(len(trial_ids)))
-        if trial_ids != expected:
-            _add_issue(
-                report,
-                level="error",
-                code="invalid_trial_ids",
-                message=(
-                    "data must use contiguous zero-based trial_id values within "
-                    f"each participant. Participant {participant_id!r} has "
-                    f"{trial_ids}; expected {expected}."
-                ),
-                hint=(
-                    "Reindex trial_id within each participant to 0, 1, 2, ... "
-                    "in trial order."
-                ),
-            )
 
 
 def _check_nan_values(
@@ -440,11 +383,8 @@ def validate_rlssm_data(
     if report.ok:
         _check_extra_columns(config, data, report)
         _check_null_participants(data, report)
-        _check_duplicates(data, report)
         _check_row_contiguity(data, report)
-        _check_sorted_order(data, report)
         n_participants, n_trials = _check_balanced_panel(data, report)
-        _check_trial_ids_per_participant(data, report)
         _check_nan_values(data, required_columns, report)
         _check_omissions(data, report)
         _check_response_values(config, data, report)
