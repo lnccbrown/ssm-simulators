@@ -62,8 +62,8 @@ class TestSimulateOutput:
         expected = {"participant_id", "trial_id", "rt", "response", "feedback"}
         assert expected.issubset(set(data.columns))
 
-    def test_default_excludes_action(self, data):
-        assert "action" not in data.columns
+    def test_default_excludes_choice(self, data):
+        assert "choice" not in data.columns
 
     def test_sorted_order(self, data):
         assert data.equals(
@@ -227,10 +227,10 @@ class TestPPCMode:
             sim.config.learning_process.q_values, np.array([1.0, 0.0])
         )
 
-    def test_ppc_omission_emits_missing_action_but_copies_observed_outcome(self):
+    def test_ppc_omission_emits_missing_choice_but_copies_observed_context(self):
         from unittest.mock import patch
 
-        sim = _make_simulator(include_action=True)
+        sim = _make_simulator(include_choice=True)
         observed = pd.DataFrame(
             {
                 "participant_id": [0],
@@ -257,7 +257,7 @@ class TestPPCMode:
 
         assert data.loc[0, "rt"] == OMISSION_SENTINEL
         assert data.loc[0, "response"] == MISSING_RESPONSE_SENTINEL
-        assert data.loc[0, "action"] == MISSING_RESPONSE_SENTINEL
+        assert data.loc[0, "choice"] == MISSING_RESPONSE_SENTINEL
         assert data.loc[0, "feedback"] == 1.0
 
 
@@ -416,10 +416,10 @@ class TestOmissionHandling:
         assert (non_omission["rt"] == 0.5).all()
         assert set(non_omission["response"].unique()) == {1}
 
-    def test_omission_action_uses_missing_response_sentinel(self):
+    def test_omission_choice_uses_missing_response_sentinel(self):
         from unittest.mock import patch
 
-        sim = _make_simulator(include_action=True)
+        sim = _make_simulator(include_choice=True)
 
         def mock_simulator(**kwargs):
             return {
@@ -433,12 +433,12 @@ class TestOmissionHandling:
             )
 
         assert df.loc[0, "response"] == MISSING_RESPONSE_SENTINEL
-        assert df.loc[0, "action"] == MISSING_RESPONSE_SENTINEL
+        assert df.loc[0, "choice"] == MISSING_RESPONSE_SENTINEL
 
 
-class TestResponseActionMapping:
-    def test_response_labels_are_mapped_to_learning_action_indices(self):
-        """Angle/DDM response labels [-1, 1] map to learning actions [0, 1]."""
+class TestResponseChoiceMapping:
+    def test_response_labels_are_mapped_to_learning_choice_indices(self):
+        """Angle/DDM response labels [-1, 1] map to learning choices [0, 1]."""
         from unittest.mock import patch
 
         sim = _make_simulator(
@@ -472,13 +472,13 @@ class TestResponseActionMapping:
             return {"rts": np.array([[0.5]]), "choices": np.array([[0]])}
 
         with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
-            with pytest.raises(ValueError, match="not in response_mapping"):
+            with pytest.raises(ValueError, match="not in response_to_choice"):
                 sim.simulate(theta=THETA, n_trials=1, n_participants=1)
 
-    def test_include_action_emits_derived_action(self):
+    def test_include_choice_emits_derived_choice(self):
         from unittest.mock import patch
 
-        sim = _make_simulator(include_action=True)
+        sim = _make_simulator(include_choice=True)
         choices = iter([-1, 1])
 
         def mock_simulator(**kwargs):
@@ -491,7 +491,7 @@ class TestResponseActionMapping:
             df = sim.simulate(theta=THETA, n_trials=2, n_participants=1)
 
         assert df["response"].tolist() == [-1, 1]
-        assert df["action"].tolist() == [0, 1]
+        assert df["choice"].tolist() == [0, 1]
 
     def test_reversed_mapping_changes_learning_updates(self):
         from unittest.mock import patch
@@ -500,8 +500,8 @@ class TestResponseActionMapping:
             task_environment=rl.env.Bandit.bernoulli(
                 probabilities=[1.0, 0.0], response_labels=[-1, 1]
             ),
-            response_mapping={-1: 1, 1: 0},
-            include_action=True,
+            response_to_choice={-1: 1, 1: 0},
+            include_choice=True,
         )
         choices = iter([-1, 1])
         theta = {**THETA, "rl_alpha": 1.0}
@@ -516,7 +516,7 @@ class TestResponseActionMapping:
             df = sim.simulate(theta=theta, n_trials=2, n_participants=1)
 
         assert df["response"].tolist() == [-1, 1]
-        assert df["action"].tolist() == [1, 0]
+        assert df["choice"].tolist() == [1, 0]
         np.testing.assert_allclose(
             sim.config.learning_process.q_values, np.array([1.0, 0.0])
         )
@@ -541,13 +541,15 @@ class TestFunctionalLearningBackend:
             def init_state(self):
                 return {"q_values": np.array([0.5, 0.5], dtype=np.float64)}
 
-            def compute_python(self, state, trial_params):
+            def compute_python(self, state, params, context):
                 self.seen_states.append(state["q_values"].copy())
                 return {"v": float(state["q_values"][1] - state["q_values"][0])}
 
-            def update_python(self, state, action, reward, trial_params):
+            def update_python(self, state, params, context):
+                choice = int(context["choice"])
+                feedback = float(context["feedback"])
                 next_q = state["q_values"].copy()
-                next_q[action] += trial_params["alpha"] * (reward - next_q[action])
+                next_q[choice] += params["alpha"] * (feedback - next_q[choice])
                 return {"q_values": next_q}
 
             def reset(self, **kwargs):
@@ -677,7 +679,7 @@ class TestMilestone2Integration:
         assert pd.api.types.is_float_dtype(df["feedback"])
         assert not set(non_omission["feedback"].unique()).issubset({0.0, 1.0})
 
-    def test_gaussian_response_labels_map_to_learning_action_indices(self):
+    def test_gaussian_response_labels_map_to_learning_choice_indices(self):
         from unittest.mock import patch
 
         sim = _make_simulator(

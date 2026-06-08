@@ -82,8 +82,8 @@ class DataValidationReport:
 
 def _required_columns(config: ModelConfig) -> list[str]:
     columns = [PARTICIPANT_COL, TRIAL_COL, *config.response]
-    extra = config.extra_fields or []
-    for name in extra:
+    context_fields = config.context_fields or []
+    for name in context_fields:
         if name not in columns:
             columns.append(name)
     return columns
@@ -132,12 +132,12 @@ def _check_required_columns(
 
     for col in missing:
         hint = None
-        if col == config.outcome_field and config.outcome_field is not None:
+        if col in (config.context_fields or []):
             candidates = [c for c in _OUTCOME_NAME_HINTS if c in data.columns]
             if candidates:
                 hint = (
-                    f"Rename column {candidates[0]!r} to {config.outcome_field!r}, or set "
-                    f"ModelConfig(outcome_field={candidates[0]!r})."
+                    f"Rename column {candidates[0]!r} to {col!r}, or include "
+                    f"{candidates[0]!r} in ModelConfig(context_fields=...)."
                 )
         _add_issue(
             report,
@@ -351,7 +351,7 @@ def _check_response_values(
         return
 
     allowed = set(config.choices)
-    mapping_keys = set(config.response_to_action.keys())
+    mapping_keys = set(config.response_to_choice.keys())
     subset = data.loc[valid_mask, RESPONSE_COL]
 
     invalid_choices = sorted({int(v) for v in subset.unique() if int(v) not in allowed})
@@ -374,10 +374,10 @@ def _check_response_values(
             level="error",
             code="unmapped_response_labels",
             message=(
-                f"response contains values not covered by response_mapping: {unmapped}."
+                f"response contains values not covered by response_to_choice: {unmapped}."
             ),
             hint=(
-                "Set ModelConfig.response_mapping explicitly or align "
+                "Set ModelConfig.response_to_choice explicitly or align "
                 "task_environment.response_labels with the data."
             ),
         )

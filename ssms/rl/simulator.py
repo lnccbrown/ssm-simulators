@@ -75,8 +75,7 @@ class Simulator:
         -------
         pd.DataFrame
             Balanced panel with columns: participant_id, trial_id, rt, response,
-            the configured outcome column when ``outcome_field`` is set, plus
-            any ``extra_fields`` from the task environment.
+            configured context fields, and optional derived choice.
         """
         self._validate_mode(mode)
         if mode == "ppc":
@@ -290,10 +289,12 @@ class Simulator:
         env.reset(rng=rng)
 
         rows = []
-        outcome_field = config.outcome_field
         for t in range(n_trials):
+            pre_context = dict(env.get_trial_context(t))
             # COMPUTE: learning process produces SSM params from current state
-            computed_raw = self._compute_learning_params(learning_state, rl_params)
+            computed_raw = self._compute_learning_params(
+                learning_state, rl_params, pre_context
+            )
 
             # Apply mapping: learning output name -> SSM param name
             computed_ssm = {}
@@ -315,25 +316,28 @@ class Simulator:
                     "rt": OMISSION_SENTINEL,
                     "response": MISSING_RESPONSE_SENTINEL,
                 }
-                if outcome_field is not None:
-                    row[outcome_field] = 0.0
-                if config.include_action:
-                    row["action"] = MISSING_RESPONSE_SENTINEL
-                row.update(env.get_extra_data(t))
+                row.update(self._context_fields_for_output(pre_context))
+                if config.include_choice:
+                    row["choice"] = MISSING_RESPONSE_SENTINEL
                 rows.append(row)
                 continue
 
             # Use the SSM choice label as the recorded response, but convert it
-            # to a zero-based action index for the task environment and learning rule.
+            # to a zero-based choice index for the task environment and learning rule.
             response = ssm_choice
-            action = self._response_to_action_index(response)
+            choice = self._response_to_choice_index(response)
 
-            # REWARD
-            reward = env.sample_reward(action, t)
+            context = {
+                **pre_context,
+                "rt": rt,
+                "response": response,
+                "choice": choice,
+            }
+            context.update(env.sample_context(context, t))
 
             # UPDATE learning process
             learning_state = self._update_learning_state(
-                learning_state, action, reward, rl_params
+                learning_state, rl_params, context
             )
             self._store_learning_state(learning_state)
 
@@ -344,11 +348,9 @@ class Simulator:
                 "rt": rt,
                 "response": response,
             }
-            if outcome_field is not None:
-                row[outcome_field] = reward
-            if config.include_action:
-                row["action"] = action
-            row.update(env.get_extra_data(t))
+            row.update(self._context_fields_for_output(context))
+            if config.include_choice:
+                row["choice"] = choice
             rows.append(row)
 
         return rows
@@ -373,9 +375,11 @@ class Simulator:
         env.reset(rng=rng)
 
         rows = []
-        outcome_field = config.outcome_field
         for t, observed_trial in enumerate(observed_subject.itertuples(index=False)):
-            computed_raw = self._compute_learning_params(learning_state, rl_params)
+            observed_context = self._observed_context(observed_trial)
+            computed_raw = self._compute_learning_params(
+                learning_state, rl_params, observed_context
+            )
 
             computed_ssm = {}
             for output_name, value in computed_raw.items():
@@ -387,21 +391,22 @@ class Simulator:
 
             if rt == OMISSION_SENTINEL:
                 response = MISSING_RESPONSE_SENTINEL
-                simulated_action = MISSING_RESPONSE_SENTINEL
+                simulated_choice = MISSING_RESPONSE_SENTINEL
             else:
                 response = ssm_choice
-                simulated_action = self._response_to_action_index(response)
+                simulated_choice = self._response_to_choice_index(response)
 
             observed_response = int(getattr(observed_trial, "response"))
-            observed_action = self._response_to_action_index(observed_response)
-            reward = (
-                float(getattr(observed_trial, outcome_field))
-                if outcome_field is not None
-                else 0.0
-            )
+            observed_choice = self._response_to_choice_index(observed_response)
+            update_context = {
+                **observed_context,
+                "rt": float(getattr(observed_trial, "rt")),
+                "response": observed_response,
+                "choice": observed_choice,
+            }
 
             learning_state = self._update_learning_state(
-                learning_state, observed_action, reward, rl_params
+                learning_state, rl_params, update_context
             )
             self._store_learning_state(learning_state)
 
@@ -411,11 +416,9 @@ class Simulator:
                 "rt": rt,
                 "response": response,
             }
-            if outcome_field is not None:
-                row[outcome_field] = reward
-            if config.include_action:
-                row["action"] = simulated_action
-            row.update(env.get_extra_data(t))
+            row.update(self._context_fields_for_output(observed_context))
+            if config.include_choice:
+                row["choice"] = simulated_choice
             rows.append(row)
 
         return rows
@@ -448,27 +451,29 @@ class Simulator:
         self._store_learning_state(state)
         return state
 
-    def _compute_learning_params(self, state, rl_params: dict[str, float]):
+    def _compute_learning_params(
+        self, state, rl_params: dict[str, float], context: dict
+    ):
         """Compute SSM params from the current explicit learning state."""
         lp = self.config.learning_process
         backend = self.config.resolved_learning_backend
         if backend == "jax" and hasattr(lp, "compute_jax"):
-            return lp.compute_jax(state, rl_params)
+            return lp.compute_jax(state, rl_params, context)
         if hasattr(lp, "compute_python"):
-            return lp.compute_python(state, rl_params)
+            return lp.compute_python(state, rl_params, context)
         return lp.compute_ssm_params(rl_params)
 
     def _update_learning_state(
-        self, state, action: int, reward: float, rl_params: dict[str, float]
+        self, state, rl_params: dict[str, float], context: dict
     ):
-        """Return the next learning state after observing action and reward."""
+        """Return the next learning state after observing one trial context."""
         lp = self.config.learning_process
         backend = self.config.resolved_learning_backend
         if backend == "jax" and hasattr(lp, "update_jax"):
-            return lp.update_jax(state, action, reward, rl_params)
+            return lp.update_jax(state, rl_params, context)
         if hasattr(lp, "update_python"):
-            return lp.update_python(state, action, reward, rl_params)
-        lp.update(action, reward, rl_params)
+            return lp.update_python(state, rl_params, context)
+        lp.update(context["choice"], context.get("feedback", 0.0), rl_params)
         return state
 
     def _store_learning_state(self, state) -> None:
@@ -476,12 +481,26 @@ class Simulator:
         if hasattr(self.config.learning_process, "_state"):
             self.config.learning_process._state = state
 
-    def _response_to_action_index(self, response: int) -> int:
-        """Map an SSM response label to the learning process action index."""
-        response_to_action = self.config.response_to_action
-        if response not in response_to_action:
+    def _response_to_choice_index(self, response: int) -> int:
+        """Map an SSM response label to the learning process choice index."""
+        response_to_choice = self.config.response_to_choice
+        if response not in response_to_choice:
             raise ValueError(
-                f"SSM response {response} is not in response_mapping. "
-                f"Expected one of: {sorted(response_to_action)}."
+                f"SSM response {response} is not in response_to_choice. "
+                f"Expected one of: {sorted(response_to_choice)}."
             )
-        return int(response_to_action[response])
+        return int(response_to_choice[response])
+
+    def _context_fields_for_output(self, context: dict) -> dict:
+        """Return configured observable context fields in stable config order."""
+        return {
+            field_name: context.get(field_name, 0.0)
+            for field_name in (self.config.context_fields or [])
+        }
+
+    def _observed_context(self, observed_trial) -> dict:
+        """Extract configured context fields from an observed trial row."""
+        return {
+            field_name: getattr(observed_trial, field_name)
+            for field_name in (self.config.context_fields or [])
+        }
