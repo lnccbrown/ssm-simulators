@@ -19,9 +19,9 @@ def test_preset_compiles_to_hssm_ready_jax_contract():
     assert compiled.list_params == ["rl_alpha", "scaler", "a", "z", "t", "theta"]
     assert compiled.response == ["rt", "response"]
     assert compiled.choices == (-1, 1)
-    assert compiled.extra_fields == ["feedback"]
+    assert compiled.context_fields == ["feedback"]
     assert compiled.computed_params == ["v"]
-    assert compiled.response_to_action == {-1: 0, 1: 1}
+    assert compiled.response_to_choice == {-1: 0, 1: 1}
     assert compiled.learning_backend == "jax"
     assert compiled.gradient == "available"
     assert compiled.participant_input_fields() == [
@@ -32,7 +32,7 @@ def test_preset_compiles_to_hssm_ready_jax_contract():
     ]
 
 
-def test_compiled_output_dict_matches_response_mapping_for_hssm_wrapper():
+def test_compiled_output_dict_matches_response_to_choice_for_hssm_wrapper():
     pytest.importorskip("jax")
     jnp = pytest.importorskip("jax.numpy")
 
@@ -44,7 +44,7 @@ def test_compiled_output_dict_matches_response_mapping_for_hssm_wrapper():
         task_environment=rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
-        response_mapping={-1: 1, 1: 0},
+        response_to_choice={-1: 1, 1: 0},
         learning_backend="jax",
     )
     compiled = config.compile(backend="jax")

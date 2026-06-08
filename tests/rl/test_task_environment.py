@@ -83,7 +83,7 @@ class TestBernoulliBandit:
     def test_protocol_compliance(self):
         assert isinstance(Bandit.bernoulli(), TaskEnvironment)
 
-    def test_extra_fields_empty(self):
+    def test_pre_decision_context_empty(self):
         bandit = Bandit.bernoulli()
         assert bandit.context_fields == ["feedback"]
         bandit.reset()

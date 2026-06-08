@@ -82,8 +82,8 @@ class TestToHssmConfigDictSchema:
         assert isinstance(d["params_default"], list)
         assert isinstance(d["choices"], tuple)
         assert isinstance(d["response"], list)
-        assert isinstance(d["response_mapping"], dict)
-        assert isinstance(d["extra_fields"], list)
+        assert isinstance(d["response_to_choice"], dict)
+        assert isinstance(d["context_fields"], list)
 
     def test_inference_placeholders_present(self, sim_data):
         _, config = sim_data
@@ -146,7 +146,8 @@ class TestRegistry:
         assert info["default_parameters"]["rl_alpha"] == 0.2
         assert info["bounds"]["rl_alpha"] == (0.0, 1.0)
         assert info["response_labels"] == (-1, 1)
-        assert info["outcome_field"] == "feedback"
+        assert info["response_to_choice"] == {-1: 0, 1: 1}
+        assert info["context_fields"] == ["feedback"]
         assert info["hssm_compatibility"]["participant_contract"] is True
         assert info["learning_backend"] in {"python", "jax"}
         assert info["gradient"] in {"available", "unavailable"}

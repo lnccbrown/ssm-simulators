@@ -29,7 +29,8 @@ class PresetInfo(dict):
             f"Required parameters: {', '.join(self.get('required_parameters', []))}",
             f"Default parameters: {default_summary}",
             f"Response labels: {self.get('response_labels')}",
-            f"Outcome field: {self.get('outcome_field')}",
+            f"Response to choice: {self.get('response_to_choice')}",
+            f"Context fields: {self.get('context_fields')}",
             f"Learning backend: {self.get('learning_backend')}",
             f"Gradient support: {self.get('gradient')}",
         ]
@@ -98,10 +99,9 @@ def info(name: str) -> PresetInfo:
             "default_parameters": defaults,
             "bounds": dict(config.bounds),
             "response_labels": tuple(config.choices),
-            "response_mapping": dict(config.response_to_action),
-            "outcome_field": config.outcome_field,
-            "extra_fields": (
-                builtins.list(config.extra_fields) if config.extra_fields else []
+            "response_to_choice": dict(config.response_to_choice),
+            "context_fields": (
+                builtins.list(config.context_fields) if config.context_fields else []
             ),
             "computed_parameters": builtins.list(config._computed_ssm_params),
             "fixed_ssm_parameters": builtins.list(config._fixed_ssm_params),
@@ -142,8 +142,9 @@ register(
         "hssm_compatibility": {
             "participant_contract": True,
             "notes": (
-                "Exports participant_contract, response mapping, outcome field, "
-                "backend policy, and gradient policy for HSSM-side RLSSM wiring."
+                "Exports participant_contract, response-to-choice mapping, "
+                "context fields, backend policy, and gradient policy for "
+                "HSSM-side RLSSM wiring."
             ),
         },
     },

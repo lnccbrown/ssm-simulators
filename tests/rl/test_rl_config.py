@@ -229,40 +229,40 @@ class TestTaskConfigAutoBuild:
         assert config.choices == (-1, 1)
 
 
-class TestResponseMapping:
+class TestResponseToChoice:
     def test_explicit_reversed_mapping(self):
         config = _make_default_config(
             task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
-            response_mapping={-1: 1, 1: 0},
+            response_to_choice={-1: 1, 1: 0},
         )
-        assert config.response_to_action == {-1: 1, 1: 0}
+        assert config.response_to_choice == {-1: 1, 1: 0}
 
     def test_missing_mapping_label_raises(self):
         with pytest.raises(ValueError, match="cover response labels exactly"):
             _make_default_config(
                 task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
-                response_mapping={-1: 0},
+                response_to_choice={-1: 0},
             )
 
     def test_extra_mapping_label_raises(self):
         with pytest.raises(ValueError, match="cover response labels exactly"):
             _make_default_config(
                 task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
-                response_mapping={-1: 0, 1: 1, 0: 0},
+                response_to_choice={-1: 0, 1: 1, 0: 0},
             )
 
     def test_duplicate_mapping_values_raise(self):
         with pytest.raises(ValueError, match="must be unique"):
             _make_default_config(
                 task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
-                response_mapping={-1: 0, 1: 0},
+                response_to_choice={-1: 0, 1: 0},
             )
 
     def test_out_of_range_mapping_values_raise(self):
         with pytest.raises(ValueError, match="must be exactly"):
             _make_default_config(
                 task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
-                response_mapping={-1: 0, 1: 2},
+                response_to_choice={-1: 0, 1: 2},
             )
 
     def test_choices_must_match_response_labels(self):
@@ -281,9 +281,9 @@ class TestResponseMapping:
                 choices=(0, 1),
             )
 
-    def test_include_action_defaults_false(self):
+    def test_include_choice_defaults_false(self):
         config = _make_default_config()
-        assert config.include_action is False
+        assert config.include_choice is False
 
 
 class TestLearningBackendPolicy:
@@ -443,4 +443,4 @@ class TestToHssmConfigDict:
         assert d["decision_process"] == config.decision_process
         assert d["choices"] == config.choices
         assert d["response"] == config.response
-        assert d["response_mapping"] == config.response_to_action
+        assert d["response_to_choice"] == config.response_to_choice

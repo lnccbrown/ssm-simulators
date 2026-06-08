@@ -241,10 +241,10 @@ class TestRescorlaWagnerDualAlphaRule:
         state = self.rw.init_state()
 
         positive_state = self.rw.update_python(
-            state, action=0, reward=1.0, trial_params=params
+            state, params, {"choice": 0, "feedback": 1.0}
         )
         negative_state = self.rw.update_python(
-            positive_state, action=0, reward=0.0, trial_params=params
+            positive_state, params, {"choice": 0, "feedback": 0.0}
         )
 
         np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
@@ -306,10 +306,15 @@ class TestJaxLearningBackend:
         python_drifts = []
         jax_drifts = []
         for action, reward in zip(actions, rewards):
-            python_drifts.append(rw.compute_python(state, params)["v"])
-            jax_drifts.append(float(rw.compute_jax(jax_state, params)["v"]))
-            state = rw.update_python(state, action, reward, params)
-            jax_state = rw.update_jax(jax_state, action, reward, params)
+            context = {"choice": action, "feedback": reward}
+            jax_context = {
+                "choice": jnp.asarray(action),
+                "feedback": jnp.asarray(reward),
+            }
+            python_drifts.append(rw.compute_python(state, params, context)["v"])
+            jax_drifts.append(float(rw.compute_jax(jax_state, params, jax_context)["v"]))
+            state = rw.update_python(state, params, context)
+            jax_state = rw.update_jax(jax_state, params, jax_context)
 
         np.testing.assert_allclose(python_drifts, jax_drifts, rtol=1e-6, atol=1e-7)
         np.testing.assert_allclose(
@@ -326,8 +331,9 @@ class TestJaxLearningBackend:
         def drift_after_update(alpha):
             state = rw.init_jax_state()
             params = {"rl_alpha": alpha, "scaler": jnp.asarray(2.0)}
-            state = rw.update_jax(state, action=0, reward=1.0, trial_params=params)
-            return rw.compute_jax(state, params)["v"]
+            context = {"choice": jnp.asarray(0), "feedback": jnp.asarray(1.0)}
+            state = rw.update_jax(state, params, context)
+            return rw.compute_jax(state, params, context)["v"]
 
         grad = jax.jit(jax.grad(drift_after_update))(jnp.asarray(0.6))
 
@@ -346,9 +352,17 @@ class TestJaxLearningBackend:
                 "rl_alpha_neg": alpha_neg,
                 "scaler": jnp.asarray(2.0),
             }
-            state = rw.update_jax(state, action=0, reward=1.0, trial_params=params)
-            state = rw.update_jax(state, action=0, reward=0.0, trial_params=params)
-            return rw.compute_jax(state, params)["v"]
+            positive_context = {
+                "choice": jnp.asarray(0),
+                "feedback": jnp.asarray(1.0),
+            }
+            negative_context = {
+                "choice": jnp.asarray(0),
+                "feedback": jnp.asarray(0.0),
+            }
+            state = rw.update_jax(state, params, positive_context)
+            state = rw.update_jax(state, params, negative_context)
+            return rw.compute_jax(state, params, negative_context)["v"]
 
         grad = jax.jit(jax.grad(drift_after_negative_update))(jnp.asarray(0.1))
 

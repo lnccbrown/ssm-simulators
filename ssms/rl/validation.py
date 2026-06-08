@@ -19,7 +19,7 @@ TRIAL_COL = "trial_id"
 RESPONSE_COL = "response"
 RT_COL = "rt"
 
-# Common outcome column names suggested when outcome_field is missing.
+# Common outcome-like column names suggested when a required context field is missing.
 _OUTCOME_NAME_HINTS = ("feedback", "reward", "outcome")
 
 

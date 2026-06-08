@@ -29,6 +29,24 @@ def _make_config(**overrides):
     return rl.ModelConfig(**defaults)
 
 
+class _NoFeedbackEnvironment:
+    n_arms = 2
+    context_fields = []
+
+    @property
+    def response_labels(self):
+        return [-1, 1]
+
+    def reset(self, rng=None):
+        pass
+
+    def get_trial_context(self, trial_idx):
+        return {}
+
+    def sample_context(self, context, trial_idx):
+        return {}
+
+
 def _valid_panel(*, n_participants: int = 2, n_trials: int = 3) -> pd.DataFrame:
     rows = []
     for participant_id in range(n_participants):
@@ -120,7 +138,7 @@ class TestColumns:
         assert not report.ok
         missing = [i for i in report.issues if i.code == "missing_column"]
         assert any("feedback" in issue.message for issue in missing)
-        assert any(issue.hint and "outcome_field" in issue.hint for issue in missing)
+        assert any(issue.hint and "context_fields" in issue.hint for issue in missing)
 
     def test_missing_participant_id(self, config):
         data = _valid_panel().drop(columns=["participant_id"])
@@ -215,7 +233,7 @@ class TestValues:
 
     def test_unmapped_response_label(self, config):
         data = _valid_panel()
-        config.response_to_action = {-1: 0}
+        config.response_to_choice = {-1: 0}
 
         report = config.validate_data(data)
 
@@ -309,7 +327,30 @@ class TestReportAPI:
 
 class TestOutcomeFreeConfig:
     def test_outcome_free_panel(self):
-        config = _make_config(outcome_field=None, extra_fields=[])
+        class ChoiceOnlyLearning:
+            computed_params = ["v"]
+            free_params = ["bias"]
+            param_bounds = {"bias": (-5.0, 5.0)}
+            default_params = {"bias": 0.0}
+            available_backends = ("python",)
+            supports_gradient = False
+            n_actions = 2
+            required_context_fields = ["choice"]
+
+            def init_state(self):
+                return {}
+
+            def compute_python(self, state, trial_params, context):
+                return {"v": trial_params["bias"]}
+
+            def update_python(self, state, trial_params, context):
+                return state
+
+        config = _make_config(
+            learning_process=ChoiceOnlyLearning(),
+            task_environment=_NoFeedbackEnvironment(),
+            context_fields=[],
+        )
         data = _valid_panel().drop(columns=["feedback"])
         report = config.validate_data(data)
 

@@ -22,6 +22,42 @@ def _make_default_config(**overrides):
     return rl.ModelConfig(**defaults)
 
 
+class _NoFeedbackEnvironment:
+    n_arms = 2
+    context_fields = []
+
+    @property
+    def response_labels(self):
+        return [-1, 1]
+
+    def reset(self, rng=None):
+        pass
+
+    def get_trial_context(self, trial_idx):
+        return {}
+
+    def sample_context(self, context, trial_idx):
+        return {}
+
+
+class _RewardEnvironment:
+    n_arms = 2
+    context_fields = ["reward"]
+
+    @property
+    def response_labels(self):
+        return [-1, 1]
+
+    def reset(self, rng=None):
+        pass
+
+    def get_trial_context(self, trial_idx):
+        return {}
+
+    def sample_context(self, context, trial_idx):
+        return {"reward": 1.0}
+
+
 class TestResolveModel:
     def test_resolves_preset_name_to_fresh_model_config(self):
         config = rl.resolve_model("2AB_RW_Angle")
@@ -99,7 +135,7 @@ class TestCompiledModel:
         assert set(values) == {"v"}
         np.testing.assert_allclose(values["v"], [0.0])
 
-    def test_subject_wise_function_uses_response_mapping_when_action_is_absent(self):
+    def test_subject_wise_function_uses_response_to_choice(self):
         compiled = _make_default_config(
             learning_backend="python", response_to_choice={-1: 1, 1: 0}
         ).compile(backend="python")
@@ -167,21 +203,17 @@ class TestCompiledModel:
             "feedback",
         ]
 
-    def test_participant_input_fields_can_override_outcome_field(self):
-        compiled = _make_default_config(learning_backend="python").compile(
-            backend="python"
-        )
+    def test_participant_input_fields_can_use_custom_response_field(self):
+        compiled = _make_default_config(
+            learning_backend="python",
+            response=["rt", "response", "choice_response"],
+        ).compile(backend="python")
 
-        assert compiled.participant_input_fields(outcome_field=None) == [
+        assert compiled.participant_input_fields(response_field="choice_response") == [
             "rl_alpha",
             "scaler",
-            "response",
-        ]
-        assert compiled.participant_input_fields(outcome_field="reward") == [
-            "rl_alpha",
-            "scaler",
-            "response",
-            "reward",
+            "choice_response",
+            "feedback",
         ]
 
     @pytest.mark.parametrize(
@@ -198,7 +230,7 @@ class TestCompiledModel:
             ),
             (
                 {"input_fields": ["rl_alpha", "scaler", "response"]},
-                "missing outcome_field",
+                "missing context fields",
             ),
             (
                 {"input_fields": ["rl_alpha", "scaler", "feedback"]},
@@ -226,7 +258,7 @@ class TestCompiledModel:
 
         np.testing.assert_allclose(values, [0.0])
 
-    def test_outcome_field_none_supports_outcome_free_learning(self):
+    def test_empty_context_fields_supports_choice_only_learning(self):
         class ChoiceOnlyLearning:
             computed_params = ["v"]
             free_params = ["bias"]
@@ -235,22 +267,22 @@ class TestCompiledModel:
             available_backends = ("python",)
             supports_gradient = False
             n_actions = 2
+            required_context_fields = ["choice"]
 
             def init_state(self):
                 return {"count": 0}
 
-            def compute_python(self, state, trial_params):
+            def compute_python(self, state, trial_params, context):
                 return {"v": float(trial_params["bias"] + state["count"])}
 
-            def update_python(self, state, action, outcome, trial_params):
-                assert outcome is None
-                return {"count": state["count"] + action}
+            def update_python(self, state, trial_params, context):
+                return {"count": state["count"] + int(context["choice"])}
 
         compiled = _make_default_config(
             learning_backend="python",
             learning_process=ChoiceOnlyLearning(),
-            outcome_field=None,
-            extra_fields=[],
+            task_environment=_NoFeedbackEnvironment(),
+            context_fields=[],
         ).compile(backend="python")
         compute = compiled.compile_participant_fn()
         trials = np.asarray(
@@ -266,10 +298,14 @@ class TestCompiledModel:
 
         np.testing.assert_allclose(values, [0.5, 0.5, 1.5])
 
-    def test_custom_outcome_field_name(self):
+    def test_custom_context_field_name(self):
         compiled = _make_default_config(
             learning_backend="python",
-            outcome_field="reward",
+            learning_process=rl.learning.RescorlaWagnerDeltaRule(
+                n_actions=2, initial_q=0.5, feedback_field="reward"
+            ),
+            task_environment=_RewardEnvironment(),
+            context_fields=["reward"],
         ).compile(backend="python")
 
         assert compiled.participant_input_fields() == [
@@ -293,11 +329,12 @@ class TestCompiledModel:
             default_params = {"gain": 0.5}
             available_backends = ("python",)
             supports_gradient = False
+            required_context_fields = ["choice"]
 
             def init_state(self):
                 return {"step": 0}
 
-            def compute_python(self, state, trial_params):
+            def compute_python(self, state, trial_params, context):
                 step = state["step"]
                 gain = trial_params["gain"]
                 return {
@@ -305,15 +342,15 @@ class TestCompiledModel:
                     "urgency": float(0.1 * step),
                 }
 
-            def update_python(self, state, action, outcome, trial_params):
+            def update_python(self, state, trial_params, context):
                 return {"step": state["step"] + 1}
 
         config = _make_default_config(
             learning_backend="python",
             learning_process=DualOutputLearning(),
+            task_environment=_NoFeedbackEnvironment(),
             computed_param_mapping={"drift": "v", "urgency": "theta"},
-            outcome_field=None,
-            extra_fields=[],
+            context_fields=[],
         )
         compiled = config.compile(backend="python")
         compute = compiled.compile_participant_fn(output="dict")
@@ -340,24 +377,25 @@ class TestCompiledModel:
             default_params = {"gain": 0.5}
             available_backends = ("python",)
             supports_gradient = False
+            required_context_fields = ["choice"]
 
             def init_state(self):
                 return {"step": 0}
 
-            def compute_python(self, state, trial_params):
+            def compute_python(self, state, trial_params, context):
                 step = state["step"]
                 gain = trial_params["gain"]
                 return {"drift": gain * step, "urgency": 0.1 * step}
 
-            def update_python(self, state, action, outcome, trial_params):
+            def update_python(self, state, trial_params, context):
                 return {"step": state["step"] + 1}
 
         config = _make_default_config(
             learning_backend="python",
             learning_process=DualOutputLearning(),
+            task_environment=_NoFeedbackEnvironment(),
             computed_param_mapping={"drift": "v", "urgency": "theta"},
-            outcome_field=None,
-            extra_fields=[],
+            context_fields=[],
         )
         compute = config.compile(backend="python").compile_participant_fn()
         trials = np.asarray([[0.5, -1.0], [0.5, 1.0]], dtype=np.float64)
@@ -374,22 +412,23 @@ class TestCompiledModel:
             default_params = {"gain": 0.5}
             available_backends = ("python",)
             supports_gradient = False
+            required_context_fields = ["choice"]
 
             def init_state(self):
                 return {}
 
-            def compute_python(self, state, trial_params):
+            def compute_python(self, state, trial_params, context):
                 return {"drift": trial_params["gain"]}
 
-            def update_python(self, state, action, outcome, trial_params):
+            def update_python(self, state, trial_params, context):
                 return state
 
         config = _make_default_config(
             learning_backend="python",
             learning_process=IncompleteLearning(),
+            task_environment=_NoFeedbackEnvironment(),
             computed_param_mapping={"drift": "v", "urgency": "theta"},
-            outcome_field=None,
-            extra_fields=[],
+            context_fields=[],
         )
         compute = config.compile(backend="python").compile_participant_fn()
         trials = np.asarray([[0.5, -1.0]], dtype=np.float64)
