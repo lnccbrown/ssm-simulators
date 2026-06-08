@@ -6,6 +6,7 @@ with preprocessing the output of the simulator function.
 """
 
 from copy import deepcopy
+import numbers
 from threading import Lock
 
 import numpy as np
@@ -37,11 +38,43 @@ _rng_lock = Lock()
 
 
 def _get_unique_seed() -> int:
-    """
-    Generate a unique seed for the random number generator.
+    """Generate a unique integer seed for the C-level RNG.
+
+    Seeds must fit in a signed 32-bit C ``long``.  On Windows (LLP64),
+    ``long`` is 32-bit (max ``2**31 - 1``); on macOS/Linux it is often 64-bit.
+    Using ``[0, 2**31)`` is safe on all platforms and matches what
+    ``cssm._utils.set_seed`` can accept without overflow.
     """
     with _rng_lock:
-        return int(_global_rng.integers(0, 2**32 - 1))
+        # high is exclusive -> largest value is 2**31 - 1
+        return int(_global_rng.integers(0, 2**31))
+
+
+# Range accepted by ``cssm._utils.set_seed`` when casting to C ``long`` (32-bit on Windows).
+_RNG_SEED_C_LONG_MIN = -(2**31)
+_RNG_SEED_C_LONG_MAX = 2**31 - 1
+
+
+def _validate_random_state_for_c_rng(random_state: object) -> None:
+    """Raise ``ValueError`` if *random_state* is an integer outside the C ``long`` range.
+
+    The Cython layer casts seeds to ``long``.  On Windows that is 32-bit signed; larger
+    values raise ``OverflowError`` inside Cython.  We validate here with a clear
+    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) are skipped;
+    those paths do not use this cast in the same way.
+    """
+    if random_state is None:
+        return
+    if not isinstance(random_state, numbers.Integral):
+        return
+    rs = int(random_state)
+    if rs < _RNG_SEED_C_LONG_MIN or rs > _RNG_SEED_C_LONG_MAX:
+        raise ValueError(
+            f"random_state={rs} is outside [{_RNG_SEED_C_LONG_MIN}, {_RNG_SEED_C_LONG_MAX}], "
+            "the range the C-level simulator can use on all platforms (Windows ``long`` "
+            "is 32-bit). Use a smaller integer seed, e.g. "
+            "int(np.random.default_rng().integers(0, 2**31))."
+        )
 
 
 def _make_valid_dict(dict_in: dict) -> dict:
@@ -627,8 +660,10 @@ def simulator(
         smooth_unif: bool <default=True>
             Whether to add uniform random noise to RTs to smooth the distributions.
         random_state: int | None <default=None>
-            Integer passed to random_seed function in the simulator.
-            Can be used for reproducibility.
+            Integer passed to the C-level RNG seeding.  Must lie in
+            ``[-2**31, 2**31 - 1]`` so it fits in a 32-bit signed C ``long`` (required
+            on Windows).  ``None`` draws a seed from that range automatically.
+            Non-integer RNG objects may be supported on specific code paths.
         return_option: str <default='full'>
             Determines what the function returns. Can be either
             'full' or 'minimal'. If 'full' the function returns
@@ -673,6 +708,7 @@ def simulator(
 
     if random_state is None:
         random_state = _get_unique_seed()
+    _validate_random_state_for_c_rng(random_state)
 
     theta = _preprocess_theta_generic(theta)
     n_trials, theta = _preprocess_theta_deadline(

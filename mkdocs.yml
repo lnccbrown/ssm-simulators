@@ -63,6 +63,7 @@ plugins:
             signature_crossrefs: true
 
 theme:
+  logo: images/navlogo.png
   name: material
   custom_dir: docs/overrides
   features:
@@ -80,13 +81,16 @@ theme:
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
+      scheme: ocean
+      primary: custom
       toggle:
         icon: material/brightness-auto
         name: Switch to dark mode
 
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
-      scheme: default
+      scheme: ocean
+      primary: custom
       toggle:
         icon: material/brightness-7
         name: Switch to light mode
@@ -94,12 +98,16 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: custom
       toggle:
         icon: material/brightness-4
         name: Switch to automatic mode
 
 extra:
   homepage: "https://lnccbrown.github.io/ssm-simulators/"
+
+extra_css:
+  - "styles/extra.css"
 
 markdown_extensions:
   - admonition
