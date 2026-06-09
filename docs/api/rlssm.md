@@ -92,11 +92,11 @@ participant-wise theta length.
 `Simulator.simulate()` supports two modes:
 
 - `mode="generative"` — the default unconstrained simulation loop. The simulator
-  samples responses, task outcomes, and learning updates end to end.
+  samples responses, task context, and learning updates end to end.
 - `mode="ppc"` — observed-history-conditioned posterior predictive simulation.
   The simulator generates new RT/response values for each observed trial, copies
-  the observed outcome column into the output, and updates learning state from
-  the observed response/outcome history.
+  observed context fields into the output, and updates learning state from
+  the observed response/context history.
 
 PPC mode uses the same data contract as inference validation (see below). The
 observed panel must include `participant_id`, all `config.response` columns
