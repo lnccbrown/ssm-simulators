@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 import numpy as np
 
@@ -19,6 +19,8 @@ from .config import (
 
 CompiledFunctionOutput = Literal["array", "dict"]
 LearningBackend = Literal["auto", "python", "jax"]
+_COMPILED_FUNCTION_OUTPUTS = get_args(CompiledFunctionOutput)
+_LEARNING_BACKENDS = get_args(LearningBackend)
 
 
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
@@ -83,7 +85,7 @@ class CompiledModel:
             response_to_choice=dict(config.response_to_choice),
         )
 
-    def participant_input_fields(
+    def get_participant_input_fields(
         self,
         *,
         response_field: str = DEFAULT_RESPONSE_FIELD,
@@ -94,6 +96,14 @@ class CompiledModel:
             response_field=response_field,
         )
         return list(contract.input_fields)
+
+    def participant_input_fields(
+        self,
+        *,
+        response_field: str = DEFAULT_RESPONSE_FIELD,
+    ) -> list[str]:
+        """Backward-compatible alias for :meth:`get_participant_input_fields`."""
+        return self.get_participant_input_fields(response_field=response_field)
 
     def compile_participant_fn(
         self,
@@ -112,11 +122,14 @@ class CompiledModel:
         learning update, maps response labels to zero-based action indices, and
         updates learning state from the response and optional outcome.
         """
-        if output not in {"array", "dict"}:
-            raise ValueError("output must be 'array' or 'dict'")
+        if output not in _COMPILED_FUNCTION_OUTPUTS:
+            raise ValueError(
+                f"output must be one of {list(_COMPILED_FUNCTION_OUTPUTS)!r}. "
+                f"Got {output!r}."
+            )
 
         if input_fields is None:
-            input_fields = self.participant_input_fields(
+            input_fields = self.get_participant_input_fields(
                 response_field=response_field,
             )
         else:
@@ -188,10 +201,11 @@ class CompiledModel:
                 )
                 for name in self.computed_params:
                     collected[name].append(float(computed[name]))
-                choice = self._extract_python_choice(
+                choice = self._extract_choice(
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
+                    backend="python",
                 )
                 context.update(
                     {
@@ -227,10 +241,11 @@ class CompiledModel:
                 computed = self._map_computed_params(
                     lp.compute_jax(state, trial_params, context)
                 )
-                choice = self._extract_jax_choice(
+                choice = self._extract_choice(
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
+                    backend="jax",
                     response_labels=response_labels,
                     response_choices=response_choices,
                 )
@@ -259,25 +274,21 @@ class CompiledModel:
             raise ValueError(f"Learning process did not compute params: {missing}")
         return mapped
 
-    def _extract_python_choice(
+    def _extract_choice(
         self,
         *,
         row,
         field_to_idx: dict[str, int],
         response_field: str,
-    ) -> int:
-        response = int(row[field_to_idx[response_field]])
-        return int(self.response_to_choice[response])
-
-    def _extract_jax_choice(
-        self,
-        *,
-        row,
-        field_to_idx: dict[str, int],
-        response_field: str,
-        response_labels,
-        response_choices,
+        backend: Literal["python", "jax"],
+        response_labels=None,
+        response_choices=None,
     ):
+        """Map a trial response label to a zero-based learning choice index."""
+        if backend == "python":
+            response = int(row[field_to_idx[response_field]])
+            return int(self.response_to_choice[response])
+
         import jax.numpy as jnp
 
         response = row[field_to_idx[response_field]]
@@ -314,8 +325,10 @@ class CompiledModel:
 def _resolve_backend(
     config: ModelConfig, backend: LearningBackend
 ) -> Literal["python", "jax"]:
-    if backend not in {"auto", "python", "jax"}:
-        raise ValueError("backend must be one of 'auto', 'python', or 'jax'")
+    if backend not in _LEARNING_BACKENDS:
+        raise ValueError(
+            f"backend must be one of {list(_LEARNING_BACKENDS)!r}. Got {backend!r}."
+        )
     if backend == "auto":
         return config.resolved_learning_backend
 

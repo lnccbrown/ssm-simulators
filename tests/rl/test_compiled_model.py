@@ -202,6 +202,10 @@ class TestCompiledModel:
             "response",
             "feedback",
         ]
+        assert (
+            compiled.get_participant_input_fields()
+            == compiled.participant_input_fields()
+        )
 
     def test_participant_input_fields_can_use_custom_response_field(self):
         compiled = _make_default_config(
