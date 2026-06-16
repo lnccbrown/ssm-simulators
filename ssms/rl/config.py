@@ -13,7 +13,7 @@ from ssms.config.model_config_builder import ModelConfigBuilder
 if TYPE_CHECKING:
     from .validation import DataValidationReport
 
-from .env import TaskConfig, TaskEnvironment
+from .env import DiscreteChoiceEnvironment, TaskConfig, TaskEnvironment
 from .learning import LearningProcess
 
 
@@ -171,12 +171,13 @@ class ModelConfig:
         if isinstance(self.task_environment, TaskConfig):
             self.task_environment = self.task_environment.build_environment()
 
-        # Load SSM model config for validation and auto-derivation
+        # Derived decision-process config from the registered SSM name. Users never
+        # construct this layer; it supplies SSM param names, bounds, and choices.
         self._ssm_config = ModelConfigBuilder.from_model(self.decision_process)
 
-        # Auto-derive fields if not provided
+        discrete_env = self._discrete_choice_environment()
         if self.choices is None:
-            self.choices = tuple(self.task_environment.response_labels)
+            self.choices = tuple(discrete_env.response_labels)
 
         self.response_to_choice = self._normalize_response_to_choice()
         self._validate_ssm_choices()
@@ -196,11 +197,21 @@ class ModelConfig:
         if self.params_default is None:
             self.params_default = self._derive_params_default()
 
+    def _discrete_choice_environment(self) -> DiscreteChoiceEnvironment:
+        """Return the task environment when it supports discrete choice mapping."""
+        env = cast(TaskEnvironment, self.task_environment)
+        if not isinstance(env, DiscreteChoiceEnvironment):
+            raise ValueError(
+                "This RLSSM model requires a DiscreteChoiceEnvironment "
+                f"(response_labels and n_choices). Got {type(env).__name__}."
+            )
+        return env
+
     def _normalize_response_to_choice(self) -> dict[int, int]:
         """Normalize response labels to zero-based choice indices."""
-        task_environment = cast(TaskEnvironment, self.task_environment)
-        response_labels = list(task_environment.response_labels)
-        n_arms = task_environment.n_arms
+        discrete_env = self._discrete_choice_environment()
+        response_labels = list(discrete_env.response_labels)
+        n_choices = discrete_env.n_choices
         if tuple(response_labels) != tuple(self.choices):
             raise ValueError(
                 "choices must match task_environment.response_labels. "
@@ -225,7 +236,7 @@ class ModelConfig:
             )
 
         values = list(mapping.values())
-        expected_choices = set(range(n_arms))
+        expected_choices = set(range(n_choices))
         action_set = set(values)
         if len(action_set) != len(values):
             raise ValueError("response_to_choice values must be unique")
@@ -398,11 +409,11 @@ class ModelConfig:
         return list(self.learning_process.free_params) + list(self._fixed_ssm_params)
 
     def _derive_list_params(self) -> list[str]:
-        """RL free params + fixed SSM params (in that order)."""
+        """Return RL free params followed by fixed SSM params for ``theta``."""
         return list(self.learning_process.free_params) + self._fixed_ssm_params
 
     def _derive_bounds(self) -> dict[str, tuple[float, float]]:
-        """Merge RL param bounds + SSM param bounds for fixed params."""
+        """Merge learning-process bounds with fixed SSM bounds from ``_ssm_config``."""
         bounds = dict(self.learning_process.param_bounds)
         ssm_bounds_dict = self._ssm_config.get("param_bounds_dict", {})
         if not ssm_bounds_dict:
@@ -419,7 +430,7 @@ class ModelConfig:
         return bounds
 
     def _derive_params_default(self) -> list[float]:
-        """Default values in list_params order."""
+        """Return default values aligned with ``list_params`` order."""
         rl_defaults = self.learning_process.default_params
         ssm_defaults_list = self._ssm_config["default_params"]
         ssm_param_names = self._ssm_config["params"]
@@ -520,13 +531,22 @@ class ModelConfig:
 
         task_environment = cast(TaskEnvironment, self.task_environment)
         learning_n_actions = getattr(self.learning_process, "n_actions", None)
-        if (
-            learning_n_actions is not None
-            and learning_n_actions != task_environment.n_arms
+        if learning_n_actions is not None and isinstance(
+            task_environment, DiscreteChoiceEnvironment
+        ):
+            if learning_n_actions != task_environment.n_choices:
+                raise ValueError(
+                    "learning_process.n_actions must match "
+                    "task_environment.n_choices. "
+                    f"Got n_actions={learning_n_actions}, "
+                    f"n_choices={task_environment.n_choices}."
+                )
+        elif learning_n_actions is not None and not isinstance(
+            task_environment, DiscreteChoiceEnvironment
         ):
             raise ValueError(
-                "learning_process.n_actions must match task_environment.n_arms. "
-                f"Got n_actions={learning_n_actions}, n_arms={task_environment.n_arms}."
+                "learning_process declares n_actions but task_environment is not "
+                "a DiscreteChoiceEnvironment."
             )
 
         if DEFAULT_RESPONSE_FIELD not in self.response:
@@ -595,8 +615,8 @@ class ModelConfig:
             ),
         }
 
-    def compile(self, backend: Literal["auto", "python", "jax"] = "auto"):
-        """Return a validated executable compiled model."""
-        from .compiled import CompiledModel
+    def assemble(self, backend: Literal["auto", "python", "jax"] = "auto"):
+        """Return a validated executable assembled model."""
+        from .assembled import AssembledModel
 
-        return CompiledModel.from_config(self, backend=backend)
+        return AssembledModel.from_config(self, backend=backend)

@@ -180,7 +180,7 @@ class TestPublicApiSurface:
         assert rl.__all__ == [
             "Simulator",
             "ModelConfig",
-            "CompiledModel",
+            "AssembledModel",
             "resolve_model",
             "env",
             "learning",

@@ -1,10 +1,11 @@
-"""Compiled RLSSM model interfaces."""
+"""Assembled RLSSM model interfaces."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, get_args
+from enum import StrEnum
+from typing import Any, Literal
 
 import numpy as np
 
@@ -17,10 +18,26 @@ from .config import (
 )
 
 
-CompiledFunctionOutput = Literal["array", "dict"]
-LearningBackend = Literal["auto", "python", "jax"]
-_COMPILED_FUNCTION_OUTPUTS = get_args(CompiledFunctionOutput)
-_LEARNING_BACKENDS = get_args(LearningBackend)
+class LearningBackendRequest(StrEnum):
+    """Requested learning backend policy for assembly."""
+
+    AUTO = "auto"
+    PYTHON = "python"
+    JAX = "jax"
+
+
+class ResolvedLearningBackend(StrEnum):
+    """Concrete learning backend selected after resolving policy."""
+
+    PYTHON = "python"
+    JAX = "jax"
+
+
+class AssembledFunctionOutput(StrEnum):
+    """Return shape for participant-wise computed-parameter functions."""
+
+    ARRAY = "array"
+    DICT = "dict"
 
 
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
@@ -37,17 +54,32 @@ def resolve_model(model: str | ModelConfig) -> ModelConfig:
     )
 
 
+def _coerce_assembled_output(
+    output: AssembledFunctionOutput | str,
+) -> AssembledFunctionOutput:
+    """Normalize participant-function output mode to ``AssembledFunctionOutput``."""
+    if isinstance(output, AssembledFunctionOutput):
+        return output
+    try:
+        return AssembledFunctionOutput(output)
+    except ValueError as exc:
+        raise ValueError(
+            f"output must be one of {[member.value for member in AssembledFunctionOutput]}. "
+            f"Got {output!r}."
+        ) from exc
+
+
 @dataclass(frozen=True)
-class CompiledModel:
+class AssembledModel:
     """Validated executable form of an RLSSM ``ModelConfig``.
 
-    The compiled model exposes package-neutral metadata and pure Python/JAX
+    The assembled model exposes package-neutral metadata and pure Python/JAX
     computed-parameter functions that downstream packages can wrap without
     importing HSSM or PyTensor in ``ssm-simulators``.
     """
 
     config: ModelConfig
-    learning_backend: Literal["python", "jax"]
+    learning_backend: ResolvedLearningBackend
     gradient: Literal["available", "unavailable"]
     model_name: str
     decision_process: str
@@ -62,10 +94,11 @@ class CompiledModel:
 
     @classmethod
     def from_config(
-        cls, config: ModelConfig, backend: LearningBackend = "auto"
-    ) -> CompiledModel:
-        """Build a compiled model from a structural model config."""
-        # Also reached via ModelConfig.compile() without resolve_model().
+        cls,
+        config: ModelConfig,
+        backend: LearningBackendRequest | str = LearningBackendRequest.AUTO,
+    ) -> AssembledModel:
+        """Build an assembled model from a structural model config."""
         config.validate()
         resolved_backend = _resolve_backend(config, backend)
         gradient = _resolve_gradient(config, resolved_backend)
@@ -105,14 +138,14 @@ class CompiledModel:
         """Backward-compatible alias for :meth:`get_participant_input_fields`."""
         return self.get_participant_input_fields(response_field=response_field)
 
-    def compile_participant_fn(
+    def assemble_participant_fn(
         self,
         input_fields: Sequence[str] | None = None,
         *,
         response_field: str = DEFAULT_RESPONSE_FIELD,
-        output: CompiledFunctionOutput = "array",
+        output: AssembledFunctionOutput | str = AssembledFunctionOutput.ARRAY,
     ) -> Callable[[Any], Any]:
-        """Compile a participant-wise computed-parameter function.
+        """Assemble a participant-wise computed-parameter function.
 
         By default, ``input_fields`` are derived from the model config. Pass
         explicit values only for non-standard layouts.
@@ -122,11 +155,7 @@ class CompiledModel:
         learning update, maps response labels to zero-based action indices, and
         updates learning state from the response and optional outcome.
         """
-        if output not in _COMPILED_FUNCTION_OUTPUTS:
-            raise ValueError(
-                f"output must be one of {list(_COMPILED_FUNCTION_OUTPUTS)!r}. "
-                f"Got {output!r}."
-            )
+        output_mode = _coerce_assembled_output(output)
 
         if input_fields is None:
             input_fields = self.get_participant_input_fields(
@@ -160,16 +189,16 @@ class CompiledModel:
                 f"input_fields is missing response_field={response_field!r}"
             )
 
-        if self.learning_backend == "jax":
+        if self.learning_backend is ResolvedLearningBackend.JAX:
             return self._make_jax_subject_wise_function(
                 field_to_idx=field_to_idx,
                 response_field=response_field,
-                output=output,
+                output=output_mode,
             )
         return self._make_python_subject_wise_function(
             field_to_idx=field_to_idx,
             response_field=response_field,
-            output=output,
+            output=output_mode,
         )
 
     def _make_python_subject_wise_function(
@@ -177,8 +206,9 @@ class CompiledModel:
         *,
         field_to_idx: dict[str, int],
         response_field: str,
-        output: CompiledFunctionOutput,
+        output: AssembledFunctionOutput,
     ) -> Callable[[Any], Any]:
+        """Build a NumPy loop that replays learning and collects computed params."""
         lp = self.config.learning_process
         free_params = list(lp.free_params)
         context_fields = list(self.context_fields)
@@ -208,7 +238,7 @@ class CompiledModel:
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
-                    backend="python",
+                    backend=ResolvedLearningBackend.PYTHON,
                 )
                 context.update(
                     {
@@ -226,8 +256,9 @@ class CompiledModel:
         *,
         field_to_idx: dict[str, int],
         response_field: str,
-        output: CompiledFunctionOutput,
+        output: AssembledFunctionOutput,
     ) -> Callable[[Any], Any]:
+        """Build a ``jax.lax.scan`` replay of learning and computed params."""
         import jax.numpy as jnp
         from jax.lax import scan
 
@@ -252,7 +283,7 @@ class CompiledModel:
                     row=row,
                     field_to_idx=field_to_idx,
                     response_field=response_field,
-                    backend="jax",
+                    backend=ResolvedLearningBackend.JAX,
                     response_labels=response_labels,
                     response_choices=response_choices,
                 )
@@ -276,13 +307,18 @@ class CompiledModel:
         field_to_idx: dict[str, int],
         response_field: str,
     ) -> None:
+        """Raise when trial responses are absent from ``response_to_choice``."""
         trials = np.asarray(subject_trials)
         if trials.ndim == 1:
             trials = trials.reshape(1, -1)
         responses = trials[:, field_to_idx[response_field]]
         mapping_keys = set(self.response_to_choice.keys())
         unmapped = sorted(
-            {int(value) for value in np.unique(responses) if int(value) not in mapping_keys}
+            {
+                int(value)
+                for value in np.unique(responses)
+                if int(value) not in mapping_keys
+            }
         )
         if unmapped:
             raise ValueError(
@@ -291,6 +327,7 @@ class CompiledModel:
             )
 
     def _map_computed_params(self, computed_raw: dict[str, Any]) -> dict[str, Any]:
+        """Apply ``computed_param_mapping`` and verify all outputs are present."""
         mapping = self.config.computed_param_mapping or {}
         mapped = {
             mapping.get(output_name, output_name): value
@@ -307,12 +344,12 @@ class CompiledModel:
         row,
         field_to_idx: dict[str, int],
         response_field: str,
-        backend: Literal["python", "jax"],
+        backend: ResolvedLearningBackend,
         response_labels=None,
         response_choices=None,
     ):
         """Map a trial response label to a zero-based learning choice index."""
-        if backend == "python":
+        if backend is ResolvedLearningBackend.PYTHON:
             response = int(row[field_to_idx[response_field]])
             return int(self.response_to_choice[response])
 
@@ -325,24 +362,26 @@ class CompiledModel:
         )
 
     def _format_python_output(
-        self, collected: dict[str, list[float]], output: CompiledFunctionOutput
+        self, collected: dict[str, list[float]], output: AssembledFunctionOutput
     ):
+        """Format collected trial-wise values as an array or parameter dict."""
         arrays = {
             name: np.asarray(values, dtype=np.float64)
             for name, values in collected.items()
         }
-        if output == "dict":
+        if output is AssembledFunctionOutput.DICT:
             return arrays
         if len(self.computed_params) == 1:
             return arrays[self.computed_params[0]]
         return np.column_stack([arrays[name] for name in self.computed_params])
 
     def _format_jax_output(
-        self, values: dict[str, Any], output: CompiledFunctionOutput
+        self, values: dict[str, Any], output: AssembledFunctionOutput
     ):
+        """Format scan outputs as an array or parameter dict."""
         import jax.numpy as jnp
 
-        if output == "dict":
+        if output is AssembledFunctionOutput.DICT:
             return values
         if len(self.computed_params) == 1:
             return values[self.computed_params[0]]
@@ -350,27 +389,36 @@ class CompiledModel:
 
 
 def _resolve_backend(
-    config: ModelConfig, backend: LearningBackend
-) -> Literal["python", "jax"]:
-    if backend not in _LEARNING_BACKENDS:
-        raise ValueError(
-            f"backend must be one of {list(_LEARNING_BACKENDS)!r}. Got {backend!r}."
-        )
-    if backend == "auto":
-        return config.resolved_learning_backend
+    config: ModelConfig,
+    backend: LearningBackendRequest | str,
+) -> ResolvedLearningBackend:
+    """Resolve requested backend policy to a concrete python or jax backend."""
+    if isinstance(backend, str):
+        try:
+            backend = LearningBackendRequest(backend)
+        except ValueError as exc:
+            raise ValueError(
+                f"backend must be one of {[member.value for member in LearningBackendRequest]}. "
+                f"Got {backend!r}."
+            ) from exc
+
+    if backend is LearningBackendRequest.AUTO:
+        resolved = config.resolved_learning_backend
+        return ResolvedLearningBackend(resolved)
 
     available = config._available_learning_backends()
-    if backend not in available:
+    backend_value = backend.value
+    if backend_value not in available:
         raise ValueError(
-            f"Learning process does not implement the {backend!r} backend. "
+            f"Learning process does not implement the {backend_value!r} backend. "
             f"Available backends: {available}."
         )
-    if backend == "jax" and not _jax_available():
+    if backend is LearningBackendRequest.JAX and not _jax_available():
         raise ValueError(
             "JAX backend requested, but JAX is not installed. Install "
             "ssm-simulators with the 'jax' extra or use backend='python'."
         )
-    if backend == "python":
+    if backend is LearningBackendRequest.PYTHON:
         _require_methods(
             config.learning_process, ("init_state", "compute_python", "update_python")
         )
@@ -379,26 +427,30 @@ def _resolve_backend(
             config.learning_process,
             ("init_jax_state", "compute_jax", "update_jax"),
         )
-    return backend
+    return ResolvedLearningBackend(backend_value)
 
 
 def _resolve_gradient(
-    config: ModelConfig, backend: Literal["python", "jax"]
+    config: ModelConfig, backend: ResolvedLearningBackend
 ) -> Literal["available", "unavailable"]:
+    """Resolve whether gradient inference is available for this assembly."""
     supports_gradient = bool(
         getattr(config.learning_process, "supports_gradient", False)
     )
-    if config.gradient == "available" and (backend != "jax" or not supports_gradient):
+    if config.gradient == "available" and (
+        backend is not ResolvedLearningBackend.JAX or not supports_gradient
+    ):
         raise ValueError(
             "gradient='available' requires a JAX learning backend with declared "
             "gradient support."
         )
-    if backend == "jax" and supports_gradient:
+    if backend is ResolvedLearningBackend.JAX and supports_gradient:
         return "available"
     return "unavailable"
 
 
 def _require_methods(obj: Any, method_names: tuple[str, ...]) -> None:
+    """Raise when a learning process is missing required backend methods."""
     missing = [name for name in method_names if not callable(getattr(obj, name, None))]
     if missing:
         raise ValueError(f"Learning process is missing required methods: {missing}")

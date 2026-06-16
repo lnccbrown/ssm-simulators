@@ -8,23 +8,23 @@ import pytest
 import ssms.rl as rl
 
 
-def test_preset_compiles_to_hssm_ready_jax_contract():
+def test_preset_assembles_to_hssm_ready_jax_contract():
     pytest.importorskip("jax")
 
     config = rl.resolve_model("2AB_RW_Angle")
-    compiled = config.compile(backend="jax")
+    assembled = config.assemble(backend="jax")
 
-    assert compiled.model_name == "2AB_RW_Angle"
-    assert compiled.decision_process == "angle"
-    assert compiled.list_params == ["rl_alpha", "scaler", "a", "z", "t", "theta"]
-    assert compiled.response == ["rt", "response"]
-    assert compiled.choices == (-1, 1)
-    assert compiled.context_fields == ["feedback"]
-    assert compiled.computed_params == ["v"]
-    assert compiled.response_to_choice == {-1: 0, 1: 1}
-    assert compiled.learning_backend == "jax"
-    assert compiled.gradient == "available"
-    assert compiled.participant_input_fields() == [
+    assert assembled.model_name == "2AB_RW_Angle"
+    assert assembled.decision_process == "angle"
+    assert assembled.list_params == ["rl_alpha", "scaler", "a", "z", "t", "theta"]
+    assert assembled.response == ["rt", "response"]
+    assert assembled.choices == (-1, 1)
+    assert assembled.context_fields == ["feedback"]
+    assert assembled.computed_params == ["v"]
+    assert assembled.response_to_choice == {-1: 0, 1: 1}
+    assert assembled.learning_backend == "jax"
+    assert assembled.gradient == "available"
+    assert assembled.participant_input_fields() == [
         "rl_alpha",
         "scaler",
         "response",
@@ -32,7 +32,7 @@ def test_preset_compiles_to_hssm_ready_jax_contract():
     ]
 
 
-def test_compiled_output_dict_matches_response_to_choice_for_hssm_wrapper():
+def test_assembled_output_dict_matches_response_to_choice_for_hssm_wrapper():
     pytest.importorskip("jax")
     jnp = pytest.importorskip("jax.numpy")
 
@@ -47,8 +47,8 @@ def test_compiled_output_dict_matches_response_to_choice_for_hssm_wrapper():
         response_to_choice={-1: 1, 1: 0},
         learning_backend="jax",
     )
-    compiled = config.compile(backend="jax")
-    compute = compiled.compile_participant_fn(output="dict")
+    assembled = config.assemble(backend="jax")
+    compute = assembled.assemble_participant_fn(output="dict")
     trials = jnp.asarray(
         [
             [0.5, 2.0, -1.0, 1.0],
