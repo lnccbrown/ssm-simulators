@@ -93,10 +93,11 @@ participant-wise theta length.
 
 - `mode="generative"` — the default unconstrained simulation loop. The simulator
   samples responses, task context, and learning updates end to end.
-- `mode="ppc"` — observed-history-conditioned posterior predictive simulation.
-  The simulator generates new RT/response values for each observed trial, copies
-  observed context fields into the output, and updates learning state from
-  the observed response/context history.
+- `mode="ppc"` — observed-history-conditioned resimulation for tutorials, smoke
+  tests, and manual checks. Learning state is conditioned on observed trial history;
+  RT/response are resimulated and observed context fields are copied into output.
+  This is **not** a replacement for PyMC/HSSM posterior predictive checks after
+  inference — use HSSM's inference workflow for canonical PPCs.
 
 PPC mode uses the same data contract as inference validation (see below). The
 observed panel must include `participant_id`, all `config.response` columns
@@ -104,6 +105,11 @@ observed panel must include `participant_id`, all `config.response` columns
 `feedback` for the built-in bandit):
 
 ## Data validation
+
+``ModelConfig.validate_data()`` validates **external** trial panels — empirical
+data or simulated panels you plan to pass to PPC mode or HSSM. Generative
+simulation does not self-validate its output; only ``mode="ppc"`` validates
+user-supplied ``observed_data`` before conditioning on it.
 
 Validate empirical or simulated panels before PPC or HSSM handoff:
 
@@ -196,7 +202,7 @@ parameter functions for downstream packages (for example HSSM):
 compiled = config.compile(backend="jax")
 
 # Derived from config — no manual field lists for standard models
-fields = compiled.participant_input_fields()
+fields = compiled.get_participant_input_fields()
 compute_params = compiled.compile_participant_fn()
 ```
 
@@ -236,7 +242,8 @@ structural fields, plus:
 
 - `learning_backend`, `gradient`, `learning_process_kind`
 - `participant_contract` — derived trial input layout (`trial_params`,
-  `response_field`, `context_fields`, `input_fields`)
+  `response_field`, `context_fields`, `input_fields`). Users never construct
+  this directly; it is exported for bridge metadata and debugging.
 
 Inference-only placeholders in `to_hssm_config_dict()` (`ssm_logp_func`,
 `learning_process`) are not a complete model by themselves. A higher-level
