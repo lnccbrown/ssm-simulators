@@ -234,6 +234,14 @@ class TestValues:
         assert not report.ok
         assert any(issue.code == "invalid_response_labels" for issue in report.issues)
 
+    def test_non_numeric_response_reports_dtype_error(self, config):
+        data = _valid_panel()
+        data.loc[0, "response"] = "left"
+        report = config.validate_data(data)
+
+        assert not report.ok
+        assert any(issue.code == "invalid_response_dtype" for issue in report.issues)
+
     def test_unmapped_response_label(self, config):
         data = _valid_panel()
         config.response_to_choice = {-1: 0}
@@ -287,6 +295,14 @@ class TestValues:
 
         assert not report.ok
         assert any(issue.code == "non_positive_rt" for issue in report.issues)
+
+    def test_non_numeric_rt_reports_dtype_error(self, config):
+        data = _valid_panel()
+        data.loc[0, "rt"] = "fast"
+        report = config.validate_data(data)
+
+        assert not report.ok
+        assert any(issue.code == "invalid_rt_dtype" for issue in report.issues)
 
 
 class TestReportAPI:

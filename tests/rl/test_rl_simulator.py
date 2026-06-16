@@ -172,6 +172,29 @@ class TestPPCMode:
 
         assert data["trial_id"].tolist() == [2, 0]
 
+    def test_ppc_preserves_participant_and_trial_id_types(self):
+        from unittest.mock import patch
+
+        sim = _make_simulator()
+        observed = pd.DataFrame(
+            {
+                "participant_id": ["subj_a", "subj_a"],
+                "trial_id": ["t2", "t0"],
+                "rt": [0.5, 0.6],
+                "response": [-1, 1],
+                "feedback": [1.0, 0.0],
+            }
+        )
+
+        def mock_simulator(**kwargs):
+            return {"rts": np.array([[0.5]]), "choices": np.array([[1]])}
+
+        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+            data = sim.simulate(theta=THETA, mode="ppc", observed_data=observed)
+
+        assert data["participant_id"].tolist() == ["subj_a", "subj_a"]
+        assert data["trial_id"].tolist() == ["t2", "t0"]
+
     def test_ppc_participant_count_must_match_observed_data(self):
         sim = _make_simulator()
         observed = pd.DataFrame(

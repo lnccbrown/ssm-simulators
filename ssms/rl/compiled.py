@@ -184,6 +184,9 @@ class CompiledModel:
         context_fields = list(self.context_fields)
 
         def compute(subject_trials):
+            self._validate_trial_response_labels(
+                subject_trials, field_to_idx, response_field
+            )
             trials = np.asarray(subject_trials)
             state = lp.init_state()
             collected: dict[str, list[float]] = {
@@ -235,6 +238,10 @@ class CompiledModel:
         response_choices = jnp.asarray(list(self.response_to_choice.values()))
 
         def compute(subject_trials):
+            self._validate_trial_response_labels(
+                subject_trials, field_to_idx, response_field
+            )
+
             def step(state, row):
                 trial_params = {name: row[field_to_idx[name]] for name in free_params}
                 context = {name: row[field_to_idx[name]] for name in context_fields}
@@ -262,6 +269,26 @@ class CompiledModel:
             return self._format_jax_output(values, output)
 
         return compute
+
+    def _validate_trial_response_labels(
+        self,
+        subject_trials,
+        field_to_idx: dict[str, int],
+        response_field: str,
+    ) -> None:
+        trials = np.asarray(subject_trials)
+        if trials.ndim == 1:
+            trials = trials.reshape(1, -1)
+        responses = trials[:, field_to_idx[response_field]]
+        mapping_keys = set(self.response_to_choice.keys())
+        unmapped = sorted(
+            {int(value) for value in np.unique(responses) if int(value) not in mapping_keys}
+        )
+        if unmapped:
+            raise ValueError(
+                f"Trial responses {unmapped} are not in response_to_choice. "
+                f"Expected one of: {sorted(mapping_keys)}."
+            )
 
     def _map_computed_params(self, computed_raw: dict[str, Any]) -> dict[str, Any]:
         mapping = self.config.computed_param_mapping or {}

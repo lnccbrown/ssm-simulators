@@ -138,7 +138,7 @@ class Simulator:
         for participant_idx, participant_id in enumerate(participant_ids):
             observed_subject = observed[observed["participant_id"] == participant_id]
             rows = self._simulate_subject_ppc(
-                int(participant_id),
+                participant_id,
                 participant_theta[participant_idx],
                 observed_subject,
                 child_rngs[participant_idx],
@@ -149,7 +149,7 @@ class Simulator:
 
     def _validate_observed_data(
         self, observed_data: pd.DataFrame | None
-    ) -> tuple[pd.DataFrame, list[int]]:
+    ) -> tuple[pd.DataFrame, list[Any]]:
         """Validate observed participant history for PPC mode."""
         if observed_data is None:
             raise ValueError("observed_data is required when mode='ppc'.")
@@ -157,7 +157,7 @@ class Simulator:
         report.raise_for_errors()
 
         observed = observed_data.reset_index(drop=True)
-        participant_ids = [int(value) for value in observed["participant_id"].unique()]
+        participant_ids = observed["participant_id"].unique().tolist()
         return observed, participant_ids
 
     def _validate_theta_keys(self, theta: dict[str, Any]) -> None:
@@ -354,7 +354,7 @@ class Simulator:
 
     def _simulate_subject_ppc(
         self,
-        subject_id: int,
+        subject_id: Any,
         theta: dict[str, float],
         observed_subject: pd.DataFrame,
         rng: np.random.Generator,
@@ -409,7 +409,7 @@ class Simulator:
 
             row = {
                 "participant_id": subject_id,
-                "trial_id": int(getattr(observed_trial, "trial_id")),
+                "trial_id": getattr(observed_trial, "trial_id"),
                 "rt": rt,
                 "response": response,
             }

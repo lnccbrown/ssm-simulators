@@ -296,8 +296,18 @@ def _check_response_values(
     allowed = set(config.choices)
     mapping_keys = set(config.response_to_choice.keys())
     subset = data.loc[valid_mask, RESPONSE_COL]
+    numeric_subset = pd.to_numeric(subset, errors="coerce")
+    if numeric_subset.isna().any():
+        _add_issue(
+            report,
+            level="error",
+            code="invalid_response_dtype",
+            message="response contains non-numeric values on non-omission trials.",
+        )
+        return
 
-    invalid_choices = sorted({int(v) for v in subset.unique() if int(v) not in allowed})
+    unique_vals = {int(v) for v in numeric_subset.unique()}
+    invalid_choices = sorted(v for v in unique_vals if v not in allowed)
     if invalid_choices:
         _add_issue(
             report,
@@ -310,7 +320,7 @@ def _check_response_values(
             hint="Use SSM response labels consistent with the task environment.",
         )
 
-    unmapped = sorted({int(v) for v in subset.unique() if int(v) not in mapping_keys})
+    unmapped = sorted(v for v in unique_vals if v not in mapping_keys)
     if unmapped:
         _add_issue(
             report,
@@ -337,7 +347,17 @@ def _check_rt_values(data: pd.DataFrame, report: DataValidationReport) -> None:
         return
 
     rt_values = data.loc[valid_mask, RT_COL]
-    non_finite = ~np.isfinite(rt_values.to_numpy(dtype=float))
+    numeric_rt = pd.to_numeric(rt_values, errors="coerce")
+    if numeric_rt.isna().any():
+        _add_issue(
+            report,
+            level="error",
+            code="invalid_rt_dtype",
+            message="rt contains non-numeric values on non-omission trials.",
+        )
+        return
+
+    non_finite = ~np.isfinite(numeric_rt.to_numpy())
     if non_finite.any():
         _add_issue(
             report,
@@ -346,7 +366,7 @@ def _check_rt_values(data: pd.DataFrame, report: DataValidationReport) -> None:
             message="rt contains non-finite values on non-omission trials.",
         )
 
-    non_positive = rt_values <= 0
+    non_positive = numeric_rt <= 0
     if non_positive.any():
         _add_issue(
             report,

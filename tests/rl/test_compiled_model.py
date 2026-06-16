@@ -170,6 +170,21 @@ class TestCompiledModel:
 
         np.testing.assert_allclose(np.asarray(values), [0.0, -0.5, -1.0, -1.25])
 
+    def test_jax_subject_wise_function_rejects_unmapped_response_labels(self):
+        pytest.importorskip("jax.numpy")
+
+        compiled = _make_default_config(learning_backend="jax").compile(backend="jax")
+        compute = compiled.compile_participant_fn()
+        trials = np.asarray(
+            [
+                [0.5, 2.0, -1.0, 1.0],
+                [0.5, 2.0, 999.0, 0.0],
+            ]
+        )
+
+        with pytest.raises(ValueError, match="not in response_to_choice"):
+            compute(trials)
+
     def test_compile_jax_rejects_learning_without_jax_methods(self):
         class PythonOnlyLearning:
             computed_params = ["v"]
