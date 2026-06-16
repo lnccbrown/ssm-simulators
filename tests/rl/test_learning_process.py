@@ -51,6 +51,28 @@ class TestRescorlaWagnerDeltaRule:
         np.testing.assert_allclose(next_state["q_values"], [0.75, 0.5])
         assert next_state is not state
 
+    def test_update_python_rejects_out_of_range_choice(self):
+        params = {"rl_alpha": 0.5, "scaler": 2.0}
+        state = self.rw.init_state()
+
+        with pytest.raises(ValueError, match="choice 2 out of range"):
+            self.rw.update_python(
+                state,
+                params,
+                context={"choice": 2, "feedback": 1.0},
+            )
+
+    def test_update_python_rejects_non_int_choice(self):
+        params = {"rl_alpha": 0.5, "scaler": 2.0}
+        state = self.rw.init_state()
+
+        with pytest.raises(TypeError, match="choice must be an int"):
+            self.rw.update_python(
+                state,
+                params,
+                context={"choice": 1.0, "feedback": 1.0},
+            )
+
     def test_declares_required_context_fields(self):
         assert self.rw.required_context_fields == ["choice", "feedback"]
 

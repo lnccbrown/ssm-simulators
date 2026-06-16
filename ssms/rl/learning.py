@@ -10,6 +10,14 @@ import numpy as np
 LearningState = dict[str, Any]
 
 
+def _validated_choice_index(choice: int, n_choices: int) -> int:
+    if not isinstance(choice, int) or isinstance(choice, bool):
+        raise TypeError(f"choice must be an int, got {type(choice).__name__}")
+    if choice < 0 or choice >= n_choices:
+        raise ValueError(f"choice {choice} out of range for n_choices={n_choices}")
+    return choice
+
+
 def _import_jax_numpy():
     try:
         import jax.numpy as jnp
@@ -226,7 +234,7 @@ class RescorlaWagnerDeltaRule:
         params: dict[str, float],
         context: dict[str, Any],
     ) -> LearningState:
-        choice = int(context["choice"])
+        choice = _validated_choice_index(context["choice"], self._n_actions)
         feedback = float(context[self._feedback_field])
         alpha = params["rl_alpha"]
         q_values = np.asarray(state["q_values"], dtype=np.float64).copy()
@@ -316,7 +324,7 @@ class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
         context: dict[str, Any],
     ) -> LearningState:
         """Update Q[action] with sign-dependent learning rates."""
-        choice = int(context["choice"])
+        choice = _validated_choice_index(context["choice"], self._n_actions)
         feedback = float(context[self._feedback_field])
         q_values = np.asarray(state["q_values"], dtype=np.float64).copy()
         delta = feedback - q_values[choice]
