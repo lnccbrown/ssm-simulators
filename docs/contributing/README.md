@@ -64,6 +64,10 @@ We are committed to providing a welcoming and inclusive environment for all cont
    ```bash
    uv pip install -e ".[jax]"
    ```
+   Or sync only the optional JAX extra for RLSSM backend work:
+   ```bash
+   uv sync --extra jax
+   ```
    Or, if you want to sync *all* dependency groups for development:
    ```bash
    uv sync --all-groups

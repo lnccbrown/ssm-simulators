@@ -19,7 +19,6 @@ from .config import (
 
 CompiledFunctionOutput = Literal["array", "dict"]
 LearningBackend = Literal["auto", "python", "jax"]
-_USE_CONFIG = object()
 
 
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
@@ -64,6 +63,7 @@ class CompiledModel:
         cls, config: ModelConfig, backend: LearningBackend = "auto"
     ) -> CompiledModel:
         """Build a compiled model from a structural model config."""
+        # Also reached via ModelConfig.compile() without resolve_model().
         config.validate()
         resolved_backend = _resolve_backend(config, backend)
         gradient = _resolve_gradient(config, resolved_backend)
@@ -250,9 +250,10 @@ class CompiledModel:
 
     def _map_computed_params(self, computed_raw: dict[str, Any]) -> dict[str, Any]:
         mapping = self.config.computed_param_mapping or {}
-        mapped = {}
-        for output_name, value in computed_raw.items():
-            mapped[mapping.get(output_name, output_name)] = value
+        mapped = {
+            mapping.get(output_name, output_name): value
+            for output_name, value in computed_raw.items()
+        }
         missing = [name for name in self.computed_params if name not in mapped]
         if missing:
             raise ValueError(f"Learning process did not compute params: {missing}")
