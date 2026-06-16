@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+import ssms.rl as rl
 from ssms.rl.env import Bandit, TaskConfig, TaskEnvironment, registered_tasks
 
 
@@ -257,3 +258,25 @@ class TestTaskConfig:
             TaskConfig(
                 task="bandit", reward="bernoulli", means=[1.0, 0.0]
             ).build_environment()
+
+
+class TestRegisterTask:
+    def test_duplicate_registration_raises(self):
+        from ssms.rl.env import register_task, registered_tasks
+
+        def _builder(_reward, _options):
+            return rl.env.Bandit.bernoulli()
+
+        register_task("_test_duplicate_task", _builder)
+        with pytest.raises(ValueError, match="already registered"):
+            register_task("_test_duplicate_task", _builder)
+
+        register_task("_test_duplicate_task", _builder, overwrite=True)
+        assert "_test_duplicate_task" in registered_tasks()
+
+
+class TestDiscreteChoiceEnvironment:
+    def test_bandit_exposes_n_choices_alias(self):
+        bandit = rl.env.Bandit.bernoulli(probabilities=[0.7, 0.3])
+        assert bandit.n_choices == 2
+        assert bandit.n_arms == bandit.n_choices

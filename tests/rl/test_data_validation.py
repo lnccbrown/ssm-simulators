@@ -30,8 +30,12 @@ def _make_config(**overrides):
 
 
 class _NoFeedbackEnvironment:
-    n_arms = 2
+    n_choices = 2
     context_fields = []
+
+    @property
+    def n_arms(self):
+        return self.n_choices
 
     @property
     def response_labels(self):

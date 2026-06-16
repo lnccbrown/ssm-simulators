@@ -674,8 +674,12 @@ class TestMilestone4Generalization:
         from unittest.mock import patch
 
         class AlternatingConditionBandit:
-            n_arms = 2
+            n_choices = 2
             context_fields = ["condition", "feedback"]
+
+            @property
+            def n_arms(self):
+                return self.n_choices
 
             @property
             def response_labels(self):

@@ -12,19 +12,11 @@ import numpy as np
 class TaskEnvironment(Protocol):
     """Protocol for RLSSM task environments.
 
-    A task environment generates rewards and optional per-trial context data.
-    It is stateful and must be reset before each participant.
+    A task environment provides per-trial context and optional post-decision
+    signals. It is stateful and must be reset before each participant.
+
+    Discrete response/choice mapping requires :class:`DiscreteChoiceEnvironment`.
     """
-
-    @property
-    def n_arms(self) -> int:
-        """Number of available zero-based learning choices."""
-        ...
-
-    @property
-    def response_labels(self) -> list[int]:
-        """SSM response labels corresponding to choices in order."""
-        ...
 
     @property
     def context_fields(self) -> list[str]:
@@ -41,6 +33,21 @@ class TaskEnvironment(Protocol):
 
     def sample_context(self, context: dict, trial_idx: int) -> dict[str, float]:
         """Return post-decision context columns for learning/output."""
+        ...
+
+
+@runtime_checkable
+class DiscreteChoiceEnvironment(TaskEnvironment, Protocol):
+    """Task environment with discrete SSM response labels and learning choices."""
+
+    @property
+    def n_choices(self) -> int:
+        """Number of available zero-based learning choices."""
+        ...
+
+    @property
+    def response_labels(self) -> list[int]:
+        """SSM response labels corresponding to choices in order."""
         ...
 
 
@@ -157,8 +164,13 @@ class Bandit:
         return labels
 
     @property
-    def n_arms(self) -> int:
+    def n_choices(self) -> int:
         return self._rewards.n_arms
+
+    @property
+    def n_arms(self) -> int:
+        """Alias for :attr:`n_choices` (bandit terminology)."""
+        return self.n_choices
 
     @property
     def response_labels(self) -> list[int]:
@@ -178,9 +190,9 @@ class Bandit:
         if self._rng is None:
             raise RuntimeError("Call reset() before sample_context()")
         choice = int(context["choice"])
-        if choice < 0 or choice >= self.n_arms:
+        if choice < 0 or choice >= self.n_choices:
             raise ValueError(
-                f"Choice {choice} is out of range for bandit with {self.n_arms} arms"
+                f"Choice {choice} is out of range for bandit with {self.n_choices} arms"
             )
         return {"feedback": self._rewards.sample(choice, self._rng)}
 
@@ -197,8 +209,14 @@ TaskEnvironmentBuilder = Callable[[str | None, dict], TaskEnvironment]
 _TASK_REGISTRY: dict[str, TaskEnvironmentBuilder] = {}
 
 
-def register_task(task: str, builder: TaskEnvironmentBuilder) -> None:
+def register_task(
+    task: str, builder: TaskEnvironmentBuilder, *, overwrite: bool = False
+) -> None:
     """Register a task environment builder for ``TaskConfig``."""
+    if not overwrite and task in _TASK_REGISTRY:
+        raise ValueError(
+            f"Task {task!r} is already registered. Pass overwrite=True to replace it."
+        )
     _TASK_REGISTRY[task] = builder
 
 

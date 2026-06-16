@@ -418,6 +418,22 @@ class TestModelConfigValidation:
         with pytest.raises(ValueError, match="n_actions must match"):
             config.validate()
 
+    def test_non_discrete_task_environment_rejected_at_construction(self):
+        class ContextOnlyEnvironment:
+            context_fields = ["cue"]
+
+            def reset(self, rng=None):
+                pass
+
+            def get_trial_context(self, trial_idx):
+                return {"cue": float(trial_idx)}
+
+            def sample_context(self, context, trial_idx):
+                return {}
+
+        with pytest.raises(ValueError, match="DiscreteChoiceEnvironment"):
+            _make_default_config(task_environment=ContextOnlyEnvironment())
+
     def test_response_schema_must_include_response_column(self):
         config = _make_default_config(response=["rt"])
 
