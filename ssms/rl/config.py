@@ -301,7 +301,17 @@ class ModelConfig:
         if self.learning_backend == "auto":
             if "jax" in available and _jax_available():
                 return "jax"
-            return "python"
+            if "python" in available:
+                return "python"
+            if "jax" in available and not _jax_available():
+                raise ValueError(
+                    "JAX-only learning process detected, but JAX is not installed. "
+                    "Install ssm-simulators with the 'jax' extra or use a "
+                    "python-capable learning process."
+                )
+            raise ValueError(
+                f"Could not resolve learning backend from available={available}."
+            )
 
         if self.learning_backend not in available:
             raise ValueError(

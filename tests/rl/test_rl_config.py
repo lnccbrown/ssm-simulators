@@ -326,6 +326,29 @@ class TestLearningBackendPolicy:
         with pytest.raises(ValueError, match="gradient='available'"):
             _make_default_config(learning_backend="python", gradient="available")
 
+    def test_auto_backend_raises_for_jax_only_learning_without_jax(self, monkeypatch):
+        class JaxOnlyLearning:
+            computed_params = ["v"]
+            free_params = ["alpha"]
+            param_bounds = {"alpha": (0.0, 1.0)}
+            default_params = {"alpha": 0.2}
+            available_backends = ("jax",)
+            supports_gradient = True
+
+            def init_state(self):
+                return {"value": 0.0}
+
+            def compute_python(self, state, trial_params):
+                return {"v": 0.0}
+
+            def update_python(self, state, action, reward, trial_params):
+                return state
+
+        monkeypatch.setattr(rl_config, "_jax_available", lambda: False)
+
+        with pytest.raises(ValueError, match="JAX-only learning process detected"):
+            _make_default_config(learning_process=JaxOnlyLearning())
+
 
 class TestListParamsValidation:
     def test_list_params_without_default_value_raises(self):
