@@ -86,7 +86,7 @@ class Simulator:
                 random_state=random_state,
             )
 
-        participant_theta, resolved_n_participants = self._normalize_theta(
+        participant_theta, resolved_n_participants = self._expand_participant_theta(
             theta, n_participants
         )
 
@@ -128,7 +128,9 @@ class Simulator:
                 f"participant count {observed_n_participants}."
             )
 
-        participant_theta, _ = self._normalize_theta(theta, observed_n_participants)
+        participant_theta, _ = self._expand_participant_theta(
+            theta, observed_n_participants
+        )
         rng = np.random.default_rng(random_state)
         child_rngs = rng.spawn(observed_n_participants)
 
@@ -174,16 +176,16 @@ class Simulator:
                 f"Expected only: {required_params}"
             )
 
-    def _normalize_theta(
+    def _expand_participant_theta(
         self,
         theta: dict[str, Any],
         n_participants: int | None,
     ) -> tuple[list[dict[str, float]], int]:
-        """Normalize scalar and participant-wise theta values.
+        """Expand scalar or participant-wise theta into one dict per participant.
 
         Downstream learning backends and SSM simulators receive scalar parameter
         values for a single participant. This method accepts the public API's
-        scalar-or-vector theta form and expands it into one scalar dict per
+        scalar-or-vector theta form and tiles it into one scalar dict per
         participant.
         """
         self._validate_theta_keys(theta)
