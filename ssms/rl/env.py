@@ -230,7 +230,8 @@ class TaskConfig:
 
 
 def _build_bandit(reward: str | None, options: dict) -> TaskEnvironment:
-    reward = reward or "bernoulli"
+    if reward is None:
+        reward = "bernoulli"
     if reward == "bernoulli":
         allowed = {"probabilities", "response_labels"}
         _validate_options("bandit", reward, options, allowed)

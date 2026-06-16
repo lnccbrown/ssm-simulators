@@ -357,6 +357,11 @@ class TestListParamsValidation:
         with pytest.raises(ValueError, match="list_params must match"):
             config.validate()
 
+    def test_empty_list_params_raises(self):
+        config = _make_default_config(list_params=[])
+        with pytest.raises(ValueError, match="list_params cannot be empty"):
+            config.validate()
+
 
 class TestModelConfigValidation:
     def test_computed_and_fixed_params_must_not_overlap(self):

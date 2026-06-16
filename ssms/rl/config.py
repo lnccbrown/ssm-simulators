@@ -478,8 +478,11 @@ class ModelConfig:
                 f"are not params of the '{self.decision_process}' SSM model."
             )
 
+        if self.list_params is not None and len(self.list_params) == 0:
+            raise ValueError("list_params cannot be empty.")
+
         # list_params / params_default consistency
-        if self.list_params and self.params_default:
+        if self.list_params is not None and self.params_default is not None:
             if len(self.list_params) != len(self.params_default):
                 raise ValueError(
                     f"list_params length ({len(self.list_params)}) != "
@@ -487,13 +490,13 @@ class ModelConfig:
                 )
 
         # All list_params have bounds
-        if self.list_params and self.bounds:
+        if self.list_params is not None and self.bounds is not None:
             missing_bounds = [p for p in self.list_params if p not in self.bounds]
             if missing_bounds:
                 raise ValueError(f"Missing bounds for params: {missing_bounds}")
 
         required_params = self.required_params
-        if self.list_params:
+        if self.list_params is not None:
             missing_required = sorted(set(required_params) - set(self.list_params))
             extra_params = sorted(set(self.list_params) - set(required_params))
             has_duplicates = len(set(self.list_params)) != len(self.list_params)

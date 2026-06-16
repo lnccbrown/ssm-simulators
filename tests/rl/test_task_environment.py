@@ -248,6 +248,10 @@ class TestTaskConfig:
         with pytest.raises(ValueError, match="Unknown bandit reward"):
             TaskConfig(task="bandit", reward="exponential").build_environment()
 
+    def test_empty_bandit_reward_raises(self):
+        with pytest.raises(ValueError, match="Unknown bandit reward"):
+            TaskConfig(task="bandit", reward="").build_environment()
+
     def test_unknown_option(self):
         with pytest.raises(TypeError, match="Unsupported options"):
             TaskConfig(
