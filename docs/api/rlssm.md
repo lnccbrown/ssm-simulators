@@ -37,7 +37,7 @@ for presets, building a model, simulating participants, validation, and plots.
 |--------|------|
 | `ModelConfig` | Structural model specification (no concrete `theta` values) |
 | `Simulator` | Trial-wise generative simulation loop |
-| `CompiledModel` | Validated executable form of a config (inference-oriented) |
+| `AssembledModel` | Validated executable form of a config (inference-oriented) |
 | `resolve_model` | Resolve preset name or validate a `ModelConfig` |
 | `env` | Task environments (`Bandit`, `TaskConfig`, …) |
 | `learning` | Learning processes (`RescorlaWagnerDeltaRule`, …) |
@@ -61,6 +61,27 @@ Important fields:
   `"condition"`, `"block"`, or `"stimulus_id"`
 - `include_choice` — optionally include the derived zero-based `choice` column in
   simulator output
+
+### Derived decision-process config (`_ssm_config`)
+
+`ModelConfig` builds an internal decision-process configuration in
+`__post_init__` via `ModelConfigBuilder.from_model(decision_process)`. Users
+never construct or pass this layer directly.
+
+It supplies SSM parameter names, default bounds, default values, and choice
+labels used to validate `choices`, derive `list_params` / `bounds`, and resolve
+which SSM parameters are computed by the learning process versus fixed in
+simulator `theta`. The assembled model and HSSM bridge consume the *derived*
+public fields (`list_params`, `computed_params`, `response_to_choice`, …), not
+`_ssm_config` itself.
+
+## Task environment protocols
+
+`TaskEnvironment` is the base protocol for per-trial context and post-decision
+signals. Models that map SSM response labels to learning choices require a
+`DiscreteChoiceEnvironment` (adds `n_choices` and `response_labels`). Built-in
+bandits implement `DiscreteChoiceEnvironment`; `Bandit.n_arms` is an alias for
+`n_choices`.
 
 ## Participant-wise parameters
 
@@ -193,20 +214,20 @@ config = rl.ModelConfig(
 )
 ```
 
-## Compiled model (inference integration)
+## Assembled model (inference integration)
 
-Compile a config when you need validated metadata or participant-wise computed
+Assemble a config when you need validated metadata or participant-wise computed
 parameter functions for downstream packages (for example HSSM):
 
 ```python
-compiled = config.compile(backend="jax")
+assembled = config.assemble(backend="jax")
 
 # Derived from config — no manual field lists for standard models
-fields = compiled.get_participant_input_fields()
-compute_params = compiled.compile_participant_fn()
+fields = assembled.get_participant_input_fields()
+compute_params = assembled.assemble_participant_fn()
 ```
 
-`compile_participant_fn()` accepts optional overrides (`input_fields`,
+`assemble_participant_fn()` accepts optional overrides (`input_fields`,
 `response_field`) for non-standard layouts. Runtime context fields such as `choice`
 are derived internally from `response_to_choice`; observable context fields such as
 `feedback` come from `config.context_fields`.
@@ -215,7 +236,7 @@ Advanced resolution:
 
 ```python
 config = rl.resolve_model("2AB_RW_Angle")  # str or ModelConfig
-compiled = config.compile(backend="auto")
+assembled = config.assemble(backend="auto")
 ```
 
 ## HSSM bridge
@@ -231,10 +252,13 @@ hssm_config = hssm.rl.RLSSMConfig.from_ssms_model(ssms_config)
 model = hssm.RLSSM(data=data, model_config=hssm_config)
 ```
 
-`RLSSMConfig.from_ssms_model(...)` resolves the `ssms.rl` model, compiles it
+`RLSSMConfig.from_ssms_model(...)` resolves the `ssms.rl` model, assembles it
 with the JAX backend, checks gradient support, and wraps
-`CompiledModel.compile_participant_fn(output="dict")` for HSSM's annotated
+`AssembledModel.assemble_participant_fn(output="dict")` for HSSM's annotated
 computed-parameter contract.
+
+**Note:** HSSM's bridge factory still calls the pre-refactor `compile()` API
+until the separate `hssm-rlssm-api` task updates it to `assemble()`.
 
 `ModelConfig.to_hssm_config_dict()` remains useful for structural inspection
 and compatibility with lower-level HSSM config workflows. It exports shared
@@ -254,10 +278,10 @@ planned separately in HSSM.
 
 ::: ssms.rl.config.ModelConfig
 
-::: ssms.rl.compiled.CompiledModel
+::: ssms.rl.assembled.AssembledModel
 
 ::: ssms.rl.simulator.Simulator
 
-::: ssms.rl.compiled.resolve_model
+::: ssms.rl.assembled.resolve_model
 
 See also the full package reference on the [ssms](ssms.md) API page.

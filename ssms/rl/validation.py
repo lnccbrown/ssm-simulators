@@ -81,6 +81,7 @@ class DataValidationReport:
 
 
 def _required_columns(config: ModelConfig) -> list[str]:
+    """Return participant, response, and configured context columns."""
     columns = [PARTICIPANT_COL, *config.response]
     context_fields = config.context_fields or []
     for name in context_fields:
@@ -97,12 +98,14 @@ def _add_issue(
     message: str,
     hint: str | None = None,
 ) -> None:
+    """Append a validation issue to ``report``."""
     report.issues.append(
         DataValidationIssue(level=level, code=code, message=message, hint=hint)
     )
 
 
 def _check_input_type(data: object, report: DataValidationReport) -> bool:
+    """Validate that ``data`` is a non-empty DataFrame."""
     if not isinstance(data, pd.DataFrame):
         _add_issue(
             report,
@@ -125,6 +128,7 @@ def _check_input_type(data: object, report: DataValidationReport) -> bool:
 def _check_required_columns(
     config: ModelConfig, data: pd.DataFrame, report: DataValidationReport
 ) -> None:
+    """Report missing required columns, with hints for common outcome names."""
     required = _required_columns(config)
     missing = [col for col in required if col not in data.columns]
     if not missing:
@@ -151,6 +155,7 @@ def _check_required_columns(
 def _check_extra_columns(
     config: ModelConfig, data: pd.DataFrame, report: DataValidationReport
 ) -> None:
+    """Warn when the panel includes columns not required by the model."""
     required = set(_required_columns(config))
     extra = sorted(set(data.columns) - required)
     if extra:
@@ -163,6 +168,7 @@ def _check_extra_columns(
 
 
 def _check_null_participants(data: pd.DataFrame, report: DataValidationReport) -> None:
+    """Report null values in the participant identifier column."""
     if PARTICIPANT_COL not in data.columns:
         return
     n_null = int(data[PARTICIPANT_COL].isna().sum())
@@ -179,6 +185,7 @@ def _check_null_participants(data: pd.DataFrame, report: DataValidationReport) -
 
 
 def _check_row_contiguity(data: pd.DataFrame, report: DataValidationReport) -> None:
+    """Require participant blocks to be contiguous in row order."""
     if PARTICIPANT_COL not in data.columns:
         return
 
@@ -204,6 +211,7 @@ def _check_row_contiguity(data: pd.DataFrame, report: DataValidationReport) -> N
 def _check_balanced_panel(
     data: pd.DataFrame, report: DataValidationReport
 ) -> tuple[int | None, int | None]:
+    """Validate balanced panels and return participant/trial counts when valid."""
     if PARTICIPANT_COL not in data.columns:
         return None, None
 
@@ -230,6 +238,7 @@ def _check_balanced_panel(
 def _check_nan_values(
     data: pd.DataFrame, required_columns: list[str], report: DataValidationReport
 ) -> None:
+    """Report NaN values in required non-omission columns."""
     present = [col for col in required_columns if col in data.columns]
     for col in present:
         n_nan = int(data[col].isna().sum())
