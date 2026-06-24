@@ -40,18 +40,23 @@ class AssembledFunctionOutput(StrEnum):
     DICT = "dict"
 
 
-def _is_jax_tracer(value: Any) -> bool:
-    """Return True when ``value`` is a JAX tracer (a symbolic trace input).
+def _jax_tracer_errors() -> tuple[type[BaseException], ...]:
+    """Exceptions JAX raises when a tracer is forced to a concrete NumPy array.
 
     Used to skip eager, concrete-only validation when an assembled JAX function
     is being traced for gradients/jit (e.g. during HSSM inference), where the
-    inputs are symbolic and cannot be converted to NumPy.
+    inputs are symbolic and cannot be converted to NumPy. Relies on the public,
+    stable ``jax.errors`` module rather than the internal ``jax.core.Tracer``
+    type, which JAX does not guarantee as a public API.
     """
     if not _jax_available():
-        return False
-    import jax
+        return ()
+    from jax import errors as jax_errors
 
-    return isinstance(value, jax.core.Tracer)
+    return (
+        jax_errors.TracerArrayConversionError,
+        jax_errors.ConcretizationTypeError,
+    )
 
 
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
@@ -325,13 +330,15 @@ class AssembledModel:
 
         Response labels can only be read from a concrete array. During a JAX
         trace (gradient/jit for inference) ``subject_trials`` is a symbolic
-        tracer, so this eager check is skipped; the panel is validated at the
-        data boundary (``ModelConfig.validate_data`` and the concrete Python /
-        eager paths) instead.
+        tracer that cannot be converted to NumPy, so this eager check is
+        skipped; the panel is validated at the data boundary
+        (``ModelConfig.validate_data`` and the concrete Python / eager paths)
+        instead.
         """
-        if _is_jax_tracer(subject_trials):
+        try:
+            trials = np.asarray(subject_trials)
+        except _jax_tracer_errors():
             return
-        trials = np.asarray(subject_trials)
         if trials.ndim == 1:
             trials = trials.reshape(1, -1)
         responses = trials[:, field_to_idx[response_field]]
