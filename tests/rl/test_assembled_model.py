@@ -212,6 +212,13 @@ class TestAssembledModel:
 
         assert np.all(np.isfinite(np.asarray(grad)))
 
+    def test_is_jax_tracer_false_when_jax_unavailable(self, monkeypatch):
+        """``_is_jax_tracer`` returns False when JAX is not installed."""
+        from ssms.rl import assembled
+
+        monkeypatch.setattr(assembled, "_jax_available", lambda: False)
+        assert assembled._is_jax_tracer(object()) is False
+
     def test_jax_subject_wise_function_rejects_unmapped_response_labels(self):
         pytest.importorskip("jax.numpy")
 
