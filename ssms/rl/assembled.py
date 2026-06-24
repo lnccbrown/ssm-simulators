@@ -40,6 +40,20 @@ class AssembledFunctionOutput(StrEnum):
     DICT = "dict"
 
 
+def _is_jax_tracer(value: Any) -> bool:
+    """Return True when ``value`` is a JAX tracer (a symbolic trace input).
+
+    Used to skip eager, concrete-only validation when an assembled JAX function
+    is being traced for gradients/jit (e.g. during HSSM inference), where the
+    inputs are symbolic and cannot be converted to NumPy.
+    """
+    if not _jax_available():
+        return False
+    import jax
+
+    return isinstance(value, jax.core.Tracer)
+
+
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
     """Resolve a preset name or validate an existing RLSSM model config."""
     if isinstance(model, str):
@@ -307,7 +321,16 @@ class AssembledModel:
         field_to_idx: dict[str, int],
         response_field: str,
     ) -> None:
-        """Raise when trial responses are absent from ``response_to_choice``."""
+        """Raise when trial responses are absent from ``response_to_choice``.
+
+        Response labels can only be read from a concrete array. During a JAX
+        trace (gradient/jit for inference) ``subject_trials`` is a symbolic
+        tracer, so this eager check is skipped; the panel is validated at the
+        data boundary (``ModelConfig.validate_data`` and the concrete Python /
+        eager paths) instead.
+        """
+        if _is_jax_tracer(subject_trials):
+            return
         trials = np.asarray(subject_trials)
         if trials.ndim == 1:
             trials = trials.reshape(1, -1)
