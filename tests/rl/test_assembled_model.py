@@ -178,6 +178,47 @@ class TestAssembledModel:
 
         np.testing.assert_allclose(np.asarray(values), [0.0, -0.5, -1.0, -1.25])
 
+    def test_jax_subject_wise_function_is_differentiable(self):
+        """grad through the assembled JAX participant fn must trace cleanly.
+
+        Regression: the eager response-label validation did
+        ``np.asarray(subject_trials)``, which raised TracerArrayConversionError
+        under a JAX trace. HSSM inference differentiates through this function,
+        so it must be traceable while still validating concrete inputs (covered
+        by ``test_jax_subject_wise_function_rejects_unmapped_response_labels``).
+        """
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        assembled = _make_default_config(learning_backend="jax").assemble(backend="jax")
+        compute = assembled.assemble_participant_fn(output="dict")
+        responses = jnp.asarray([-1.0, 1.0, -1.0, 1.0])
+        feedback = jnp.asarray([1.0, 0.0, 1.0, 1.0])
+
+        def loss(params):
+            rl_alpha, scaler = params
+            trials = jnp.stack(
+                [
+                    jnp.full(responses.shape, rl_alpha),
+                    jnp.full(responses.shape, scaler),
+                    responses,
+                    feedback,
+                ],
+                axis=1,
+            )
+            return jnp.sum(compute(trials)["v"])
+
+        grad = jax.grad(loss)(jnp.asarray([0.3, 2.0]))
+
+        assert np.all(np.isfinite(np.asarray(grad)))
+
+    def test_jax_tracer_errors_empty_when_jax_unavailable(self, monkeypatch):
+        """``_jax_tracer_errors`` is an empty tuple when JAX is not installed."""
+        from ssms.rl import assembled
+
+        monkeypatch.setattr(assembled, "_jax_available", lambda: False)
+        assert assembled._jax_tracer_errors() == ()
+
     def test_jax_subject_wise_function_rejects_unmapped_response_labels(self):
         pytest.importorskip("jax.numpy")
 

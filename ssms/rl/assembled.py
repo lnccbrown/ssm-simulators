@@ -40,6 +40,25 @@ class AssembledFunctionOutput(StrEnum):
     DICT = "dict"
 
 
+def _jax_tracer_errors() -> tuple[type[BaseException], ...]:
+    """Exceptions JAX raises when a tracer is forced to a concrete NumPy array.
+
+    Used to skip eager, concrete-only validation when an assembled JAX function
+    is being traced for gradients/jit (e.g. during HSSM inference), where the
+    inputs are symbolic and cannot be converted to NumPy. Relies on the public,
+    stable ``jax.errors`` module rather than the internal ``jax.core.Tracer``
+    type, which JAX does not guarantee as a public API.
+    """
+    if not _jax_available():
+        return ()
+    from jax import errors as jax_errors
+
+    return (
+        jax_errors.TracerArrayConversionError,
+        jax_errors.ConcretizationTypeError,
+    )
+
+
 def resolve_model(model: str | ModelConfig) -> ModelConfig:
     """Resolve a preset name or validate an existing RLSSM model config."""
     if isinstance(model, str):
@@ -307,8 +326,19 @@ class AssembledModel:
         field_to_idx: dict[str, int],
         response_field: str,
     ) -> None:
-        """Raise when trial responses are absent from ``response_to_choice``."""
-        trials = np.asarray(subject_trials)
+        """Raise when trial responses are absent from ``response_to_choice``.
+
+        Response labels can only be read from a concrete array. During a JAX
+        trace (gradient/jit for inference) ``subject_trials`` is a symbolic
+        tracer that cannot be converted to NumPy, so this eager check is
+        skipped; the panel is validated at the data boundary
+        (``ModelConfig.validate_data`` and the concrete Python / eager paths)
+        instead.
+        """
+        try:
+            trials = np.asarray(subject_trials)
+        except _jax_tracer_errors():
+            return
         if trials.ndim == 1:
             trials = trials.reshape(1, -1)
         responses = trials[:, field_to_idx[response_field]]
