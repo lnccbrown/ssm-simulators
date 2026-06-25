@@ -29,7 +29,7 @@ benchmarks/                    # Performance benchmarks
 
 - **Build system:** setuptools + Cython (C extensions compiled from `src/cssm/*.pyx`)
 - **Package manager:** uv (with `uv.lock`)
-- **Python:** >=3.10, <3.14 (classifiers target 3.11, 3.12, 3.13)
+- **Python:** >=3.10, <3.15 (classifiers target 3.11, 3.12, 3.13, 3.14)
 - **System dependencies (required for C extensions):**
   - C compiler (Xcode CLI tools on macOS, build-essential on Linux)
   - GSL (GNU Scientific Library) — `brew install gsl` / `apt install libgsl-dev`
