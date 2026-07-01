@@ -52,9 +52,15 @@ def _calculate_n_replicas(is_all_args_scalar, size, new_data_size):
 
 
 def _get_seed(rng):
-    """Get a seed for the random number generator."""
-    iinfo32 = np.iinfo(np.uint32)
-    return rng.integers(0, iinfo32.max, dtype=np.uint32)
+    """Draw a seed for the C-level RNG.
+
+    The seed must fit a signed 32-bit C ``long`` — i.e. ``[0, 2**31)`` — the range
+    accepted by ``simulator._validate_random_state_for_c_rng`` on all platforms
+    (Windows ``long`` is 32-bit). Drawing from the full ``uint32`` range breaches
+    that ceiling ~50% of the time, which makes the HSSM posterior-predictive path
+    (``rng_fn`` -> ``_get_seed`` -> ``simulator``) raise ``ValueError``.
+    """
+    return int(rng.integers(0, 2**31))
 
 
 def _prepare_theta_and_shape(arg_arrays, size):
