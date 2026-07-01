@@ -134,7 +134,7 @@ class AssembledModel:
             choices=tuple(config.choices),
             context_fields=list(config.context_fields) if config.context_fields else [],
             computed_params=list(config._computed_ssm_params),
-            response_to_choice=dict(config.response_to_choice),
+            response_to_choice=dict(config.resolved_response_to_choice),
         )
 
     def get_participant_input_fields(
