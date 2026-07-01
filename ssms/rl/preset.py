@@ -99,7 +99,7 @@ def info(name: str) -> PresetInfo:
             "default_parameters": defaults,
             "bounds": dict(config.bounds),
             "response_labels": tuple(config.choices),
-            "response_to_choice": dict(config.response_to_choice),
+            "response_to_choice": dict(config.resolved_response_to_choice),
             "context_fields": (
                 builtins.list(config.context_fields) if config.context_fields else []
             ),

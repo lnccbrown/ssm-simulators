@@ -247,6 +247,20 @@ class ModelConfig:
             )
         return mapping
 
+    @property
+    def resolved_response_to_choice(self) -> dict[int, int]:
+        """Concrete response-label -> choice-index map.
+
+        ``__post_init__`` normalizes ``response_to_choice`` (including the
+        ``"auto"`` default) into a plain ``dict``; this accessor exposes that
+        post-init invariant with a narrowed type.
+        """
+        mapping = self.response_to_choice
+        assert not isinstance(mapping, str), (
+            "response_to_choice was not normalized by __post_init__"
+        )
+        return mapping
+
     def _normalize_context_fields(self) -> list[str]:
         """Derive or validate observable context fields from model components."""
         runtime_fields = {"choice", DEFAULT_RESPONSE_FIELD, "rt"}
@@ -593,7 +607,7 @@ class ModelConfig:
             "params_default": list(self.params_default),
             "choices": tuple(self.choices),
             "response": list(self.response),
-            "response_to_choice": dict(self.response_to_choice),
+            "response_to_choice": dict(self.resolved_response_to_choice),
             "learning_backend": self.resolved_learning_backend,
             "gradient": self.resolved_gradient,
             "context_fields": list(self.context_fields) if self.context_fields else [],

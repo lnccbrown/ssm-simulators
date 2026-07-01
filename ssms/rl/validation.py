@@ -303,7 +303,7 @@ def _check_response_values(
         return
 
     allowed = set(config.choices)
-    mapping_keys = set(config.response_to_choice.keys())
+    mapping_keys = set(config.resolved_response_to_choice.keys())
     subset = data.loc[valid_mask, RESPONSE_COL]
     numeric_subset = pd.to_numeric(subset, errors="coerce")
     if numeric_subset.isna().any():
