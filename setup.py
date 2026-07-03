@@ -30,13 +30,13 @@ import numpy
 CYTHON_MODULES = [
     "_utils",
     "lba_models",
-    "addm_models"
 ]
 
 # Modules that benefit from OpenMP (will still build without it, but with OpenMP flags)
 # These modules use prange/parallel for multi-threading
 OPENMP_MODULES = [
     "_openmp_status",  # Runtime OpenMP/GSL detection
+    "addm_models",  # aDDM simulator (ported efpt engine, prange + inline xoshiro)
     "ddm_models",  # DDM simulators with n_threads support
     "levy_models",  # Levy simulators with n_threads support
     "ornstein_models",  # Ornstein-Uhlenbeck with n_threads support

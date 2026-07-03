@@ -25,6 +25,10 @@ boundary_config = {
         "fun": bf.conflict_gamma,
         "params": ["a", "theta", "scale", "alphaGamma", "scaleGamma"],
     },
+    "addm_collapse": {
+        "fun": bf.addm_collapse,
+        "params": ["a", "b"],
+    },
 }
 
 # Drift configurations
