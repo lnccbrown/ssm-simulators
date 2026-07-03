@@ -165,6 +165,37 @@ def test_addm_param_contract_renamed():
     assert set(np.unique(out["choices"]).tolist()) <= {-1, 1}
 
 
+def test_addm_high_level_apis_forward_extra_fields():
+    """Both simulator() and the Simulator class do Mode-2 via extra_fields.
+
+    Robust check: with the SAME seed but DIFFERENT observed fixations, the per-trial
+    output must differ — the fixations are actually forwarded and used. If
+    extra_fields were dropped, both calls would self-sample identical fixations from
+    the same seed and produce identical output.
+    """
+    from ssms.basic_simulators import Simulator
+    from ssms.basic_simulators.simulator import simulator
+
+    fx_a = _fixed_covariates(n=300, seed=4)
+    fx_b = _fixed_covariates(n=300, seed=9)  # different gaze pattern, same shapes
+    n = fx_a["n"]
+
+    def ef(fx):
+        return {
+            "r1": fx["r1"], "r2": fx["r2"], "flag": fx["flag"],
+            "sacc_array": fx["sacc"], "d": fx["d"], "sigma": np.ones(n),
+        }
+
+    theta = np.tile([_ETA, _KAPPA, _A, _B, _X0, 0.0], (n, 1))
+    for run in (
+        lambda **kw: simulator(model="addm", theta=theta, n_samples=1, random_state=5, **kw),
+        lambda **kw: Simulator("addm").simulate(theta=theta, n_samples=1, random_state=5, **kw),
+    ):
+        rt_a = np.asarray(run(extra_fields=ef(fx_a))["rts"]).reshape(-1)
+        rt_b = np.asarray(run(extra_fields=ef(fx_b))["rts"]).reshape(-1)
+        assert not np.array_equal(rt_a, rt_b), "fixations were not forwarded/used"
+
+
 def test_addm_x0_absolute_start():
     """x0 is the ABSOLUTE start: with no drift/noise, x_final == x0 exactly."""
     n, max_d = 4, 3

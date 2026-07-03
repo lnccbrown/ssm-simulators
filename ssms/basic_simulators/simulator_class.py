@@ -519,6 +519,7 @@ class Simulator:
         random_state: int | None = None,
         return_option: str = "full",
         n_threads: int = 1,
+        extra_fields: dict | None = None,
     ) -> dict:
         """Run simulation with given parameters.
 
@@ -527,6 +528,12 @@ class Simulator:
         theta : list, np.ndarray, dict, or pd.DataFrame
             Model parameters. If dict or DataFrame, keys/columns should match
             parameter names in config. If array, order should match config['params'].
+        extra_fields : dict or None, default=None
+            Optional per-trial covariates forwarded to the model function (e.g. the
+            aDDM fixations ``r1, r2, flag, sacc_array, d, sigma``), so a
+            covariate-driven model can condition on observed inputs rather than
+            self-sampling them. Empty/None is a no-op for models that take no
+            covariates. Arrays are per-trial (aligned with ``theta``'s trial axis).
         n_samples : int, default=1000
             Number of simulation samples per parameter set
         delta_t : float, default=0.001
@@ -644,12 +651,15 @@ class Simulator:
         # Validate parameters
         validate_ssm_parameters(model_name, theta)
 
-        # Call simulator
+        # Call simulator. extra_fields optionally forwards observed per-trial
+        # covariates (e.g. aDDM fixations) into the model function; empty for
+        # models that take no covariates (a no-op splat).
         x = model_config_local["simulator"](
             **theta,
             **boundary_dict,
             **drift_dict,
             **sim_param_dict,
+            **(extra_fields or {}),
         )
 
         if not isinstance(x, dict):
