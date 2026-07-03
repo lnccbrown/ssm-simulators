@@ -99,6 +99,29 @@ def _prepare_theta_and_shape(arg_arrays, size):
     return False, theta, max_shape, new_data_size
 
 
+def _broadcast_extra_fields(extra_fields, max_shape, new_data_size):
+    """Broadcast per-trial covariates to match theta's ``(…, n_data_trials)`` flattening.
+
+    In the vector-parameter path (regression / posterior-predictive) ``theta`` is
+    flattened from ``max_shape`` whose last axis is the number of data trials. A
+    per-trial covariate of length ``new_data_size`` (e.g. an aDDM fixation column)
+    is broadcast against the same leading dims and flattened the same way, so row
+    ``i`` of ``theta`` and row ``i`` of every covariate refer to the same trial
+    (``trial = i % n_data_trials`` for both). Covariates whose leading dim is not
+    ``new_data_size`` are passed through unchanged.
+    """
+    lead = tuple(max_shape[:-1])
+    out = {}
+    for key, value in extra_fields.items():
+        arr = np.asarray(value)
+        if arr.ndim == 0 or arr.shape[0] != new_data_size:
+            out[key] = arr
+            continue
+        arr_b = np.broadcast_to(arr, lead + arr.shape)
+        out[key] = np.ascontiguousarray(arr_b.reshape((-1,) + arr.shape[1:]))
+    return out
+
+
 def _reshape_sims_out(max_shape, n_replicas, obs_dim_int):
     """Calculate the output shape for simulation results.
 
@@ -396,6 +419,21 @@ def rng_fn(
     )
     n_replicas = _calculate_n_replicas(is_all_args_scalar, size, new_data_size)
     seed = _get_seed(rng)
+
+    # Align per-trial covariates (extra_fields) with the (…, n_data_trials)
+    # flattening of theta so each theta row sees its own trial's covariates.
+    if (
+        kwargs.get("extra_fields") is not None
+        and not is_all_args_scalar
+        and max_shape is not None
+    ):
+        kwargs = {
+            **kwargs,
+            "extra_fields": _broadcast_extra_fields(
+                kwargs["extra_fields"], max_shape, new_data_size
+            ),
+        }
+
     sims_out = simulator_fun(
         theta=theta,
         random_state=seed,
