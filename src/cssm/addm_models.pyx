@@ -409,14 +409,14 @@ def addm(eta, kappa, a, b, x0, t, deadline, s,
             'eta': eta, 'kappa': kappa, 'a': a, 'b': b,
             'x0': x0, 't': t, 'sigma': sigma_t,
         }
-        full_meta = build_full_metadata(
+        meta = build_full_metadata(
             minimal_metadata=minimal_meta, sim_config=sim_config,
             params=params, traj=traj,
         )
-        return build_return_dict(rts, choices, full_meta)
     elif return_option == 'minimal':
-        return build_return_dict(rts, choices, minimal_meta)
+        meta = minimal_meta
     else:
         raise ValueError(
             f"Invalid return_option: {return_option}. Must be 'full' or 'minimal'."
         )
+    return build_return_dict(rts, choices, meta)
