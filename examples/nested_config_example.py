@@ -9,7 +9,7 @@ from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
     get_nested_generator_config,
 )
-from ssms.config._modelconfig.base import get_default_model_config
+from ssms.config._modelconfig import get_model_config
 
 
 def example_1_nested_config_from_helper():
@@ -29,7 +29,7 @@ def example_1_nested_config_from_helper():
                 print(f"  {key}: {value}")
 
     # Use with TrainingDataGenerator
-    model_config = get_default_model_config("ddm")
+    model_config = get_model_config()["ddm"]
     _gen = TrainingDataGenerator(nested_config, model_config)
 
     print("\n✅ TrainingDataGenerator created successfully with nested config!")
@@ -84,7 +84,7 @@ def example_2_manual_nested_config():
     )
 
     # Use with TrainingDataGenerator
-    model_config = get_default_model_config("ddm")
+    model_config = get_model_config()["ddm"]
     _gen = TrainingDataGenerator(custom_nested_config, model_config)
 
     print("\n✅ TrainingDataGenerator created successfully with custom nested config!")
@@ -105,7 +105,7 @@ def example_3_legacy_flat_config():
             print(f"  {key}: {flat_config[key]}")
 
     # Use with TrainingDataGenerator (will trigger deprecation warning)
-    model_config = get_default_model_config("ddm")
+    model_config = get_model_config()["ddm"]
 
     import warnings
 
@@ -168,7 +168,7 @@ def example_5_both_structures_work():
     nested_config = get_default_generator_config("lan", nested=True)
 
     # Create TrainingDataGenerators with both
-    model_config = get_default_model_config("ddm")
+    model_config = get_model_config()["ddm"]
 
     import warnings
 

@@ -1,4 +1,11 @@
-# SSMS (Sequential Sampling Model Simulators)
+<div style="position: relative; width: 100%;">
+  <img src="docs/images/mainlogo.png" style="width: 175px;">
+  <a href="https://ccbs.carney.brown.edu/brainstorm" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);">
+    <img src="docs/images/Brain-Bolt-%2B-Circuits.gif" style="width: 100px;">
+  </a>
+</div>
+
+## SSMS (Sequential Sampling Model Simulators)
 
 [![DOI](https://zenodo.org/badge/370812185.svg)](https://doi.org/10.5281/zenodo.17156205)
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
@@ -28,6 +35,12 @@ A number of tutorial notebooks are available under the `/notebooks` directory.
 
 ```sh
 pip install ssm-simulators
+```
+
+Install the optional JAX backend for differentiable RLSSM learning processes:
+
+```sh
+pip install "ssm-simulators[jax]"
 ```
 
 **Recommended: Install via conda-forge for full parallel support:**

@@ -6,6 +6,7 @@ with preprocessing the output of the simulator function.
 """
 
 from copy import deepcopy
+import numbers
 from threading import Lock
 
 import numpy as np
@@ -37,11 +38,43 @@ _rng_lock = Lock()
 
 
 def _get_unique_seed() -> int:
-    """
-    Generate a unique seed for the random number generator.
+    """Generate a unique integer seed for the C-level RNG.
+
+    Seeds must fit in a signed 32-bit C ``long``.  On Windows (LLP64),
+    ``long`` is 32-bit (max ``2**31 - 1``); on macOS/Linux it is often 64-bit.
+    Using ``[0, 2**31)`` is safe on all platforms and matches what
+    ``cssm._utils.set_seed`` can accept without overflow.
     """
     with _rng_lock:
-        return _global_rng.integers(0, 2**32 - 1)
+        # high is exclusive -> largest value is 2**31 - 1
+        return int(_global_rng.integers(0, 2**31))
+
+
+# Range accepted by ``cssm._utils.set_seed`` when casting to C ``long`` (32-bit on Windows).
+_RNG_SEED_C_LONG_MIN = -(2**31)
+_RNG_SEED_C_LONG_MAX = 2**31 - 1
+
+
+def _validate_random_state_for_c_rng(random_state: object) -> None:
+    """Raise ``ValueError`` if *random_state* is an integer outside the C ``long`` range.
+
+    The Cython layer casts seeds to ``long``.  On Windows that is 32-bit signed; larger
+    values raise ``OverflowError`` inside Cython.  We validate here with a clear
+    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) are skipped;
+    those paths do not use this cast in the same way.
+    """
+    if random_state is None:
+        return
+    if not isinstance(random_state, numbers.Integral):
+        return
+    rs = int(random_state)
+    if rs < _RNG_SEED_C_LONG_MIN or rs > _RNG_SEED_C_LONG_MAX:
+        raise ValueError(
+            f"random_state={rs} is outside [{_RNG_SEED_C_LONG_MIN}, {_RNG_SEED_C_LONG_MAX}], "
+            "the range the C-level simulator can use on all platforms (Windows ``long`` "
+            "is 32-bit). Use a smaller integer seed, e.g. "
+            "int(np.random.default_rng().integers(0, 2**31))."
+        )
 
 
 def _make_valid_dict(dict_in: dict) -> dict:
@@ -187,7 +220,7 @@ def _theta_array_to_dict(
 
 def _preprocess_theta_generic(
     theta: list | np.ndarray | dict | pd.DataFrame,
-) -> np.ndarray:
+) -> np.ndarray | dict:
     """
     Preprocess the input theta to a consistent format.
 
@@ -344,7 +377,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
 # TODO: Make useful as independent utility,
 # this is dropped from basic simulator call now
 def bin_simulator_output_pointwise(
-    out: tuple[np.ndarray, np.ndarray] = (np.array([0]), np.array([0])),
+    out: dict | None = None,
     bin_dt: float = 0.04,
     nbins: int = 0,
 ) -> np.ndarray:  # ['v', 'a', 'w', 't', 'angle']
@@ -352,7 +385,7 @@ def bin_simulator_output_pointwise(
 
     Arguments
     ---------
-        out: tuple
+        out: dict
             Output of the 'simulator' function
         bin_dt: float
             If nbins is 0, this determines the desired
@@ -368,6 +401,9 @@ def bin_simulator_output_pointwise(
         2d array. The first columns collects bin-identifiers
         by trial, the second column lists the corresponding choices.
     """
+    if out is None:
+        raise ValueError("out is not supplied")
+
     out_copy = deepcopy(out)
 
     # Generate bins
@@ -390,7 +426,10 @@ def bin_simulator_output_pointwise(
 
     out_copy[1][out_copy[1] == -1] = 0
 
-    return np.concatenate([out_copy[0], out_copy[1]], axis=-1).astype(np.int32)
+    result: np.ndarray = np.concatenate([out_copy[0], out_copy[1]], axis=-1).astype(
+        np.int32
+    )
+    return result
 
 
 def bin_simulator_output(
@@ -562,6 +601,7 @@ def make_noise_vec(
         np.ndarray: A noise vector with appropriate shape for the simulation,
             containing the replicated sigma_noise values.
     """
+    shape_tuple: int | tuple[int, int]
     if n_particles == 1 or n_particles is None:
         shape_tuple = n_trials
     else:
@@ -621,8 +661,10 @@ def simulator(
         smooth_unif: bool <default=True>
             Whether to add uniform random noise to RTs to smooth the distributions.
         random_state: int | None <default=None>
-            Integer passed to random_seed function in the simulator.
-            Can be used for reproducibility.
+            Integer passed to the C-level RNG seeding.  Must lie in
+            ``[-2**31, 2**31 - 1]`` so it fits in a 32-bit signed C ``long`` (required
+            on Windows).  ``None`` draws a seed from that range automatically.
+            Non-integer RNG objects may be supported on specific code paths.
         return_option: str <default='full'>
             Determines what the function returns. Can be either
             'full' or 'minimal'. If 'full' the function returns
@@ -667,6 +709,7 @@ def simulator(
 
     if random_state is None:
         random_state = _get_unique_seed()
+    _validate_random_state_for_c_rng(random_state)
 
     theta = _preprocess_theta_generic(theta)
     n_trials, theta = _preprocess_theta_deadline(

@@ -2,6 +2,7 @@
 
 # External
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from scipy.stats import gamma  # type: ignore
@@ -55,7 +56,7 @@ def addm_collapse(
 # Angle boundary with linear collapse
 def angle(
     t: float | np.ndarray = 1, a: float = 1.0, theta: float = 1.0
-) -> np.ndarray | float:
+) -> np.ndarray | float | Any:
     """Linear collapsing boundary at angle theta.
 
     Arguments
@@ -78,7 +79,7 @@ def generalized_logistic(
     B: float = 2.0,  # noqa: N803
     M: float = 3.0,  # noqa: N803
     v: float = 0.5,  # noqa: N803
-) -> np.ndarray | float:
+) -> np.ndarray | float | Any:
     """Generalized logistic boundary function.
 
     Arguments
@@ -104,7 +105,7 @@ def weibull_cdf(
     a: float = 1.0,
     alpha: float = 1.0,
     beta: float = 1.0,
-) -> np.ndarray | float:
+) -> np.ndarray | float | Any:
     """Weibull decay boundary function.
 
     Arguments
@@ -130,7 +131,7 @@ def conflict_gamma(
     scale: float = 1.0,
     alphaGamma: float = 1.01,
     scaleGamma: float = 0.3,
-) -> np.ndarray:
+) -> np.ndarray | Any:
     """Conflict boundary with gamma bump and linear collapse.
 
     Arguments

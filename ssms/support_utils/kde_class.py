@@ -366,12 +366,17 @@ class LogKDE:
 
         rts = np.zeros((n_samples, 1))
         choices = np.zeros((n_samples, 1))
+        alternate_choice_p_list: list[float]
         if isinstance(alternate_choice_p, float):
-            alternate_choice_p = [alternate_choice_p]
+            alternate_choice_p_list = [alternate_choice_p]
+        elif isinstance(alternate_choice_p, np.ndarray):
+            alternate_choice_p_list = alternate_choice_p.tolist()
+        else:
+            alternate_choice_p_list = list(alternate_choice_p)
 
         if not any(
             [
-                len(alternate_choice_p) == len(self.data["choices"]),
+                len(alternate_choice_p_list) == len(self.data["choices"]),
                 use_empirical_choice_p,
             ]
         ):
@@ -383,7 +388,7 @@ class LogKDE:
             (
                 round(n_samples * self.data["choice_proportions"][i])
                 if use_empirical_choice_p
-                else round(n_samples * alternate_choice_p[i])
+                else round(n_samples * alternate_choice_p_list[i])
             )
             for i in range(len(self.data["choices"]))
         ]
@@ -401,9 +406,10 @@ class LogKDE:
             if n_by_choice[i] > 0:
                 cnt_high = cnt_low + n_by_choice[i]
 
-                if self.base_kdes[i] != "no_base_data":
+                kde_i = self.base_kdes[i]
+                if kde_i != "no_base_data" and not isinstance(kde_i, str):
                     rts[cnt_low:cnt_high] = np.exp(
-                        self.base_kdes[i].sample(
+                        kde_i.sample(
                             n_samples=n_by_choice[i], random_state=random_state
                         )
                     )
@@ -543,4 +549,5 @@ def bandwidth_silverman(
         # AF-Comment: This is a bit of a weakness (can be arbitrarily incorrect)
         std = std_n_1
 
-    return np.power((4 / (3 * n)), 1 / 5) * std
+    result: np.float64 = np.power((4 / (3 * n)), 1 / 5) * std
+    return result
