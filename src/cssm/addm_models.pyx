@@ -142,10 +142,15 @@ cdef void _run_heterog_trial(
     double *rt_out,
     int *choice_out,
     double *x_final_out,
+    float *traj_out,  # ssm-sim MOD (not efpt): optional per-step trajectory sink; NULL = don't record
 ) noexcept nogil:
     """Single stage-indexed trial (nogil). Piecewise-constant drift/diffusion,
     piecewise-linear boundaries; stage advances when the particle clock passes the
-    next node. Vendored from efpt simulator.pyx:_run_heterog_trial."""
+    next node. Vendored from efpt simulator.pyx:_run_heterog_trial.
+
+    ssm-sim MOD: the trailing ``traj_out`` param records ``y`` per step (for the
+    model-cartoon path); when NULL the loop is byte-for-byte the efpt original.
+    Re-apply this param + the one write below on re-vendor."""
     cdef:
         Xoshiro256State rng_state
         BoxMullerState bm_state
@@ -168,6 +173,8 @@ cdef void _run_heterog_trial(
             dt_curr = dt
         sqrt_dt_curr = sqrt(dt_curr)
         half_dt_curr = 0.5 * dt_curr
+        if traj_out != NULL:  # ssm-sim MOD (not efpt): record y at time step*dt (traj[0]=x0), aligned to t_s
+            traj_out[step] = <float>y
         z = box_muller_next(&rng_state, &bm_state)
         y = y + mu_array_data[trial_idx, stage] * dt_curr + sigma_array_data[trial_idx, stage] * sqrt_dt_curr * z
         t_particle = t_particle + dt_curr
@@ -203,15 +210,22 @@ def _simulate_heterog_multistage(
     double T,
     uint64_t[::1] trial_seeds,
     int n_threads=1,
+    float[:, ::1] traj_out=None,  # ssm-sim MOD (not efpt): optional trajectory sink for `record_trial`
+    int record_trial=-1,          # row index to record into traj_out; -1 = record nothing (default)
 ):
     """Batch of heterogeneous multi-stage trials via OpenMP prange. Per-trial
     xoshiro seeds make output independent of ``n_threads``. Vendored from efpt
     simulator.pyx:simulate_heterog_multistage_fpt. Returns (rt, choice, x_final)
-    with rt = -1.0 / choice = 0 for trials that did not terminate by ``T``."""
+    with rt = -1.0 / choice = 0 for trials that did not terminate by ``T``.
+
+    ssm-sim MOD: ``traj_out``/``record_trial`` let one row's per-step path be
+    recorded (for the model cartoon); default -1 leaves the efpt behavior intact."""
     cdef:
         int n_trials = mu_array_data.shape[0]
         int max_steps
         int trial
+        float* tptr
+        float* traj_ptr = NULL
 
     max_steps = int(np.ceil(T / dt)) if T > 0.0 else 0
     rt_out = np.empty(n_trials, dtype=np.float64)
@@ -228,7 +242,18 @@ def _simulate_heterog_multistage(
         x_final_out[:] = np.asarray(x0_data)
         return rt_out, choice_out, x_final_out
 
+    # ssm-sim MOD: resolve the sink base pointer once, under the GIL. traj has
+    # >= max_steps rows (setup: num_draws = int(max_t/delta_t)+1 >= ceil(max_t/delta_t)),
+    # so recording traj_out[step] for step < max_steps never overflows.
+    if record_trial >= 0 and traj_out is not None:
+        traj_ptr = &traj_out[0, 0]
+
     for trial in prange(n_trials, nogil=True, num_threads=n_threads, schedule='dynamic'):
+        # ssm-sim MOD: hand the sink only to the recording row; all others get NULL.
+        if trial == record_trial:
+            tptr = traj_ptr
+        else:
+            tptr = NULL
         _run_heterog_trial(
             mu_array_data, sigma_array_data, node_array_data,
             d_data[trial],
@@ -236,6 +261,7 @@ def _simulate_heterog_multistage(
             trial, x0_data[trial], dt, max_steps, T,
             trial_seeds[trial],
             &rt_view[trial], &choice_view[trial], &x_final_view[trial],
+            tptr,
         )
 
     return rt_out, choice_out, x_final_out
@@ -380,10 +406,13 @@ def addm(eta, kappa, a, b, x0, t, deadline, s,
     # Per-row seeds fixed BEFORE the parallel loop -> n_threads-independent.
     seeds = rng.integers(0, 2**64, size=N, dtype=np.uint64)
 
+    # record_trial=0 records row 0's (sample 0, trial 0) per-step path into `traj`
+    # for the model cartoon; faithful for both no_noise and noisy sims.
     rt, choice, _xf = _simulate_heterog_multistage(
         mu_r, sigma_arr, node_r, np.ascontiguousarray(d_r, dtype=np.int32),
         ub, b1, lb, b2, x0_r, float(delta_t), T,
         np.ascontiguousarray(seeds, dtype=np.uint64), n_threads,
+        traj, 0,
     )
 
     rt = np.asarray(rt, dtype=np.float64)
@@ -405,13 +434,22 @@ def addm(eta, kappa, a, b, x0, t, deadline, s,
     )
     if return_option == 'full':
         sim_config = {'delta_t': delta_t, 'max_t': max_t}
+        # Cartoon support: upper boundary +(a - b*t) over the sim time grid, clamped
+        # at 0 where the wedge has closed; plus a relative start z in [0,1] for the
+        # start-point marker (aDDM's native start is the ABSOLUTE x0, so map
+        # x0 -> 0.5 + 0.5*x0/boundary[0]; x0=0 lands mid-way at z=0.5). `traj` (row 0)
+        # was filled by the sim above.
+        t_s = setup['t_s']
+        boundary = np.maximum(a_t[0] - b_t[0] * t_s, 0.0).astype(np.float32)
+        b0 = float(boundary[0]) if boundary[0] != 0.0 else 1.0
+        z_rel = np.clip(0.5 + 0.5 * (x0_t / b0), 0.0, 1.0).astype(np.float32)
         params = {
             'eta': eta, 'kappa': kappa, 'a': a, 'b': b,
-            'x0': x0, 't': t, 'sigma': sigma_t,
+            'x0': x0, 't': t, 'sigma': sigma_t, 'z': z_rel,
         }
         meta = build_full_metadata(
             minimal_metadata=minimal_meta, sim_config=sim_config,
-            params=params, traj=traj,
+            params=params, traj=traj, boundary=boundary,
         )
     elif return_option == 'minimal':
         meta = minimal_meta

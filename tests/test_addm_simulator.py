@@ -29,7 +29,9 @@ try:
 except Exception:  # pragma: no cover - oracle is optional
     _HAS_EFPT = False
 
-needs_efpt = pytest.mark.skipif(not _HAS_EFPT, reason="efficient_fpt oracle not installed")
+needs_efpt = pytest.mark.skipif(
+    not _HAS_EFPT, reason="efficient_fpt oracle not installed"
+)
 
 _ETA, _KAPPA, _SIGMA, _A, _B, _X0 = 0.3, 1.0, 1.0, 1.5, 0.25, 0.0
 
@@ -69,17 +71,42 @@ def test_addm_engine_parity_vs_efpt_fixed_seed():
     seeds = np.arange(1, n + 1, dtype=np.uint64)
     dt, T = 0.001, 10.0
 
-    mu = np.ascontiguousarray(_efpt_mu(_ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d))
+    mu = np.ascontiguousarray(
+        _efpt_mu(_ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d)
+    )
     rt_e, ch_e, _ = _efpt_sim(
-        mu, np.ascontiguousarray(fx["sacc"]), fx["d"], _SIGMA, _A, _B, x0d, dt, T, seeds, 1
+        mu,
+        np.ascontiguousarray(fx["sacc"]),
+        fx["d"],
+        _SIGMA,
+        _A,
+        _B,
+        x0d,
+        dt,
+        T,
+        seeds,
+        1,
     )
 
-    mu2 = am._build_addm_mu_array_data(_ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d)
+    mu2 = am._build_addm_mu_array_data(
+        _ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d
+    )
     assert np.array_equal(mu, mu2), "ported mu construction diverged from efpt"
     sig, ub, lb, b1, b2 = _efpt_boundary_arrays(fx["sacc"], _A, _B, _SIGMA)
     rt_s, ch_s, _ = am._simulate_heterog_multistage(
-        np.ascontiguousarray(mu2), sig, np.ascontiguousarray(fx["sacc"]), fx["d"],
-        ub, b1, lb, b2, np.ascontiguousarray(x0d), dt, T, seeds, 1,
+        np.ascontiguousarray(mu2),
+        sig,
+        np.ascontiguousarray(fx["sacc"]),
+        fx["d"],
+        ub,
+        b1,
+        lb,
+        b2,
+        np.ascontiguousarray(x0d),
+        dt,
+        T,
+        seeds,
+        1,
     )
 
     # Same engine + same seeds => bit-identical trajectories.
@@ -96,19 +123,48 @@ def test_addm_public_mode2_matches_efpt():
     dt, T = 0.001, 10.0
 
     # cssm.addm derives per-row seeds as default_rng(random_state).integers(...).
-    seeds = np.random.default_rng(random_state).integers(0, 2**64, size=n, dtype=np.uint64)
-    mu = np.ascontiguousarray(_efpt_mu(_ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d))
+    seeds = np.random.default_rng(random_state).integers(
+        0, 2**64, size=n, dtype=np.uint64
+    )
+    mu = np.ascontiguousarray(
+        _efpt_mu(_ETA, _KAPPA, fx["r1"], fx["r2"], fx["flag"], fx["d"], max_d)
+    )
     rt_e, ch_e, _ = _efpt_sim(
-        mu, np.ascontiguousarray(fx["sacc"]), fx["d"], _SIGMA, _A, _B,
-        np.full(n, _X0), dt, T, seeds, 1,
+        mu,
+        np.ascontiguousarray(fx["sacc"]),
+        fx["d"],
+        _SIGMA,
+        _A,
+        _B,
+        np.full(n, _X0),
+        dt,
+        T,
+        seeds,
+        1,
     )
 
     col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
     out = am.addm(
-        col(_ETA), col(_KAPPA), col(_A), col(_B), col(_X0), col(0.0),
-        col(999.0), col(_SIGMA), sigma=col(_SIGMA),
-        r1=fx["r1"], r2=fx["r2"], flag=fx["flag"], sacc_array=fx["sacc"], d=fx["d"],
-        delta_t=dt, max_t=T, n_samples=1, n_trials=n, random_state=random_state, n_threads=1,
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.0),
+        col(999.0),
+        col(_SIGMA),
+        sigma=col(_SIGMA),
+        r1=fx["r1"],
+        r2=fx["r2"],
+        flag=fx["flag"],
+        sacc_array=fx["sacc"],
+        d=fx["d"],
+        delta_t=dt,
+        max_t=T,
+        n_samples=1,
+        n_trials=n,
+        random_state=random_state,
+        n_threads=1,
     )
     rt_s = np.asarray(out["rts"]).reshape(-1)
     ch_s = np.asarray(out["choices"]).reshape(-1)
@@ -126,13 +182,40 @@ def test_addm_deterministic_across_n_threads():
     n = fx["n"]
     col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
     kw = dict(
-        r1=fx["r1"], r2=fx["r2"], flag=fx["flag"], sacc_array=fx["sacc"], d=fx["d"],
-        n_samples=1, n_trials=n, random_state=123, max_t=10.0,
+        r1=fx["r1"],
+        r2=fx["r2"],
+        flag=fx["flag"],
+        sacc_array=fx["sacc"],
+        d=fx["d"],
+        n_samples=1,
+        n_trials=n,
+        random_state=123,
+        max_t=10.0,
     )
-    a1 = am.addm(col(_ETA), col(_KAPPA), col(_A), col(_B), col(_X0), col(0.1),
-                 col(999.0), col(_SIGMA), n_threads=1, **kw)
-    a4 = am.addm(col(_ETA), col(_KAPPA), col(_A), col(_B), col(_X0), col(0.1),
-                 col(999.0), col(_SIGMA), n_threads=4, **kw)
+    a1 = am.addm(
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.1),
+        col(999.0),
+        col(_SIGMA),
+        n_threads=1,
+        **kw,
+    )
+    a4 = am.addm(
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.1),
+        col(999.0),
+        col(_SIGMA),
+        n_threads=4,
+        **kw,
+    )
     np.testing.assert_array_equal(np.asarray(a1["rts"]), np.asarray(a4["rts"]))
     np.testing.assert_array_equal(np.asarray(a1["choices"]), np.asarray(a4["choices"]))
 
@@ -159,7 +242,8 @@ def test_addm_param_contract_renamed():
     out = simulator(
         model="addm",
         theta=np.array([[0.3, 1.0, 1.5, 0.25, 0.0, 0.1]]),  # eta,kappa,a,b,x0,t
-        n_samples=50, random_state=1,
+        n_samples=50,
+        random_state=1,
     )
     assert out["rts"].shape[0] == 50
     assert set(np.unique(out["choices"]).tolist()) <= {-1, 1}
@@ -182,14 +266,22 @@ def test_addm_high_level_apis_forward_extra_fields():
 
     def ef(fx):
         return {
-            "r1": fx["r1"], "r2": fx["r2"], "flag": fx["flag"],
-            "sacc_array": fx["sacc"], "d": fx["d"], "sigma": np.ones(n),
+            "r1": fx["r1"],
+            "r2": fx["r2"],
+            "flag": fx["flag"],
+            "sacc_array": fx["sacc"],
+            "d": fx["d"],
+            "sigma": np.ones(n),
         }
 
     theta = np.tile([_ETA, _KAPPA, _A, _B, _X0, 0.0], (n, 1))
     for run in (
-        lambda **kw: simulator(model="addm", theta=theta, n_samples=1, random_state=5, **kw),
-        lambda **kw: Simulator("addm").simulate(theta=theta, n_samples=1, random_state=5, **kw),
+        lambda **kw: simulator(
+            model="addm", theta=theta, n_samples=1, random_state=5, **kw
+        ),
+        lambda **kw: Simulator("addm").simulate(
+            theta=theta, n_samples=1, random_state=5, **kw
+        ),
     ):
         rt_a = np.asarray(run(extra_fields=ef(fx_a))["rts"]).reshape(-1)
         rt_b = np.asarray(run(extra_fields=ef(fx_b))["rts"]).reshape(-1)
@@ -210,18 +302,39 @@ def test_addm_x0_absolute_start():
     b2 = np.zeros((n, max_d))
     x0 = np.array([0.5, -0.3, 0.9, 0.0])
     _, _, xf = am._simulate_heterog_multistage(
-        np.ascontiguousarray(mu), np.ascontiguousarray(sig), np.ascontiguousarray(sacc),
-        d, np.ascontiguousarray(ub), b1, np.ascontiguousarray(lb), b2,
-        np.ascontiguousarray(x0), 0.001, 1.0, np.arange(1, n + 1, dtype=np.uint64), 1,
+        np.ascontiguousarray(mu),
+        np.ascontiguousarray(sig),
+        np.ascontiguousarray(sacc),
+        d,
+        np.ascontiguousarray(ub),
+        b1,
+        np.ascontiguousarray(lb),
+        b2,
+        np.ascontiguousarray(x0),
+        0.001,
+        1.0,
+        np.arange(1, n + 1, dtype=np.uint64),
+        1,
     )
-    np.testing.assert_array_equal(np.asarray(xf), x0)  # no movement -> start is absolute
+    np.testing.assert_array_equal(
+        np.asarray(xf), x0
+    )  # no movement -> start is absolute
 
 
 def test_addm_self_sample_mode_still_runs():
     """Mode 1 (no covariates): self-samples fixations, reproducible per seed."""
     n = 5
     col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
-    args = (col(_ETA), col(_KAPPA), col(_A), col(_B), col(_X0), col(0.1), col(999.0), col(_SIGMA))
+    args = (
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.1),
+        col(999.0),
+        col(_SIGMA),
+    )
     kw = dict(n_samples=100, n_trials=n, random_state=42, max_t=10.0)
     a = am.addm(*args, **kw)
     b = am.addm(*args, **kw)
@@ -240,12 +353,62 @@ def test_addm_omission_sentinel():
     col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
     # Very short horizon + wide bounds => most trials do not cross.
     out = am.addm(
-        col(0.0), col(0.0), col(5.0), col(0.0), col(0.0), col(0.0), col(999.0), col(0.5),
-        r1=fx["r1"], r2=fx["r2"], flag=fx["flag"], sacc_array=fx["sacc"], d=fx["d"],
-        n_samples=1, n_trials=n, random_state=0, delta_t=0.001, max_t=0.02,
+        col(0.0),
+        col(0.0),
+        col(5.0),
+        col(0.0),
+        col(0.0),
+        col(0.0),
+        col(999.0),
+        col(0.5),
+        r1=fx["r1"],
+        r2=fx["r2"],
+        flag=fx["flag"],
+        sacc_array=fx["sacc"],
+        d=fx["d"],
+        n_samples=1,
+        n_trials=n,
+        random_state=0,
+        delta_t=0.001,
+        max_t=0.02,
     )
     rts = np.asarray(out["rts"]).reshape(-1)
     ch = np.asarray(out["choices"]).reshape(-1)
     omitted = rts == -999.0
     assert omitted.any(), "expected some omissions with a tiny horizon"
     assert np.all(ch[omitted] == 0)
+
+
+def test_addm_cartoon_metadata_boundary_trajectory_z():
+    """Model-cartoon contract: full metadata carries a collapsing boundary array,
+    a recorded trajectory (row 0), and a relative ``z`` start marker (``x0=0``
+    maps to ``0.5``). Holds for both the deterministic no_noise drift path (used
+    by the cartoon's drift line) and a noisy sim (its example sample paths)."""
+    from ssms.basic_simulators.simulator import simulator
+
+    theta = np.array([[0.4, 1.0, 1.5, 0.2, 0.0, 0.0]])  # eta,kappa,a,b,x0,t; x0=0
+    for no_noise in (True, False):
+        out = simulator(
+            model="addm",
+            theta=theta,
+            n_samples=1,
+            random_state=7,
+            no_noise=no_noise,
+            delta_t=0.01,
+            max_t=10.0,
+        )
+        md = out["metadata"]
+        assert {"boundary", "trajectory", "z"} <= set(md), md.keys()
+
+        b = np.asarray(md["boundary"]).reshape(-1)
+        assert b.ndim == 1 and b[0] > 0.0 and b[0] >= b[-1]  # +(a - b*t) collapses
+
+        traj = np.asarray(md["trajectory"]).reshape(-1)
+        recorded = traj[traj > -999.0]
+        assert recorded.size > 1  # a path was actually recorded (not all -999)
+        assert abs(float(recorded[0])) < 1e-4  # traj[0] == x0 == 0 (aligned start)
+
+        z = np.asarray(md["z"]).reshape(-1)
+        assert (
+            0.0 <= float(z[0]) <= 1.0 and abs(float(z[0]) - 0.5) < 1e-4
+        )  # x0=0 -> mid
