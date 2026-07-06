@@ -13,7 +13,7 @@ class MockLikelihoodEstimator:
 
     def __init__(self):
         self._fitted = False
-        self._metadata = {"max_t": 20.0, "possible_choices": [-1, 1]}
+        self._metadata: dict = {"max_t": 20.0, "possible_choices": [-1, 1]}
 
     def fit(self, simulations: dict) -> None:
         """Mock fit method."""

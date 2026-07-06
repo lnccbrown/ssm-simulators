@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssm-simulators"
-version = "0.12.0"
+version = "0.12.4"
 description = "SSMS is a package collecting simulators and training data generators for cognitive science, neuroscience, and approximate bayesian computation"
 authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">3.10,<3.14"
+requires-python = ">3.10,<3.15"
 dependencies = [
     "scipy >= 1.6.3",
     "pandas >= 1.0.0",
@@ -23,6 +23,7 @@ dependencies = [
     "typer>=0.15.3",
     "pyyaml>=6.0.2",
     "tqdm>=4.67.1",
+    "cloudpickle",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -30,6 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 
@@ -47,6 +49,7 @@ dev = [
     "mypy",
     "black",
     "ruff",
+    "types-PyYAML",
     "pre-commit",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
@@ -59,6 +62,8 @@ dev = [
     "mlflow>=3.6.0",
     "marimo[recommended]",
     "pyddm>=0.9.0",
+    "jax>=0.4.20",
+    "jaxlib>=0.4.20",
 ]
 docs = [
     "mkdocs>=1.5.0",
@@ -85,6 +90,8 @@ dev = [
     "mlflow>=3.6.0",
     "marimo[recommended]",
     "pyddm>=0.9.0",
+    "jax>=0.4.20",
+    "jaxlib>=0.4.20",
 ]
 docs = [
     "mkdocs>=1.5.0",

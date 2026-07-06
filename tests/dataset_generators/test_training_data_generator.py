@@ -259,6 +259,72 @@ class TestTrainingDataGeneratorDataGeneration:
         # (allowing some numerical edge cases)
         assert np.median(lan_labels) < 0
 
+    def test_n_cpus_all_resolution_fallback(self, minimal_config, monkeypatch):
+        """Test that n_cpus='all' raises RuntimeError when all detection methods fail."""
+        import os
+        import psutil
+
+        minimal_config["pipeline"]["n_cpus"] = "all"
+
+        def raise_exception(*args, **kwargs):
+            raise Exception("Mocked exception")
+
+        if hasattr(os, "sched_getaffinity"):
+            monkeypatch.setattr(os, "sched_getaffinity", raise_exception)
+        if hasattr(os, "process_cpu_count"):
+            monkeypatch.setattr(os, "process_cpu_count", raise_exception)
+        monkeypatch.setattr(os, "cpu_count", raise_exception)
+        monkeypatch.setattr(psutil, "cpu_count", raise_exception)
+
+        with pytest.raises(
+            RuntimeError, match="Could not determine CPU count automatically"
+        ):
+            _ = TrainingDataGenerator(minimal_config, model_config["ddm"])
+
+    def test_n_cpus_all_resolution_via_affinity(
+        self, minimal_config, monkeypatch, caplog
+    ):
+        """Test successful resolution via os.sched_getaffinity."""
+        import logging
+        import os
+
+        minimal_config["pipeline"]["n_cpus"] = "all"
+
+        monkeypatch.setattr(
+            os, "sched_getaffinity", lambda pid: {0, 1, 2, 3}, raising=False
+        )
+
+        with caplog.at_level(logging.INFO):
+            gen = TrainingDataGenerator(minimal_config, model_config["ddm"])
+
+        assert gen.generator_config["pipeline"]["n_cpus"] == 4
+        assert "Resolved 'n_cpus'='all' to 4 cores." in caplog.text
+
+    def test_n_cpus_all_resolution_via_os_cpu_count(
+        self, minimal_config, monkeypatch, caplog
+    ):
+        """Test successful resolution via os.cpu_count when affinity is unavailable."""
+        import logging
+        import os
+
+        minimal_config["pipeline"]["n_cpus"] = "all"
+
+        def raise_exception(*args, **kwargs):
+            raise Exception("Mocked exception")
+
+        if hasattr(os, "sched_getaffinity"):
+            monkeypatch.setattr(os, "sched_getaffinity", raise_exception)
+        if hasattr(os, "process_cpu_count"):
+            monkeypatch.setattr(os, "process_cpu_count", raise_exception)
+
+        monkeypatch.setattr(os, "cpu_count", lambda: 8)
+
+        with caplog.at_level(logging.INFO):
+            gen = TrainingDataGenerator(minimal_config, model_config["ddm"])
+
+        assert gen.generator_config["pipeline"]["n_cpus"] == 8
+        assert "Resolved 'n_cpus'='all' to 8 cores." in caplog.text
+
 
 class TestTrainingDataGeneratorPipelineIntegration:
     """Test TrainingDataGenerator integration with custom pipelines."""

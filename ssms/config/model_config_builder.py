@@ -7,6 +7,7 @@ model configurations for use with the Simulator class.
 
 from collections.abc import Callable
 from copy import deepcopy
+from typing import Any, cast
 
 from ssms.config.model_registry import get_model_registry
 from ssms.config.boundary_registry import get_boundary_registry
@@ -297,25 +298,27 @@ class ModelConfigBuilder:
         errors = []
 
         # Check required fields
-        required_fields = {
+        required_fields: dict[str, type] = {
             "params": list,
             "nchoices": int,
-            "simulator": Callable,
         }
 
         for field, expected_type in required_fields.items():
             if field not in config:
                 errors.append(f"Missing required field: '{field}'")
             elif not isinstance(config[field], expected_type):
-                if field == "simulator" and not callable(config[field]):
-                    errors.append(
-                        f"Field '{field}' must be callable, got {type(config[field])}"
-                    )
-                else:
-                    errors.append(
-                        f"Field '{field}' has wrong type: expected {expected_type}, "
-                        f"got {type(config[field])}"
-                    )
+                errors.append(
+                    f"Field '{field}' has wrong type: expected {expected_type}, "
+                    f"got {type(config[field])}"
+                )
+
+        # Check simulator field separately (Callable is not valid for isinstance)
+        if "simulator" not in config:
+            errors.append("Missing required field: 'simulator'")
+        elif not callable(config["simulator"]):
+            errors.append(
+                f"Field 'simulator' must be callable, got {type(config['simulator'])}"
+            )
 
         # Check consistency
         if "params" in config and "n_params" in config:
@@ -511,9 +514,11 @@ class ModelConfigBuilder:
         # Create a deep copy to avoid mutating the original
         new_config = deepcopy(config)
 
-        deadline_name = DEADLINE_PARAM_CONFIG["name"]
-        deadline_bounds = DEADLINE_PARAM_CONFIG["default_bounds"]
-        deadline_default = DEADLINE_PARAM_CONFIG["default_value"]
+        deadline_name = str(DEADLINE_PARAM_CONFIG["name"])
+        deadline_bounds = cast(
+            tuple[float, float], DEADLINE_PARAM_CONFIG["default_bounds"]
+        )
+        deadline_default = cast(float, DEADLINE_PARAM_CONFIG["default_value"])
 
         # Add deadline to params list
         new_config["params"] = new_config.get("params", []) + [deadline_name]
@@ -599,7 +604,7 @@ class ModelConfigBuilder:
         if phase not in ("sampling", "simulation"):
             raise ValueError(f"phase must be 'sampling' or 'simulation', got '{phase}'")
 
-        transforms = config.get("parameter_transforms", {})
+        transforms: dict[str, list[Any]] = config.get("parameter_transforms", {})
         return transforms.get(phase, [])
 
     @staticmethod

@@ -39,7 +39,7 @@ class SetDefaultValue(ParameterTransform):
         self,
         param_name: str,
         default_value: float | int | np.ndarray,
-        dtype: np.dtype = np.float32,
+        dtype: np.dtype[Any] | type = np.float32,
     ):
         self.param_name = param_name
         self.default_value = default_value
@@ -244,7 +244,10 @@ class SetZeroArray(ParameterTransform):
     """
 
     def __init__(
-        self, param_name: str, shape: tuple | None = None, dtype: np.dtype = np.float32
+        self,
+        param_name: str,
+        shape: tuple | None = None,
+        dtype: np.dtype[Any] | type = np.float32,
     ):
         self.param_name = param_name
         self.shape = shape
@@ -290,7 +293,7 @@ class TileArray(ParameterTransform):
         self,
         param_name: str,
         value: float | list | np.ndarray,
-        dtype: np.dtype = np.float32,
+        dtype: np.dtype[Any] | type = np.float32,
     ):
         self.param_name = param_name
         self.value = value

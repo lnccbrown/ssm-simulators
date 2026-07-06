@@ -252,11 +252,13 @@ def get_drift_registry() -> DriftRegistry:
 # This uses the existing drift_config dict which already defines all built-in drifts
 # This way, when someone adds a new drift function to base.py, it's automatically
 # registered here without needing to update this file
+from typing import cast, Callable
+
 from ssms.config._modelconfig.base import drift_config
 
 for drift_name, drift_spec in drift_config.items():
     register_drift(
         name=drift_name,
-        function=drift_spec["fun"],
-        params=drift_spec["params"],
+        function=cast(Callable[..., object], drift_spec["fun"]),
+        params=cast(list[str], drift_spec["params"]),
     )

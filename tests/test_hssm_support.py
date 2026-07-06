@@ -6,6 +6,10 @@ import numpy as np
 import pytest
 from unittest.mock import Mock, patch
 
+from ssms.basic_simulators.simulator import (
+    _RNG_SEED_C_LONG_MAX,
+    _validate_random_state_for_c_rng,
+)
 from ssms.hssm_support import (
     _extract_size_val,
     _calculate_n_replicas,
@@ -18,6 +22,7 @@ from ssms.hssm_support import (
     hssm_sim_wrapper,
     _build_decorated_simulator,
     get_simulator_fun_internal,
+    rng_fn,
     validate_simulator_fun,
 )
 
@@ -82,13 +87,23 @@ class TestCalculateNReplicas:
 class TestGetSeed:
     """Tests for _get_seed function."""
 
-    def test_get_seed_returns_uint32(self):
-        """Test that _get_seed returns a valid uint32 value."""
-        rng = np.random.default_rng(42)
-        seed = _get_seed(rng)
+    def test_get_seed_fits_signed_32bit_c_long(self):
+        """Seeds for the PPC path must fit a signed 32-bit C long on all platforms.
 
-        assert isinstance(seed, (int, np.integer))
-        assert 0 <= seed <= np.iinfo(np.uint32).max
+        Regression guard: ``_get_seed`` previously drew from the full ``uint32``
+        range ``[0, 2**32)``, but ``simulator._validate_random_state_for_c_rng``
+        rejects anything above ``2**31 - 1``. That mismatch made the HSSM
+        posterior-predictive path raise ``ValueError`` ~50% of the time. Every
+        drawn seed must both stay in range and be accepted by the validator that
+        the simulator applies to it.
+        """
+        rng = np.random.default_rng(0)
+        for _ in range(2000):
+            seed = _get_seed(rng)
+            assert isinstance(seed, (int, np.integer))
+            assert 0 <= seed <= _RNG_SEED_C_LONG_MAX
+            # The exact check the simulator performs on this seed downstream.
+            _validate_random_state_for_c_rng(seed)  # must not raise
 
     def test_get_seed_different_values(self):
         """Test that _get_seed returns different values on multiple calls."""
@@ -98,6 +113,26 @@ class TestGetSeed:
 
         # They should be different (with very high probability)
         assert seed1 != seed2
+
+    def test_rng_fn_ppc_path_never_breaches_seed_ceiling(self):
+        """End-to-end guard for the exact path HSSM uses in posterior predictives.
+
+        ``rng_fn`` draws its own seed via ``_get_seed`` and forwards it to the
+        simulator as ``random_state``. Before the fix, ~50% of these calls raised
+        ``ValueError`` because the drawn seed exceeded the C-long ceiling. Driving
+        the real path many times with a fixed generator would have failed with
+        overwhelming probability pre-fix; here it must complete cleanly.
+        """
+        simulator_fun = get_simulator_fun_internal("ddm")
+        _, _, obs_dim_int = validate_simulator_fun(simulator_fun)
+        # DDM default-ish theta (v, a, z, t) as scalar arg arrays.
+        arg_arrays = [np.array(0.0), np.array(1.5), np.array(0.5), np.array(0.1)]
+        rng = np.random.default_rng(0)
+
+        for _ in range(50):
+            out = rng_fn(arg_arrays, 5, rng, simulator_fun, obs_dim_int)
+            assert out.shape[-1] == obs_dim_int
+            assert np.isfinite(out).all()
 
 
 class TestPrepareThetaAndShape:

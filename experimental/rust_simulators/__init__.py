@@ -106,7 +106,7 @@ def ddm_rust_single(
         s = np.ascontiguousarray(s, dtype=np.float32)
 
     if random_state is None:
-        random_state = np.random.default_rng().integers(0, 2**63)
+        random_state = int(np.random.default_rng().integers(0, 2**63))
 
     # Call Rust sequential implementation
     rts, choices = ddm_rust_sequential(
@@ -233,7 +233,7 @@ def ddm_rust(
         s = np.ascontiguousarray(s, dtype=np.float32)
 
     if random_state is None:
-        random_state = np.random.default_rng().integers(0, 2**63)
+        random_state = int(np.random.default_rng().integers(0, 2**63))
 
     if n_threads <= 0:
         import os
@@ -330,7 +330,7 @@ def ddm_flexbound_rust(
         s = np.ascontiguousarray(s, dtype=np.float32)
 
     if random_state is None:
-        random_state = np.random.default_rng().integers(0, 2**63)
+        random_state = int(np.random.default_rng().integers(0, 2**63))
 
     if n_threads <= 0:
         import os
@@ -448,7 +448,7 @@ def full_ddm_rust(
         s = np.ascontiguousarray(s, dtype=np.float32)
 
     if random_state is None:
-        random_state = np.random.default_rng().integers(0, 2**63)
+        random_state = int(np.random.default_rng().integers(0, 2**63))
 
     if n_threads <= 0:
         import os
