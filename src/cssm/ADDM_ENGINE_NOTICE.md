@@ -4,9 +4,13 @@ The simulation engine inside [`addm_models.pyx`](addm_models.pyx) — the inline
 xoshiro256++/SplitMix64/Box-Muller PRNG and the stage-indexed
 `_run_heterog_trial` / `_simulate_heterog_multistage` Euler–Maruyama kernel — is
 **vendored verbatim from the efficient-fpt (efpt) project** (`src/efficient_fpt/
-cython/simulator.pyx`). The aDDM covariate → per-stage array construction
-(`_build_addm_mu_array_data`, `_generate_sacc_array_data`) is ported from
-`src/efficient_fpt/addm_helpers.py`.
+cython/simulator.pyx`). The aDDM covariate → per-stage drift construction
+(`_build_addm_mu_array_data`) is ported from `src/efficient_fpt/addm_helpers.py`.
+efpt's gamma-only fixation self-sampler (`_generate_sacc_array_data`) has been
+generalized to any positive `scipy.stats` distribution and now lives in
+`ssms/basic_simulators/fixation_continuation.py::generate_schedule` (pure-Python
+glue, not vendored engine), shared by Mode-1 self-sampling and the `resample_all_fixations`
+posterior-predictive continuation strategy.
 
 This is the **same in-house source** as HSSM's JAX aDDM likelihood, so the
 ssm-simulators aDDM simulator and the HSSM likelihood share one engine — the
