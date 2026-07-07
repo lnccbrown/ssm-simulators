@@ -1,5 +1,7 @@
 """Choice-only inverse-temperature softmax RL presets."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -161,5 +163,150 @@ def test_response_only_ppc_uses_observed_responses_without_observed_rt():
 
     assert data["trial_id"].tolist() == [0, 1, 2]
     assert set(data["response"].unique()).issubset({0, 1})
-    assert np.all(data["rt"] == -1.0)
+    assert "rt" not in data.columns
     assert data["feedback"].tolist() == [1.0, 0.0, 1.0]
+
+
+def test_choice_only_ppc_rejects_observed_rt_column():
+    config = rl.preset.get("2AB_RW_InvTempSoftmax")
+    sim = rl.Simulator(config)
+    observed = pd.DataFrame(
+        {
+            "participant_id": [0, 0],
+            "trial_id": [0, 1],
+            "rt": [-1.0, -1.0],
+            "response": [0, 1],
+            "feedback": [1.0, 0.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="drop.*rt"):
+        sim.simulate(
+            theta={"rl_alpha": 0.5, "beta": 2.0},
+            mode="ppc",
+            observed_data=observed,
+        )
+
+
+def test_choice_only_ppc_requires_trial_id():
+    config = rl.preset.get("2AB_RW_InvTempSoftmax")
+    sim = rl.Simulator(config)
+    observed = pd.DataFrame(
+        {
+            "participant_id": [0, 0],
+            "response": [0, 1],
+            "feedback": [1.0, 0.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="trial_id"):
+        sim.simulate(
+            theta={"rl_alpha": 0.5, "beta": 2.0},
+            mode="ppc",
+            observed_data=observed,
+        )
+
+
+@pytest.mark.parametrize(
+    ("preset_name", "theta", "choices"),
+    [
+        ("2AB_RW_InvTempSoftmax", {"rl_alpha": 0.2, "beta": 2.0}, {0, 1}),
+        ("3AB_RW_InvTempSoftmax", {"rl_alpha": 0.2, "beta": 2.0}, {0, 1, 2}),
+    ],
+)
+def test_choice_only_ppc_output_omits_rt(preset_name, theta, choices):
+    config = rl.preset.get(preset_name)
+    sim = rl.Simulator(config)
+    observed = pd.DataFrame(
+        {
+            "participant_id": [0, 0, 0],
+            "trial_id": [0, 1, 2],
+            "response": [0, 1, 0],
+            "feedback": [1.0, 0.0, 1.0],
+        }
+    )
+
+    data = sim.simulate(
+        theta=theta,
+        mode="ppc",
+        observed_data=observed,
+        random_state=8,
+    )
+
+    assert "rt" not in data.columns
+    assert set(data["response"].unique()).issubset(choices)
+    assert data["feedback"].tolist() == [1.0, 0.0, 1.0]
+
+
+def test_two_choice_ppc_replays_observed_response_feedback_trajectory():
+    config = rl.preset.get("2AB_RW_InvTempSoftmax")
+    sim = rl.Simulator(config)
+    observed = pd.DataFrame(
+        {
+            "participant_id": [0, 0, 0],
+            "trial_id": [0, 1, 2],
+            "response": [0, 1, 1],
+            "feedback": [1.0, 0.0, 1.0],
+        }
+    )
+    seen_theta = []
+    simulated_choices = iter([1, 0, 1])
+
+    def mock_simulator(**kwargs):
+        seen_theta.append(dict(kwargs["theta"]))
+        return {
+            "rts": np.array([[-1.0]]),
+            "choices": np.array([[next(simulated_choices)]]),
+        }
+
+    with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+        data = sim.simulate(
+            theta={"rl_alpha": 0.5, "beta": 2.0},
+            mode="ppc",
+            observed_data=observed,
+            random_state=8,
+        )
+
+    assert data["response"].tolist() == [1, 0, 1]
+    assert "rt" not in data.columns
+    np.testing.assert_allclose(
+        [[trial["q0"], trial["q1"]] for trial in seen_theta],
+        [[0.5, 0.5], [0.75, 0.5], [0.75, 0.25]],
+    )
+
+
+def test_three_choice_ppc_replays_observed_response_feedback_trajectory():
+    config = rl.preset.get("3AB_RW_InvTempSoftmax")
+    sim = rl.Simulator(config)
+    observed = pd.DataFrame(
+        {
+            "participant_id": [0, 0, 0],
+            "trial_id": [0, 1, 2],
+            "response": [0, 2, 1],
+            "feedback": [1.0, 1.0, 0.0],
+        }
+    )
+    seen_theta = []
+    simulated_choices = iter([2, 1, 0])
+
+    def mock_simulator(**kwargs):
+        seen_theta.append(dict(kwargs["theta"]))
+        return {
+            "rts": np.array([[-1.0]]),
+            "choices": np.array([[next(simulated_choices)]]),
+        }
+
+    with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
+        data = sim.simulate(
+            theta={"rl_alpha": 0.5, "beta": 2.0},
+            mode="ppc",
+            observed_data=observed,
+            random_state=8,
+        )
+
+    assert data["response"].tolist() == [2, 1, 0]
+    assert "rt" not in data.columns
+    np.testing.assert_allclose(
+        [[trial["q0"], trial["q1"], trial["q2"]] for trial in seen_theta],
+        [[0.5, 0.5, 0.5], [0.75, 0.5, 0.5], [0.75, 0.5, 0.75]],
+    )
