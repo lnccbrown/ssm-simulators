@@ -6,6 +6,7 @@ import pytest
 from ssms.rl.learning import (
     LearningProcess,
     RescorlaWagnerDeltaRule,
+    RescorlaWagnerDeltaRule_CO,
     RescorlaWagnerDualAlphaRule,
 )
 
@@ -212,6 +213,118 @@ class TestRescorlaWagnerDeltaRule:
     def test_rejects_more_than_two_actions(self):
         with pytest.raises(ValueError, match="two-action"):
             RescorlaWagnerDeltaRule(n_actions=3)
+
+
+class TestRescorlaWagnerDeltaRuleCO:
+    def setup_method(self):
+        self.rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+        self.rw.reset()
+
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerDeltaRule_CO(), LearningProcess)
+
+    def test_initial_q_values(self):
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
+
+    def test_metadata(self):
+        assert self.rw.computed_params == ["q0", "q1", "q2"]
+        assert self.rw.free_params == ["rl_alpha"]
+        assert self.rw.param_bounds == {"rl_alpha": (0.0, 1.0)}
+        assert self.rw.default_params == {"rl_alpha": 0.2}
+        assert self.rw.required_context_fields == ["choice", "feedback"]
+        assert self.rw.available_backends == ("python", "jax")
+        assert self.rw.supports_gradient is True
+
+    def test_compute_python_emits_pre_update_q_values(self):
+        params = {"rl_alpha": 0.5}
+        state = self.rw.init_state()
+
+        computed = self.rw.compute_python(state, params, context={})
+        next_state = self.rw.update_python(
+            state,
+            params,
+            context={"choice": 2, "feedback": 1.0},
+        )
+
+        assert computed == {"q0": 0.5, "q1": 0.5, "q2": 0.5}
+        np.testing.assert_allclose(state["q_values"], [0.5, 0.5, 0.5])
+        np.testing.assert_allclose(next_state["q_values"], [0.5, 0.5, 0.75])
+
+    def test_mutable_api_emits_q_values_and_updates_only_observed_action(self):
+        params = {"rl_alpha": 0.25}
+
+        assert self.rw.compute_ssm_params(params) == {
+            "q0": 0.5,
+            "q1": 0.5,
+            "q2": 0.5,
+        }
+        self.rw.update(action=1, reward=0.0, trial_params=params)
+
+        np.testing.assert_allclose(self.rw.q_values, [0.5, 0.375, 0.5])
+        assert self.rw.compute_ssm_params(params) == {
+            "q0": 0.5,
+            "q1": 0.375,
+            "q2": 0.5,
+        }
+
+    def test_update_python_rejects_out_of_range_choice(self):
+        state = self.rw.init_state()
+
+        with pytest.raises(ValueError, match="choice 3 out of range"):
+            self.rw.update_python(
+                state,
+                {"rl_alpha": 0.5},
+                context={"choice": 3, "feedback": 1.0},
+            )
+
+    def test_invalid_n_actions(self):
+        with pytest.raises(ValueError, match="at least 2"):
+            RescorlaWagnerDeltaRule_CO(n_actions=1)
+
+    def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+        params = {"rl_alpha": 0.25}
+        state = rw.init_state()
+        jax_state = rw.init_jax_state()
+
+        actions = [0, 2, 1, 2]
+        rewards = [1.0, 1.0, 0.0, 0.0]
+        for action, reward in zip(actions, rewards):
+            context = {"choice": action, "feedback": reward}
+            jax_context = {
+                "choice": jnp.asarray(action),
+                "feedback": jnp.asarray(reward),
+            }
+            assert set(rw.compute_python(state, params, context)) == {
+                "q0",
+                "q1",
+                "q2",
+            }
+            state = rw.update_python(state, params, context)
+            jax_state = rw.update_jax(jax_state, params, jax_context)
+
+        np.testing.assert_allclose(
+            state["q_values"], np.asarray(jax_state["q_values"]), rtol=1e-6, atol=1e-7
+        )
+
+    def test_jax_update_is_differentiable(self):
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+
+        def q2_after_update(alpha):
+            state = rw.init_jax_state()
+            params = {"rl_alpha": alpha}
+            context = {"choice": jnp.asarray(2), "feedback": jnp.asarray(1.0)}
+            state = rw.update_jax(state, params, context)
+            return rw.compute_jax(state, params, context)["q2"]
+
+        grad = jax.jit(jax.grad(q2_after_update))(jnp.asarray(0.6))
+
+        assert grad == pytest.approx(0.5)
 
 
 class TestRescorlaWagnerDualAlphaRule:

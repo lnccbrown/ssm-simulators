@@ -29,6 +29,35 @@ def _import_jax_numpy():
     return jnp
 
 
+def _init_q_values(n_actions: int, initial_q: float) -> np.ndarray:
+    return np.full(n_actions, initial_q, dtype=np.float64)
+
+
+def _init_jax_q_values(n_actions: int, initial_q: float):
+    jnp = _import_jax_numpy()
+    return jnp.full((n_actions,), initial_q)
+
+
+def _rw_delta_update_python(
+    q_values,
+    *,
+    choice: int,
+    feedback: float,
+    alpha: float,
+    n_actions: int,
+) -> np.ndarray:
+    choice = _validated_choice_index(choice, n_actions)
+    updated = np.asarray(q_values, dtype=np.float64).copy()
+    delta = feedback - updated[choice]
+    updated[choice] += alpha * delta
+    return updated
+
+
+def _rw_delta_update_jax(q_values, *, choice, feedback, alpha):
+    delta = feedback - q_values[choice]
+    return q_values.at[choice].add(alpha * delta)
+
+
 @runtime_checkable
 class LearningProcess(Protocol):
     """Protocol for RLSSM learning processes.
@@ -201,11 +230,10 @@ class RescorlaWagnerDeltaRule:
         return np.asarray(self._state["q_values"], dtype=np.float64).copy()
 
     def init_state(self) -> LearningState:
-        return {"q_values": np.full(self._n_actions, self._initial_q, dtype=np.float64)}
+        return {"q_values": _init_q_values(self._n_actions, self._initial_q)}
 
     def init_jax_state(self) -> LearningState:
-        jnp = _import_jax_numpy()
-        return {"q_values": jnp.full((self._n_actions,), self._initial_q)}
+        return {"q_values": _init_jax_q_values(self._n_actions, self._initial_q)}
 
     def compute_python(
         self,
@@ -234,12 +262,15 @@ class RescorlaWagnerDeltaRule:
         params: dict[str, float],
         context: dict[str, Any],
     ) -> LearningState:
-        choice = _validated_choice_index(context["choice"], self._n_actions)
         feedback = float(context[self._feedback_field])
         alpha = params["rl_alpha"]
-        q_values = np.asarray(state["q_values"], dtype=np.float64).copy()
-        delta = feedback - q_values[choice]
-        q_values[choice] += alpha * delta
+        q_values = _rw_delta_update_python(
+            state["q_values"],
+            choice=context["choice"],
+            feedback=feedback,
+            alpha=alpha,
+            n_actions=self._n_actions,
+        )
         return {"q_values": q_values}
 
     def update_jax(
@@ -251,9 +282,13 @@ class RescorlaWagnerDeltaRule:
         choice = context["choice"]
         feedback = context[self._feedback_field]
         alpha = params["rl_alpha"]
-        q_values = state["q_values"]
-        delta = feedback - q_values[choice]
-        return {"q_values": q_values.at[choice].add(alpha * delta)}
+        q_values = _rw_delta_update_jax(
+            state["q_values"],
+            choice=choice,
+            feedback=feedback,
+            alpha=alpha,
+        )
+        return {"q_values": q_values}
 
     def reset(self, **kwargs) -> None:
         self._state = self.init_state()
@@ -264,6 +299,142 @@ class RescorlaWagnerDeltaRule:
         NOTE: drift is computed BEFORE the Q-value update for this trial,
         matching HSSM's scan order where computed_v precedes delta_RL update.
         """
+        if self._state is None:
+            raise RuntimeError("Call reset() before compute_ssm_params()")
+        return self.compute_python(self._state, trial_params, context={})
+
+    def update(
+        self, action: int, reward: float, trial_params: dict[str, float]
+    ) -> None:
+        """Q[action] += alpha * (reward - Q[action])."""
+        if self._state is None:
+            raise RuntimeError("Call reset() before update()")
+        self._state = self.update_python(
+            self._state,
+            trial_params,
+            context={"choice": action, self._feedback_field: reward},
+        )
+
+
+class RescorlaWagnerDeltaRule_CO:
+    """Choice-only Rescorla-Wagner delta rule emitting per-action Q-values.
+
+    This adapter shares the same RW update as :class:`RescorlaWagnerDeltaRule`
+    but exposes the pre-update Q-values as ``q0..q{n-1}`` for inverse-temperature
+    softmax decision processes.
+    """
+
+    def __init__(
+        self,
+        n_actions: int = 2,
+        initial_q: float = 0.5,
+        feedback_field: str = "feedback",
+    ):
+        if n_actions < 2:
+            raise ValueError("n_actions must be at least 2")
+        self._n_actions = n_actions
+        self._initial_q = initial_q
+        self._feedback_field = feedback_field
+        self._state: LearningState | None = None
+
+    @property
+    def n_actions(self) -> int:
+        return self._n_actions
+
+    @property
+    def computed_params(self) -> list[str]:
+        return [f"q{i}" for i in range(self._n_actions)]
+
+    @property
+    def free_params(self) -> list[str]:
+        return ["rl_alpha"]
+
+    @property
+    def param_bounds(self) -> dict[str, tuple[float, float]]:
+        return {"rl_alpha": (0.0, 1.0)}
+
+    @property
+    def default_params(self) -> dict[str, float]:
+        return {"rl_alpha": 0.2}
+
+    @property
+    def available_backends(self) -> tuple[str, ...]:
+        return ("python", "jax")
+
+    @property
+    def supports_gradient(self) -> bool:
+        return True
+
+    @property
+    def required_context_fields(self) -> list[str]:
+        return ["choice", self._feedback_field]
+
+    @property
+    def q_values(self) -> np.ndarray | None:
+        """Current Q-values. None if reset() has not been called."""
+        if self._state is None:
+            return None
+        return np.asarray(self._state["q_values"], dtype=np.float64).copy()
+
+    def init_state(self) -> LearningState:
+        return {"q_values": _init_q_values(self._n_actions, self._initial_q)}
+
+    def init_jax_state(self) -> LearningState:
+        return {"q_values": _init_jax_q_values(self._n_actions, self._initial_q)}
+
+    def compute_python(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ) -> dict[str, float]:
+        q_values = np.asarray(state["q_values"], dtype=np.float64)
+        return {name: float(q_values[i]) for i, name in enumerate(self.computed_params)}
+
+    def compute_jax(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ):
+        q_values = state["q_values"]
+        return {name: q_values[i] for i, name in enumerate(self.computed_params)}
+
+    def update_python(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ) -> LearningState:
+        feedback = float(context[self._feedback_field])
+        q_values = _rw_delta_update_python(
+            state["q_values"],
+            choice=context["choice"],
+            feedback=feedback,
+            alpha=params["rl_alpha"],
+            n_actions=self._n_actions,
+        )
+        return {"q_values": q_values}
+
+    def update_jax(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ) -> LearningState:
+        q_values = _rw_delta_update_jax(
+            state["q_values"],
+            choice=context["choice"],
+            feedback=context[self._feedback_field],
+            alpha=params["rl_alpha"],
+        )
+        return {"q_values": q_values}
+
+    def reset(self, **kwargs) -> None:
+        self._state = self.init_state()
+
+    def compute_ssm_params(self, trial_params: dict[str, float]) -> dict[str, float]:
+        """Return pre-update Q-values for the current trial."""
         if self._state is None:
             raise RuntimeError("Call reset() before compute_ssm_params()")
         return self.compute_python(self._state, trial_params, context={})
