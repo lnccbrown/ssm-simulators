@@ -21,6 +21,14 @@ def test_inv_temp_softmax_model_configs_are_registered():
     assert cfg3["nchoices"] == 3
 
 
+def test_inv_temp_softmax_model_configs_are_tagged_choice_only_rl():
+    cfg2 = ModelConfigBuilder.from_model("inv_temp_softmax_2")
+    cfg3 = ModelConfigBuilder.from_model("inv_temp_softmax_3")
+
+    assert "choice_only_rl" in cfg2.get("tags", ())
+    assert "choice_only_rl" in cfg3.get("tags", ())
+
+
 def test_inv_temp_softmax_simulator_emits_choices_and_placeholder_rt():
     result = ssm_simulator(
         theta={"beta": 5.0, "q0": 0.0, "q1": 1.0},

@@ -22,6 +22,7 @@ def _get_inv_temp_softmax_config(n_choices: int) -> dict:
         "nchoices": n_choices,
         "choices": list(range(n_choices)),
         "n_particles": 1,
+        "tags": ["choice_only_rl"],
         "simulator": inv_temp_softmax,
     }
 
