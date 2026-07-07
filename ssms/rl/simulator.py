@@ -397,10 +397,11 @@ class Simulator:
             observed_choice = self._response_to_choice_index(observed_response)
             update_context = {
                 **observed_context,
-                "rt": float(getattr(observed_trial, "rt")),
                 "response": observed_response,
                 "choice": observed_choice,
             }
+            if hasattr(observed_trial, "rt"):
+                update_context["rt"] = float(getattr(observed_trial, "rt"))
 
             learning_state = self._update_learning_state(
                 learning_state, rl_params, update_context

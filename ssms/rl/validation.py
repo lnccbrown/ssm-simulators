@@ -293,12 +293,12 @@ def _check_omissions(data: pd.DataFrame, report: DataValidationReport) -> None:
 def _check_response_values(
     config: ModelConfig, data: pd.DataFrame, report: DataValidationReport
 ) -> None:
-    if RESPONSE_COL not in data.columns or RT_COL not in data.columns:
+    if RESPONSE_COL not in data.columns:
         return
 
-    valid_mask = (data[RT_COL] != OMISSION_SENTINEL) & (
-        data[RESPONSE_COL] != MISSING_RESPONSE_SENTINEL
-    )
+    valid_mask = data[RESPONSE_COL] != MISSING_RESPONSE_SENTINEL
+    if RT_COL in data.columns:
+        valid_mask = valid_mask & (data[RT_COL] != OMISSION_SENTINEL)
     if not valid_mask.any():
         return
 
@@ -312,6 +312,18 @@ def _check_response_values(
             level="error",
             code="invalid_response_dtype",
             message="response contains non-numeric values on non-omission trials.",
+        )
+        return
+
+    values = numeric_subset.to_numpy(dtype=float)
+    non_integral = ~np.isclose(values, np.round(values))
+    if non_integral.any():
+        _add_issue(
+            report,
+            level="error",
+            code="invalid_response_labels",
+            message="response labels must be integer-valued SSM choice labels.",
+            hint="Use SSM response labels consistent with the task environment.",
         )
         return
 
