@@ -27,6 +27,8 @@ _SET_ZERO_T = LambdaAdaptation(
     name="set_zero_t",
 )
 
+_LBA_START_THRESHOLD_SAMPLING_TRANSFORMS = [SwapIfLessConstraint("b", "A")]
+
 # LBA2 simulation transforms
 _LBA2_SIMULATION_TRANSFORMS = [
     LambdaAdaptation(
@@ -101,7 +103,7 @@ def get_lba2_config():
         "n_particles": 2,
         "simulator": cssm.lba_vanilla,
         "parameter_transforms": {
-            "sampling": [],
+            "sampling": _LBA_START_THRESHOLD_SAMPLING_TRANSFORMS,
             "simulation": _LBA2_SIMULATION_TRANSFORMS,
         },
     }
@@ -122,7 +124,7 @@ def get_lba3_config():
         "n_particles": 3,
         "simulator": cssm.lba_vanilla,
         "parameter_transforms": {
-            "sampling": [],
+            "sampling": _LBA_START_THRESHOLD_SAMPLING_TRANSFORMS,
             "simulation": _LBA3_SIMULATION_TRANSFORMS,
         },
     }
@@ -146,7 +148,7 @@ def get_lba4_config():
         "n_particles": 4,
         "simulator": cssm.lba_vanilla,
         "parameter_transforms": {
-            "sampling": [],
+            "sampling": _LBA_START_THRESHOLD_SAMPLING_TRANSFORMS,
             "simulation": _LBA4_SIMULATION_TRANSFORMS,
         },
     }

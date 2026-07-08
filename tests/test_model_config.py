@@ -4,6 +4,7 @@ import numpy as np
 import ssms
 from ssms.config import model_config
 from ssms.config.model_config_builder import ModelConfigBuilder
+from ssms.transforms import SwapIfLessConstraint
 
 
 class TestModelConfig:
@@ -112,6 +113,26 @@ class TestModelConfigBuilder:
         assert config["n_particles"] == 4
         assert "param_bounds_dict" in config
         assert set(config["param_bounds_dict"]) == set(config["params"])
+
+    @pytest.mark.parametrize("model_name", ["lba2", "lba3", "lba4"])
+    def test_plain_lba_sampling_enforces_threshold_above_start(self, model_name):
+        """Test plain LBA sampling keeps public threshold b above start range A."""
+        config = ModelConfigBuilder.from_model(model_name)
+        transforms = ModelConfigBuilder.get_sampling_transforms(config)
+
+        assert len(transforms) == 1
+        transform = transforms[0]
+        assert isinstance(transform, SwapIfLessConstraint)
+        assert transform.param_a == "b"
+        assert transform.param_b == "A"
+
+        theta = {
+            "A": np.array([0.8, 0.2], dtype=np.float32),
+            "b": np.array([0.3, 0.7], dtype=np.float32),
+        }
+        transformed = transform.apply(theta)
+
+        assert np.all(transformed["b"] > transformed["A"])
 
     def test_model_config_builder_preserves_structure(self):
         """Test that builder preserves all expected config fields."""
