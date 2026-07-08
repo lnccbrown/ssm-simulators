@@ -74,6 +74,7 @@ from .gamma_drift import (
 from .lba import (
     get_lba2_config,
     get_lba3_config,
+    get_lba4_config,
     get_lba_3_vs_constraint_config,
     get_lba_angle_3_config,
     get_lba_angle_3_vs_constraint_config,
@@ -271,6 +272,7 @@ def get_model_config():
         "dev_rlwm_lba_race_v2": get_dev_rlwm_lba_race_v2_config(),
         "lba2": get_lba2_config(),
         "lba3": get_lba3_config(),
+        "lba4": get_lba4_config(),
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),

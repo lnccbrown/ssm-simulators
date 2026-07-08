@@ -78,15 +78,12 @@ broken_models = [
     "lba_3_vs_constraint",  # broken
     "lba_angle_3_vs_constraint",  # broken
     "dev_rlwm_lba_race_v2",  # broken
-    "lba2",  # broken - generates incorrect number of parameter sets
 ]
 
 # Ultra slow models, likely broken?
 slow_prefixes = (
     "race",
     "dev_rlwm",
-    "lba3",
-    "lba_angle_3",
     "lca",
     "ddm_par2",
     "ddm_seq2",
