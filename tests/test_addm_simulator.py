@@ -412,3 +412,133 @@ def test_addm_cartoon_metadata_boundary_trajectory_z():
         assert (
             0.0 <= float(z[0]) <= 1.0 and abs(float(z[0]) - 0.5) < 1e-4
         )  # x0=0 -> mid
+
+
+# --------------------------------------------------------------------------- #
+# Pluggable fixation continuation (PPC) + pluggable Mode-1 distribution
+# --------------------------------------------------------------------------- #
+_GAMMA_CONT = {"dist": "gamma", "dist_params": {"a": 2.0, "scale": 0.3}}
+
+
+def _run_mode2(n=6, seed=2, n_samples=200, random_state=1, **overrides):
+    """Mode-2 aDDM on fixed observed covariates; returns the addm() output dict."""
+    fx = _fixed_covariates(n=n, seed=seed)
+    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    return am.addm(
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.0),
+        col(999.0),
+        col(_SIGMA),
+        sigma=col(_SIGMA),
+        r1=fx["r1"],
+        r2=fx["r2"],
+        flag=fx["flag"],
+        sacc_array=fx["sacc"],
+        d=fx["d"],
+        n_samples=n_samples,
+        n_trials=n,
+        random_state=random_state,
+        max_t=10.0,
+        **overrides,
+    )
+
+
+def test_addm_continuation_default_is_prolong_and_deterministic():
+    """Default == explicit prolong_last_fixation, and reproducible. The isolated cont_rng means
+    the default never perturbs the primary rng that seeds the trajectories (byte-identical path)."""
+    a = _run_mode2()
+    b = _run_mode2(continuation_mode="prolong_last_fixation")
+    c = _run_mode2()
+    np.testing.assert_array_equal(np.asarray(a["rts"]), np.asarray(b["rts"]))
+    np.testing.assert_array_equal(np.asarray(a["choices"]), np.asarray(b["choices"]))
+    np.testing.assert_array_equal(
+        np.asarray(a["rts"]), np.asarray(c["rts"])
+    )  # reproducible
+
+
+def test_addm_sample_continuation_reaches_simulator():
+    """sample_continuation draws the tail from a distribution -> different output than prolong."""
+    prolong = np.asarray(_run_mode2()["rts"]).reshape(-1)
+    cont = np.asarray(
+        _run_mode2(
+            continuation_mode="sample_continuation", continuation_params=_GAMMA_CONT
+        )["rts"]
+    ).reshape(-1)
+    assert not np.array_equal(prolong, cont)
+
+
+def test_addm_resample_all_fixations_reaches_simulator():
+    """resample_all_fixations self-samples the whole schedule -> differs from prolong; valid output."""
+    prolong = np.asarray(_run_mode2()["rts"]).reshape(-1)
+    out = _run_mode2(
+        continuation_mode="resample_all_fixations", continuation_params=_GAMMA_CONT
+    )
+    r = np.asarray(out["rts"]).reshape(-1)
+    assert not np.array_equal(prolong, r)
+    assert (r[r != -999.0] > 0).all()  # non-omission rts are positive
+
+
+def test_addm_mode1_accepts_nongamma_distribution():
+    """Mode-1 self-sampling now accepts any positive scipy dist (not just gamma)."""
+    n = 5
+    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    out = am.addm(
+        col(_ETA),
+        col(_KAPPA),
+        col(_A),
+        col(_B),
+        col(_X0),
+        col(0.1),
+        col(999.0),
+        col(_SIGMA),
+        n_samples=50,
+        n_trials=n,
+        random_state=0,
+        max_t=10.0,
+        fixation_dist="lognormal",
+        fixation_params={"s": 0.5, "scale": 0.4},
+    )
+    assert np.asarray(out["rts"]).shape == (50, n, 1)
+    assert set(np.unique(out["choices"]).tolist()) <= {-1, 0, 1}
+
+
+def test_addm_continuation_errors():
+    """Clear errors for unknown mode, unknown distribution, and prolong + non-None params."""
+    with pytest.raises(ValueError):
+        _run_mode2(continuation_mode="nope")
+    with pytest.raises(ValueError):
+        _run_mode2(
+            continuation_mode="sample_continuation",
+            continuation_params={"dist": "not_a_dist"},
+        )
+    with pytest.raises(ValueError):
+        _run_mode2(
+            continuation_mode="prolong_last_fixation", continuation_params=_GAMMA_CONT
+        )
+
+
+def test_fixation_continuation_module_strategies():
+    """Unit-test the strategy functions directly (pure Python; no simulator)."""
+    from ssms.basic_simulators import fixation_continuation as fc
+
+    rng = np.random.default_rng(0)
+    node = np.array([[0.0, 0.3, 0.7], [0.0, 0.5, 0.0]])
+    d = np.array([3, 2], dtype=np.int32)
+    flag = np.array([0, 1], dtype=np.int64)
+    p = {"dist": "gamma", "dist_params": {"a": 2.0, "scale": 0.3}}
+
+    _, d0, f0, _ = fc.prolong_last_fixation(node, d, flag, 5.0, None, rng)
+    assert np.array_equal(d0, d) and np.array_equal(f0, flag)
+
+    n1, _, f1, m1 = fc.sample_continuation(node, d, flag, 5.0, p, rng)
+    assert m1 > node.shape[1] and np.array_equal(f1, flag)
+    assert (
+        n1[0, d[0]] > node[0, d[0] - 1]
+    )  # first continuation onset > last observed onset
+
+    n2, _, _, _ = fc.resample_all_fixations(node, d, flag, 5.0, p, rng)
+    assert bool((n2[:, 0] == 0.0).all())  # fresh schedule anchored at 0.0
