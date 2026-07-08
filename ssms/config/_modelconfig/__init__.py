@@ -133,9 +133,7 @@ from .shrink import (
     get_shrink_spot_simple_extended_config,
 )
 
-from .addm import (
-    get_addm_config
-)
+from .addm import get_addm_config
 from .validation import get_invalid_configs
 
 
