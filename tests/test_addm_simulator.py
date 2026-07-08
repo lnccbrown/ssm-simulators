@@ -542,3 +542,28 @@ def test_fixation_continuation_module_strategies():
 
     n2, _, _, _ = fc.resample_all_fixations(node, d, flag, 5.0, p, rng)
     assert bool((n2[:, 0] == 0.0).all())  # fresh schedule anchored at 0.0
+
+
+def test_fixation_continuation_resolvers_and_require_dist():
+    """Resolver seam (callable passthrough / bad type) + the _require_dist guard."""
+    from ssms.basic_simulators import fixation_continuation as fc
+
+    rng = np.random.default_rng(0)
+    node = np.array([[0.0, 0.3, 0.7]])
+    d = np.array([3], dtype=np.int32)
+    flag = np.array([0], dtype=np.int64)
+
+    # sample_continuation / resample_all_fixations require continuation_params w/ a 'dist'.
+    with pytest.raises(ValueError):
+        fc.sample_continuation(node, d, flag, 5.0, None, rng)
+    with pytest.raises(ValueError):
+        fc.resample_all_fixations(node, d, flag, 5.0, {"dist_params": {}}, rng)
+
+    # resolve_continuation_mode: a callable is returned as-is (pluggable-strategy seam) ...
+    assert (
+        fc.resolve_continuation_mode(fc.prolong_last_fixation)
+        is fc.prolong_last_fixation
+    )
+    # ... and a non-str / non-callable is rejected loudly.
+    with pytest.raises(TypeError):
+        fc.resolve_continuation_mode(123)

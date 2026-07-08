@@ -11,6 +11,7 @@ from ssms.basic_simulators.simulator import (
     _validate_random_state_for_c_rng,
 )
 from ssms.hssm_support import (
+    _broadcast_extra_fields,
     _extract_size_val,
     _calculate_n_replicas,
     _get_seed,
@@ -481,3 +482,44 @@ class TestValidateSimulatorFun:
             ValueError, match="The obs_dim attribute must be an integer"
         ):
             validate_simulator_fun(mock_simulator)
+
+
+class TestExtraFieldsBroadcast:
+    """Covariate (extra_fields) broadcasting for the vector-parameter path (aDDM PPC)."""
+
+    def test_broadcast_extra_fields_aligns_and_passes_through(self):
+        """Per-trial covariates tile across leading dims; scalar / mismatched pass through."""
+        ef = {
+            "r1": np.array([4.0, 5.0, 6.0]),  # per-trial -> broadcast to theta rows
+            "sigma": np.float64(1.0),  # 0-d scalar -> unchanged
+            "other": np.array([1.0, 2.0]),  # wrong length -> unchanged
+        }
+        out = _broadcast_extra_fields(ef, max_shape=(2, 3), new_data_size=3)
+        # (2 leading replicas x 3 trials) flattens with trial = i % 3, matching theta.
+        assert np.array_equal(out["r1"], np.array([4.0, 5.0, 6.0, 4.0, 5.0, 6.0]))
+        assert np.ndim(out["sigma"]) == 0
+        assert np.array_equal(out["other"], np.array([1.0, 2.0]))
+
+    def test_rng_fn_broadcasts_extra_fields_for_vector_theta(self):
+        """rng_fn triggers the covariate broadcast on the non-scalar path and forwards it."""
+        captured = {}
+
+        class _Stop(Exception):
+            pass
+
+        def stub(theta, random_state, n_replicas, **kwargs):
+            captured["theta_rows"] = theta.shape[0]
+            captured["extra_fields"] = kwargs.get("extra_fields")
+            raise _Stop  # bail before the reshape; we only assert the broadcast
+
+        arg_arrays = [
+            np.full((2, 3), 0.1),
+            np.full((2, 3), 1.0),
+        ]  # vector theta, 3 trials
+        ef = {"r1": np.array([4.0, 5.0, 6.0]), "sigma": np.float64(1.0)}
+        rng = np.random.default_rng(0)
+        with pytest.raises(_Stop):
+            rng_fn(arg_arrays, None, rng, stub, 2, extra_fields=ef)
+        # per-trial covariate broadcast to match theta's flattened rows; scalar untouched.
+        assert captured["extra_fields"]["r1"].shape[0] == captured["theta_rows"]
+        assert np.ndim(captured["extra_fields"]["sigma"]) == 0
