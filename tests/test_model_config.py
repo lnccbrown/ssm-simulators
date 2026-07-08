@@ -99,6 +99,20 @@ class TestModelConfigBuilder:
         assert "v1" in config["params"]
         assert "v2" in config["params"]
 
+    def test_lba4_config(self):
+        """Test plain 4-choice LBA model config."""
+        config = ModelConfigBuilder.from_model("lba4")
+
+        assert config["name"] == "lba4"
+        assert config["params"] == ["A", "b", "v0", "v1", "v2", "v3"]
+        assert config["n_params"] == 6
+        assert config["default_params"] == [0.3, 0.5, 0.25, 0.25, 0.25, 0.25]
+        assert config["nchoices"] == 4
+        assert config["choices"] == [0, 1, 2, 3]
+        assert config["n_particles"] == 4
+        assert "param_bounds_dict" in config
+        assert set(config["param_bounds_dict"]) == set(config["params"])
+
     def test_model_config_builder_preserves_structure(self):
         """Test that builder preserves all expected config fields."""
         config = ModelConfigBuilder.from_model("ddm")

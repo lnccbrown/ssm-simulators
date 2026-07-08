@@ -219,6 +219,26 @@ class TestSimulation:
         np.testing.assert_array_equal(results1["rts"], results2["rts"])
         np.testing.assert_array_equal(results1["choices"], results2["choices"])
 
+    def test_lba4_simulation(self):
+        """Test plain 4-choice LBA simulation."""
+        sim = Simulator("lba4")
+        theta = {
+            "A": 0.3,
+            "b": 0.5,
+            "v0": 0.25,
+            "v1": 0.25,
+            "v2": 0.25,
+            "v3": 0.25,
+        }
+
+        results = sim.simulate(theta=theta, n_samples=100, random_state=42)
+
+        assert "rts" in results
+        assert "choices" in results
+        assert "metadata" in results
+        assert results["metadata"]["possible_choices"] == [0, 1, 2, 3]
+        assert np.all(np.isin(results["choices"], [0, 1, 2, 3]))
+
 
 class TestModelConfigBuilder:
     """Test ModelConfigBuilder utility class."""

@@ -53,6 +53,19 @@ _LBA3_SIMULATION_TRANSFORMS = [
     _SET_ZERO_T,
 ]
 
+# LBA4 simulation transforms
+_LBA4_SIMULATION_TRANSFORMS = [
+    LambdaAdaptation(
+        lambda theta, cfg, n: theta.update({"nact": 4}) or theta,
+        name="set_nact_4",
+    ),
+    ColumnStackParameters(["v0", "v1", "v2", "v3"], "v", delete_sources=False),
+    RenameParameter("A", "z", lambda x: np.expand_dims(x, axis=1)),
+    RenameParameter("b", "a", lambda x: np.expand_dims(x, axis=1)),
+    DeleteParameters(["A", "b"]),
+    _SET_ZERO_T,
+]
+
 # LBA 3-choice with vs constraint simulation transforms (non-angle)
 _LBA_3_VS_CONSTRAINT_SIMULATION_TRANSFORMS = [
     ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
@@ -111,6 +124,30 @@ def get_lba3_config():
         "parameter_transforms": {
             "sampling": [],
             "simulation": _LBA3_SIMULATION_TRANSFORMS,
+        },
+    }
+
+
+def get_lba4_config():
+    """Get configuration for LBA4 model."""
+    return {
+        "name": "lba4",
+        "params": ["A", "b", "v0", "v1", "v2", "v3"],
+        "param_bounds": [
+            [0.0, 0.0, 0.0, 0.1, 0.1, 0.1],
+            [1.0, 1.0, 1.0, 1.1, 0.50, 0.50],
+        ],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
+        "n_params": 6,
+        "default_params": [0.3, 0.5, 0.25, 0.25, 0.25, 0.25],
+        "nchoices": 4,
+        "choices": [0, 1, 2, 3],
+        "n_particles": 4,
+        "simulator": cssm.lba_vanilla,
+        "parameter_transforms": {
+            "sampling": [],
+            "simulation": _LBA4_SIMULATION_TRANSFORMS,
         },
     }
 

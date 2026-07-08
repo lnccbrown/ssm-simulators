@@ -204,6 +204,7 @@ class TestModelConfigRegistry:
         assert "ddm" in models
         assert "angle" in models
         assert "ornstein" in models
+        assert "lba4" in models
         assert len(models) >= 100  # Should have 106 models
 
     def test_register_custom_model_config(self):
