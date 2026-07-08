@@ -29,6 +29,7 @@ def inv_temp_softmax(
     q0,
     q1,
     q2=None,
+    q3=None,
     n_samples: int = 1000,
     n_trials: int = 1,
     max_t: float = 20.0,
@@ -44,6 +45,8 @@ def inv_temp_softmax(
     ]
     if q2 is not None:
         q_values.append(_broadcast_param(q2, n_trials, "q2"))
+    if q3 is not None:
+        q_values.append(_broadcast_param(q3, n_trials, "q3"))
 
     beta_arr = _broadcast_param(beta, n_trials, "beta")
     q_matrix = np.column_stack(q_values)

@@ -35,3 +35,8 @@ def get_inv_temp_softmax_2_config() -> dict:
 def get_inv_temp_softmax_3_config() -> dict:
     """Get configuration for three-choice inverse-temperature softmax."""
     return _get_inv_temp_softmax_config(n_choices=3)
+
+
+def get_inv_temp_softmax_4_config() -> dict:
+    """Get configuration for four-choice inverse-temperature softmax."""
+    return _get_inv_temp_softmax_config(n_choices=4)
