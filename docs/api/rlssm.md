@@ -40,7 +40,7 @@ for presets, building a model, simulating participants, validation, and plots.
 | `AssembledModel` | Validated executable form of a config (inference-oriented) |
 | `resolve_model` | Resolve preset name or validate a `ModelConfig` |
 | `env` | Task environments (`Bandit`, `TaskConfig`, …) |
-| `learning` | Learning processes (`RescorlaWagnerDeltaRule`, …) |
+| `learning` | Learning processes (`RescorlaWagnerDrift`, `RescorlaWagnerSoftmax`, …) |
 | `preset` | Preset registry (`get`, `list`, `info`, `register`) |
 
 Import style: `import ssms.rl as rl`.
@@ -198,7 +198,7 @@ context:
 ```python
 config = rl.ModelConfig(
     ...,
-    learning_process=rl.learning.RescorlaWagnerDeltaRule(feedback_field="reward"),
+    learning_process=rl.learning.RescorlaWagnerDrift(feedback_field="reward"),
     context_fields=["reward"],
 )
 ```

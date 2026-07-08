@@ -1,4 +1,4 @@
-"""Tests for LearningProcess protocol and Rescorla-Wagner learning rules."""
+"""Tests for LearningProcess protocol and Rescorla-Wagner learning classes."""
 
 import numpy as np
 import pytest
@@ -6,177 +6,89 @@ import pytest
 from ssms.rl.learning import (
     LearningProcess,
     RescorlaWagnerDeltaRule,
-    RescorlaWagnerDeltaRule_CO,
+    RescorlaWagnerDrift,
+    RescorlaWagnerDualAlphaDrift,
     RescorlaWagnerDualAlphaRule,
+    RescorlaWagnerDualAlphaSoftmax,
+    RescorlaWagnerSoftmax,
 )
 
 
 class TestRescorlaWagnerDeltaRule:
     def setup_method(self):
-        self.rw = RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5)
+        self.rw = RescorlaWagnerDeltaRule(n_actions=3, initial_q=0.5)
         self.rw.reset()
 
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerDeltaRule(), LearningProcess)
+
     def test_initial_q_values(self):
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
 
-    def test_compute_v_initial(self):
-        """With equal Q-values, v should be 0.0 regardless of scaler."""
-        for scaler in [0.5, 1.0, 2.0, 10.0]:
-            result = self.rw.compute_ssm_params({"scaler": scaler})
-            assert result["v"] == 0.0
+    def test_core_metadata(self):
+        assert self.rw.computed_params == []
+        assert self.rw.free_params == ["rl_alpha"]
+        assert self.rw.param_bounds == {"rl_alpha": (0.0, 1.0)}
+        assert self.rw.default_params == {"rl_alpha": 0.2}
+        assert self.rw.required_context_fields == ["choice", "feedback"]
+        assert self.rw.available_backends == ("python", "jax")
+        assert self.rw.supports_gradient is True
 
-    def test_compute_v_after_update(self):
-        """After one update (action=0, reward=1.0, alpha=0.5):
-        Q = [0.5 + 0.5*(1.0 - 0.5), 0.5] = [0.75, 0.5]
-        v = (0.5 - 0.75) * 2.0 = -0.5
-        """
-        params = {"rl_alpha": 0.5, "scaler": 2.0}
-        self.rw.update(action=0, reward=1.0, trial_params=params)
-        np.testing.assert_allclose(self.rw.q_values, [0.75, 0.5])
-        result = self.rw.compute_ssm_params(params)
-        assert result["v"] == pytest.approx(-0.5)
-
-    def test_python_state_api_returns_new_state_without_mutating_input(self):
-        params = {"rl_alpha": 0.5, "scaler": 2.0}
+    def test_python_state_api_updates_without_mutating_input(self):
+        params = {"rl_alpha": 0.5}
         state = self.rw.init_state()
 
         computed = self.rw.compute_python(state, params, context={})
         next_state = self.rw.update_python(
             state,
             params,
-            context={"choice": 0, "feedback": 1.0},
+            context={"choice": 2, "feedback": 1.0},
         )
 
-        assert computed == {"v": 0.0}
-        np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
-        np.testing.assert_allclose(next_state["q_values"], [0.75, 0.5])
+        assert computed == {}
+        np.testing.assert_allclose(state["q_values"], [0.5, 0.5, 0.5])
+        np.testing.assert_allclose(next_state["q_values"], [0.5, 0.5, 0.75])
         assert next_state is not state
 
+    def test_mutable_api_delegates_to_python_state_api(self):
+        params = {"rl_alpha": 0.25}
+
+        assert self.rw.compute_ssm_params(params) == {}
+        self.rw.update(action=1, reward=0.0, trial_params=params)
+
+        np.testing.assert_allclose(self.rw.q_values, [0.5, 0.375, 0.5])
+
     def test_update_python_rejects_out_of_range_choice(self):
-        params = {"rl_alpha": 0.5, "scaler": 2.0}
         state = self.rw.init_state()
 
-        with pytest.raises(ValueError, match="choice 2 out of range"):
+        with pytest.raises(ValueError, match="choice 3 out of range"):
             self.rw.update_python(
                 state,
-                params,
-                context={"choice": 2, "feedback": 1.0},
+                {"rl_alpha": 0.5},
+                context={"choice": 3, "feedback": 1.0},
             )
 
     def test_update_python_rejects_non_int_choice(self):
-        params = {"rl_alpha": 0.5, "scaler": 2.0}
         state = self.rw.init_state()
 
         with pytest.raises(TypeError, match="choice must be an int"):
             self.rw.update_python(
                 state,
-                params,
+                {"rl_alpha": 0.5},
                 context={"choice": 1.0, "feedback": 1.0},
             )
 
-    def test_declares_required_context_fields(self):
-        assert self.rw.required_context_fields == ["choice", "feedback"]
-
-    def test_mutable_api_delegates_to_python_state_api(self):
-        params = {"rl_alpha": 0.5, "scaler": 2.0}
-        self.rw.reset()
-
-        assert self.rw.compute_ssm_params(params) == {"v": 0.0}
-        self.rw.update(action=0, reward=1.0, trial_params=params)
-
-        np.testing.assert_allclose(self.rw.q_values, [0.75, 0.5])
-
-    def test_backend_metadata(self):
-        assert self.rw.available_backends == ("python", "jax")
-        assert self.rw.supports_gradient is True
-
-    def test_drift_before_update_ordering(self):
-        """compute_ssm_params returns drift BEFORE the update
-        (matching HSSM's scan ordering)."""
-        params = {"rl_alpha": 0.5, "scaler": 1.0}
-        # Before any update, drift should be 0
-        v_before = self.rw.compute_ssm_params(params)["v"]
-        assert v_before == 0.0
-        # Update action=1, reward=1.0 → Q=[0.5, 0.75]
-        self.rw.update(action=1, reward=1.0, trial_params=params)
-        # Now drift should reflect the updated Q-values
-        v_after = self.rw.compute_ssm_params(params)["v"]
-        assert v_after == pytest.approx(0.25)  # (0.75 - 0.5) * 1.0
-
-    def test_multiple_updates_trajectory(self):
-        """Run a fixed sequence and compare against hand-computed values."""
-        params = {"rl_alpha": 0.3, "scaler": 2.0}
-        # Trial sequence: (action, reward)
-        sequence = [(0, 1.0), (1, 0.0), (0, 1.0), (1, 1.0)]
-
-        expected_q = [
-            # After (0, 1.0): Q[0] = 0.5 + 0.3*(1.0-0.5) = 0.65, Q[1] = 0.5
-            [0.65, 0.5],
-            # After (1, 0.0): Q[0] = 0.65, Q[1] = 0.5 + 0.3*(0.0-0.5) = 0.35
-            [0.65, 0.35],
-            # After (0, 1.0): Q[0] = 0.65 + 0.3*(1.0-0.65) = 0.755, Q[1] = 0.35
-            [0.755, 0.35],
-            # After (1, 1.0): Q[0] = 0.755, Q[1] = 0.35 + 0.3*(1.0-0.35) = 0.545
-            [0.755, 0.545],
-        ]
-
-        # Drift BEFORE each update (computed from Q before the trial's update)
-        expected_v_before = [
-            (0.5 - 0.5) * 2.0,  # 0.0
-            (0.5 - 0.65) * 2.0,  # -0.3
-            (0.35 - 0.65) * 2.0,  # -0.6
-            (0.35 - 0.755) * 2.0,  # -0.81
-        ]
-
-        for i, (action, reward) in enumerate(sequence):
-            v = self.rw.compute_ssm_params(params)["v"]
-            assert v == pytest.approx(expected_v_before[i], abs=1e-12)
-            self.rw.update(action=action, reward=reward, trial_params=params)
-            np.testing.assert_allclose(self.rw.q_values, expected_q[i], atol=1e-12)
-
-    def test_numerical_equivalence_with_hssm(self):
-        """Run same action/reward sequence through our RW and a NumPy
-        reimplementation of HSSM's compute_v_trial_wise. Assert match."""
-        alpha = 0.25
-        scaler = 1.5
-        params = {"rl_alpha": alpha, "scaler": scaler}
-
-        # Fixed action/reward sequence
-        actions = [0, 1, 1, 0, 1, 0, 0, 1, 0, 1]
-        rewards = [1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0]
-
-        # Our implementation
-        our_drifts = []
-        for action, reward in zip(actions, rewards):
-            v = self.rw.compute_ssm_params(params)["v"]
-            our_drifts.append(v)
-            self.rw.update(action=action, reward=reward, trial_params=params)
-
-        # HSSM-equivalent NumPy reimplementation
-        q_val = np.array([0.5, 0.5], dtype=np.float64)
-        hssm_drifts = []
-        for action, reward in zip(actions, rewards):
-            computed_v = (q_val[1] - q_val[0]) * scaler
-            hssm_drifts.append(float(computed_v))
-            delta_rl = reward - q_val[action]
-            q_val[action] = q_val[action] + alpha * delta_rl
-
-        np.testing.assert_allclose(our_drifts, hssm_drifts, atol=1e-15)
-
-    def test_protocol_compliance(self):
-        assert isinstance(RescorlaWagnerDeltaRule(), LearningProcess)
-
     def test_reset_clears_state(self):
-        params = {"rl_alpha": 0.5, "scaler": 1.0}
+        params = {"rl_alpha": 0.5}
         self.rw.update(action=0, reward=1.0, trial_params=params)
-        assert not np.array_equal(self.rw.q_values, [0.5, 0.5])
+        assert not np.array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
         self.rw.reset()
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
 
     def test_q_values_property_returns_copy(self):
         q = self.rw.q_values
         q[0] = 999.0
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
 
     def test_q_values_none_before_reset(self):
         rw = RescorlaWagnerDeltaRule()
@@ -186,7 +98,7 @@ class TestRescorlaWagnerDeltaRule:
         rw = RescorlaWagnerDeltaRule()
 
         with pytest.raises(RuntimeError, match="Call reset"):
-            rw.compute_ssm_params({"rl_alpha": 0.2, "scaler": 2.0})
+            rw.compute_ssm_params({"rl_alpha": 0.2})
 
     def test_update_requires_reset(self):
         rw = RescorlaWagnerDeltaRule()
@@ -194,37 +106,148 @@ class TestRescorlaWagnerDeltaRule:
         with pytest.raises(RuntimeError, match="Call reset"):
             rw.update(action=0, reward=1.0, trial_params={"rl_alpha": 0.2})
 
-    def test_free_params(self):
-        assert self.rw.free_params == ["rl_alpha", "scaler"]
-
-    def test_param_bounds(self):
-        bounds = self.rw.param_bounds
-        assert bounds["rl_alpha"] == (0.0, 1.0)
-        assert bounds["scaler"] == (0.001, 10.0)
-
-    def test_default_params(self):
-        defaults = self.rw.default_params
-        assert defaults == {"rl_alpha": 0.2, "scaler": 2.0}
-
     def test_invalid_n_actions(self):
-        with pytest.raises(ValueError, match="n_actions"):
+        with pytest.raises(ValueError, match="at least 2"):
             RescorlaWagnerDeltaRule(n_actions=1)
 
-    def test_rejects_more_than_two_actions(self):
-        with pytest.raises(ValueError, match="two-action"):
-            RescorlaWagnerDeltaRule(n_actions=3)
+    def test_non_int_n_actions(self):
+        with pytest.raises(TypeError, match="n_actions must be an int"):
+            RescorlaWagnerDeltaRule(n_actions=2.0)
 
 
-class TestRescorlaWagnerDeltaRuleCO:
+class TestRescorlaWagnerDrift:
     def setup_method(self):
-        self.rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+        self.rw = RescorlaWagnerDrift(n_actions=2, initial_q=0.5)
         self.rw.reset()
 
     def test_protocol_compliance(self):
-        assert isinstance(RescorlaWagnerDeltaRule_CO(), LearningProcess)
+        assert isinstance(RescorlaWagnerDrift(), LearningProcess)
 
-    def test_initial_q_values(self):
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
+    def test_metadata(self):
+        assert self.rw.computed_params == ["v"]
+        assert self.rw.free_params == ["rl_alpha", "scaler"]
+        assert self.rw.param_bounds == {
+            "rl_alpha": (0.0, 1.0),
+            "scaler": (0.001, 10.0),
+        }
+        assert self.rw.default_params == {"rl_alpha": 0.2, "scaler": 2.0}
+        assert self.rw.available_backends == ("python", "jax")
+        assert self.rw.supports_gradient is True
+
+    def test_compute_v_initial(self):
+        for scaler in [0.5, 1.0, 2.0, 10.0]:
+            result = self.rw.compute_ssm_params({"scaler": scaler})
+            assert result["v"] == 0.0
+
+    def test_compute_v_after_update(self):
+        params = {"rl_alpha": 0.5, "scaler": 2.0}
+        self.rw.update(action=0, reward=1.0, trial_params=params)
+        np.testing.assert_allclose(self.rw.q_values, [0.75, 0.5])
+        assert self.rw.compute_ssm_params(params)["v"] == pytest.approx(-0.5)
+
+    def test_drift_before_update_ordering(self):
+        params = {"rl_alpha": 0.5, "scaler": 1.0}
+        assert self.rw.compute_ssm_params(params)["v"] == 0.0
+        self.rw.update(action=1, reward=1.0, trial_params=params)
+        assert self.rw.compute_ssm_params(params)["v"] == pytest.approx(0.25)
+
+    def test_multiple_updates_trajectory(self):
+        params = {"rl_alpha": 0.3, "scaler": 2.0}
+        sequence = [(0, 1.0), (1, 0.0), (0, 1.0), (1, 1.0)]
+        expected_q = [
+            [0.65, 0.5],
+            [0.65, 0.35],
+            [0.755, 0.35],
+            [0.755, 0.545],
+        ]
+        expected_v_before = [0.0, -0.3, -0.6, -0.81]
+
+        for i, (action, reward) in enumerate(sequence):
+            v = self.rw.compute_ssm_params(params)["v"]
+            assert v == pytest.approx(expected_v_before[i], abs=1e-12)
+            self.rw.update(action=action, reward=reward, trial_params=params)
+            np.testing.assert_allclose(self.rw.q_values, expected_q[i], atol=1e-12)
+
+    def test_numerical_equivalence_with_hssm_two_action_rw(self):
+        alpha = 0.25
+        scaler = 1.5
+        params = {"rl_alpha": alpha, "scaler": scaler}
+        actions = [0, 1, 1, 0, 1, 0, 0, 1, 0, 1]
+        rewards = [1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0]
+
+        our_drifts = []
+        for action, reward in zip(actions, rewards):
+            our_drifts.append(self.rw.compute_ssm_params(params)["v"])
+            self.rw.update(action=action, reward=reward, trial_params=params)
+
+        q_val = np.array([0.5, 0.5], dtype=np.float64)
+        hssm_drifts = []
+        for action, reward in zip(actions, rewards):
+            hssm_drifts.append(float((q_val[1] - q_val[0]) * scaler))
+            delta_rl = reward - q_val[action]
+            q_val[action] = q_val[action] + alpha * delta_rl
+
+        np.testing.assert_allclose(our_drifts, hssm_drifts, atol=1e-15)
+
+    def test_rejects_more_than_two_actions(self):
+        with pytest.raises(ValueError, match="two-action"):
+            RescorlaWagnerDrift(n_actions=3)
+
+    def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDrift(n_actions=2, initial_q=0.5)
+        params = {"rl_alpha": 0.25, "scaler": 2.0}
+        state = rw.init_state()
+        jax_state = rw.init_jax_state()
+
+        actions = [0, 1, 0, 1]
+        rewards = [1.0, 0.0, 0.0, 1.0]
+        python_drifts = []
+        jax_drifts = []
+        for action, reward in zip(actions, rewards):
+            context = {"choice": action, "feedback": reward}
+            jax_context = {
+                "choice": jnp.asarray(action),
+                "feedback": jnp.asarray(reward),
+            }
+            python_drifts.append(rw.compute_python(state, params, context)["v"])
+            jax_drifts.append(
+                float(rw.compute_jax(jax_state, params, jax_context)["v"])
+            )
+            state = rw.update_python(state, params, context)
+            jax_state = rw.update_jax(jax_state, params, jax_context)
+
+        np.testing.assert_allclose(python_drifts, jax_drifts, rtol=1e-6, atol=1e-7)
+        np.testing.assert_allclose(
+            state["q_values"], np.asarray(jax_state["q_values"]), rtol=1e-6, atol=1e-7
+        )
+
+    def test_jax_update_is_differentiable(self):
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDrift(n_actions=2, initial_q=0.5)
+
+        def drift_after_update(alpha):
+            state = rw.init_jax_state()
+            params = {"rl_alpha": alpha, "scaler": jnp.asarray(2.0)}
+            context = {"choice": jnp.asarray(0), "feedback": jnp.asarray(1.0)}
+            state = rw.update_jax(state, params, context)
+            return rw.compute_jax(state, params, context)["v"]
+
+        grad = jax.jit(jax.grad(drift_after_update))(jnp.asarray(0.6))
+
+        assert grad == pytest.approx(-1.0)
+
+
+class TestRescorlaWagnerSoftmax:
+    def setup_method(self):
+        self.rw = RescorlaWagnerSoftmax(n_actions=3, initial_q=0.5)
+        self.rw.reset()
+
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerSoftmax(), LearningProcess)
 
     def test_metadata(self):
         assert self.rw.computed_params == ["q0", "q1", "q2"]
@@ -279,12 +302,12 @@ class TestRescorlaWagnerDeltaRuleCO:
 
     def test_invalid_n_actions(self):
         with pytest.raises(ValueError, match="at least 2"):
-            RescorlaWagnerDeltaRule_CO(n_actions=1)
+            RescorlaWagnerSoftmax(n_actions=1)
 
     def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
         jnp = pytest.importorskip("jax.numpy")
 
-        rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+        rw = RescorlaWagnerSoftmax(n_actions=3, initial_q=0.5)
         params = {"rl_alpha": 0.25}
         state = rw.init_state()
         jax_state = rw.init_jax_state()
@@ -313,7 +336,7 @@ class TestRescorlaWagnerDeltaRuleCO:
         jax = pytest.importorskip("jax")
         jnp = pytest.importorskip("jax.numpy")
 
-        rw = RescorlaWagnerDeltaRule_CO(n_actions=3, initial_q=0.5)
+        rw = RescorlaWagnerSoftmax(n_actions=3, initial_q=0.5)
 
         def q2_after_update(alpha):
             state = rw.init_jax_state()
@@ -329,50 +352,36 @@ class TestRescorlaWagnerDeltaRuleCO:
 
 class TestRescorlaWagnerDualAlphaRule:
     def setup_method(self):
-        self.rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
+        self.rw = RescorlaWagnerDualAlphaRule(n_actions=3, initial_q=0.5)
         self.rw.reset()
 
     def test_protocol_compliance(self):
         assert isinstance(RescorlaWagnerDualAlphaRule(), LearningProcess)
 
     def test_initial_q_values(self):
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
+        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5, 0.5])
 
-    def test_q_values_property_returns_copy(self):
-        q = self.rw.q_values
-        q[0] = 999.0
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
-
-    def test_reset_clears_state(self):
-        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
-        self.rw.update(action=0, reward=1.0, trial_params=params)
-        assert not np.array_equal(self.rw.q_values, [0.5, 0.5])
-        self.rw.reset()
-        np.testing.assert_array_equal(self.rw.q_values, [0.5, 0.5])
-
-    def test_free_params(self):
-        assert self.rw.free_params == ["rl_alpha", "rl_alpha_neg", "scaler"]
-
-    def test_param_bounds(self):
-        bounds = self.rw.param_bounds
-        assert bounds["rl_alpha"] == (0.0, 1.0)
-        assert bounds["rl_alpha_neg"] == (0.0, 1.0)
-        assert bounds["scaler"] == (0.001, 10.0)
-
-    def test_default_params(self):
-        assert self.rw.default_params == {
-            "rl_alpha": 0.2,
-            "rl_alpha_neg": 0.2,
-            "scaler": 2.0,
+    def test_core_metadata(self):
+        assert self.rw.computed_params == []
+        assert self.rw.free_params == ["rl_alpha", "rl_alpha_neg"]
+        assert self.rw.param_bounds == {
+            "rl_alpha": (0.0, 1.0),
+            "rl_alpha_neg": (0.0, 1.0),
         }
+        assert self.rw.default_params == {"rl_alpha": 0.2, "rl_alpha_neg": 0.2}
 
     def test_positive_prediction_error_uses_rl_alpha(self):
-        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1}
         self.rw.update(action=0, reward=1.0, trial_params=params)
-        np.testing.assert_allclose(self.rw.q_values, [0.8, 0.5])
+        np.testing.assert_allclose(self.rw.q_values, [0.8, 0.5, 0.5])
+
+    def test_negative_prediction_error_uses_rl_alpha_neg(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1}
+        self.rw.update(action=0, reward=0.0, trial_params=params)
+        np.testing.assert_allclose(self.rw.q_values, [0.45, 0.5, 0.5])
 
     def test_python_state_api_uses_sign_dependent_learning_rates(self):
-        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1}
         state = self.rw.init_state()
 
         positive_state = self.rw.update_python(
@@ -382,14 +391,9 @@ class TestRescorlaWagnerDualAlphaRule:
             positive_state, params, {"choice": 0, "feedback": 0.0}
         )
 
-        np.testing.assert_allclose(state["q_values"], [0.5, 0.5])
-        np.testing.assert_allclose(positive_state["q_values"], [0.8, 0.5])
-        np.testing.assert_allclose(negative_state["q_values"], [0.72, 0.5])
-
-    def test_negative_prediction_error_uses_rl_alpha_neg(self):
-        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 1.0}
-        self.rw.update(action=0, reward=0.0, trial_params=params)
-        np.testing.assert_allclose(self.rw.q_values, [0.45, 0.5])
+        np.testing.assert_allclose(state["q_values"], [0.5, 0.5, 0.5])
+        np.testing.assert_allclose(positive_state["q_values"], [0.8, 0.5, 0.5])
+        np.testing.assert_allclose(negative_state["q_values"], [0.72, 0.5, 0.5])
 
     def test_update_requires_reset(self):
         rw = RescorlaWagnerDualAlphaRule()
@@ -401,13 +405,28 @@ class TestRescorlaWagnerDualAlphaRule:
                 trial_params={"rl_alpha": 0.6, "rl_alpha_neg": 0.1},
             )
 
-    def test_drift_before_update_ordering(self):
-        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
-        v_before = self.rw.compute_ssm_params(params)["v"]
-        assert v_before == 0.0
-        self.rw.update(action=0, reward=1.0, trial_params=params)
-        v_after = self.rw.compute_ssm_params(params)["v"]
-        assert v_after == pytest.approx(-0.6)
+
+class TestRescorlaWagnerDualAlphaDrift:
+    def setup_method(self):
+        self.rw = RescorlaWagnerDualAlphaDrift(n_actions=2, initial_q=0.5)
+        self.rw.reset()
+
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerDualAlphaDrift(), LearningProcess)
+
+    def test_metadata(self):
+        assert self.rw.computed_params == ["v"]
+        assert self.rw.free_params == ["rl_alpha", "rl_alpha_neg", "scaler"]
+        assert self.rw.param_bounds == {
+            "rl_alpha": (0.0, 1.0),
+            "rl_alpha_neg": (0.0, 1.0),
+            "scaler": (0.001, 10.0),
+        }
+        assert self.rw.default_params == {
+            "rl_alpha": 0.2,
+            "rl_alpha_neg": 0.2,
+            "scaler": 2.0,
+        }
 
     def test_multiple_updates_trajectory(self):
         params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
@@ -426,12 +445,14 @@ class TestRescorlaWagnerDualAlphaRule:
             self.rw.update(action=action, reward=reward, trial_params=params)
             np.testing.assert_allclose(self.rw.q_values, expected_q[i], atol=1e-12)
 
+    def test_rejects_more_than_two_actions(self):
+        with pytest.raises(ValueError, match="two-action"):
+            RescorlaWagnerDualAlphaDrift(n_actions=3)
 
-class TestJaxLearningBackend:
     def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
         jnp = pytest.importorskip("jax.numpy")
 
-        rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
+        rw = RescorlaWagnerDualAlphaDrift(n_actions=2, initial_q=0.5)
         params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1, "scaler": 2.0}
         state = rw.init_state()
         jax_state = rw.init_jax_state()
@@ -459,28 +480,11 @@ class TestJaxLearningBackend:
         )
         assert isinstance(jax_state["q_values"], jnp.ndarray)
 
-    def test_delta_rule_jax_update_is_differentiable(self):
+    def test_jax_update_is_differentiable_through_negative_delta(self):
         jax = pytest.importorskip("jax")
         jnp = pytest.importorskip("jax.numpy")
 
-        rw = RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5)
-
-        def drift_after_update(alpha):
-            state = rw.init_jax_state()
-            params = {"rl_alpha": alpha, "scaler": jnp.asarray(2.0)}
-            context = {"choice": jnp.asarray(0), "feedback": jnp.asarray(1.0)}
-            state = rw.update_jax(state, params, context)
-            return rw.compute_jax(state, params, context)["v"]
-
-        grad = jax.jit(jax.grad(drift_after_update))(jnp.asarray(0.6))
-
-        assert grad == pytest.approx(-1.0)
-
-    def test_dual_alpha_jax_update_is_differentiable_through_negative_delta(self):
-        jax = pytest.importorskip("jax")
-        jnp = pytest.importorskip("jax.numpy")
-
-        rw = RescorlaWagnerDualAlphaRule(n_actions=2, initial_q=0.5)
+        rw = RescorlaWagnerDualAlphaDrift(n_actions=2, initial_q=0.5)
 
         def drift_after_negative_update(alpha_neg):
             state = rw.init_jax_state()
@@ -504,3 +508,90 @@ class TestJaxLearningBackend:
         grad = jax.jit(jax.grad(drift_after_negative_update))(jnp.asarray(0.1))
 
         assert grad == pytest.approx(1.6)
+
+
+class TestRescorlaWagnerDualAlphaSoftmax:
+    def setup_method(self):
+        self.rw = RescorlaWagnerDualAlphaSoftmax(n_actions=3, initial_q=0.5)
+        self.rw.reset()
+
+    def test_protocol_compliance(self):
+        assert isinstance(RescorlaWagnerDualAlphaSoftmax(), LearningProcess)
+
+    def test_metadata(self):
+        assert self.rw.computed_params == ["q0", "q1", "q2"]
+        assert self.rw.free_params == ["rl_alpha", "rl_alpha_neg"]
+        assert self.rw.param_bounds == {
+            "rl_alpha": (0.0, 1.0),
+            "rl_alpha_neg": (0.0, 1.0),
+        }
+        assert self.rw.default_params == {"rl_alpha": 0.2, "rl_alpha_neg": 0.2}
+
+    def test_computes_q_values_and_uses_sign_dependent_learning_rates(self):
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1}
+
+        assert self.rw.compute_ssm_params(params) == {
+            "q0": 0.5,
+            "q1": 0.5,
+            "q2": 0.5,
+        }
+        self.rw.update(action=2, reward=1.0, trial_params=params)
+        self.rw.update(action=2, reward=0.0, trial_params=params)
+
+        np.testing.assert_allclose(self.rw.q_values, [0.5, 0.5, 0.72])
+        assert self.rw.compute_ssm_params(params) == {
+            "q0": 0.5,
+            "q1": 0.5,
+            "q2": 0.72,
+        }
+
+    def test_jax_backend_matches_python_backend_when_jax_is_installed(self):
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDualAlphaSoftmax(n_actions=3, initial_q=0.5)
+        params = {"rl_alpha": 0.6, "rl_alpha_neg": 0.1}
+        state = rw.init_state()
+        jax_state = rw.init_jax_state()
+
+        actions = [0, 2, 2, 1]
+        rewards = [1.0, 1.0, 0.0, 0.0]
+        for action, reward in zip(actions, rewards):
+            context = {"choice": action, "feedback": reward}
+            jax_context = {
+                "choice": jnp.asarray(action),
+                "feedback": jnp.asarray(reward),
+            }
+            state = rw.update_python(state, params, context)
+            jax_state = rw.update_jax(jax_state, params, jax_context)
+
+        np.testing.assert_allclose(
+            state["q_values"], np.asarray(jax_state["q_values"]), rtol=1e-6, atol=1e-7
+        )
+
+    def test_jax_update_is_differentiable_through_negative_delta(self):
+        jax = pytest.importorskip("jax")
+        jnp = pytest.importorskip("jax.numpy")
+
+        rw = RescorlaWagnerDualAlphaSoftmax(n_actions=3, initial_q=0.5)
+
+        def q2_after_negative_update(alpha_neg):
+            state = rw.init_jax_state()
+            params = {
+                "rl_alpha": jnp.asarray(0.6),
+                "rl_alpha_neg": alpha_neg,
+            }
+            positive_context = {
+                "choice": jnp.asarray(2),
+                "feedback": jnp.asarray(1.0),
+            }
+            negative_context = {
+                "choice": jnp.asarray(2),
+                "feedback": jnp.asarray(0.0),
+            }
+            state = rw.update_jax(state, params, positive_context)
+            state = rw.update_jax(state, params, negative_context)
+            return rw.compute_jax(state, params, negative_context)["q2"]
+
+        grad = jax.jit(jax.grad(q2_after_negative_update))(jnp.asarray(0.1))
+
+        assert grad == pytest.approx(-0.8)

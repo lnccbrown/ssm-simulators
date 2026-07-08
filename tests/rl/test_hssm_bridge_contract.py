@@ -40,7 +40,7 @@ def test_assembled_output_dict_matches_response_to_choice_for_hssm_wrapper():
         model_name="reversed_response_bridge",
         description="Bridge contract with non-default response mapping",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule(),
+        learning_process=rl.learning.RescorlaWagnerDrift(),
         task_environment=rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),

@@ -11,7 +11,7 @@ def _make_default_config(**overrides):
         model_name="test_rlssm",
         description="Test RLSSM config",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule(
+        learning_process=rl.learning.RescorlaWagnerDrift(
             n_actions=2, initial_q=0.5
         ),
         task_environment=rl.env.Bandit.bernoulli(
@@ -369,7 +369,7 @@ class TestAssembledModel:
     def test_custom_context_field_name(self):
         assembled = _make_default_config(
             learning_backend="python",
-            learning_process=rl.learning.RescorlaWagnerDeltaRule(
+            learning_process=rl.learning.RescorlaWagnerDrift(
                 n_actions=2, initial_q=0.5, feedback_field="reward"
             ),
             task_environment=_RewardEnvironment(),

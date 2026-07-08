@@ -18,7 +18,7 @@ def _make_config(**overrides):
         model_name="test_rlssm",
         description="Test RLSSM",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule(
+        learning_process=rl.learning.RescorlaWagnerDrift(
             n_actions=2, initial_q=0.5
         ),
         task_environment=rl.env.Bandit.bernoulli(

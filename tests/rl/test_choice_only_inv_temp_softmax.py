@@ -90,7 +90,7 @@ def test_four_arm_choice_only_model_config_validates_assembles_and_simulates():
         model_name="4AB_RW_InvTempSoftmax_Test",
         description="Four-armed choice-only Rescorla-Wagner softmax test config.",
         decision_process="inv_temp_softmax_4",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule_CO(
+        learning_process=rl.learning.RescorlaWagnerSoftmax(
             n_actions=4,
             initial_q=0.5,
         ),
@@ -158,7 +158,7 @@ def test_choice_only_presets_validate_assemble_and_simulate(
 def test_choice_only_preset_info_documents_hssm_contract():
     info = rl.preset.info("2AB_RW_InvTempSoftmax")
 
-    assert info["learning_process"] == "RescorlaWagnerDeltaRule_CO"
+    assert info["learning_process"] == "RescorlaWagnerSoftmax"
     assert info["decision_process"] == "inv_temp_softmax_2"
     assert info["required_parameters"] == ["rl_alpha", "beta"]
     assert info["response_labels"] == (0, 1)

@@ -13,7 +13,7 @@ def _make_default_config(**overrides):
         model_name="test_rlssm",
         description="Test RLSSM config",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule(
+        learning_process=rl.learning.RescorlaWagnerDrift(
             n_actions=2, initial_q=0.5
         ),
         task_environment=rl.env.Bandit.bernoulli(
@@ -97,7 +97,7 @@ class TestAutoDerivation:
 class TestDualAlphaAutoDerivation:
     def test_auto_derive_list_params(self):
         config = _make_default_config(
-            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+            learning_process=rl.learning.RescorlaWagnerDualAlphaDrift()
         )
         assert config.list_params == [
             "rl_alpha",
@@ -111,7 +111,7 @@ class TestDualAlphaAutoDerivation:
 
     def test_auto_derive_bounds(self):
         config = _make_default_config(
-            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+            learning_process=rl.learning.RescorlaWagnerDualAlphaDrift()
         )
         assert config.bounds["rl_alpha"] == (0.0, 1.0)
         assert config.bounds["rl_alpha_neg"] == (0.0, 1.0)
@@ -120,7 +120,7 @@ class TestDualAlphaAutoDerivation:
 
     def test_auto_derive_params_default(self):
         config = _make_default_config(
-            learning_process=rl.learning.RescorlaWagnerDualAlphaRule()
+            learning_process=rl.learning.RescorlaWagnerDualAlphaDrift()
         )
         assert config.params_default[:3] == [0.2, 0.2, 2.0]
 
