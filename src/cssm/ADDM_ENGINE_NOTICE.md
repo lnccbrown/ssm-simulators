@@ -44,3 +44,24 @@ is to **absorb & relicense** this engine under ssm-simulators' own MIT license.
    `(n_samples, n_trials, 1)` shape and the `-999.0` omission sentinel.
 4. Inline xoshiro PRNG kept (not ssm-simulators' GSL RNG) so results are identical
    to efpt on the same per-trial seeds and independent of `n_threads`.
+
+## Sanctioned in-place modification (re-apply on re-vendor)
+
+The "do not edit in place" rule has **one** deliberate exception, needed so the
+model-cartoon plotter can read a representative evidence path from simulator
+metadata. It is opt-in and inert unless requested, so it does not change any efpt
+result. Each edit site is tagged `# ssm-sim MOD` in `addm_models.pyx`:
+
+- `_run_heterog_trial` gains a trailing `float *traj_out` parameter and, in the
+  Euler loop, `if traj_out != NULL: traj_out[step] = <float>y`. When `traj_out` is
+  `NULL` the loop is byte-for-byte the efpt original.
+- `_simulate_heterog_multistage` gains `float[:, ::1] traj_out=None,
+  int record_trial=-1`; it hands the sink to exactly one row (`record_trial`) and
+  `NULL` to all others (`record_trial=-1` → records nothing, the efpt default).
+- `addm()` passes `traj` (from `setup_simulation`, already `>= max_steps` rows) and
+  `record_trial=0`, so row 0's path lands in `metadata['trajectory']`. `addm()` also
+  emits `metadata['boundary']` (`+(a - b·t)` over the grid) and a relative
+  `metadata['z']` start alias — both pure ssm-simulators glue, no engine change.
+
+To re-vendor: drop in the upstream engine, then re-apply the two `# ssm-sim MOD`
+sites above (the `addm()` glue is regenerated as part of items 1–4).
