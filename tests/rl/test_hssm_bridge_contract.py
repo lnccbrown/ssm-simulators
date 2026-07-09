@@ -98,8 +98,13 @@ def test_rlssm_docs_cover_choice_only_ppc_and_validation_surface():
     docs = Path("docs/api/rlssm.md").read_text()
 
     assert "posterior predictive simulation" in docs
+    assert "2AB_RW_DDM" in docs
+    assert "2AB_RW_Weibull" in docs
+    assert "2AB_RW_DualAlpha_Angle" in docs
     assert "2AB_RW_InvTempSoftmax" in docs
+    assert "2AB_RW_DualAlpha_InvTempSoftmax" in docs
     assert "3AB_RW_InvTempSoftmax" in docs
+    assert "4AB_RW_InvTempSoftmax" in docs
     assert "inv_temp_softmax_4" in docs
     assert "validate_rlssm_data" in docs
     assert "response-only data" in docs

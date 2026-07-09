@@ -123,14 +123,36 @@ def test_four_arm_choice_only_model_config_validates_assembles_and_simulates():
 
 
 @pytest.mark.parametrize(
-    ("preset_name", "n_choices", "theta"),
+    ("preset_name", "n_choices", "theta", "expected_params"),
     [
-        ("2AB_RW_InvTempSoftmax", 2, {"rl_alpha": 0.2, "beta": 2.0}),
-        ("3AB_RW_InvTempSoftmax", 3, {"rl_alpha": 0.2, "beta": 2.0}),
+        (
+            "2AB_RW_InvTempSoftmax",
+            2,
+            {"rl_alpha": 0.2, "beta": 2.0},
+            ["rl_alpha", "beta"],
+        ),
+        (
+            "2AB_RW_DualAlpha_InvTempSoftmax",
+            2,
+            {"rl_alpha": 0.2, "rl_alpha_neg": 0.1, "beta": 2.0},
+            ["rl_alpha", "rl_alpha_neg", "beta"],
+        ),
+        (
+            "3AB_RW_InvTempSoftmax",
+            3,
+            {"rl_alpha": 0.2, "beta": 2.0},
+            ["rl_alpha", "beta"],
+        ),
+        (
+            "4AB_RW_InvTempSoftmax",
+            4,
+            {"rl_alpha": 0.2, "beta": 2.0},
+            ["rl_alpha", "beta"],
+        ),
     ],
 )
 def test_choice_only_presets_validate_assemble_and_simulate(
-    preset_name, n_choices, theta
+    preset_name, n_choices, theta, expected_params
 ):
     config = rl.preset.get(preset_name)
 
@@ -145,7 +167,7 @@ def test_choice_only_presets_validate_assemble_and_simulate(
 
     assert config.response == ["response"]
     assert config.decision_process == f"inv_temp_softmax_{n_choices}"
-    assert config.list_params == ["rl_alpha", "beta"]
+    assert config.list_params == expected_params
     assert config._computed_ssm_params == [f"q{i}" for i in range(n_choices)]
     assert assembled.gradient == "available"
     assert assembled.response == ["response"]
@@ -268,7 +290,17 @@ def test_choice_only_ppc_requires_trial_id():
     ("preset_name", "theta", "choices"),
     [
         ("2AB_RW_InvTempSoftmax", {"rl_alpha": 0.2, "beta": 2.0}, {0, 1}),
+        (
+            "2AB_RW_DualAlpha_InvTempSoftmax",
+            {"rl_alpha": 0.2, "rl_alpha_neg": 0.1, "beta": 2.0},
+            {0, 1},
+        ),
         ("3AB_RW_InvTempSoftmax", {"rl_alpha": 0.2, "beta": 2.0}, {0, 1, 2}),
+        (
+            "4AB_RW_InvTempSoftmax",
+            {"rl_alpha": 0.2, "beta": 2.0},
+            {0, 1, 2, 3},
+        ),
     ],
 )
 def test_choice_only_ppc_output_omits_rt(preset_name, theta, choices):

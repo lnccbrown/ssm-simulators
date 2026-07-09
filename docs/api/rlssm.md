@@ -121,6 +121,26 @@ is a free learning-process parameter. For softmax models, the learner emits the
 raw `q0..qN` values and the decision process uses the fixed SSM parameter `beta`
 as the inverse temperature.
 
+## Built-in presets
+
+Built-in presets are registered under `ssms.rl.preset` and are the canonical
+source of truth for HSSM handoff. Current public presets include:
+
+| Preset | Decision process | Learning process | Response |
+|--------|------------------|------------------|----------|
+| `2AB_RW_DDM` | `ddm` | `RescorlaWagnerDrift` | `rt`, `response` |
+| `2AB_RW_Angle` | `angle` | `RescorlaWagnerDrift` | `rt`, `response` |
+| `2AB_RW_Weibull` | `weibull` | `RescorlaWagnerDrift` | `rt`, `response` |
+| `2AB_RW_DualAlpha_Angle` | `angle` | `RescorlaWagnerDualAlphaDrift` | `rt`, `response` |
+| `2AB_RW_InvTempSoftmax` | `inv_temp_softmax_2` | `RescorlaWagnerSoftmax` | `response` |
+| `2AB_RW_DualAlpha_InvTempSoftmax` | `inv_temp_softmax_2` | `RescorlaWagnerDualAlphaSoftmax` | `response` |
+| `3AB_RW_InvTempSoftmax` | `inv_temp_softmax_3` | `RescorlaWagnerSoftmax` | `response` |
+| `4AB_RW_InvTempSoftmax` | `inv_temp_softmax_4` | `RescorlaWagnerSoftmax` | `response` |
+
+Use `rl.preset.list()` for the runtime list and `rl.preset.info(name)` for the
+full model contract, including required parameters, choices, response mapping,
+computed SSM parameters, and HSSM compatibility metadata.
+
 ## Task environment protocols
 
 `TaskEnvironment` is the base protocol for per-trial context and post-decision
@@ -236,10 +256,11 @@ responses are newly simulated.
 
 ## Choice-only inverse-temperature softmax presets
 
-`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax` are response-only RL presets.
-They use `RescorlaWagnerSoftmax` to emit `q0..qN`, and the
-`inv_temp_softmax_N` decision process uses `beta` as the inverse temperature for
-choice probabilities.
+`2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, `4AB_RW_InvTempSoftmax`, and
+`2AB_RW_DualAlpha_InvTempSoftmax` are response-only RL presets. They use
+`RescorlaWagnerSoftmax` or `RescorlaWagnerDualAlphaSoftmax` to emit `q0..qN`,
+and the `inv_temp_softmax_N` decision process uses `beta` as the inverse
+temperature for choice probabilities.
 
 These presets declare `response=["response"]` because the softmax decision
 process has no response-time likelihood. The low-level softmax simulator still
