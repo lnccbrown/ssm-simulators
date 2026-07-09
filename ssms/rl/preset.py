@@ -118,7 +118,7 @@ def info(name: str) -> PresetInfo:
 
 def _make_two_arm_rw_angle() -> ModelConfig:
     from .env import Bandit
-    from .learning import RescorlaWagnerDeltaRule
+    from .learning import RescorlaWagnerDrift
 
     return ModelConfig(
         model_name="2AB_RW_Angle",
@@ -127,10 +127,48 @@ def _make_two_arm_rw_angle() -> ModelConfig:
             "and an angle decision process."
         ),
         decision_process="angle",
-        learning_process=RescorlaWagnerDeltaRule(n_actions=2, initial_q=0.5),
+        learning_process=RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
         task_environment=Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
+    )
+
+
+def _make_two_arm_rw_inv_temp_softmax() -> ModelConfig:
+    from .env import Bandit
+    from .learning import RescorlaWagnerSoftmax
+
+    return ModelConfig(
+        model_name="2AB_RW_InvTempSoftmax",
+        description=(
+            "Two-armed bandit with a Rescorla-Wagner delta-rule learner "
+            "and a choice-only inverse-temperature softmax decision process."
+        ),
+        decision_process="inv_temp_softmax_2",
+        learning_process=RescorlaWagnerSoftmax(n_actions=2, initial_q=0.5),
+        task_environment=Bandit.bernoulli(
+            probabilities=[0.7, 0.3], response_labels=[0, 1]
+        ),
+        response=["response"],
+    )
+
+
+def _make_three_arm_rw_inv_temp_softmax() -> ModelConfig:
+    from .env import Bandit
+    from .learning import RescorlaWagnerSoftmax
+
+    return ModelConfig(
+        model_name="3AB_RW_InvTempSoftmax",
+        description=(
+            "Three-armed bandit with a Rescorla-Wagner delta-rule learner "
+            "and a choice-only inverse-temperature softmax decision process."
+        ),
+        decision_process="inv_temp_softmax_3",
+        learning_process=RescorlaWagnerSoftmax(n_actions=3, initial_q=0.5),
+        task_environment=Bandit.bernoulli(
+            probabilities=[0.7, 0.2, 0.1], response_labels=[0, 1, 2]
+        ),
+        response=["response"],
     )
 
 
@@ -145,6 +183,38 @@ register(
                 "Exports participant_contract, response-to-choice mapping, "
                 "context fields, backend policy, and gradient policy for "
                 "HSSM-side RLSSM wiring."
+            ),
+        },
+    },
+)
+
+register(
+    "2AB_RW_InvTempSoftmax",
+    _make_two_arm_rw_inv_temp_softmax,
+    metadata={
+        "task": "two-armed Bernoulli bandit",
+        "hssm_compatibility": {
+            "participant_contract": True,
+            "notes": (
+                "Choice-only RL preset. Uses response-only data, beta as inverse "
+                "temperature, q0/q1 as learning-computed SSM parameters, and "
+                "rt=-1.0 as a non-omission simulator placeholder."
+            ),
+        },
+    },
+)
+
+register(
+    "3AB_RW_InvTempSoftmax",
+    _make_three_arm_rw_inv_temp_softmax,
+    metadata={
+        "task": "three-armed Bernoulli bandit",
+        "hssm_compatibility": {
+            "participant_contract": True,
+            "notes": (
+                "Choice-only RL preset. Uses response-only data, beta as inverse "
+                "temperature, q0/q1/q2 as learning-computed SSM parameters, and "
+                "rt=-1.0 as a non-omission simulator placeholder."
             ),
         },
     },
