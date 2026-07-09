@@ -7,9 +7,9 @@
 
 ## SSMS (Sequential Sampling Model Simulators)
 
-[![DOI](https://zenodo.org/badge/370812185.svg)](https://doi.org/10.5281/zenodo.17156205)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17156205-blue)](https://doi.org/10.5281/zenodo.17156205)
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
-![PyPI_dl](https://img.shields.io/pypi/dm/ssm-simulators)
+[![Downloads](https://static.pepy.tech/badge/ssm-simulators/month)](https://pepy.tech/projects/ssm-simulators)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/lnccbrown/ssm-simulators)](https://github.com/lnccbrown/ssm-simulators/pulls)
 [![Python Version](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](https://pypi.org/project/ssm-simulators/)
 [![Run tests](https://img.shields.io/github/actions/workflow/status/lnccbrown/ssm-simulators/run_tests.yml?branch=main&label=tests)](https://github.com/lnccbrown/ssm-simulators/actions/workflows/run_tests.yml)
