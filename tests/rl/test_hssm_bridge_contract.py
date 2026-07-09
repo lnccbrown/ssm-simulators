@@ -114,11 +114,13 @@ def test_rlssm_tutorials_are_listed_without_docs_execution():
 
 
 def test_new_rlssm_tutorials_name_handoff_and_choice_only_contracts():
-    handoff = Path("docs/core_tutorials/rlssm_simulation_hssm_handoff.ipynb").read_text()
+    handoff = Path(
+        "docs/core_tutorials/rlssm_simulation_hssm_handoff.ipynb"
+    ).read_text()
     choice_only = Path("docs/core_tutorials/choice_only_rl_models.ipynb").read_text()
 
     assert "RLSSMConfig.from_ssms_model" in handoff
     assert "posterior predictive" in handoff
     assert "rt=-1.0" in choice_only
     assert "response-only data" in choice_only
-    assert "mode=\\\"ppc\\\"" in choice_only
+    assert 'mode=\\"ppc\\"' in choice_only
