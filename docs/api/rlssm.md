@@ -5,6 +5,20 @@ reinforcement-learning sequential sampling models (RLSSMs). Combine a learning
 process, SSM decision process, and task environment; simulate balanced panels
 compatible with HSSM inference.
 
+An RLSSM links two time scales:
+
+- within a trial, a decision process generates a response, and sometimes an RT;
+- across trials, a learning process updates latent states such as Q-values from
+  choices, feedback, rewards, or other task context.
+
+The same ssms-defined learning rule can therefore serve three workflows:
+
+1. synthetic data generation in `ssms.rl.Simulator`;
+2. RLSSM likelihood construction in HSSM through
+   `hssm.rl.RLSSMConfig.from_ssms_model(...)`;
+3. posterior predictive simulation by conditioning learning on observed trial
+   histories and resimulating responses with posterior parameter draws.
+
 ## Quick start
 
 ```python
@@ -30,6 +44,9 @@ data = sim.simulate(
 
 See the [RLSSM tutorial](../core_tutorials/rlssm_tutorial.ipynb)
 for presets, building a model, simulating participants, validation, and plots.
+For focused examples, see
+[RLSSM simulation and HSSM handoff](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb)
+and [choice-only RL models](../core_tutorials/choice_only_rl_models.ipynb).
 
 ## Public API
 
@@ -42,8 +59,14 @@ for presets, building a model, simulating participants, validation, and plots.
 | `env` | Task environments (`Bandit`, `TaskConfig`, …) |
 | `learning` | Learning processes (`RescorlaWagnerDrift`, `RescorlaWagnerSoftmax`, …) |
 | `preset` | Preset registry (`get`, `list`, `info`, `register`) |
+| `validate_rlssm_data` | Standalone validation helper used by `ModelConfig.validate_data()` |
 
 Import style: `import ssms.rl as rl`.
+
+Most users should start from `rl.preset.get(...)` and `rl.Simulator(...)`. Use
+`ModelConfig` directly when you need a custom task environment, response mapping,
+or learning process. Use `assemble(backend="jax")` only when integrating with an
+inference package or inspecting the participant-wise computed-parameter contract.
 
 ## Model configuration
 
@@ -137,11 +160,11 @@ participant-wise theta length.
 
 - `mode="generative"` — the default unconstrained simulation loop. The simulator
   samples responses, task context, and learning updates end to end.
-- `mode="ppc"` — observed-history-conditioned resimulation for tutorials, smoke
-  tests, and manual checks. Learning state is conditioned on observed trial history;
-  RT/response are resimulated and observed context fields are copied into output.
-  This is **not** a replacement for PyMC/HSSM posterior predictive checks after
-  inference — use HSSM's inference workflow for canonical PPCs.
+- `mode="ppc"` — observed-history-conditioned posterior predictive simulation.
+  Learning state is conditioned on observed trial history; RT/response are
+  resimulated and observed context fields are copied into output. After HSSM
+  inference, posterior draws can be routed through the same simulator contract
+  to check whether inferred learning and decision parameters reproduce behavior.
 
 PPC mode uses the same data contract as inference validation (see below). The
 observed panel must include `participant_id`, all `config.response` columns
@@ -236,6 +259,24 @@ report = config.validate_data(data.drop(columns=["rt"]))
 report.raise_for_errors()
 ```
 
+Choice-only PPC uses the same response-only contract. Empirical `observed_data`
+must not contain an `rt` column for these presets, and PPC output omits `rt`:
+
+```python
+response_only = data.drop(columns=["rt"])
+ppc = rl.Simulator(config).simulate(
+    theta={"rl_alpha": 0.2, "beta": 2.0},
+    mode="ppc",
+    observed_data=response_only,
+    random_state=13,
+)
+```
+
+The lower-level `inv_temp_softmax_4` decision process is also available for
+four-choice softmax simulation. Built-in RL presets currently cover the two- and
+three-choice bandit cases; custom `ModelConfig` objects can pair
+`RescorlaWagnerSoftmax(n_actions=4)` with `decision_process="inv_temp_softmax_4"`.
+
 ### Context fields
 
 Outcome-like values are ordinary context fields. By default, built-in bandits emit a
@@ -305,6 +346,11 @@ with the JAX backend, checks gradient support, and wraps
 `AssembledModel.assemble_participant_fn(output="dict")` for HSSM's annotated
 computed-parameter contract.
 
+This bridge is what lets HSSM evaluate RLSSM likelihoods while keeping the
+learning rule, response-to-choice mapping, and task context source of truth in
+ssms. For choice-only RL models, pass response-only data to HSSM, not the
+generative simulator's placeholder `rt` column.
+
 **Note:** HSSM's bridge factory still calls the pre-refactor `compile()` API
 until the separate `hssm-rlssm-api` task updates it to `assemble()`.
 
@@ -331,6 +377,16 @@ planned separately in HSSM.
 ::: ssms.rl.simulator.Simulator
 
 ::: ssms.rl.assembled.resolve_model
+
+::: ssms.rl.preset.get
+
+::: ssms.rl.preset.list
+
+::: ssms.rl.preset.info
+
+::: ssms.rl.preset.register
+
+::: ssms.rl.validation.validate_rlssm_data
 
 ::: ssms.rl.learning.LearningProcess
 
