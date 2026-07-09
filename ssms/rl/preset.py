@@ -198,7 +198,7 @@ register(
             "notes": (
                 "Choice-only RL preset. Uses response-only data, beta as inverse "
                 "temperature, q0/q1 as learning-computed SSM parameters, and "
-                "rt=-1.0 as a simulator placeholder."
+                "rt=-1.0 as a non-omission simulator placeholder."
             ),
         },
     },
@@ -214,7 +214,7 @@ register(
             "notes": (
                 "Choice-only RL preset. Uses response-only data, beta as inverse "
                 "temperature, q0/q1/q2 as learning-computed SSM parameters, and "
-                "rt=-1.0 as a simulator placeholder."
+                "rt=-1.0 as a non-omission simulator placeholder."
             ),
         },
     },

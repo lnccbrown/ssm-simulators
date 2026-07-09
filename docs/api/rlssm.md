@@ -75,6 +75,29 @@ simulator `theta`. The assembled model and HSSM bridge consume the *derived*
 public fields (`list_params`, `computed_params`, `response_to_choice`, …), not
 `_ssm_config` itself.
 
+## Built-in Rescorla-Wagner learning processes
+
+The built-in Rescorla-Wagner classes separate the Q-value update rule from the
+decision-process parameters emitted on each trial:
+
+| Class | Emits | Actions | Use case |
+|-------|-------|---------|----------|
+| `RescorlaWagnerDeltaRule` | none | `n_actions >= 2` | Core single-alpha Q-value state/update class for custom adapters |
+| `RescorlaWagnerDrift` | `v` | `n_actions == 2` | Two-action SSMs that need trial-wise drift, such as `angle` |
+| `RescorlaWagnerSoftmax` | `q0`, `q1`, ... | `n_actions >= 2` | Choice-only inverse-temperature softmax decision processes |
+| `RescorlaWagnerDualAlphaRule` | none | `n_actions >= 2` | Core dual-alpha Q-value state/update class |
+| `RescorlaWagnerDualAlphaDrift` | `v` | `n_actions == 2` | Two-action drift models with separate positive/negative learning rates |
+| `RescorlaWagnerDualAlphaSoftmax` | `q0`, `q1`, ... | `n_actions >= 2` | Choice-only softmax models with separate positive/negative learning rates |
+
+Use `RescorlaWagnerDeltaRule` and `RescorlaWagnerDualAlphaRule` when you need
+the update rule but want to write a custom decision-facing adapter. Use the
+concrete drift or softmax classes directly for standard presets and HSSM handoff.
+
+For drift models, the learner computes `v = (Q[1] - Q[0]) * scaler`, so `scaler`
+is a free learning-process parameter. For softmax models, the learner emits the
+raw `q0..qN` values and the decision process uses the fixed SSM parameter `beta`
+as the inverse temperature.
+
 ## Task environment protocols
 
 `TaskEnvironment` is the base protocol for per-trial context and post-decision
@@ -188,6 +211,31 @@ ppc = sim.simulate(
 The observed response history is used only to condition learning state; PPC output
 responses are newly simulated.
 
+## Choice-only inverse-temperature softmax presets
+
+`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax` are response-only RL presets.
+They use `RescorlaWagnerSoftmax` to emit `q0..qN`, and the
+`inv_temp_softmax_N` decision process uses `beta` as the inverse temperature for
+choice probabilities.
+
+These presets declare `response=["response"]` because the softmax decision
+process has no response-time likelihood. The low-level softmax simulator still
+returns an `rt` array for compatibility with the generic simulator interface,
+but every value is `-1.0` and should be treated only as a non-omission
+placeholder. It is not a response time, and it is intentionally distinct from
+`OMISSION_SENTINEL == -999.0`, which ssms and HSSM use for omissions,
+deadline/no-response trials, and missing RT handling.
+
+For validation and HSSM handoff, omit the placeholder column:
+
+```python
+config = rl.preset.get("2AB_RW_InvTempSoftmax")
+data = rl.Simulator(config).simulate(theta=theta, n_trials=200)
+
+report = config.validate_data(data.drop(columns=["rt"]))
+report.raise_for_errors()
+```
+
 ### Context fields
 
 Outcome-like values are ordinary context fields. By default, built-in bandits emit a
@@ -283,5 +331,19 @@ planned separately in HSSM.
 ::: ssms.rl.simulator.Simulator
 
 ::: ssms.rl.assembled.resolve_model
+
+::: ssms.rl.learning.LearningProcess
+
+::: ssms.rl.learning.RescorlaWagnerDeltaRule
+
+::: ssms.rl.learning.RescorlaWagnerDrift
+
+::: ssms.rl.learning.RescorlaWagnerSoftmax
+
+::: ssms.rl.learning.RescorlaWagnerDualAlphaRule
+
+::: ssms.rl.learning.RescorlaWagnerDualAlphaDrift
+
+::: ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax
 
 See also the full package reference on the [ssms](ssms.md) API page.
