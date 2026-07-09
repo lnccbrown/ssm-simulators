@@ -29,6 +29,30 @@ def constant(t: float | np.ndarray = 0, a: float = 1.0) -> float | np.ndarray:  
     return a
 
 
+# Linearly collapsing aDDM boundary
+def addm_collapse(
+    t: float | np.ndarray = 0, a: float = 1.0, b: float = 0.5
+) -> float | np.ndarray:
+    """Linearly collapsing boundary for the attentional DDM: ``a - b * t``.
+
+    The aDDM simulator uses this for the upper boundary and mirrors it (``-(a - b
+    * t)``) for the lower one. ``b >= 0`` collapses the bounds over time; ``b = 0``
+    recovers a constant boundary. This documents the boundary the ``cssm.addm``
+    engine computes internally from its own ``a``/``b`` params.
+
+    Arguments
+    ---------
+        t (float or np.ndarray, optional): Time point(s). Defaults to 0.
+        a (float, optional): Boundary intercept at t=0. Defaults to 1.0.
+        b (float, optional): Collapse slope (>= 0). Defaults to 0.5.
+
+    Returns
+    -------
+        float or np.ndarray: ``a - b * t``.
+    """
+    return a - np.multiply(t, b)
+
+
 # Angle boundary with linear collapse
 def angle(
     t: float | np.ndarray = 1, a: float = 1.0, theta: float = 1.0

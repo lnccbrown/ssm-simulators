@@ -633,6 +633,7 @@ def simulator(
     random_state: int | None = None,
     return_option: str = "full",
     n_threads: int = 1,
+    extra_fields: dict | None = None,
 ) -> dict:
     """Basic data simulator for the models included in HDDM.
 
@@ -774,12 +775,16 @@ def simulator(
     # Check if parameters are valid
     validate_ssm_parameters(model_base, theta)
 
-    # Call to the simulator
+    # Call to the simulator. ``extra_fields`` optionally forwards observed per-trial
+    # covariates (e.g. aDDM fixations r1/r2/flag/sacc_array/d/sigma) into the model
+    # function so posterior-predictive draws can condition on them; empty for models
+    # that take no covariates (a no-op splat), keeping every existing model unchanged.
     x = model_config_local["simulator"](
         **theta,
         **boundary_dict,
         **drift_dict,
         **sim_param_dict,
+        **(extra_fields or {}),
     )
 
     # Ensure x is a dictionary
