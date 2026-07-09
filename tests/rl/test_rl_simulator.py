@@ -15,9 +15,7 @@ def _make_simulator(**config_overrides):
         model_name="test_rlssm",
         description="Test RLSSM",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDrift(
-            n_actions=2, initial_q=0.5
-        ),
+        learning_process=rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
         # Use response labels [-1, 1] to match angle model's SSM output
         task_environment=rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
