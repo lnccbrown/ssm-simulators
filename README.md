@@ -17,17 +17,67 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/lnccbrown/ssm-simulators/branch/main/graph/badge.svg)](https://codecov.io/gh/lnccbrown/ssm-simulators)
 
-Python Package to collect simulators for Sequential Sampling Models.
+`ssm-simulators` provides fast C/Cython simulators for sequential sampling
+models used in cognitive science, neuroscience, and amortized Bayesian
+inference, spanning classic DDM variants, multi-choice models, attention
+models, and reinforcement-learning SSMs.
 
 Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators/).
 
 
+### What can I simulate?
+
+Use `ssm-simulators` when you need to:
+
+- Simulate response-time and choice data from a broad library of sequential
+  sampling models.
+- Generate training data for likelihood approximation networks and other
+  amortized-inference workflows.
+- Prototype new SSM variants with custom drift functions, boundary functions,
+  parameter transforms, and high-performance Cython extensions.
+- Work with reinforcement-learning SSMs, including Rescorla-Wagner learning
+  rules and choice-only inverse-temperature softmax models.
+
+Model families include:
+
+- **Diffusion models**: DDM, full DDM, deadline variants, flexible-boundary DDMs
+  with angle and Weibull boundaries, Levy models, Ornstein-Uhlenbeck models,
+  gamma-drift models, conflict models, tradeoff models, and shrink-spotlight
+  variants.
+- **Multi-choice accumulators**: race models, racing diffusion models, LBA
+  models including two-, three-, and four-choice variants, LCA models, and
+  Poisson race models.
+- **Attention and fixation-conditioned models**: aDDM simulators with observed
+  or self-sampled fixation inputs, continuation strategies, and optional
+  trajectory metadata for visualization.
+- **Reinforcement-learning SSMs**: ssms-defined RL task presets, learning rules,
+  participant replay functions, RT+choice models, and choice-only softmax
+  decision processes.
+
+### Where it fits
+
+`ssm-simulators` is the simulator and data-generation layer of the HSSM
+ecosystem. It is used by [LANfactory](https://github.com/lnccbrown/LANfactory)
+and [LAN_pipeline_minimal](https://github.com/lnccbrown/LAN_pipeline_minimal)
+to generate training data for likelihood networks, and by
+[HSSM](https://github.com/lnccbrown/HSSM) to bridge simulator-defined model
+configurations into Bayesian inference workflows.
+
 ### Quick Start
 
-The `ssms` package serves two purposes.
+The `Simulator` class is the recommended user-facing API for direct simulation:
 
-1. Easy access to *fast simulators of sequential sampling models*
-2. Support infrastructure to construct training data for various approaches to likelihood / posterior amortization
+```python
+from ssms.basic_simulators import Simulator
+
+sim = Simulator("ddm")
+out = sim.simulate(
+    theta={"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.2},
+    n_samples=1000,
+)
+
+print(out["rts"].shape, out["choices"].shape)
+```
 
 A number of tutorial notebooks are available under the `/notebooks` directory.
 
