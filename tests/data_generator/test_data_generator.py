@@ -78,21 +78,24 @@ broken_models = [
     "lba_3_vs_constraint",  # broken
     "lba_angle_3_vs_constraint",  # broken
     "dev_rlwm_lba_race_v2",  # broken
-    "lba2",  # broken - generates incorrect number of parameter sets
 ]
 
 # Ultra slow models, likely broken?
 slow_prefixes = (
     "race",
     "dev_rlwm",
-    "lba3",
-    "lba_angle_3",
     "lca",
     "ddm_par2",
     "ddm_seq2",
     "ddm_mic2",
     "tradeoff",
 )
+
+CHOICE_ONLY_RL_TAG = "choice_only_rl"
+
+
+def _is_choice_only_rl_config(model_conf):
+    return CHOICE_ONLY_RL_TAG in model_conf.get("tags", ())
 
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
@@ -101,6 +104,8 @@ def test_TrainingDataGenerator(model_name, model_conf):
         pytest.skip(f"Skipping broken model: {model_name}")
     if model_name.startswith(slow_prefixes):
         pytest.skip(f"Skipping slow model: {model_name}")
+    if _is_choice_only_rl_config(model_conf):
+        pytest.skip(f"Skipping choice-only RL model: {model_name}")
 
     generator_config = deepcopy(gen_config)
     generator_config["model"] = model_name
@@ -146,6 +151,8 @@ def test_data_persistance(tmp_path):
 def test_model_config(model_name):
     # Take an example config for a given model
     model_conf = deepcopy(model_config[model_name])
+    if _is_choice_only_rl_config(model_conf):
+        pytest.skip(f"Skipping choice-only RL model: {model_name}")
 
     assert type(model_conf["simulator"]).__name__ == "cython_function_or_method"
 

@@ -13,7 +13,7 @@ def sim_data():
         model_name="test_compat",
         description="Compatibility test",
         decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDeltaRule(),
+        learning_process=rl.learning.RescorlaWagnerDrift(),
         task_environment=rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
@@ -133,7 +133,7 @@ class TestRegistry:
 
         assert info["name"] == "2AB_RW_Angle"
         assert info["task"] == "two-armed Bernoulli bandit"
-        assert info["learning_process"] == "RescorlaWagnerDeltaRule"
+        assert info["learning_process"] == "RescorlaWagnerDrift"
         assert info["decision_process"] == "angle"
         assert info["required_parameters"] == [
             "rl_alpha",
@@ -166,7 +166,7 @@ class TestRegistry:
                 model_name="custom",
                 description="Custom preset",
                 decision_process="angle",
-                learning_process=rl.learning.RescorlaWagnerDeltaRule(),
+                learning_process=rl.learning.RescorlaWagnerDrift(),
                 task_environment=rl.env.Bandit.bernoulli(response_labels=[-1, 1]),
             )
 

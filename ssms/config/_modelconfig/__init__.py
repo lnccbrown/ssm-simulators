@@ -71,9 +71,15 @@ from .gamma_drift import (
     get_gamma_drift_angle_config,
     get_gamma_drift_config,
 )
+from .inv_temp_softmax import (
+    get_inv_temp_softmax_2_config,
+    get_inv_temp_softmax_3_config,
+    get_inv_temp_softmax_4_config,
+)
 from .lba import (
     get_lba2_config,
     get_lba3_config,
+    get_lba4_config,
     get_lba_3_vs_constraint_config,
     get_lba_angle_3_config,
     get_lba_angle_3_vs_constraint_config,
@@ -235,6 +241,9 @@ def get_model_config():
         "angle": get_angle_config(),
         "weibull": get_weibull_config(),
         "gamma_drift": get_gamma_drift_config(),
+        "inv_temp_softmax_2": get_inv_temp_softmax_2_config(),
+        "inv_temp_softmax_3": get_inv_temp_softmax_3_config(),
+        "inv_temp_softmax_4": get_inv_temp_softmax_4_config(),
         "shrink_spot": get_shrink_spot_config(),
         "shrink_spot_extended": get_shrink_spot_extended_config(),
         "shrink_spot_simple": get_shrink_spot_simple_config(),
@@ -274,6 +283,7 @@ def get_model_config():
         "dev_rlwm_lba_race_v2": get_dev_rlwm_lba_race_v2_config(),
         "lba2": get_lba2_config(),
         "lba3": get_lba3_config(),
+        "lba4": get_lba4_config(),
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),
@@ -341,6 +351,9 @@ __all__ = [
     "get_ddm_mic2_multinoise_weibull_no_bias_config",
     "get_poisson_race_config",
     "get_addm_config",
+    "get_inv_temp_softmax_2_config",
+    "get_inv_temp_softmax_3_config",
+    "get_inv_temp_softmax_4_config",
 ]
 
 # Validate

@@ -74,8 +74,8 @@ class Simulator:
         Returns
         -------
         pd.DataFrame
-            Balanced panel with columns: participant_id, trial_id, rt, response,
-            configured context fields, and optional derived choice.
+            Balanced panel with participant_id, trial_id, configured response
+            columns, configured context fields, and optional derived choice.
         """
         self._validate_mode(mode)
         if mode == "ppc":
@@ -153,6 +153,16 @@ class Simulator:
         """Validate observed participant history for PPC mode."""
         if observed_data is None:
             raise ValueError("observed_data is required when mode='ppc'.")
+        if isinstance(observed_data, pd.DataFrame):
+            if "trial_id" not in observed_data.columns:
+                raise ValueError(
+                    "observed_data must include 'trial_id' when mode='ppc'."
+                )
+            if "rt" not in self.config.response and "rt" in observed_data.columns:
+                raise ValueError(
+                    "observed_data for response-only PPC must not include 'rt'; "
+                    "drop the rt column before calling mode='ppc'."
+                )
         report = validate_rlssm_data(self.config, observed_data)
         report.raise_for_errors()
 
@@ -397,10 +407,11 @@ class Simulator:
             observed_choice = self._response_to_choice_index(observed_response)
             update_context = {
                 **observed_context,
-                "rt": float(getattr(observed_trial, "rt")),
                 "response": observed_response,
                 "choice": observed_choice,
             }
+            if hasattr(observed_trial, "rt"):
+                update_context["rt"] = float(getattr(observed_trial, "rt"))
 
             learning_state = self._update_learning_state(
                 learning_state, rl_params, update_context
@@ -410,9 +421,10 @@ class Simulator:
             row = {
                 "participant_id": subject_id,
                 "trial_id": getattr(observed_trial, "trial_id"),
-                "rt": rt,
-                "response": response,
             }
+            if "rt" in config.response:
+                row["rt"] = rt
+            row["response"] = response
             row.update(self._context_fields_for_output(observed_context))
             if config.include_choice:
                 row["choice"] = simulated_choice

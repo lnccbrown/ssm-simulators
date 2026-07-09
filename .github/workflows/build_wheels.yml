@@ -16,7 +16,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # ubuntu-24.04-arm is a native GitHub-hosted arm64 runner (free for public
+        # repos): cibuildwheel with CIBW_ARCHS_LINUX=auto64 builds manylinux
+        # aarch64 wheels on it natively (no QEMU). The build falls back to
+        # no-GSL/no-OpenMP just like the x86_64 wheels, so no extra system deps.
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v7
