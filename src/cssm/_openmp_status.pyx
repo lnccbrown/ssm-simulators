@@ -219,7 +219,7 @@ def check_parallel_request(n_threads, warn=True):
                 f"Running with n_threads=1.\n"
                 f"To enable parallel support:\n"
                 f"  - macOS: brew install libomp && pip install --force-reinstall ssm-simulators\n"
-                f"  - Linux: Ensure OpenMP dev packages are installed (libgomp-dev)",
+                f"  - Linux: apt install build-essential && pip install --force-reinstall ssm-simulators",
                 RuntimeWarning,
                 stacklevel=3
             )
@@ -266,7 +266,7 @@ def print_status():
         if not info['openmp_available']:
             print("  OpenMP:")
             print("    macOS:  brew install libomp")
-            print("    Linux:  apt install libgomp-dev (or equivalent)")
+            print("    Linux:  apt install build-essential")
         if not info['gsl_available']:
             print("  GSL:")
             print("    macOS:  brew install gsl")

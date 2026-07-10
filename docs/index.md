@@ -136,7 +136,7 @@ Users who need multi-threaded simulation should install OpenMP and GSL first:
 brew install libomp gsl
 
 # Ubuntu/Debian
-sudo apt-get install libgomp-dev libgsl-dev
+sudo apt-get install build-essential libgsl-dev
 ```
 
 ---
