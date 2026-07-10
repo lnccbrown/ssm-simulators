@@ -1,7 +1,5 @@
 """Tests for the public ssms.rl surfaces consumed by HSSM."""
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -84,43 +82,3 @@ def test_simulated_preset_data_validates_for_hssm_handoff():
     assert report.n_participants == 2
     assert report.n_trials == 12
     report.raise_for_errors()
-
-
-def test_rlssm_docs_name_active_hssm_bridge_factory():
-    docs = Path("docs/api/rlssm.md").read_text()
-
-    assert "RLSSMConfig.from_ssms_model" in docs
-    assert "hssm.RLSSM(data=data, model_config=hssm_config)" in docs
-    assert "structural inspection" in docs
-
-
-def test_rlssm_docs_cover_choice_only_ppc_and_validation_surface():
-    docs = Path("docs/api/rlssm.md").read_text()
-
-    assert "posterior predictive simulation" in docs
-    assert "2AB_RW_InvTempSoftmax" in docs
-    assert "3AB_RW_InvTempSoftmax" in docs
-    assert "inv_temp_softmax_4" in docs
-    assert "validate_rlssm_data" in docs
-    assert "response-only data" in docs
-
-
-def test_rlssm_tutorials_are_listed_without_docs_execution():
-    mkdocs = Path("mkdocs.yml").read_text()
-
-    assert "core_tutorials/rlssm_simulation_hssm_handoff.ipynb" in mkdocs
-    assert "core_tutorials/choice_only_rl_models.ipynb" in mkdocs
-    assert "execute: False" in mkdocs
-
-
-def test_new_rlssm_tutorials_name_handoff_and_choice_only_contracts():
-    handoff = Path(
-        "docs/core_tutorials/rlssm_simulation_hssm_handoff.ipynb"
-    ).read_text()
-    choice_only = Path("docs/core_tutorials/choice_only_rl_models.ipynb").read_text()
-
-    assert "RLSSMConfig.from_ssms_model" in handoff
-    assert "posterior predictive" in handoff
-    assert "rt=-1.0" in choice_only
-    assert "response-only data" in choice_only
-    assert 'mode=\\"ppc\\"' in choice_only

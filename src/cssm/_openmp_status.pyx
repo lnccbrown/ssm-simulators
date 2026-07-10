@@ -219,8 +219,7 @@ def check_parallel_request(n_threads, warn=True):
                 f"Running with n_threads=1.\n"
                 f"To enable parallel support:\n"
                 f"  - macOS: brew install libomp && pip install --force-reinstall ssm-simulators\n"
-                f"  - Linux: Ensure OpenMP dev packages are installed (libgomp-dev)\n"
-                f"  - Conda: conda install -c conda-forge ssm-simulators",
+                f"  - Linux: Ensure OpenMP dev packages are installed (libgomp-dev)",
                 RuntimeWarning,
                 stacklevel=3
             )
@@ -236,8 +235,7 @@ def check_parallel_request(n_threads, warn=True):
                 f"GSL is required for correct parallel random number generation.\n"
                 f"To enable parallel support:\n"
                 f"  - macOS: brew install gsl && pip install --force-reinstall ssm-simulators\n"
-                f"  - Linux: apt install libgsl-dev && pip install --force-reinstall ssm-simulators\n"
-                f"  - Conda: conda install -c conda-forge ssm-simulators (recommended)",
+                f"  - Linux: apt install libgsl-dev && pip install --force-reinstall ssm-simulators",
                 RuntimeWarning,
                 stacklevel=3
             )
@@ -273,9 +271,7 @@ def print_status():
             print("  GSL:")
             print("    macOS:  brew install gsl")
             print("    Linux:  apt install libgsl-dev")
-            print("    Conda:  conda install -c conda-forge gsl")
         print("\n  Then reinstall: pip install --force-reinstall ssm-simulators")
-        print("  Or use conda:   conda install -c conda-forge ssm-simulators")
 
 
 # Run status check if executed directly

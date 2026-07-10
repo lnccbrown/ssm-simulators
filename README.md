@@ -87,16 +87,9 @@ Install the optional JAX backend for differentiable RLSSM learning processes:
 pip install "ssm-simulators[jax]"
 ```
 
-For full parallel support, conda-forge is the easiest route because OpenMP and
-GSL are included:
-
-```sh
-conda install -c conda-forge ssm-simulators
-```
-
 > [!NOTE]
 > Multi-threaded simulation with `n_threads > 1` requires OpenMP and GSL.
-> With `pip`, install system dependencies first:
+> Install system dependencies first:
 >
 > ```bash
 > # macOS
