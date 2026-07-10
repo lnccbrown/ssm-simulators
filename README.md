@@ -89,29 +89,21 @@ Install the optional JAX backend for differentiable RLSSM learning processes:
 pip install "ssm-simulators[jax]"
 ```
 
-For full parallel support, conda-forge is the easiest route because OpenMP and
-GSL are included:
-
-```sh
-conda install -c conda-forge ssm-simulators
-```
-
 > [!NOTE]
 > Multi-threaded simulation with `n_threads > 1` requires OpenMP and GSL.
-> With `pip`, install system dependencies first:
+> Install system dependencies first:
 >
 > ```bash
 > # macOS
 > brew install libomp gsl
 >
 > # Ubuntu/Debian
-> sudo apt-get install libgomp-dev libgsl-dev
+> sudo apt-get install build-essential libgsl-dev
 > ```
 >
 > Then reinstall with `pip install --force-reinstall ssm-simulators`.
 > Without these dependencies, the package still works in single-threaded mode.
-
-> [!NOTE]
+>
 > Building from source or developing this package requires a C compiler. Most
 > users installing from PyPI wheels do not need to install GCC manually.
 
@@ -182,7 +174,7 @@ The package exposes `generate` for creating training data from a YAML
 configuration file:
 
 ```bash
-generate --config-path <path/to/config.yaml> --output <output/directory> [--log-level INFO]
+generate [--config-path <path/to/config.yaml>] --output <output/directory> [--log-level INFO]
 ```
 
 Common options:
