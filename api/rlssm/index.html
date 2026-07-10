@@ -1,0 +1,4796 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://lnccbrown.github.io/ssm-simulators/api/rlssm/">
+      
+      
+        <link rel="prev" href="../ssms/">
+      
+      
+        <link rel="next" href="../basic_simulators/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>RLSSM (ssms.rl) - SSMS (Sequential Sampling Model Simulators)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../styles/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rlssm-simulation-ssmsrl" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+              <button class="md-banner__button md-icon" aria-label="Don't show this again">
+                
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
+            
+            
+<span class="show-on-small right-margin">
+    <span class="twemoji right-margin show-on-small move-down">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M214.6 470.6c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L192 402.7l137.4-137.3c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3l-160 160zm160-352-160 160c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L192 210.7 329.4 73.4c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3z"/></svg>
+    </span>
+    Navigate the site here!
+</span>
+<span class="right-margin">
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+</span>
+<span>
+    <span class="twemoji">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3C9.23 3 6.19 5.95 6 9.66l-1.92 2.53c-.24.31 0 .81.42.81H6v3c0 1.11.89 2 2 2h1v3h7v-4.69c2.37-1.12 4-3.51 4-6.31 0-3.86-3.12-7-7-7m1 11h-2v-2h2zm1.75-5.19c-.29.4-.66.69-1.11.93-.25.16-.42.33-.51.52-.09.18-.13.43-.13.74h-2c0-.5.11-.92.31-1.18.19-.27.54-.57 1.05-.91.26-.16.47-.36.61-.59.16-.23.23-.5.23-.82 0-.3-.08-.56-.26-.75-.18-.18-.44-.28-.75-.28a1 1 0 0 0-.66.23c-.18.16-.27.39-.28.69h-1.93l-.01-.03c-.01-.79.25-1.36.77-1.77.54-.39 1.24-.59 2.11-.59.93 0 1.66.23 2.19.68.54.45.81 1.06.81 1.82 0 .5-.15.91-.44 1.31"/></svg>
+    </span>
+</span>
+
+          </div>
+          
+            <script>var el=document.querySelector("[data-md-component=announce]");if(el){var content=el.querySelector(".md-typeset");__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0)}</script>
+          
+        </aside>
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://lnccbrown.github.io/ssm-simulators/" title="SSMS (Sequential Sampling Model Simulators)" class="md-header__button md-logo" aria-label="SSMS (Sequential Sampling Model Simulators)" data-md-component="logo">
+      
+  <img src="../../images/navlogo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SSMS (Sequential Sampling Model Simulators)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              RLSSM (ssms.rl)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to automatic mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to automatic mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/lnccbrown/ssm-simulators" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lnccbrown/ssm-simulators
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../basic_tutorial/basic_tutorial/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../core_tutorials/tutorial_capabilities/" class="md-tabs__link">
+          
+  
+  
+  Core Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/add_models/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ssms/" class="md-tabs__link">
+          
+  
+  
+  API
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://lnccbrown.github.io/ssm-simulators/" title="SSMS (Sequential Sampling Model Simulators)" class="md-nav__button md-logo" aria-label="SSMS (Sequential Sampling Model Simulators)" data-md-component="logo">
+      
+  <img src="../../images/navlogo.png" alt="logo">
+
+    </a>
+    SSMS (Sequential Sampling Model Simulators)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/lnccbrown/ssm-simulators" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    lnccbrown/ssm-simulators
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../basic_tutorial/basic_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Check included models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Core Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/tutorial_capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/tutorial_configs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Systems
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/tutorial_custom_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating Custom Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/tutorial_data_generators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The TrainingDataGenerator class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/rlssm_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulators: A Beginner's Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/rlssm_simulation_hssm_handoff/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulation and HSSM Handoff
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/choice_only_rl_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choice-only RL Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/rlssm_advanced_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulators: Advanced Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/kde_class/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the KDE class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/tutorial_simulators_vs_pyddm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial: Native simulators vs. PyDDM Analytical Solutions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core_tutorials/using_mlflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MLflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/add_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute New Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/add_parameter_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute Parameter Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ssms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ssms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM (ssms.rl)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM (ssms.rl)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#derived-decision-process-config-_ssm_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Derived decision-process config (_ssm_config)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-rescorla-wagner-learning-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Rescorla-Wagner learning processes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-environment-protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task environment protocols
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#participant-wise-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Participant-wise parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choice-only-inverse-temperature-softmax-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choice-only inverse-temperature softmax presets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Choice-only inverse-temperature softmax presets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assembled-model-inference-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assembled model (inference integration)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hssm-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HSSM bridge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModelConfig
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __post_init__
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.assemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        assemble
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.participant_contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        participant_contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.required_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.resolved_response_to_choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_response_to_choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.to_hssm_config_dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_hssm_config_dict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.validate_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AssembledModel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.assemble_participant_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        assemble_participant_fn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.from_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.get_participant_input_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_participant_input_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.participant_input_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        participant_input_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.simulator.Simulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.simulator.Simulator.simulate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.resolve_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.validation.validate_rlssm_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_rlssm_data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LearningProcess
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.available_backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        available_backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.compute_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.compute_ssm_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_ssm_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.computed_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        computed_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.default_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.free_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.init_state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        init_state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.param_bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        param_bounds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.required_context_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required_context_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.supports_gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        supports_gradient
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.update_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDeltaRule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.compute_ssm_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_ssm_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.q_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        q_values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDrift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDrift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerSoftmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaRule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule.update_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaDrift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaDrift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../basic_simulators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    basic simulators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dataset_generators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    data generators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support_utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    support utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#public-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#derived-decision-process-config-_ssm_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Derived decision-process config (_ssm_config)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-rescorla-wagner-learning-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Rescorla-Wagner learning processes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-environment-protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task environment protocols
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#participant-wise-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Participant-wise parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choice-only-inverse-temperature-softmax-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choice-only inverse-temperature softmax presets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Choice-only inverse-temperature softmax presets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assembled-model-inference-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assembled model (inference integration)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hssm-bridge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HSSM bridge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ModelConfig
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.__post_init__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __post_init__
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.assemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        assemble
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.participant_contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        participant_contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.required_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.resolved_response_to_choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolved_response_to_choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.to_hssm_config_dict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to_hssm_config_dict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.config.ModelConfig.validate_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AssembledModel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.assemble_participant_fn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        assemble_participant_fn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.from_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.get_participant_input_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_participant_input_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.AssembledModel.participant_input_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        participant_input_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.simulator.Simulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.simulator.Simulator.simulate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.assembled.resolve_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.get" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.preset.register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.validation.validate_rlssm_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_rlssm_data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LearningProcess
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.available_backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        available_backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.compute_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.compute_ssm_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_ssm_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.computed_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        computed_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.default_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.free_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.init_state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        init_state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.param_bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        param_bounds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.required_context_fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required_context_fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.supports_gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        supports_gradient
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.LearningProcess.update_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDeltaRule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.compute_ssm_params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_ssm_params
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.q_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        q_values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDeltaRule.update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDrift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDrift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerSoftmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaRule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule.update_python" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        update_python
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaDrift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaDrift
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerDualAlphaSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/api/rlssm.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/api/rlssm.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="rlssm-simulation-ssmsrl">RLSSM simulation (<code>ssms.rl</code>)</h1>
+<p>The <code>ssms.rl</code> namespace provides a compositional framework for simulating
+reinforcement-learning sequential sampling models (RLSSMs). Combine a learning
+process, SSM decision process, and task environment; simulate balanced panels
+compatible with HSSM inference.</p>
+<p>An RLSSM links two time scales:</p>
+<ul>
+<li>within a trial, a decision process generates a response, and sometimes an RT;</li>
+<li>across trials, a learning process updates latent states such as Q-values from
+  choices, feedback, rewards, or other task context.</li>
+</ul>
+<p>The same ssms-defined learning rule can therefore serve three workflows:</p>
+<ol>
+<li>synthetic data generation in <code>ssms.rl.Simulator</code>;</li>
+<li>RLSSM likelihood construction in HSSM through
+   <code>hssm.rl.RLSSMConfig.from_ssms_model(...)</code>;</li>
+<li>posterior predictive simulation by conditioning learning on observed trial
+   histories and resimulating responses with posterior parameter draws.</li>
+</ol>
+<h2 id="quick-start">Quick start</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ssms.rl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rl</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">rl</span><span class="o">.</span><span class="n">preset</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;2AB_RW_Angle&quot;</span><span class="p">))</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;2AB_RW_Angle&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">sim</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">data</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="p">},</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">n_participants</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>See the <a href="../../core_tutorials/rlssm_tutorial/">RLSSM tutorial</a>
+for presets, building a model, simulating participants, validation, and plots.
+For focused examples, see
+<a href="../../core_tutorials/rlssm_simulation_hssm_handoff/">RLSSM simulation and HSSM handoff</a>
+and <a href="../../core_tutorials/choice_only_rl_models/">choice-only RL models</a>.</p>
+<h2 id="public-api">Public API</h2>
+<table>
+<thead>
+<tr>
+<th>Export</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ModelConfig</code></td>
+<td>Structural model specification (no concrete <code>theta</code> values)</td>
+</tr>
+<tr>
+<td><code>Simulator</code></td>
+<td>Trial-wise generative simulation loop</td>
+</tr>
+<tr>
+<td><code>AssembledModel</code></td>
+<td>Validated executable form of a config (inference-oriented)</td>
+</tr>
+<tr>
+<td><code>resolve_model</code></td>
+<td>Resolve preset name or validate a <code>ModelConfig</code></td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>Task environments (<code>Bandit</code>, <code>TaskConfig</code>, …)</td>
+</tr>
+<tr>
+<td><code>learning</code></td>
+<td>Learning processes (<code>RescorlaWagnerDrift</code>, <code>RescorlaWagnerSoftmax</code>, …)</td>
+</tr>
+<tr>
+<td><code>preset</code></td>
+<td>Preset registry (<code>get</code>, <code>list</code>, <code>info</code>, <code>register</code>)</td>
+</tr>
+<tr>
+<td><code>validate_rlssm_data</code></td>
+<td>Standalone validation helper used by <code>ModelConfig.validate_data()</code></td>
+</tr>
+</tbody>
+</table>
+<p>Import style: <code>import ssms.rl as rl</code>.</p>
+<p>Most users should start from <code>rl.preset.get(...)</code> and <code>rl.Simulator(...)</code>. Use
+<code>ModelConfig</code> directly when you need a custom task environment, response mapping,
+or learning process. Use <code>assemble(backend="jax")</code> only when integrating with an
+inference package or inspecting the participant-wise computed-parameter contract.</p>
+<h2 id="model-configuration">Model configuration</h2>
+<p><code>ModelConfig</code> describes model <strong>structure</strong>, not parameter values. Pass concrete
+values as <code>theta</code> to <code>Simulator.simulate()</code>.</p>
+<p>Important fields:</p>
+<ul>
+<li><code>decision_process</code> — SSM name (<code>"angle"</code>, <code>"ddm"</code>, …)</li>
+<li><code>learning_process</code> — instance satisfying the <code>LearningProcess</code> protocol</li>
+<li><code>task_environment</code> — bandit or other task environment (or <code>TaskConfig</code> shorthand)</li>
+<li><code>response_to_choice</code> — map SSM response labels to zero-based learning choices</li>
+<li><code>learning_backend</code> / <code>gradient</code> — backend policy for simulation and HSSM export</li>
+<li><code>context_fields</code> — observable per-trial context columns such as <code>"feedback"</code>,
+  <code>"condition"</code>, <code>"block"</code>, or <code>"stimulus_id"</code></li>
+<li><code>include_choice</code> — optionally include the derived zero-based <code>choice</code> column in
+  simulator output</li>
+</ul>
+<h3 id="derived-decision-process-config-_ssm_config">Derived decision-process config (<code>_ssm_config</code>)</h3>
+<p><code>ModelConfig</code> builds an internal decision-process configuration in
+<code>__post_init__</code> via <code>ModelConfigBuilder.from_model(decision_process)</code>. Users
+never construct or pass this layer directly.</p>
+<p>It supplies SSM parameter names, default bounds, default values, and choice
+labels used to validate <code>choices</code>, derive <code>list_params</code> / <code>bounds</code>, and resolve
+which SSM parameters are computed by the learning process versus fixed in
+simulator <code>theta</code>. The assembled model and HSSM bridge consume the <em>derived</em>
+public fields (<code>list_params</code>, <code>computed_params</code>, <code>response_to_choice</code>, …), not
+<code>_ssm_config</code> itself.</p>
+<h2 id="built-in-rescorla-wagner-learning-processes">Built-in Rescorla-Wagner learning processes</h2>
+<p>The built-in Rescorla-Wagner classes separate the Q-value update rule from the
+decision-process parameters emitted on each trial:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Emits</th>
+<th>Actions</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RescorlaWagnerDeltaRule</code></td>
+<td>none</td>
+<td><code>n_actions &gt;= 2</code></td>
+<td>Core single-alpha Q-value state/update class for custom adapters</td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerDrift</code></td>
+<td><code>v</code></td>
+<td><code>n_actions == 2</code></td>
+<td>Two-action SSMs that need trial-wise drift, such as <code>angle</code></td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerSoftmax</code></td>
+<td><code>q0</code>, <code>q1</code>, ...</td>
+<td><code>n_actions &gt;= 2</code></td>
+<td>Choice-only inverse-temperature softmax decision processes</td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerDualAlphaRule</code></td>
+<td>none</td>
+<td><code>n_actions &gt;= 2</code></td>
+<td>Core dual-alpha Q-value state/update class</td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerDualAlphaDrift</code></td>
+<td><code>v</code></td>
+<td><code>n_actions == 2</code></td>
+<td>Two-action drift models with separate positive/negative learning rates</td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerDualAlphaSoftmax</code></td>
+<td><code>q0</code>, <code>q1</code>, ...</td>
+<td><code>n_actions &gt;= 2</code></td>
+<td>Choice-only softmax models with separate positive/negative learning rates</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>RescorlaWagnerDeltaRule</code> and <code>RescorlaWagnerDualAlphaRule</code> when you need
+the update rule but want to write a custom decision-facing adapter. Use the
+concrete drift or softmax classes directly for standard presets and HSSM handoff.</p>
+<p>For drift models, the learner computes <code>v = (Q[1] - Q[0]) * scaler</code>, so <code>scaler</code>
+is a free learning-process parameter. For softmax models, the learner emits the
+raw <code>q0..qN</code> values and the decision process uses the fixed SSM parameter <code>beta</code>
+as the inverse temperature.</p>
+<h2 id="task-environment-protocols">Task environment protocols</h2>
+<p><code>TaskEnvironment</code> is the base protocol for per-trial context and post-decision
+signals. Models that map SSM response labels to learning choices require a
+<code>DiscreteChoiceEnvironment</code> (adds <code>n_choices</code> and <code>response_labels</code>). Built-in
+bandits implement <code>DiscreteChoiceEnvironment</code>; <code>Bandit.n_arms</code> is an alias for
+<code>n_choices</code>.</p>
+<h2 id="participant-wise-parameters">Participant-wise parameters</h2>
+<p><code>Simulator.simulate()</code> accepts scalar theta values shared by all participants
+and one-dimensional participant-wise values. When any theta value is
+participant-wise, all participant-wise values must have the same length. If
+<code>n_participants</code> is omitted, that length is used as the participant count:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">data</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">],</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.7</span><span class="p">],</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">},</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>Passing <code>n_participants</code> explicitly is allowed, but it must match the
+participant-wise theta length.</p>
+<h2 id="simulation-modes">Simulation modes</h2>
+<p><code>Simulator.simulate()</code> supports two modes:</p>
+<ul>
+<li><code>mode="generative"</code> — the default unconstrained simulation loop. The simulator
+  samples responses, task context, and learning updates end to end.</li>
+<li><code>mode="ppc"</code> — observed-history-conditioned posterior predictive simulation.
+  Learning state is conditioned on observed trial history; RT/response are
+  resimulated and observed context fields are copied into output. After HSSM
+  inference, posterior draws can be routed through the same simulator contract
+  to check whether inferred learning and decision parameters reproduce behavior.</li>
+</ul>
+<p>PPC mode uses the same data contract as inference validation (see below). The
+observed panel must include <code>participant_id</code>, all <code>config.response</code> columns
+(default <code>rt</code> and <code>response</code>), and every configured context field (default
+<code>feedback</code> for the built-in bandit):</p>
+<h2 id="data-validation">Data validation</h2>
+<p><code>ModelConfig.validate_data()</code> validates <strong>external</strong> trial panels — empirical
+data or simulated panels you plan to pass to PPC mode or HSSM. Generative
+simulation does not self-validate its output; only <code>mode="ppc"</code> validates
+user-supplied <code>observed_data</code> before conditioning on it.</p>
+<p>Validate empirical or simulated panels before PPC or HSSM handoff:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">report</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">validate_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">report</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">report</span><span class="o">.</span><span class="n">raise_for_errors</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Required columns are derived from the model config:</p>
+<ul>
+<li><code>participant_id</code></li>
+<li>every name in <code>config.response</code> (default <code>rt</code>, <code>response</code>)</li>
+<li>every name in <code>config.context_fields</code> (default <code>feedback</code> for the built-in bandit)</li>
+</ul>
+<p>The validator checks balanced panels, contiguous participant blocks, response labels
+compatible with <code>config.choices</code> and <code>response_to_choice</code>, missing values, and
+omission sentinels. Within each participant, rows are processed in their existing
+order. <code>trial_id</code> is an ordinary data/context column, not a reserved reset or ordering
+field. Errors include repair hints, for example renaming a reward column or adding it
+to <code>ModelConfig(context_fields=[...])</code>.</p>
+<p>PPC mode example (observed data must satisfy the same contract):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">observed</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="p">},</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">n_participants</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="p">)</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">ppc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        <span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>        <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>        <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>        <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="p">},</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;ppc&quot;</span><span class="p">,</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="n">observed_data</span><span class="o">=</span><span class="n">observed</span><span class="p">,</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>The observed response history is used only to condition learning state; PPC output
+responses are newly simulated.</p>
+<h2 id="choice-only-inverse-temperature-softmax-presets">Choice-only inverse-temperature softmax presets</h2>
+<p><code>2AB_RW_InvTempSoftmax</code> and <code>3AB_RW_InvTempSoftmax</code> are response-only RL presets.
+They use <code>RescorlaWagnerSoftmax</code> to emit <code>q0..qN</code>, and the
+<code>inv_temp_softmax_N</code> decision process uses <code>beta</code> as the inverse temperature for
+choice probabilities.</p>
+<p>These presets declare <code>response=["response"]</code> because the softmax decision
+process has no response-time likelihood. The low-level softmax simulator still
+returns an <code>rt</code> array for compatibility with the generic simulator interface,
+but every value is <code>-1.0</code> and should be treated only as a non-omission
+placeholder. It is not a response time, and it is intentionally distinct from
+<code>OMISSION_SENTINEL == -999.0</code>, which ssms and HSSM use for omissions,
+deadline/no-response trials, and missing RT handling.</p>
+<p>For validation and HSSM handoff, omit the placeholder column:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;2AB_RW_InvTempSoftmax&quot;</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">data</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">report</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">validate_data</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rt&quot;</span><span class="p">]))</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">report</span><span class="o">.</span><span class="n">raise_for_errors</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Choice-only PPC uses the same response-only contract. Empirical <code>observed_data</code>
+must not contain an <code>rt</code> column for these presets, and PPC output omits <code>rt</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">response_only</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rt&quot;</span><span class="p">])</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">ppc</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;ppc&quot;</span><span class="p">,</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">observed_data</span><span class="o">=</span><span class="n">response_only</span><span class="p">,</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>The lower-level <code>inv_temp_softmax_4</code> decision process is also available for
+four-choice softmax simulation. Built-in RL presets currently cover the two- and
+three-choice bandit cases; custom <code>ModelConfig</code> objects can pair
+<code>RescorlaWagnerSoftmax(n_actions=4)</code> with <code>decision_process="inv_temp_softmax_4"</code>.</p>
+<h3 id="context-fields">Context fields</h3>
+<p>Outcome-like values are ordinary context fields. By default, built-in bandits emit a
+<code>"feedback"</code> column and built-in Rescorla-Wagner learners require <code>context["feedback"]</code>
+for updates. Use a custom feedback field by configuring both the learner and the model
+context:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">ModelConfig</span><span class="p">(</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="o">...</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">learning_process</span><span class="o">=</span><span class="n">rl</span><span class="o">.</span><span class="n">learning</span><span class="o">.</span><span class="n">RescorlaWagnerDrift</span><span class="p">(</span><span class="n">feedback_field</span><span class="o">=</span><span class="s2">&quot;reward&quot;</span><span class="p">),</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">context_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;reward&quot;</span><span class="p">],</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>For learning processes that update from choices only, declare <code>required_context_fields</code>
+with runtime fields such as <code>"choice"</code> and use no observable context fields:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">ModelConfig</span><span class="p">(</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="o">...</span><span class="p">,</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">learning_process</span><span class="o">=</span><span class="n">choice_only_learning</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">context_fields</span><span class="o">=</span><span class="p">[],</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="assembled-model-inference-integration">Assembled model (inference integration)</h2>
+<p>Assemble a config when you need validated metadata or participant-wise computed
+parameter functions for downstream packages (for example HSSM):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">assembled</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;jax&quot;</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Derived from config — no manual field lists for standard models</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">fields</span> <span class="o">=</span> <span class="n">assembled</span><span class="o">.</span><span class="n">get_participant_input_fields</span><span class="p">()</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">compute_params</span> <span class="o">=</span> <span class="n">assembled</span><span class="o">.</span><span class="n">assemble_participant_fn</span><span class="p">()</span>
+</span></code></pre></div>
+<p><code>assemble_participant_fn()</code> accepts optional overrides (<code>input_fields</code>,
+<code>response_field</code>) for non-standard layouts. Runtime context fields such as <code>choice</code>
+are derived internally from <code>response_to_choice</code>; observable context fields such as
+<code>feedback</code> come from <code>config.context_fields</code>.</p>
+<p>Advanced resolution:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">resolve_model</span><span class="p">(</span><span class="s2">&quot;2AB_RW_Angle&quot;</span><span class="p">)</span>  <span class="c1"># str or ModelConfig</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">assembled</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="hssm-bridge">HSSM bridge</h2>
+<p>The active HSSM handoff path is HSSM's bridge factory:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hssm</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ssms.rl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rl</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">ssms_config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;2AB_RW_Angle&quot;</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">hssm_config</span> <span class="o">=</span> <span class="n">hssm</span><span class="o">.</span><span class="n">rl</span><span class="o">.</span><span class="n">RLSSMConfig</span><span class="o">.</span><span class="n">from_ssms_model</span><span class="p">(</span><span class="n">ssms_config</span><span class="p">)</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="n">model</span> <span class="o">=</span> <span class="n">hssm</span><span class="o">.</span><span class="n">RLSSM</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">model_config</span><span class="o">=</span><span class="n">hssm_config</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>RLSSMConfig.from_ssms_model(...)</code> resolves the <code>ssms.rl</code> model, assembles it
+with the JAX backend, checks gradient support, and wraps
+<code>AssembledModel.assemble_participant_fn(output="dict")</code> for HSSM's annotated
+computed-parameter contract.</p>
+<p>This bridge is what lets HSSM evaluate RLSSM likelihoods while keeping the
+learning rule, response-to-choice mapping, and task context source of truth in
+ssms. For choice-only RL models, pass response-only data to HSSM, not the
+generative simulator's placeholder <code>rt</code> column.</p>
+<p><strong>Note:</strong> HSSM's bridge factory still calls the pre-refactor <code>compile()</code> API
+until the separate <code>hssm-rlssm-api</code> task updates it to <code>assemble()</code>.</p>
+<p><code>ModelConfig.to_hssm_config_dict()</code> remains useful for structural inspection
+and compatibility with lower-level HSSM config workflows. It exports shared
+structural fields, plus:</p>
+<ul>
+<li><code>learning_backend</code>, <code>gradient</code>, <code>learning_process_kind</code></li>
+<li><code>participant_contract</code> — derived trial input layout (<code>trial_params</code>,
+  <code>response_field</code>, <code>context_fields</code>, <code>input_fields</code>). Users never construct
+  this directly; it is exported for bridge metadata and debugging.</li>
+</ul>
+<p>Inference-only placeholders in <code>to_hssm_config_dict()</code> (<code>ssm_logp_func</code>,
+<code>learning_process</code>) are not a complete model by themselves. A higher-level
+<code>hssm.RLSSM(data, model=...)</code> wrapper that consumes <code>ssms.rl</code> directly is
+planned separately in HSSM.</p>
+<h2 id="module-reference">Module reference</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.config.ModelConfig"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>RLSSM model configuration for ssm-simulators.</p>
+<p>Describes the <em>structural specification</em> of an RLSSM model:
+which learning process, which decision process (SSM), and which task
+environment. Concrete parameter values are NOT stored here — they
+are passed as <code>theta</code> to <code>Simulator.simulate()</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>model_name</code></b>
+              (<code><span title="str">str</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Unique identifier for this RLSSM model (e.g., "rlssm_angle_rw").</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>description</code></b>
+              (<code><span title="str">str</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Human-readable model description.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>decision_process</code></b>
+              (<code><span title="str">str</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>SSM model name in ssm-simulators registry (e.g., "angle", "ddm").
+Must be resolvable via <code>ModelConfigBuilder.from_model()</code>.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>learning_process</code></b>
+              (<code><a class="autorefs autorefs-internal" title="ssms.rl.learning.LearningProcess" href="#ssms.rl.learning.LearningProcess">LearningProcess</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Instance of a class satisfying the <code>LearningProcess</code> protocol.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>task_environment</code></b>
+              (<code><a class="autorefs autorefs-internal" title="TaskEnvironment (ssms.rl.env.TaskEnvironment)" href="../ssms/#ssms.rl.env.TaskEnvironment">TaskEnvironment</a> | <a class="autorefs autorefs-internal" title="TaskConfig (ssms.rl.env.TaskConfig)" href="../ssms/#ssms.rl.env.TaskConfig">TaskConfig</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Task environment instance or a <code>TaskConfig</code> to auto-build one.
+If <code>TaskConfig</code>, <code>build_environment()</code> is called in <code>__post_init__</code>.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>list_params</code></b>
+              (<code><span title="list">list</span>[<span title="str">str</span>] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>All free parameter names (RL + fixed SSM), in order.
+If None, auto-derived: <code>learning_process.free_params</code> + fixed SSM params.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>bounds</code></b>
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="tuple">tuple</span>[<span title="float">float</span>, <span title="float">float</span>]] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Parameter bounds. If None, auto-derived from learning_process.param_bounds
++ SSM model config param_bounds.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>params_default</code></b>
+              (<code><span title="list">list</span>[<span title="float">float</span>] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Default values in same order as list_params. If None, auto-derived.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>choices</code></b>
+              (<code><span title="tuple">tuple</span>[<span title="int">int</span>, ...] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>SSM response labels (e.g., (-1, 1)). If None, taken from task_environment.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>response</code></b>
+              (<code><span title="list">list</span>[<span title="str">str</span>]</code>, default:
+                  <code>(lambda: [&#39;rt&#39;, &#39;response&#39;])()</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Response column names. Default ["rt", "response"].</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>response_to_choice</code></b>
+              (<code><span title="typing.Literal">Literal</span>[&#39;auto&#39;] | <span title="dict">dict</span>[<span title="int">int</span>, <span title="int">int</span>]</code>, default:
+                  <code>&#39;auto&#39;</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Mapping from SSM response labels to zero-based learning choices.
+<code>"auto"</code> maps labels by <code>task_environment.response_labels</code> order.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>learning_backend</code></b>
+              (<code><span title="typing.Literal">Literal</span>[&#39;auto&#39;, &#39;python&#39;, &#39;jax&#39;]</code>, default:
+                  <code>&#39;auto&#39;</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Learning-process backend used for simulation and exported HSSM metadata.
+<code>"auto"</code> selects JAX when the process implements it and JAX is installed;
+otherwise it selects Python.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>gradient</code></b>
+              (<code><span title="typing.Literal">Literal</span>[&#39;auto&#39;, &#39;available&#39;, &#39;unavailable&#39;]</code>, default:
+                  <code>&#39;auto&#39;</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Gradient-support policy for HSSM integration metadata.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>include_choice</code></b>
+              (<code><span title="bool">bool</span></code>, default:
+                  <code>False</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Whether simulator output includes the derived zero-based <code>choice</code> column.
+Default False.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>context_fields</code></b>
+              (<code><span title="list">list</span>[<span title="str">str</span>] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Data/context columns beyond response required by the environment or learning
+process. Default derives a union from component declarations.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>computed_param_mapping</code></b>
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="str">str</span>] | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Optional override for non-name-matching handshakes.
+Maps learning process output name -&gt; SSM param name.
+E.g., {"drift": "v"} if learning process outputs "drift" but SSM expects "v".
+Default: None (same-name linking).</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>ssm_kwargs</code></b>
+              (<code><span title="dict">dict</span></code>, default:
+                  <code>(lambda: {&#39;delta_t&#39;: 0.001, &#39;max_t&#39;: 20.0})()</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Default kwargs for the underlying SSM simulator call.
+Default: {"delta_t": 0.001, "max_t": 20.0}.</p>
+          </div>
+        </li>
+    </ul>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.__post_init__" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.__post_init__</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">__post_init__</span><span class="p">()</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Auto-build task environment and derive missing fields.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.assemble" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.assemble</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">assemble</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return a validated executable assembled model.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.participant_contract" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.participant_contract</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">participant_contract</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">*</span><span class="p">,</span> <span class="n">response_field</span><span class="o">=</span><span class="n"><span title="ssms.rl.config.DEFAULT_RESPONSE_FIELD">DEFAULT_RESPONSE_FIELD</span></span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the derived participant input layout for this config.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.config.ModelConfig.required_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.config.ModelConfig.required_params</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">required_params</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Parameters that simulation requires from <code>theta</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.config.ModelConfig.resolved_response_to_choice" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.config.ModelConfig.resolved_response_to_choice</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">resolved_response_to_choice</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Concrete response-label -&gt; choice-index map.</p>
+<p><code>__post_init__</code> normalizes <code>response_to_choice</code> (including the
+<code>"auto"</code> default) into a plain <code>dict</code>; this accessor exposes that
+post-init invariant with a narrowed type.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.to_hssm_config_dict" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.to_hssm_config_dict</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to_hssm_config_dict</span><span class="p">()</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Produce a dict compatible with HSSM's RLSSMConfig.from_rlssm_dict().</p>
+<p>The output contains all fields from _HSSM_SHARED_FIELDS plus placeholder
+values for inference-only fields that the user must fill in on the HSSM side.</p>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+          –
+          <div class="doc-md-description">
+            <p>Dict ready for <code>RLSSMConfig.from_rlssm_dict(result)</code> after user
+fills in inference-only fields.</p>
+          </div>
+        </li>
+    </ul>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.validate" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.validate</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate</span><span class="p">()</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate config consistency. Called by Simulator.<strong>init</strong>().</p>
+<p>Checks:
+1. decision_process exists in ssm-simulators registry
+2. Handshake: computed + fixed params cover all SSM params exactly once
+3. No param is both computed and fixed
+4. list_params length matches params_default length
+5. All list_params have bounds</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.config.ModelConfig.validate_data" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.config.ModelConfig.validate_data</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate trial-level data against this model's RLSSM contract.</p>
+<p>Returns a report with readable <code>print()</code> output and
+<code>raise_for_errors()</code> for fail-fast usage.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.assembled.AssembledModel"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>Validated executable form of an RLSSM <code>ModelConfig</code>.</p>
+<p>The assembled model exposes package-neutral metadata and pure Python/JAX
+computed-parameter functions that downstream packages can wrap without
+importing HSSM or PyTensor in <code>ssm-simulators</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.assembled.AssembledModel.assemble_participant_fn" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.assembled.AssembledModel.assemble_participant_fn</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">assemble_participant_fn</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">input_fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">response_field</span><span class="o">=</span><span class="n"><span title="ssms.rl.config.DEFAULT_RESPONSE_FIELD">DEFAULT_RESPONSE_FIELD</span></span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">output</span><span class="o">=</span><span class="n"><span title="ssms.rl.assembled.AssembledFunctionOutput.ARRAY">ARRAY</span></span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Assemble a participant-wise computed-parameter function.</p>
+<p>By default, <code>input_fields</code> are derived from the model config. Pass
+explicit values only for non-standard layouts.</p>
+<p>The returned function accepts a <code>(n_trials, n_fields)</code> array whose
+columns match <code>input_fields</code>. It computes SSM parameters before each
+learning update, maps response labels to zero-based action indices, and
+updates learning state from the response and optional outcome.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.assembled.AssembledModel.from_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.assembled.AssembledModel.from_config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n"><span title="ssms.rl.assembled.LearningBackendRequest.AUTO">AUTO</span></span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Build an assembled model from a structural model config.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.assembled.AssembledModel.get_participant_input_fields" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.assembled.AssembledModel.get_participant_input_fields</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_participant_input_fields</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">*</span><span class="p">,</span> <span class="n">response_field</span><span class="o">=</span><span class="n"><span title="ssms.rl.config.DEFAULT_RESPONSE_FIELD">DEFAULT_RESPONSE_FIELD</span></span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the default participant input columns derived from the config.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.assembled.AssembledModel.participant_input_fields" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.assembled.AssembledModel.participant_input_fields</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">participant_input_fields</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">*</span><span class="p">,</span> <span class="n">response_field</span><span class="o">=</span><span class="n"><span title="ssms.rl.config.DEFAULT_RESPONSE_FIELD">DEFAULT_RESPONSE_FIELD</span></span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Backward-compatible alias for :meth:<code>get_participant_input_fields</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.simulator.Simulator"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>RLSSM simulator composing a learning process with an SSM decision process.</p>
+<p>Runs the interleaved trial-by-trial loop:
+compute SSM params -&gt; simulate SSM -&gt; observe choice -&gt; generate reward -&gt; update learning.</p>
+<p>Reuses the existing ssm-simulators <code>simulator()</code> function with <code>n_samples=1</code>
+for each trial. No Cython modifications needed — all 40+ SSM models work as
+decision processes out of the box.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>config</code></b>
+              (<code><a class="autorefs autorefs-internal" title="ssms.rl.config.ModelConfig" href="#ssms.rl.config.ModelConfig">ModelConfig</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Structural model configuration. Validated on construction.</p>
+          </div>
+        </li>
+    </ul>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.simulator.Simulator.simulate" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.simulator.Simulator.simulate</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">simulate</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">theta</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_participants</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;generative&quot;</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">observed_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Run full RLSSM simulation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>theta</code></b>
+              (<code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Concrete parameter values. Must contain all params required by the
+learning process and fixed SSM parameters. Each value can be a scalar
+shared by all participants or a one-dimensional list/array with one
+value per participant.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>n_trials</code></b>
+              (<code><span title="int">int</span></code>, default:
+                  <code>200</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Number of trials per participant. Default 200.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>n_participants</code></b>
+              (<code><span title="int">int</span> | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Number of participants to simulate. If None, inferred from
+participant-wise theta values when present; otherwise defaults to 20.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>random_state</code></b>
+              (<code><span title="int">int</span> | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Seed for reproducibility. If None, non-deterministic.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>mode</code></b>
+              (<code>(&#39;generative&#39;, &#39;ppc&#39;)</code>, default:
+                  <code>&#34;generative&#34;</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Simulation mode. <code>"generative"</code> runs the unconstrained simulator
+loop. <code>"ppc"</code> runs observed-history-conditioned posterior
+predictive simulation.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>observed_data</code></b>
+              (<code><span title="pandas.DataFrame">DataFrame</span> | None</code>, default:
+                  <code>None</code>
+)
+          –
+          <div class="doc-md-description">
+            <p>Observed participant history required for <code>mode="ppc"</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><span title="pandas.DataFrame">DataFrame</span></code>
+          –
+          <div class="doc-md-description">
+            <p>Balanced panel with participant_id, trial_id, configured response
+columns, configured context fields, and optional derived choice.</p>
+          </div>
+        </li>
+    </ul>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.assembled.resolve_model"></a>
+    <div class="doc doc-contents first">
+
+        <p>Resolve a preset name or validate an existing RLSSM model config.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.preset.get"></a>
+    <div class="doc doc-contents first">
+
+        <p>Get a named RLSSM preset config. Returns a fresh instance.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.preset.list"></a>
+    <div class="doc doc-contents first">
+
+        <p>List available RLSSM preset names.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.preset.info"></a>
+    <div class="doc doc-contents first">
+
+        <p>Return readable metadata for a named RLSSM preset.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.preset.register"></a>
+    <div class="doc doc-contents first">
+
+        <p>Register a named RLSSM preset.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="ssms.rl.validation.validate_rlssm_data"></a>
+    <div class="doc doc-contents first">
+
+        <p>Validate a data panel against the RLSSM model contract.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>config</code></b>
+              (<code><a class="autorefs autorefs-internal" title="ssms.rl.config.ModelConfig" href="#ssms.rl.config.ModelConfig">ModelConfig</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Structural RLSSM configuration. Should already pass <code>config.validate()</code>.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>data</code></b>
+              (<code><span title="pandas.DataFrame">DataFrame</span></code>)
+          –
+          <div class="doc-md-description">
+            <p>Empirical or simulated trial-level panel.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-internal" title="DataValidationReport
+
+
+  
+      dataclass
+   (ssms.rl.validation.DataValidationReport)" href="../ssms/#ssms.rl.validation.DataValidationReport">DataValidationReport</a></code>
+          –
+          <div class="doc-md-description">
+            <p>Validation findings. Call <code>raise_for_errors()</code> to fail fast on errors.</p>
+          </div>
+        </li>
+    </ul>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.LearningProcess"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="typing.Protocol">Protocol</span></code></p>
+
+
+
+        <p>Protocol for RLSSM learning processes.</p>
+<p>A learning process maintains internal state (e.g., Q-values) and computes
+SSM parameters (e.g., drift rate) from that state on each trial. After each
+trial's decision and reward, the state is updated.</p>
+<p>The <code>computed_params</code> property is the formal handshake between the learning
+process and the decision process: it declares which SSM parameters the
+learning process produces. The simulator validates that these, together with
+fixed SSM params provided by the user, cover all parameters required by the
+decision process model.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.available_backends" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.available_backends</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">available_backends</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Learning backends implemented by this process.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.compute_python" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.compute_python</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compute_python</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute SSM parameters from explicit Python/NumPy state.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.compute_ssm_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.compute_ssm_params</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compute_ssm_params</span><span class="p">(</span><span class="n">trial_params</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute SSM parameters from current learning state.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.computed_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.computed_params</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">computed_params</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>SSM parameter names this process computes (e.g., ['v']).</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.default_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.default_params</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">default_params</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Default values for each free param.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.free_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.free_params</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">free_params</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>RL parameter names this process requires from theta.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.init_state" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.init_state</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">init_state</span><span class="p">()</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return an explicit initial learning state for one participant.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.param_bounds" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.param_bounds</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">param_bounds</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Bounds for each free param.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.required_context_fields" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.required_context_fields</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">required_context_fields</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Context keys this process needs for compute/update.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.reset" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.reset</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reset internal state for a new participant.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.LearningProcess.supports_gradient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.LearningProcess.supports_gradient</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">supports_gradient</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Whether the differentiable backend supports gradient-based inference.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.update" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.update</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">update</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">trial_params</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Update learning state given the choice outcome.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.LearningProcess.update_python" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.LearningProcess.update_python</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">update_python</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the next explicit Python/NumPy state.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerDeltaRule"></a>
+    <div class="doc doc-contents first">
+
+
+
+        <p>Rescorla-Wagner delta learning core.</p>
+<p>Updates Q-values via <code>Q[action] += alpha * (reward - Q[action])</code>. This
+class owns Q-value state and replay/update behavior but emits no SSM
+parameters by itself. Use <code>RescorlaWagnerDrift</code> for two-action drift
+models and <code>RescorlaWagnerSoftmax</code> for inverse-temperature softmax models.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.RescorlaWagnerDeltaRule.compute_ssm_params" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.RescorlaWagnerDeltaRule.compute_ssm_params</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">compute_ssm_params</span><span class="p">(</span><span class="n">trial_params</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute pre-update SSM parameters from current learning state.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="ssms.rl.learning.RescorlaWagnerDeltaRule.q_values" class="doc doc-heading">
+            <span class="doc doc-object-name doc-attribute-name">ssms.rl.learning.RescorlaWagnerDeltaRule.q_values</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">q_values</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Current Q-values. None if reset() has not been called.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.RescorlaWagnerDeltaRule.update" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.RescorlaWagnerDeltaRule.update</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">update</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">trial_params</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Update Q[action] from the observed outcome.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerDrift"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDeltaRule" href="#ssms.rl.learning.RescorlaWagnerDeltaRule">RescorlaWagnerDeltaRule</a></code></p>
+
+
+
+        <p>Rescorla-Wagner learner emitting two-action drift <code>v</code>.</p>
+<p>Computes drift rate as scaled Q-value difference:
+<code>v = (Q[1] - Q[0]) * scaler</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerSoftmax"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDeltaRule" href="#ssms.rl.learning.RescorlaWagnerDeltaRule">RescorlaWagnerDeltaRule</a></code></p>
+
+
+
+        <p>Rescorla-Wagner learner emitting pre-update Q-values <code>q0..qN</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerDualAlphaRule"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDeltaRule" href="#ssms.rl.learning.RescorlaWagnerDeltaRule">RescorlaWagnerDeltaRule</a></code></p>
+
+
+
+        <p>Rescorla-Wagner learning core with separate learning rates.</p>
+<p>Positive prediction errors use <code>rl_alpha</code> and negative prediction errors
+use <code>rl_alpha_neg</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="ssms.rl.learning.RescorlaWagnerDualAlphaRule.update_python" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.rl.learning.RescorlaWagnerDualAlphaRule.update_python</span>
+
+
+</h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">update_python</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Update Q[action] with sign-dependent learning rates.</p>
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerDualAlphaDrift"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDualAlphaRule" href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule">RescorlaWagnerDualAlphaRule</a></code></p>
+
+
+
+        <p>Dual-alpha Rescorla-Wagner learner emitting two-action drift <code>v</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax"></a>
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDualAlphaRule" href="#ssms.rl.learning.RescorlaWagnerDualAlphaRule">RescorlaWagnerDualAlphaRule</a></code></p>
+
+
+
+        <p>Dual-alpha Rescorla-Wagner learner emitting Q-values <code>q0..qN</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p>See also the full package reference on the <a href="../ssms/">ssms</a> API page.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.path", "navigation.top", "content.code.copy", "content.action.view", "content.action.edit", "header.autohide", "announce.dismiss"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -15,8 +15,11 @@
         <link rel="next" href="basic_tutorial/basic_tutorial/">
       
       
+        
+      
+      
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -24,10 +27,10 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.45e1311d.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -48,11 +51,12 @@
     
       <link rel="stylesheet" href="assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+      <link rel="stylesheet" href="styles/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
-    
     
     
   </head>
@@ -65,7 +69,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -74,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ssm_simulators" class="md-skip">
+        <a href="#ssms-sequential-sampling-model-simulators" class="md-skip">
           Skip to content
         </a>
       
@@ -86,28 +90,28 @@
             
               <button class="md-banner__button md-icon" aria-label="Don't show this again">
                 
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
               </button>
             
             
 <span class="show-on-small right-margin">
     <span class="twemoji right-margin show-on-small move-down">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M246.6 470.6c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L224 402.7l137.4-137.3c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3l-160 160zm160-352-160 160c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L224 210.7 361.4 73.4c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M214.6 470.6c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L192 402.7l137.4-137.3c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3l-160 160zm160-352-160 160c-12.5 12.5-32.8 12.5-45.3 0l-160-160c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L192 210.7 329.4 73.4c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3z"/></svg>
     </span>
     Navigate the site here!
 </span>
 <span class="right-margin">
-    v0.6.1 is out!
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
 </span>
 <span>
     <span class="twemoji">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3C9.23 3 6.19 5.95 6 9.66l-1.92 2.53c-.24.31 0 .81.42.81H6v3c0 1.11.89 2 2 2h1v3h7v-4.69c2.37-1.12 4-3.51 4-6.31 0-3.86-3.12-7-7-7m1 11h-2v-2h2v2m1.75-5.19c-.29.4-.66.69-1.11.93-.25.16-.42.33-.51.52-.09.18-.13.43-.13.74h-2c0-.5.11-.92.31-1.18.19-.27.54-.57 1.05-.91.26-.16.47-.36.61-.59.16-.23.23-.5.23-.82 0-.3-.08-.56-.26-.75-.18-.18-.44-.28-.75-.28a1 1 0 0 0-.66.23c-.18.16-.27.39-.28.69h-1.93l-.01-.03c-.01-.79.25-1.36.77-1.77.54-.39 1.24-.59 2.11-.59.93 0 1.66.23 2.19.68.54.45.81 1.06.81 1.82 0 .5-.15.91-.44 1.31Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3C9.23 3 6.19 5.95 6 9.66l-1.92 2.53c-.24.31 0 .81.42.81H6v3c0 1.11.89 2 2 2h1v3h7v-4.69c2.37-1.12 4-3.51 4-6.31 0-3.86-3.12-7-7-7m1 11h-2v-2h2zm1.75-5.19c-.29.4-.66.69-1.11.93-.25.16-.42.33-.51.52-.09.18-.13.43-.13.74h-2c0-.5.11-.92.31-1.18.19-.27.54-.57 1.05-.91.26-.16.47-.36.61-.59.16-.23.23-.5.23-.82 0-.3-.08-.56-.26-.75-.18-.18-.44-.28-.75-.28a1 1 0 0 0-.66.23c-.18.16-.27.39-.28.69h-1.93l-.01-.03c-.01-.79.25-1.36.77-1.77.54-.39 1.24-.59 2.11-.59.93 0 1.66.23 2.19.68.54.45.81 1.06.81 1.82 0 .5-.15.91-.44 1.31"/></svg>
     </span>
 </span>
 
           </div>
           
-            <script>var content,el=document.querySelector("[data-md-component=announce]");el&&(content=el.querySelector(".md-typeset"),__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0))</script>
+            <script>var el=document.querySelector("[data-md-component=announce]");if(el){var content=el.querySelector(".md-typeset");__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0)}</script>
           
         </aside>
       
@@ -122,13 +126,12 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="https://lnccbrown.github.io/ssm-simulators/" title="SSMS (Sequential Sampling Model Simulators)" class="md-header__button md-logo" aria-label="SSMS (Sequential Sampling Model Simulators)" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="images/navlogo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -153,30 +156,30 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9h-1.9M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69m-9.15 3.96h2.3L12 9l-1.15 3.65Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
       </label>
     
   
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="ocean" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
   
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to automatic mode"  type="radio" name="__palette" id="__palette_2">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to automatic mode"  type="radio" name="__palette" id="__palette_2">
     
       <label class="md-header__button md-icon" title="Switch to automatic mode" for="__palette_0" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
   
@@ -184,36 +187,38 @@
       
     
     
-      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
     
     
     
-      <label class="md-header__button md-icon" for="__search">
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
-      </label>
-      <div class="md-search" data-md-component="search" role="dialog">
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
       <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
       <nav class="md-search__options" aria-label="Search">
         
         <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </nav>
       
     </form>
     <div class="md-search__output">
-      <div class="md-search__scrollwrap" data-md-scrollfix>
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -224,13 +229,14 @@
     </div>
   </div>
 </div>
+      
     
     
       <div class="md-header__source">
         <a href="https://github.com/lnccbrown/ssm-simulators" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     lnccbrown/ssm-simulators
@@ -249,6 +255,7 @@
         
   
   
+  
     
   
   
@@ -257,6 +264,7 @@
       <li class="md-tabs__item md-tabs__item--active">
         <a href="." class="md-tabs__link">
           
+  
   
   Home
 
@@ -270,13 +278,15 @@
   
   
   
+  
     
     
       <li class="md-tabs__item">
         <a href="basic_tutorial/basic_tutorial/" class="md-tabs__link">
           
   
-  Basic Tutorial
+  
+  Getting Started
 
         </a>
       </li>
@@ -288,11 +298,53 @@
   
   
   
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="core_tutorials/tutorial_capabilities/" class="md-tabs__link">
+          
+  
+  
+  Core Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="contributing/add_models/" class="md-tabs__link">
+          
+  
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
     
     
       <li class="md-tabs__item">
         <a href="api/ssms/" class="md-tabs__link">
           
+  
   
   API
 
@@ -332,8 +384,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="https://lnccbrown.github.io/ssm-simulators/" title="SSMS (Sequential Sampling Model Simulators)" class="md-nav__button md-logo" aria-label="SSMS (Sequential Sampling Model Simulators)" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="images/navlogo.png" alt="logo">
 
     </a>
     SSMS (Sequential Sampling Model Simulators)
@@ -343,7 +394,7 @@
       <a href="https://github.com/lnccbrown/ssm-simulators" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     lnccbrown/ssm-simulators
@@ -365,13 +416,17 @@
     
     
     
+      
+        
+        
+      
+      
+        
+      
     
-      
-      
     
     <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
-        
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
@@ -380,9 +435,16 @@
           <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
             
   
+  
   <span class="md-ellipsis">
+    
+  
     Home
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -391,7 +453,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
-            Home
+            
+  
+    Home
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -414,9 +480,16 @@
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
+  
   <span class="md-ellipsis">
+    
+  
     Overview
+  
+
+    
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -425,9 +498,16 @@
       <a href="." class="md-nav__link md-nav__link--active">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Overview
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -448,9 +528,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-ssms-provides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What ssms Provides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Families
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ecosystem Fit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
-      Quick Start
+      
+        Quick Start
+      
     </span>
   </a>
   
@@ -458,46 +573,22 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#classic-ssm" class="md-nav__link">
     <span class="md-ellipsis">
-      Install
+      
+        Classic SSM
+      
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
+  <a href="#rlssm" class="md-nav__link">
     <span class="md-ellipsis">
-      Tutorial
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-simulators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using the Simulators
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-training-data-generators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using the Training Data Generators
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using the Training Data Generators">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#end" class="md-nav__link">
-    <span class="md-ellipsis">
-      END
+      
+        RLSSM
+      
     </span>
   </a>
   
@@ -507,9 +598,26 @@
     </nav>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
   
 </li>
       
@@ -539,24 +647,32 @@
     
     
     
-    
       
-      
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Basic Tutorial
+    
+  
+    Getting Started
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -565,7 +681,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
-            Basic Tutorial
+            
+  
+    Getting Started
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -579,9 +699,16 @@
       <a href="basic_tutorial/basic_tutorial/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Installation
+    
+  
+    Check included models
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -607,24 +734,32 @@
     
     
     
-    
       
-      
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    API
+    
+  
+    Core Tutorials
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -633,7 +768,493 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
-            API
+            
+  
+    Core Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/tutorial_capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/tutorial_configs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Systems
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/tutorial_custom_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating Custom Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/tutorial_data_generators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The TrainingDataGenerator class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/rlssm_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulators: A Beginner's Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/rlssm_simulation_hssm_handoff/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulation and HSSM Handoff
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/choice_only_rl_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choice-only RL Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/rlssm_advanced_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM Simulators: Advanced Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/kde_class/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the KDE class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/tutorial_simulators_vs_pyddm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial: Native simulators vs. PyDDM Analytical Solutions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="core_tutorials/using_mlflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using MLflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing/add_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute New Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing/add_parameter_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute Parameter Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -647,9 +1268,44 @@
       <a href="api/ssms/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ssms
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/rlssm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RLSSM (ssms.rl)
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -668,9 +1324,16 @@
       <a href="api/basic_simulators/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     basic simulators
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -689,9 +1352,16 @@
       <a href="api/config/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     config
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -710,9 +1380,44 @@
       <a href="api/dataset_generators/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     data generators
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/support_utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    support utils
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -755,9 +1460,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-ssms-provides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What ssms Provides
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Families
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ecosystem Fit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
-      Quick Start
+      
+        Quick Start
+      
     </span>
   </a>
   
@@ -765,46 +1505,22 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#classic-ssm" class="md-nav__link">
     <span class="md-ellipsis">
-      Install
+      
+        Classic SSM
+      
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
+  <a href="#rlssm" class="md-nav__link">
     <span class="md-ellipsis">
-      Tutorial
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-simulators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using the Simulators
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-training-data-generators" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using the Training Data Generators
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using the Training Data Generators">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#end" class="md-nav__link">
-    <span class="md-ellipsis">
-      END
+      
+        RLSSM
+      
     </span>
   </a>
   
@@ -814,9 +1530,26 @@
     </nav>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
   
 </li>
       
@@ -830,14 +1563,22 @@
           
           
             <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
               <article class="md-content__inner md-typeset">
                 
                   
 
+
   
-    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/index.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
   
   
@@ -846,171 +1587,174 @@
     
     <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/index.md" title="View source of this page" class="md-content__button md-icon">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.15 8.15 0 0 1-1.23-2Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="ssm_simulators">ssm_simulators</h1>
-<p>Python Package which collects simulators for Sequential Sampling Models.</p>
-<h3 id="quick-start">Quick Start</h3>
-<p>The <code>ssms</code> package serves two purposes. </p>
-<ol>
-<li>
-<p>Easy access to <em>fast simulators of sequential sampling models</em></p>
-</li>
-<li>
-<p>Support infrastructure to construct training data for various approaches to likelihood / posterior amortization</p>
-</li>
-</ol>
-<p>We provide two minimal examples here to illustrate how to use each of the two capabilities.</p>
-<h4 id="install">Install</h4>
-<p>Let's start with <em>installing</em> the <code>ssms</code> package.</p>
-<p>You can do so by typing,</p>
-<p><code>pip install git+https://github.com/AlexanderFengler/ssm_simulators</code></p>
-<p>in your terminal.</p>
-<p>Below you find a basic tutorial on how to use the package.</p>
-<h4 id="tutorial">Tutorial</h4>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Import necessary packages</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">import</span> <span class="nn">ssms</span>
-</span></code></pre></div>
-<h4 id="using-the-simulators">Using the Simulators</h4>
-<p>Let's start with using the basic simulators. 
-You access the main simulators through the  <code>ssms.basic_simulators.simulator</code> function.</p>
-<p>To get an idea about the models included in <code>ssms</code>, use the <code>config</code> module.
-The central dictionary with metadata about included models sits in <code>ssms.config.model_config</code>. </p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Check included models</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">list</span><span class="p">(</span><span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_config</span><span class="o">.</span><span class="n">keys</span><span class="p">())[:</span><span class="mi">10</span><span class="p">]</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>[&#39;ddm&#39;,
- &#39;ddm_legacy&#39;,
- &#39;angle&#39;,
- &#39;weibull&#39;,
- &#39;levy&#39;,
- &#39;levy_angle&#39;,
- &#39;full_ddm&#39;,
- &#39;ornstein&#39;,
- &#39;ornstein_angle&#39;,
- &#39;ddm_sdv&#39;]
-</code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Take an example config for a given model</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_config</span><span class="p">[</span><span class="s1">&#39;ddm&#39;</span><span class="p">]</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>{&#39;name&#39;: &#39;ddm&#39;,
- &#39;params&#39;: [&#39;v&#39;, &#39;a&#39;, &#39;z&#39;, &#39;t&#39;],
- &#39;param_bounds&#39;: [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]],
- &#39;boundary&#39;: &lt;function ssms.basic_simulators.boundary_functions.constant(t=0)&gt;,
- &#39;n_params&#39;: 4,
- &#39;default_params&#39;: [0.0, 1.0, 0.5, 0.001],
- &#39;hddm_include&#39;: [&#39;z&#39;],
- &#39;nchoices&#39;: 2}
-</code></pre></div>
-<p><strong>Note:</strong>
-The usual structure of these models includes,</p>
+<div>
+    <a href="https://ccbs.carney.brown.edu/brainstorm" style="display: block; float: right; padding: 10px">
+        <img src="images/Brain-Bolt-%2B-Circuits.gif" style="width: 100px;">
+    </a>
+    <img src="images/mainlogo.png" style="width: 175px;">
+</div>
+
+<h1 id="ssms-sequential-sampling-model-simulators">SSMS: Sequential Sampling Model Simulators</h1>
+<p><a href="https://doi.org/10.5281/zenodo.17156205"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17156205-blue" /></a>
+<img alt="PyPI" src="https://img.shields.io/pypi/v/ssm-simulators" />
+<a href="https://pepy.tech/projects/ssm-simulators"><img alt="Downloads" src="https://static.pepy.tech/badge/ssm-simulators/month" /></a>
+<a href="https://github.com/lnccbrown/ssm-simulators/pulls"><img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/lnccbrown/ssm-simulators" /></a>
+<a href="https://pypi.org/project/ssm-simulators/"><img alt="Python Version" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue" /></a>
+<a href="https://github.com/lnccbrown/ssm-simulators/actions/workflows/run_tests.yml"><img alt="Run tests" src="https://img.shields.io/github/actions/workflow/status/lnccbrown/ssm-simulators/run_tests.yml?branch=main&amp;label=tests" /></a>
+<a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" /></a>
+<a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+<a href="https://codecov.io/gh/lnccbrown/ssm-simulators"><img alt="codecov" src="https://codecov.io/gh/lnccbrown/ssm-simulators/branch/main/graph/badge.svg" /></a></p>
+<p><code>ssm-simulators</code> provides fast C/Cython simulators for sequential sampling
+models used in cognitive science, neuroscience, and amortized Bayesian
+inference, spanning classic DDM variants, multi-choice models, attention
+models, and reinforcement-learning SSMs.</p>
+<hr />
+<h2 id="what-ssms-provides">What ssms Provides</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Documentation path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct SSM simulation</td>
+<td><a href="basic_tutorial/basic_tutorial/">Basic tutorial</a>, <a href="api/basic_simulators/">basic simulator API</a></td>
+</tr>
+<tr>
+<td>Model configuration</td>
+<td><a href="core_tutorials/tutorial_configs/">Configuration systems</a>, <a href="api/config/">config API</a></td>
+</tr>
+<tr>
+<td>Training data generation</td>
+<td><a href="core_tutorials/tutorial_data_generators/">Data generators</a>, <a href="api/dataset_generators/">dataset generator API</a></td>
+</tr>
+<tr>
+<td>RLSSM simulation</td>
+<td><a href="core_tutorials/rlssm_tutorial/">RLSSM tutorial</a>, <a href="api/rlssm/">RLSSM API</a></td>
+</tr>
+<tr>
+<td>Choice-only RL models</td>
+<td><a href="core_tutorials/choice_only_rl_models/">Choice-only RL tutorial</a>, <a href="api/rlssm/#choice-only-inverse-temperature-softmax-presets">RLSSM API</a></td>
+</tr>
+<tr>
+<td>New model contributions</td>
+<td><a href="contributing/add_models/">Contribute new models</a>, <a href="contributing/add_parameter_adapters/">parameter adapters</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="model-families">Model Families</h2>
+<p>ssms covers a broad simulator surface:</p>
 <ul>
-<li>Parameter names (<code>'params'</code>)</li>
-<li>Bounds on the parameters (<code>'param_bounds'</code>)</li>
-<li>A function that defines a boundary for the respective model (<code>'boundary'</code>)</li>
-<li>The number of parameters (<code>'n_params'</code>)</li>
-<li>Defaults for the parameters (<code>'default_params'</code>)</li>
-<li>The number of choices the process can produce (<code>'nchoices'</code>)</li>
+<li><strong>Diffusion models</strong>: DDM, full DDM, deadline variants, angle and Weibull
+  boundaries, Levy, Ornstein-Uhlenbeck, gamma-drift, conflict, tradeoff, and
+  shrink-spotlight variants.</li>
+<li><strong>Multi-choice accumulators</strong>: race, racing diffusion, LBA, LBA4, LCA, and
+  Poisson race models.</li>
+<li><strong>Attention and fixation-conditioned models</strong>: aDDM simulators with observed
+  or self-sampled fixation inputs, continuation strategies, and optional
+  trajectory metadata.</li>
+<li><strong>Reinforcement-learning SSMs</strong>: Rescorla-Wagner learning rules, RT + choice
+  models, inverse-temperature softmax choice-only models, and posterior
+  predictive functions for response-only RL workflows.</li>
 </ul>
-<p>The <code>'hddm_include'</code> key concerns information useful for integration with the <a href="https://github.com/hddm-devs/hddm">hddm</a> python package, which facilitates hierarchical bayesian inference for sequential sampling models. It is not important for the present tutorial.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">ssms.basic_simulators</span> <span class="kn">import</span> <span class="n">simulator</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">sim_out</span> <span class="o">=</span> <span class="n">simulator</span><span class="p">(</span><span class="n">model</span> <span class="o">=</span> <span class="s1">&#39;ddm&#39;</span><span class="p">,</span> 
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>                    <span class="n">theta</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>                    <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span>
+<div class="admonition note">
+<p class="admonition-title">Choice-only RL support</p>
+<p>ssms includes inverse-temperature softmax decision processes for two-,
+three-, and four-choice settings. Built-in RL presets currently include
+<code>2AB_RW_InvTempSoftmax</code> and <code>3AB_RW_InvTempSoftmax</code>.</p>
+</div>
+<hr />
+<h2 id="ecosystem-fit">Ecosystem Fit</h2>
+<p><code>ssm-simulators</code> is the simulator and data-generation layer of the HSSM
+ecosystem.</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/lnccbrown/HSSM">HSSM</a></td>
+<td>Consumes simulator-defined model contracts for Bayesian inference, including ssms-defined RLSSMs.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/lnccbrown/LANfactory">LANfactory</a></td>
+<td>Trains likelihood approximation networks from ssms-generated data.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/lnccbrown/LAN_pipeline_minimal">LAN_pipeline_minimal</a></td>
+<td>Runs data-generation and LAN-training pipelines.</td>
+</tr>
+</tbody>
+</table>
+<p>For RLSSMs, ssms owns the learning rule, task environment, response mapping,
+simulation loop, and posterior predictive behavior. HSSM consumes the assembled
+ssms model through <code>hssm.rl.RLSSMConfig.from_ssms_model(...)</code>.</p>
+<hr />
+<h2 id="quick-start">Quick Start</h2>
+<h3 id="classic-ssm">Classic SSM</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="s2">&quot;ddm&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">out</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">},</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The output of the simulator is a <code>dictionary</code> with three elements.</p>
-<ol>
-<li><code>rts</code> (array)</li>
-<li><code>choices</code> (array)</li>
-<li><code>metadata</code> (dictionary)</li>
-</ol>
-<p>The <code>metadata</code> includes the named parameters, simulator settings, and more.</p>
-<h4 id="using-the-training-data-generators">Using the Training Data Generators</h4>
-<p>The training data generators sit on top of the simulator function to turn raw simulations into usable training data for training machine learning algorithms aimed at posterior or likelihood armortization.</p>
-<p>We will use the <code>data_generator</code> class from <code>ssms.dataset_generators</code>. Initializing the <code>data_generator</code> boils down to supplying two configuration dictionaries.</p>
-<ol>
-<li>The <code>generator_config</code>, concerns choices as to what kind of training data one wants to generate.</li>
-<li>The <code>model_config</code> concerns choices with respect to the underlying generative <em>sequential sampling model</em>. </li>
-</ol>
-<p>We will consider a basic example here, concerning data generation to prepare for training <a href="https://elifesciences.org/articles/65074">LANs</a>.</p>
-<p>Let's start by peeking at an example <code>generator_config</code>.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">data_generator_config</span><span class="p">[</span><span class="s1">&#39;lan&#39;</span><span class="p">][</span><span class="s1">&#39;mlp&#39;</span><span class="p">]</span>
+<h3 id="rlssm">RLSSM</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">ssms.rl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rl</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">preset</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;2AB_RW_InvTempSoftmax&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">sim</span> <span class="o">=</span> <span class="n">rl</span><span class="o">.</span><span class="n">Simulator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">data</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;rl_alpha&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;beta&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">n_participants</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">)</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">response_only</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rt&quot;</span><span class="p">])</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">config</span><span class="o">.</span><span class="n">validate_data</span><span class="p">(</span><span class="n">response_only</span><span class="p">)</span><span class="o">.</span><span class="n">raise_for_errors</span><span class="p">()</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>{&#39;output_folder&#39;: &#39;data/lan_mlp/&#39;,
- &#39;dgp_list&#39;: &#39;ddm&#39;,
- &#39;nbins&#39;: 0,
- &#39;n_samples&#39;: 100000,
- &#39;n_parameter_sets&#39;: 10000,
- &#39;n_parameter_sets_rejected&#39;: 100,
- &#39;n_training_samples_by_parameter_set&#39;: 1000,
- &#39;max_t&#39;: 20.0,
- &#39;delta_t&#39;: 0.001,
- &#39;pickleprotocol&#39;: 4,
- &#39;n_cpus&#39;: &#39;all&#39;,
- &#39;kde_data_mixture_probabilities&#39;: [0.8, 0.1, 0.1],
- &#39;simulation_filters&#39;: {&#39;mode&#39;: 20,
-  &#39;choice_cnt&#39;: 0,
-  &#39;mean_rt&#39;: 17,
-  &#39;std&#39;: 0,
-  &#39;mode_cnt_rel&#39;: 0.9},
- &#39;negative_rt_cutoff&#39;: -66.77497,
- &#39;n_subruns&#39;: 10,
- &#39;bin_pointwise&#39;: False,
- &#39;separate_response_channels&#39;: False}
-</code></pre></div>
-<p>You usually have to make just few changes to this basic configuration dictionary.
-An example below.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># Initialize the generator config (for MLP LANs)</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">generator_config</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">data_generator_config</span><span class="p">[</span><span class="s1">&#39;lan&#39;</span><span class="p">][</span><span class="s1">&#39;mlp&#39;</span><span class="p">])</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Specify generative model (one from the list of included models mentioned above)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">generator_config</span><span class="p">[</span><span class="s1">&#39;dgp_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;angle&#39;</span> 
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># Specify number of parameter sets to simulate</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">generator_config</span><span class="p">[</span><span class="s1">&#39;n_parameter_sets&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span> 
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># Specify how many samples a simulation run should entail</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">generator_config</span><span class="p">[</span><span class="s1">&#39;n_samples&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span>
+<p>Choice-only simulations emit <code>rt=-1.0</code> only as a compatibility placeholder in
+generative output. Use response-only data for HSSM handoff and choice-only PPC.</p>
+<hr />
+<h2 id="installation">Installation</h2>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>ssm-simulators
 </span></code></pre></div>
-<p>Now let's define our corresponding <code>model_config</code>.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">model_config</span> <span class="o">=</span> <span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_config</span><span class="p">[</span><span class="s1">&#39;angle&#39;</span><span class="p">]</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
+<p>Install the optional JAX backend for differentiable RLSSM learning processes:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;ssm-simulators[jax]&quot;</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>{&#39;name&#39;: &#39;angle&#39;, &#39;params&#39;: [&#39;v&#39;, &#39;a&#39;, &#39;z&#39;, &#39;t&#39;, &#39;theta&#39;], &#39;param_bounds&#39;: [[-3.0, 0.3, 0.1, 0.001, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]], &#39;boundary&#39;: &lt;function angle at 0x11b2a7c10&gt;, &#39;n_params&#39;: 5, &#39;default_params&#39;: [0.0, 1.0, 0.5, 0.001, 0.0], &#39;hddm_include&#39;: [&#39;z&#39;, &#39;theta&#39;], &#39;nchoices&#39;: 2}
-</code></pre></div>
-<p>We are now ready to initialize a <code>data_generator</code>, after which we can generate training data using the <code>generate_data_training_uniform</code> function, which will use the hypercube defined by our parameter bounds from the <code>model_config</code> to uniformly generate parameter sets and corresponding simulated datasets.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">my_dataset_generator</span> <span class="o">=</span> <span class="n">ssms</span><span class="o">.</span><span class="n">dataset_generators</span><span class="o">.</span><span class="n">data_generator</span><span class="p">(</span><span class="n">generator_config</span> <span class="o">=</span> <span class="n">generator_config</span><span class="p">,</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>                                                              <span class="n">model_config</span> <span class="o">=</span> <span class="n">model_config</span><span class="p">)</span>
+<p>Users who need multi-threaded simulation should install OpenMP and GSL first:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># macOS</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>brew<span class="w"> </span>install<span class="w"> </span>libomp<span class="w"> </span>gsl
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Ubuntu/Debian</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>libgsl-dev
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>n_cpus used:  6
-checking:  data/lan_mlp/
-</code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">training_data</span> <span class="o">=</span> <span class="n">my_dataset_generator</span><span class="o">.</span><span class="n">generate_data_training_uniform</span><span class="p">(</span><span class="n">save</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code>simulation round: 1  of 10
-simulation round: 2  of 10
-simulation round: 3  of 10
-simulation round: 4  of 10
-simulation round: 5  of 10
-simulation round: 6  of 10
-simulation round: 7  of 10
-simulation round: 8  of 10
-simulation round: 9  of 10
-simulation round: 10  of 10
-</code></pre></div>
-<p><code>training_data</code> is a dictionary containing four keys:</p>
-<ol>
-<li><code>data</code> the features for <a href="https://elifesciences.org/articles/65074">LANs</a>, containing vectors of <em>model parameters</em>, as well as <em>rts</em> and <em>choices</em>.</li>
-<li><code>labels</code> which contain approximate likelihood values</li>
-<li><code>generator_config</code>, as defined above</li>
-<li><code>model_config</code>, as defined above</li>
-</ol>
-<p>You can now use this training data for your purposes. If you want to train <a href="https://elifesciences.org/articles/65074">LANs</a> yourself, you might find the <a href="https://github.com/AlexanderFengler/LANfactory">LANfactory</a> package helpful.</p>
-<p>You may also simply find the basic simulators provided with the <strong>ssms</strong> package useful, without any desire to use the outputs into training data for amortization purposes.</p>
-<h5 id="end">END</h5>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Learn the basic simulator API in the <a href="basic_tutorial/basic_tutorial/">basic tutorial</a>.</li>
+<li>Explore model families in the <a href="core_tutorials/tutorial_capabilities/">package overview</a>.</li>
+<li>Generate LAN training data with the <a href="core_tutorials/tutorial_data_generators/">data generator tutorial</a>.</li>
+<li>Build and simulate RLSSMs with the <a href="core_tutorials/rlssm_tutorial/">RLSSM tutorial</a>.</li>
+<li>Learn response-only RL simulation in the <a href="core_tutorials/choice_only_rl_models/">choice-only RL tutorial</a>.</li>
+<li>Use the <a href="api/ssms/">API reference</a> when integrating ssms into another package.</li>
+</ul>
 
 
 
@@ -1033,7 +1777,7 @@ simulation round: 10  of 10
         
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
   Back to top
 </button>
         
@@ -1063,10 +1807,13 @@ simulation round: 10  of 10
     </div>
     
     
-    <script id="__config" type="application/json">{"base": ".", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.path", "navigation.top", "content.code.copy", "content.action.view", "content.action.edit", "header.autohide", "announce.dismiss"], "search": "assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.path", "navigation.top", "content.code.copy", "content.action.view", "content.action.edit", "header.autohide", "announce.dismiss"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.d7c377c4.min.js"></script>
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://lnccbrown.github.io/ssm-simulators/basic_tutorial/basic_tutorial/">
+        <link rel="canonical" href="https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_data_generators/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../tutorial_custom_models/">
       
       
-        <link rel="next" href="../../core_tutorials/tutorial_capabilities/">
+        <link rel="next" href="../rlssm_tutorial/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Check included models - SSMS (Sequential Sampling Model Simulators)</title>
+        <title>The TrainingDataGenerator class - SSMS (Sequential Sampling Model Simulators)</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quick-start" class="md-skip">
+        <a href="#the-trainingdatagenerator-class" class="md-skip">
           Skip to content
         </a>
       
@@ -145,7 +145,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Check included models
+              The TrainingDataGenerator class
             
           </span>
         </div>
@@ -278,13 +278,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../basic_tutorial/basic_tutorial/" class="md-tabs__link">
           
   
   
@@ -300,11 +298,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../core_tutorials/tutorial_capabilities/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../tutorial_capabilities/" class="md-tabs__link">
           
   
   
@@ -497,6 +497,93 @@
       
   
   
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../basic_tutorial/basic_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Check included models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -518,285 +605,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Getting Started
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Getting Started
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Check included models
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Check included models
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Start
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#af-todo-change-badge-branch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AF-TODO: Change badge branch
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="AF-TODO: Change badge branch">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Install
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#notebook-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notebook Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tutorial
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-simulators" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using the Simulators
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#check-included-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Check included models
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Check included models">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-the-class-based-simulator-interface" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using the Class-Based Simulator Interface
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#access-the-model-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Access the model configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Access the model configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-the-training-data-generators" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using the Training Data Generators
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using the Training Data Generators">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#end" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        END
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
@@ -814,7 +626,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -832,7 +644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/tutorial_capabilities/" class="md-nav__link">
+      <a href="../tutorial_capabilities/" class="md-nav__link">
         
   
   
@@ -860,7 +672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/tutorial_configs/" class="md-nav__link">
+      <a href="../tutorial_configs/" class="md-nav__link">
         
   
   
@@ -888,7 +700,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/tutorial_custom_models/" class="md-nav__link">
+      <a href="../tutorial_custom_models/" class="md-nav__link">
         
   
   
@@ -913,10 +725,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../core_tutorials/tutorial_data_generators/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The TrainingDataGenerator class
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -932,6 +771,182 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-trainingdatagenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is TrainingDataGenerator?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is TrainingDataGenerator?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-level-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-single-injection-point-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Single Injection Point: Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Single Injection Point: Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline concept?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#built-in-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Strategies:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-control-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Control It?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generate-training-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate training data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#advanced-example-generate-training-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Example: Generate Training Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -944,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/rlssm_tutorial/" class="md-nav__link">
+      <a href="../rlssm_tutorial/" class="md-nav__link">
         
   
   
@@ -972,7 +987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/rlssm_simulation_hssm_handoff/" class="md-nav__link">
+      <a href="../rlssm_simulation_hssm_handoff/" class="md-nav__link">
         
   
   
@@ -1000,7 +1015,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/choice_only_rl_models/" class="md-nav__link">
+      <a href="../choice_only_rl_models/" class="md-nav__link">
         
   
   
@@ -1028,7 +1043,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/rlssm_advanced_tutorial/" class="md-nav__link">
+      <a href="../rlssm_advanced_tutorial/" class="md-nav__link">
         
   
   
@@ -1056,7 +1071,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/kde_class/" class="md-nav__link">
+      <a href="../kde_class/" class="md-nav__link">
         
   
   
@@ -1084,7 +1099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/tutorial_simulators_vs_pyddm/" class="md-nav__link">
+      <a href="../tutorial_simulators_vs_pyddm/" class="md-nav__link">
         
   
   
@@ -1112,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../core_tutorials/using_mlflow/" class="md-nav__link">
+      <a href="../using_mlflow/" class="md-nav__link">
         
   
   
@@ -1499,6 +1514,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1507,33 +1524,100 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#what-is-trainingdatagenerator" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        What is TrainingDataGenerator?
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="What is TrainingDataGenerator?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-level-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-single-injection-point-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Single Injection Point: Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Single Injection Point: Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline concept?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#built-in-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Strategies:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-control-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Control It?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#af-todo-change-badge-branch" class="md-nav__link">
+  <a href="#basic-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AF-TODO: Change badge branch
+        Basic Example
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="AF-TODO: Change badge branch">
+    <nav class="md-nav" aria-label="Basic Example">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
+  <a href="#generate-training-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install
+        Generate training data
       
     </span>
   </a>
@@ -1541,32 +1625,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#notebook-setup" class="md-nav__link">
+  <a href="#inspect-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notebook Setup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tutorial" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tutorial
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-the-simulators" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using the Simulators
+        Inspect output
       
     </span>
   </a>
@@ -1579,70 +1641,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#check-included-models" class="md-nav__link">
+  <a href="#advanced-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check included models
+        Advanced Example
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Check included models">
+    <nav class="md-nav" aria-label="Advanced Example">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-the-class-based-simulator-interface" class="md-nav__link">
+  <a href="#advanced-example-generate-training-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the Class-Based Simulator Interface
+        Advanced Example: Generate Training Data
       
     </span>
   </a>
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#access-the-model-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Access the model configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Access the model configuration">
-      <ul class="md-nav__list">
-        
           <li class="md-nav__item">
-  <a href="#using-the-training-data-generators" class="md-nav__link">
+  <a href="#default-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using the Training Data Generators
+        Default Behavior
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Using the Training Data Generators">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#end" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        END
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1674,7 +1702,7 @@
 
 
   
-    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/basic_tutorial/basic_tutorial.ipynb" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/core_tutorials/tutorial_data_generators.ipynb" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1683,7 +1711,7 @@
     
       
     
-    <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/basic_tutorial/basic_tutorial.ipynb" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/core_tutorials/tutorial_data_generators.ipynb" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
@@ -2411,74 +2439,19 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3576edb7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="quick-start">Quick Start<a class="anchor-link" href="#quick-start">¶</a></h3>
+<h1 id="the-trainingdatagenerator-class">The TrainingDataGenerator class<a class="anchor-link" href="#the-trainingdatagenerator-class">¶</a></h1><p>This tutorial demonstrates how to use the <code>TrainingDataGenerator</code> class to create training data for sequential sampling models (SSMs).
+We'll discuss a bit of the overall workflow design here as well.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="af-todo-change-badge-branch">AF-TODO: Change badge branch<a class="anchor-link" href="#af-todo-change-badge-branch">¶</a></h3><p><a href="https://molab.marimo.io/github/lnccbrown/ssm-simulators/blob/first-marimo-tutorial/docs/basic_tutorial/basic_tutorial.ipynb"><img alt="Open with marimo" src="https://marimo.io/shield.svg"/></a>
-<a href="https://colab.research.google.com/github/lnccbrown/ssm-simulators/blob/first-marimo-tutorial/docs/basic_tutorial/basic_tutorial.ipynb"><img alt="Open with colab" src="https://colab.research.google.com/assets/colab-badge.svg"/></a></p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The <code>ssms</code> package serves two purposes.</p>
-<ol>
-<li><p>Easy access to <em>fast simulators of sequential sampling models</em></p>
-</li>
-<li><p>Support infrastructure to construct training data for various approaches to likelihood / posterior amortization</p>
-</li>
-</ol>
-<p>We provide two minimal examples here to illustrate how to use each of the two capabilities.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="install">Install<a class="anchor-link" href="#install">¶</a></h4><p>Let's start with <em>installing</em> the <code>ssms</code> package.</p>
-<p>You can do so by typing,</p>
-<p><code>pip install ssm-simulators</code></p>
-<p>in your terminal.</p>
-<p>Below you find a basic tutorial on how to use the package.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="notebook-setup">Notebook Setup<a class="anchor-link" href="#notebook-setup">¶</a></h4>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b1f58bf6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2496,43 +2469,191 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Standard library imports</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 
-<span class="k">if</span> <span class="p">(</span><span class="s2">"COLAB_RELEASE_TAG"</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">):</span>
-    <span class="err">!</span><span class="n">pip</span> <span class="n">install</span> <span class="n">ssm</span><span class="o">-</span><span class="n">simulators</span>
-    <span class="k">pass</span> <span class="c1"># helps keep code running in molab</span>
-<span class="k">elif</span> <span class="nb">any</span><span class="p">([</span><span class="s2">"MARIMO"</span> <span class="ow">in</span> <span class="n">item_</span> \
-            <span class="k">for</span> <span class="n">item_</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">]):</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">marimo</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mo</span>
-    <span class="n">mo</span><span class="o">.</span><span class="n">dependencies</span><span class="p">(</span><span class="n">pip</span><span class="o">=</span><span class="p">[</span><span class="s2">"ssm-simulators"</span><span class="p">,</span> <span class="s2">"pandas"</span><span class="p">])</span>
+<span class="c1"># SSMS imports</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ssms.dataset_generators.lan_mlp</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingDataGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ssms.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_config</span><span class="p">,</span> <span class="n">get_default_generator_config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators.simulator_class</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
+
+<span class="c1"># Set random seed for reproducibility</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"✓ Imports successful"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✓ Available models: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span><span class="si">}</span><span class="s2"> predefined models"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-1">import os
+<div class="clipboard-copy-txt" id="cell-1"># Standard library imports
+import numpy as np
+import matplotlib.pyplot as plt
+import time
 
-if ("COLAB_RELEASE_TAG" in os.environ):
-    !pip install ssm-simulators
-    pass # helps keep code running in molab
-elif any(["MARIMO" in item_ \
-            for item_ in os.environ]):
-    import marimo as mo
-    mo.dependencies(pip=["ssm-simulators", "pandas"])</div>
+# SSMS imports
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+from ssms.config import model_config, get_default_generator_config
+from ssms.basic_simulators.simulator_class import Simulator
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+print("✓ Imports successful")
+print(f"✓ Available models: {len(model_config)} predefined models")</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>✓ Imports successful
+✓ Available models: 108 predefined models
+</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e7166360">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="tutorial">Tutorial<a class="anchor-link" href="#tutorial">¶</a></h4>
+<h2 id="what-is-trainingdatagenerator">What is TrainingDataGenerator?<a class="anchor-link" href="#what-is-trainingdatagenerator">¶</a></h2><p>The <code>TrainingDataGenerator</code> orchestrates the creation of training datasets for neural network-based likelihood approximation.</p>
+<p>It:</p>
+<ul>
+<li>Samples parameters from valid parameter spaces</li>
+<li>Generates RT/choice data (via simulation or analytical methods)</li>
+<li>Turns the raw data into <code>(feature, label)</code> pairs for various networks we are interested in downstream</li>
+<li>Optionally saves outputs via <code>.pickle</code> files</li>
+</ul>
+<p>The <code>TrainingDataGenerator</code> is in fact a light-weight class that puts to work a <code>DataPipeline</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0cb522af">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="high-level-flow">High-Level Flow<a class="anchor-link" href="#high-level-flow">¶</a></h3><div style="width: 100%; max-width: 700px; margin: 30px auto; padding: 0 20px; box-sizing: border-box;">
+<div style="width: 100%; text-align: center; padding: 15px; background-color: #f8f9fa; border: 2px solid #dee2e6; font-weight: 600; font-size: 16px; color: #495057; box-sizing: border-box; margin-bottom: 15px;">
+    INPUTS
+  </div>
+<div style="width: 100%; padding: 20px; background-color: #fff3e0; border: 3px solid #ffb300; text-align: center; box-sizing: border-box; margin-bottom: 15px;">
+<div style="font-size: 28px; margin-bottom: 10px;">⚙️</div>
+<div style="font-weight: 700; font-size: 17px; margin-bottom: 10px; color: #e65100;">config</div>
+<div style="font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 12px;">
+<strong>Polymorphic parameter</strong>
+</div>
+<div style="background-color: #fff8e1; padding: 10px; border-radius: 5px; margin: 8px auto; max-width: 400px; border-left: 4px solid #ff6f00; text-align: left;">
+<div style="font-weight: 600; font-size: 12px; color: #e65100; margin-bottom: 4px;">Option 1: Dict (99%)</div>
+<div style="font-size: 11px; color: #666;">generator_config dict (samples, bins, estimator_type)</div>
+</div>
+<div style="background-color: #f3e5f5; padding: 10px; border-radius: 5px; margin: 8px auto; max-width: 400px; border-left: 4px solid #7b1fa2; text-align: left;">
+<div style="font-weight: 600; font-size: 12px; color: #7b1fa2; margin-bottom: 4px;">Option 2: Strategy (1%)</div>
+<div style="font-size: 11px; color: #666;">Custom strategy object (advanced customization)</div>
+</div>
+</div>
+<div style="width: 100%; padding: 20px; background-color: #e7f3ff; border: 3px solid #42a5f5; text-align: center; box-sizing: border-box; margin-bottom: 20px;">
+<div style="font-size: 28px; margin-bottom: 10px;">📋</div>
+<div style="font-weight: 700; font-size: 17px; margin-bottom: 10px; color: #0066cc;">model_config</div>
+<div style="font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 8px;">
+<strong>Model specification</strong>
+</div>
+<div style="font-size: 13px; color: #666; line-height: 1.5;">
+      Which SSM model? (DDM, angle, LCA...)<br/>
+      Parameter bounds<br/>
+      Boundary/drift functions
+    </div>
+</div>
+<div style="text-align: center; font-size: 32px; color: #999; margin: 15px 0;">⬇</div>
+<div style="width: 100%; padding: 25px; background-color: #fff8e1; border: 3px solid #ffb300; text-align: center; margin-bottom: 20px; box-sizing: border-box;">
+<div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+<div style="font-weight: 700; font-size: 22px; margin-bottom: 8px; color: #f57c00;">TrainingDataGenerator</div>
+<div style="font-size: 14px; color: #666;">Orchestrates the complete data generation workflow</div>
+</div>
+<div style="text-align: center; font-size: 32px; color: #999; margin: 15px 0;">⬇</div>
+<div style="width: 100%; text-align: center; padding: 15px; background-color: #f8f9fa; border: 2px solid #dee2e6; font-weight: 600; font-size: 16px; color: #495057; box-sizing: border-box; margin-bottom: 15px;">
+    OUTPUT
+  </div>
+<div style="width: 100%; padding: 20px; background-color: #e8f5e9; border: 2px solid #81c784; box-sizing: border-box;">
+<div style="text-align: center; font-size: 28px; margin-bottom: 8px;">📦</div>
+<div style="text-align: center; font-weight: 700; font-size: 18px; margin-bottom: 15px; color: #2e7d32;">Training Data</div>
+<div style="padding: 10px; background-color: white; border: 1px solid #ddd; border-left: 4px solid #42a5f5; margin-bottom: 8px;">
+<strong style="color: #1976d2;">lan_data</strong><br/>
+<span style="font-size: 12px; color: #666;">RT/choice pairs for training</span>
+</div>
+<div style="padding: 10px; background-color: white; border: 1px solid #ddd; border-left: 4px solid #ef5350; margin-bottom: 8px;">
+<strong style="color: #c62828;">lan_labels</strong><br/>
+<span style="font-size: 12px; color: #666;">Log-likelihoods</span>
+</div>
+<div style="padding: 10px; background-color: white; border: 1px solid #ddd; border-left: 4px solid #66bb6a; margin-bottom: 8px;">
+<strong style="color: #388e3c;">theta</strong><br/>
+<span style="font-size: 12px; color: #666;">Parameter values</span>
+</div>
+<div style="padding: 10px; background-color: white; border: 1px solid #ddd; border-left: 4px solid #ab47bc; margin-bottom: 8px;">
+<strong style="color: #7b1fa2;">cpn_labels</strong><br/>
+<span style="font-size: 12px; color: #666;">Choice probabilities</span>
+</div>
+<div style="padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; text-align: center; color: #999; font-style: italic; font-size: 14px;">
+      ... and more
+    </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=77fd1472">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="the-single-injection-point-pipeline">The Single Injection Point: Pipeline<a class="anchor-link" href="#the-single-injection-point-pipeline">¶</a></h3><h4 id="pipeline-concept"><strong>Pipeline concept?</strong><a class="anchor-link" href="#pipeline-concept">¶</a></h4><p>The <code>generation_pipeline</code> parameter is the <strong>single customization point</strong> for the <code>TrainingDataGenerator</code>. It encapsulates the entire data generation workflow, from parameter sampling to the composition of the final training data.</p>
+<h4 id="built-in-strategies"><strong>Built-in Strategies</strong>:<a class="anchor-link" href="#built-in-strategies">¶</a></h4><p><strong>1. <code>SimulationPipeline</code></strong> (default for <code>estimator_type='kde'</code>)</p>
+<ul>
+<li>Uses the core native simulators of the <code>ssm-simulators</code> package</li>
+<li>Goes through a KDE as the Likelihood Estimator (as in <a href="https://elifesciences.org/articles/65074">our LAN paper</a> )</li>
+</ul>
+<p><strong>2. <code>PyDDMPipeline</code></strong> (used for <code>estimator_type='pyddm'</code>)</p>
+<ul>
+<li>Uses analytical Fokker-Planck PDE solver via <code>PyDDM</code> package</li>
+<li>Model choice somewhat more limited (2-choice, Gaussian noise etc.)</li>
+<li>Can be much faster than KDE based strategy where it applies</li>
+</ul>
+<p><strong>3. Custom Strategy</strong></p>
+<ul>
+<li>Implement your own <code>DataPipelineProtocol</code></li>
+<li>Full control over parameter sampling, simulation, and data structuring</li>
+</ul>
+<h4 id="how-to-control-it"><strong>How to Control It?</strong><a class="anchor-link" href="#how-to-control-it">¶</a></h4><p>Pass a config dict as the first argument</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7596b75b">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="basic-example">Basic Example<a class="anchor-link" href="#basic-example">¶</a></h2>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=09541515">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2550,47 +2671,18 @@ elif any(["MARIMO" in item_ \
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Import necessary packages</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">ssms</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">model_name</span> <span class="o">=</span> <span class="s2">"ddm"</span>
+<span class="n">estimator_type</span> <span class="o">=</span> <span class="s2">"kde"</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-2"># Import necessary packages
-import numpy as np
-import pandas as pd
-import ssms</div>
+<div class="clipboard-copy-txt" id="cell-2">model_name = "ddm"
+estimator_type = "kde"</div>
 </div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="using-the-simulators">Using the Simulators<a class="anchor-link" href="#using-the-simulators">¶</a></h4><p>Let's start with using the basic simulators.
-You access the main simulators through the  <code>ssms.basic_simulators.simulator.simulator()</code> function.</p>
-<p>To get an idea about the models included in <code>ssms</code>, use the <code>config</code> module.
-The central dictionary with metadata about included models sits in <code>ssms.config.model_config</code>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="check-included-models">Check included models<a class="anchor-link" href="#check-included-models">¶</a></h1><p>list(ssms.config.model_config.keys())[:10]</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=fba94d71">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2608,11 +2700,29 @@ The central dictionary with metadata about included models sits in <code>ssms.co
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Take an example config for a given model</span>
-<span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_config</span><span class="p">[</span><span class="s2">"ddm"</span><span class="p">]</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># </span>
+<span class="n">my_model_config</span> <span class="o">=</span> <span class="n">model_config</span><span class="p">[</span><span class="n">model_name</span><span class="p">]</span><span class="c1"># For simulation-based (default)</span>
+
+<span class="n">pipeline_config</span> <span class="o">=</span> <span class="n">get_default_generator_config</span><span class="p">()</span>
+<span class="n">pipeline_config</span><span class="p">[</span><span class="s2">"estimator"</span><span class="p">][</span><span class="s1">'type'</span><span class="p">]</span> <span class="o">=</span> <span class="n">estimator_type</span>  <span class="c1"># or just omit, this is the default</span>
+<span class="n">pipeline_config</span><span class="p">[</span><span class="s2">"pipeline"</span><span class="p">][</span><span class="s2">"n_parameter_sets"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">pipeline_config</span><span class="p">[</span><span class="s2">"simulator"</span><span class="p">][</span><span class="s2">"n_samples"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pipeline_config</span><span class="p">)</span>
+<span class="n">gen</span> <span class="o">=</span> <span class="n">TrainingDataGenerator</span><span class="p">(</span><span class="n">pipeline_config</span><span class="p">,</span>
+                    <span class="n">my_model_config</span>
+                    <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-3"># Take an example config for a given model
-ssms.config.model_config["ddm"]</div>
+<div class="clipboard-copy-txt" id="cell-3"># 
+my_model_config = model_config[model_name]# For simulation-based (default)
+
+pipeline_config = get_default_generator_config()
+pipeline_config["estimator"]['type'] = estimator_type  # or just omit, this is the default
+pipeline_config["pipeline"]["n_parameter_sets"] = 100
+pipeline_config["simulator"]["n_samples"] = 5000
+print(pipeline_config)
+gen = TrainingDataGenerator(pipeline_config,
+                    my_model_config
+                    )</div>
 </div>
 </div>
 </div>
@@ -2621,54 +2731,29 @@ ssms.config.model_config["ddm"]</div>
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>{'name': 'ddm',
- 'params': ['v', 'a', 'z', 't'],
- 'param_bounds': [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]],
- 'boundary_name': 'constant',
- 'boundary': &lt;function ssms.basic_simulators.boundary_functions.constant(t: float | numpy.ndarray = 0, a: float = 1.0) -&gt; float | numpy.ndarray&gt;,
- 'boundary_params': [],
- 'n_params': 4,
- 'default_params': [0.0, 1.0, 0.5, 0.001],
- 'nchoices': 2,
- 'choices': [-1, 1],
- 'n_particles': 1,
- 'simulator': &lt;cyfunction ddm_flexbound at 0x11d37ef70&gt;,
- 'parameter_transforms': {'sampling': [], 'simulation': []},
- 'param_bounds_dict': {'v': (-3.0, 3.0),
-  'a': (0.3, 2.5),
-  'z': (0.1, 0.9),
-  't': (0.0, 2.0)}}</pre>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>{'pipeline': {'n_parameter_sets': 100, 'n_parameter_sets_rejected': 100, 'n_subruns': 10, 'n_cpus': 'all', 'simulation_filters': {'mode': 20, 'choice_cnt': 0, 'mean_rt': 17, 'std': 0, 'mode_cnt_rel': 0.95}}, 'estimator': {'type': 'kde', 'kde_displace_t': False, 'pdf_interpolation': 'cubic', 'max_undecided_prob': 0.5}, 'training': {'n_samples_per_param': 1000, 'mixture_probabilities': [0.8, 0.1, 0.1], 'separate_response_channels': False, 'negative_rt_log_likelihood': -66.77497}, 'simulator': {'n_samples': 5000, 'delta_t': 0.001, 'max_t': 20.0, 'smooth_unif': True}, 'output': {'folder': 'data/lan_mlp/', 'nbins': 0, 'pickle_protocol': 4, 'bin_pointwise': False}, 'model': 'ddm'}
+</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7bc3f8b6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Note:</strong>
-The usual structure of these models includes,</p>
-<ul>
-<li>Parameter names (<code>'params'</code>)</li>
-<li>Bounds on the parameters (<code>'param_bounds'</code>)</li>
-<li>A function that defines a boundary for the respective model (<code>'boundary'</code>)</li>
-<li>The number of parameters (<code>'n_params'</code>)</li>
-<li>Defaults for the parameters (<code>'default_params'</code>)</li>
-<li>The number of choices the process can produce (<code>'nchoices'</code>)</li>
-</ul>
-<p>The <code>'hddm_include'</code> key concerns information useful for integration with the <a href="https://github.com/hddm-devs/hddm">hddm</a> python package, which facilitates hierarchical bayesian inference for sequential sampling models. It is not important for the present tutorial.</p>
+<h3 id="generate-training-data">Generate training data<a class="anchor-link" href="#generate-training-data">¶</a></h3>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0313730f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2686,63 +2771,60 @@ The usual structure of these models includes,</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">simulator</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Generate data</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Generating training data..."</span><span class="p">)</span>
+<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
-<span class="n">sim_out</span> <span class="o">=</span> <span class="n">simulator</span><span class="p">(</span>
-    <span class="n">model</span><span class="o">=</span><span class="s2">"ddm"</span><span class="p">,</span>
-    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"a"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"t"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
-    <span class="n">n_samples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
-    <span class="n">n_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># If you have OpenMP and GSL installed, you can set n_threads to the number of cores you have.</span>
-<span class="p">)</span>
+<span class="n">training_data</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate_data_training</span><span class="p">()</span>
+
+<span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+<span class="n">total_trials</span> <span class="o">=</span> <span class="n">pipeline_config</span><span class="p">[</span><span class="s1">'pipeline'</span><span class="p">][</span><span class="s1">'n_parameter_sets'</span><span class="p">]</span> <span class="o">*</span> <span class="n">pipeline_config</span><span class="p">[</span><span class="s1">'simulator'</span><span class="p">][</span><span class="s1">'n_samples'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✓ Data generation complete in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  (</span><span class="si">{</span><span class="n">total_trials</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> trials/sec)"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-4">from ssms.basic_simulators.simulator import simulator
+<div class="clipboard-copy-txt" id="cell-4"># Generate data
+print("Generating training data...")
+start_time = time.time()
 
-sim_out = simulator(
-    model="ddm",
-    theta={"v": 0, "a": 1, "z": 0.5, "t": 0.5},
-    n_samples=10000,
-    n_threads=1, # If you have OpenMP and GSL installed, you can set n_threads to the number of cores you have.
-)</div>
+training_data = gen.generate_data_training()
+
+elapsed = time.time() - start_time
+total_trials = pipeline_config['pipeline']['n_parameter_sets'] * pipeline_config['simulator']['n_samples']
+print(f"✓ Data generation complete in {elapsed:.2f} seconds")
+print(f"  ({total_trials / elapsed:.0f} trials/sec)")</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Generating training data...
+✓ Data generation complete in 5.97 seconds
+  (83708 trials/sec)
+</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6d018e70">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The output of the simulator is a <code>dictionary</code> with three elements.</p>
-<ol>
-<li><code>rts</code> (array)</li>
-<li><code>choices</code> (array)</li>
-<li><code>metadata</code> (dictionary)</li>
-</ol>
-<p>The <code>metadata</code> includes the named parameters, simulator settings, and more.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="using-the-class-based-simulator-interface">Using the Class-Based Simulator Interface<a class="anchor-link" href="#using-the-class-based-simulator-interface">¶</a></h4><p>In addition to the functional <code>simulator()</code> approach shown above, <code>ssms</code> provides a modern <strong>class-based interface</strong> via the <code>Simulator</code> class. This approach offers several advantages:</p>
-<ul>
-<li><strong>Reusable configuration</strong>: Create a simulator once, run many simulations</li>
-<li><strong>Extensibility</strong>: Easily customize boundary functions, drift functions, or even provide your own simulator</li>
-<li><strong>Cleaner API</strong>: Object-oriented design with explicit configuration</li>
-</ul>
+<h3 id="inspect-output">Inspect output<a class="anchor-link" href="#inspect-output">¶</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1b8911da">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2760,39 +2842,45 @@ sim_out = simulator(
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Import the Simulator class (also available as ssms.Simulator)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ssms</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">"Output structure:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">training_data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="c1"># Create a simulator for the DDM model</span>
-<span class="n">ddm_sim</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="s2">"ddm"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Data shapes:"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">training_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">key</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">key</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">key</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2">: None"</span><span class="p">)</span>
 
-<span class="c1"># Run a simulation with named parameters</span>
-<span class="n">sim_out_class</span> <span class="o">=</span> <span class="n">ddm_sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
-    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"a"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"t"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span> 
-    <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="c1"># The output format is identical to the functional approach</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Keys:"</span><span class="p">,</span> <span class="n">sim_out_class</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"RT shape:"</span><span class="p">,</span> <span class="n">sim_out_class</span><span class="p">[</span><span class="s2">"rts"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Choices shape:"</span><span class="p">,</span> <span class="n">sim_out_class</span><span class="p">[</span><span class="s2">"choices"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">--- Understanding the components ---"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"data: RT/choice pairs [n_parameter_sets, n_samples, 2]"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"theta: Parameter values [n_parameter_sets, n_params]"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"choice_p: Choice probabilities for each trial"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"cpn_*, opn_*, gonogo_*: Additional training labels"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-5"># Import the Simulator class (also available as ssms.Simulator)
-from ssms import Simulator
+<div class="clipboard-copy-txt" id="cell-5">print("Output structure:")
+print(f"  Keys: {list(training_data.keys())}")
 
-# Create a simulator for the DDM model
-ddm_sim = Simulator("ddm")
+print("\nData shapes:")
+for key, value in training_data.items():
+    if value is not None:
+        if isinstance(value, np.ndarray):
+            print(f"  {key:30s}: {value.shape}")
+        elif isinstance(value, dict):
+            print(f"  {key:30s}: {value}")
+    else:
+        print(f"  {key}")
+        print(f"  {key:30s}: None")
 
-# Run a simulation with named parameters
-sim_out_class = ddm_sim.simulate(
-    theta={"v": 0, "a": 1, "z": 0.5, "t": 0.5}, 
-    n_samples=1000,
-)
-
-# The output format is identical to the functional approach
-print("Keys:", sim_out_class.keys())
-print("RT shape:", sim_out_class["rts"].shape)
-print("Choices shape:", sim_out_class["choices"].shape)</div>
+print("\n--- Understanding the components ---")
+print("data: RT/choice pairs [n_parameter_sets, n_samples, 2]")
+print("theta: Parameter values [n_parameter_sets, n_params]")
+print("choice_p: Choice probabilities for each trial")
+print("cpn_*, opn_*, gonogo_*: Additional training labels")</div>
 </div>
 </div>
 </div>
@@ -2804,9 +2892,31 @@ print("Choices shape:", sim_out_class["choices"].shape)</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Keys: dict_keys(['rts', 'choices', 'metadata'])
-RT shape: (1000, 1)
-Choices shape: (1000, 1)
+<pre>Output structure:
+  Keys: ['gonogo_data', 'binned_128', 'cpn_data', 'lan_labels', 'lan_data', 'cpn_labels', 'cpn_no_omission_data', 'opn_labels', 'cpn_no_omission_labels', 'binned_256', 'gonogo_labels', 'theta', 'opn_data', 'generator_config', 'model_config']
+
+Data shapes:
+  gonogo_data                   : (100, 4)
+  binned_128                    : (100, 128, 2)
+  cpn_data                      : (100, 4)
+  lan_labels                    : (100000,)
+  lan_data                      : (100000, 6)
+  cpn_labels                    : (100, 1)
+  cpn_no_omission_data          : (100, 4)
+  opn_labels                    : (100, 1)
+  cpn_no_omission_labels        : (100, 1)
+  binned_256                    : (100, 256, 2)
+  gonogo_labels                 : (100, 1)
+  theta                         : (100, 4)
+  opn_data                      : (100, 4)
+  generator_config              : {'pipeline': {'n_parameter_sets': 100, 'n_parameter_sets_rejected': 100, 'n_subruns': 10, 'n_cpus': 12, 'simulation_filters': {'mode': 20, 'choice_cnt': 0, 'mean_rt': 17, 'std': 0, 'mode_cnt_rel': 0.95}}, 'estimator': {'type': 'kde', 'kde_displace_t': False, 'pdf_interpolation': 'cubic', 'max_undecided_prob': 0.5, 'displace_t': False}, 'training': {'n_samples_per_param': 1000, 'mixture_probabilities': [0.8, 0.1, 0.1], 'separate_response_channels': False, 'negative_rt_log_likelihood': -66.77497}, 'simulator': {'n_samples': 5000, 'delta_t': 0.001, 'max_t': 20.0, 'smooth_unif': True}, 'output': {'folder': 'data/lan_mlp/', 'nbins': 0, 'pickle_protocol': 4, 'bin_pointwise': False}, 'model': 'ddm'}
+  model_config                  : {'name': 'ddm', 'params': ['v', 'a', 'z', 't'], 'param_bounds': [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]], 'boundary_name': 'constant', 'boundary': &lt;function constant at 0x11ad24b80&gt;, 'boundary_params': [], 'n_params': 4, 'default_params': [0.0, 1.0, 0.5, 0.001], 'nchoices': 2, 'choices': [-1, 1], 'n_particles': 1, 'simulator': &lt;cyfunction ddm_flexbound at 0x12d85b930&gt;, 'parameter_transforms': {'sampling': [], 'simulation': []}, 'param_bounds_dict': {'v': (-3.0, 3.0), 'a': (0.3, 2.5), 'z': (0.1, 0.9), 't': (0.0, 2.0)}}
+
+--- Understanding the components ---
+data: RT/choice pairs [n_parameter_sets, n_samples, 2]
+theta: Parameter values [n_parameter_sets, n_params]
+choice_p: Choice probabilities for each trial
+cpn_*, opn_*, gonogo_*: Additional training labels
 </pre>
 </div>
 </div>
@@ -2814,42 +2924,18 @@ Choices shape: (1000, 1)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1dd0946c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The <code>Simulator</code> lass stores the model configuration, which you can inspect:</p>
+<h2 id="advanced-example">Advanced Example<a class="anchor-link" href="#advanced-example">¶</a></h2>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="access-the-model-configuration">Access the model configuration<a class="anchor-link" href="#access-the-model-configuration">¶</a></h1><p>print("Model name:", ddm_sim.config["name"])
-print("Parameters:", ddm_sim.config["params"])
-print("Number of choices:", ddm_sim.config["nchoices"])</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Reproducibility</strong>: Use <code>random_state</code> to get reproducible simulations:</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2285f31b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2867,58 +2953,73 @@ print("Number of choices:", ddm_sim.config["nchoices"])</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Reproducible simulations with random_state</span>
-<span class="n">theta</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"a"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"t"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">}</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.dataset_generators.estimator_builders.kde_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">KDEEstimatorBuilder</span>
 
-<span class="n">result1</span> <span class="o">=</span> <span class="n">ddm_sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span>
-                           <span class="n">n_samples</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-                           <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-<span class="n">result2</span> <span class="o">=</span> <span class="n">ddm_sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span>
-                            <span class="n">n_samples</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ssms.dataset_generators.pipelines</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimulationPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ssms.dataset_generators.strategies</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResampleMixtureStrategy</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Results identical:"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">result1</span><span class="p">[</span><span class="s2">"rts"</span><span class="p">],</span> <span class="n">result2</span><span class="p">[</span><span class="s2">"rts"</span><span class="p">]))</span>
+<span class="n">model_config_advanced</span> <span class="o">=</span> <span class="n">model_config</span><span class="p">[</span><span class="n">model_name</span><span class="p">]</span><span class="c1"># For simulation-based (default)</span>
+
+<span class="n">pipeline_config_advanced</span> <span class="o">=</span> <span class="n">get_default_generator_config</span><span class="p">()</span>
+<span class="n">pipeline_config_advanced</span><span class="p">[</span><span class="s2">"estimator"</span><span class="p">][</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"kde"</span>  <span class="c1"># or just omit, this is the default</span>
+<span class="n">pipeline_config_advanced</span><span class="p">[</span><span class="s2">"pipeline"</span><span class="p">][</span><span class="s2">"n_parameter_sets"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">pipeline_config_advanced</span><span class="p">[</span><span class="s2">"simulator"</span><span class="p">][</span><span class="s2">"n_samples"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5000</span>
+
+<span class="c1"># Create custom pipeline with specialized components</span>
+<span class="n">custom_pipeline</span> <span class="o">=</span> <span class="n">SimulationPipeline</span><span class="p">(</span>
+    <span class="n">generator_config</span><span class="o">=</span><span class="n">pipeline_config_advanced</span><span class="p">,</span>
+    <span class="n">model_config</span><span class="o">=</span><span class="n">model_config_advanced</span><span class="p">,</span>
+    <span class="n">estimator_builder</span><span class="o">=</span><span class="n">KDEEstimatorBuilder</span><span class="p">,</span>
+    <span class="n">training_strategy</span><span class="o">=</span><span class="n">ResampleMixtureStrategy</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Pass the strategy directly as the first positional argument</span>
+<span class="n">gen_advanced</span> <span class="o">=</span> <span class="n">TrainingDataGenerator</span><span class="p">(</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">custom_pipeline</span>
+    <span class="p">)</span> <span class="c1"># no need for `model_config` it's an attribute of the pipeline</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-6"># Reproducible simulations with random_state
-theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
+<div class="clipboard-copy-txt" id="cell-6">from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 
-result1 = ddm_sim.simulate(theta,
-                           n_samples=100,
-                           random_state=42)
-result2 = ddm_sim.simulate(theta,
-                            n_samples=100, random_state=42)
+from ssms.dataset_generators.pipelines import SimulationPipeline
+from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
-print("Results identical:", np.allclose(result1["rts"], result2["rts"]))</div>
+model_config_advanced = model_config[model_name]# For simulation-based (default)
+
+pipeline_config_advanced = get_default_generator_config()
+pipeline_config_advanced["estimator"]["type"] = "kde"  # or just omit, this is the default
+pipeline_config_advanced["pipeline"]["n_parameter_sets"] = 100
+pipeline_config_advanced["simulator"]["n_samples"] = 5000
+
+# Create custom pipeline with specialized components
+custom_pipeline = SimulationPipeline(
+    generator_config=pipeline_config_advanced,
+    model_config=model_config_advanced,
+    estimator_builder=KDEEstimatorBuilder,
+    training_strategy=ResampleMixtureStrategy,
+)
+
+# Pass the strategy directly as the first positional argument
+gen_advanced = TrainingDataGenerator(
+    config = custom_pipeline
+    ) # no need for `model_config` it's an attribute of the pipeline</div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Results identical: True
-</pre>
 </div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=76ccbb80">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Using other models</strong>: Simply pass a different model name to create simulators for other SSMs:</p>
+<h3 id="advanced-example-generate-training-data">Advanced Example: Generate Training Data<a class="anchor-link" href="#advanced-example-generate-training-data">¶</a></h3>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=d6d04ea3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2936,29 +3037,27 @@ print("Results identical:", np.allclose(result1["rts"], result2["rts"]))</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Create a simulator for the Angle model (DDM with collapsing bounds)</span>
-<span class="n">angle_sim</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="s2">"angle"</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Generate data</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Generating training data..."</span><span class="p">)</span>
+<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
-<span class="c1"># Run simulation with angle-specific parameters</span>
-<span class="n">angle_result</span> <span class="o">=</span> <span class="n">angle_sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
-    <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"a"</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">"t"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">"theta"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">},</span>
-    <span class="n">n_samples</span><span class="o">=</span><span class="mi">500</span>
-<span class="p">)</span>
+<span class="n">training_data</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate_data_training</span><span class="p">()</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Angle model parameters:"</span><span class="p">,</span> <span class="n">angle_sim</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"params"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Sample RTs:"</span><span class="p">,</span> <span class="n">angle_result</span><span class="p">[</span><span class="s2">"rts"</span><span class="p">][:</span><span class="mi">5</span><span class="p">])</span>
+<span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+<span class="n">total_trials</span> <span class="o">=</span> <span class="n">pipeline_config</span><span class="p">[</span><span class="s1">'pipeline'</span><span class="p">][</span><span class="s1">'n_parameter_sets'</span><span class="p">]</span> <span class="o">*</span> <span class="n">pipeline_config</span><span class="p">[</span><span class="s1">'simulator'</span><span class="p">][</span><span class="s1">'n_samples'</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✓ Data generation complete in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  (</span><span class="si">{</span><span class="n">total_trials</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> trials/sec)"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-7"># Create a simulator for the Angle model (DDM with collapsing bounds)
-angle_sim = Simulator("angle")
+<div class="clipboard-copy-txt" id="cell-7"># Generate data
+print("Generating training data...")
+start_time = time.time()
 
-# Run simulation with angle-specific parameters
-angle_result = angle_sim.simulate(
-    theta={"v": 0.5, "a": 1.5, "z": 0.5, "t": 0.3, "theta": 0.3},
-    n_samples=500
-)
+training_data = gen.generate_data_training()
 
-print("Angle model parameters:", angle_sim.config["params"])
-print("Sample RTs:", angle_result["rts"][:5])</div>
+elapsed = time.time() - start_time
+total_trials = pipeline_config['pipeline']['n_parameter_sets'] * pipeline_config['simulator']['n_samples']
+print(f"✓ Data generation complete in {elapsed:.2f} seconds")
+print(f"  ({total_trials / elapsed:.0f} trials/sec)")</div>
 </div>
 </div>
 </div>
@@ -2970,12 +3069,9 @@ print("Sample RTs:", angle_result["rts"][:5])</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Angle model parameters: ['v', 'a', 'z', 't', 'theta']
-Sample RTs: [[0.77377415]
- [0.48586082]
- [0.8299244 ]
- [0.62343127]
- [0.6373774 ]]
+<pre>Generating training data...
+✓ Data generation complete in 2.29 seconds
+  (218395 trials/sec)
 </pre>
 </div>
 </div>
@@ -2983,301 +3079,18 @@ Sample RTs: [[0.77377415]
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3eab3295">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>The <code>Simulator</code> class also supports advanced features like custom boundary functions, custom drift functions, and even fully custom simulator implementations. For more details, see the <a href="../api/basic_simulators.md">API documentation</a> and the <a href="../core_tutorials/tutorial_custom_models.ipynb">custom models tutorial</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="using-the-training-data-generators">Using the Training Data Generators<a class="anchor-link" href="#using-the-training-data-generators">¶</a></h4><p>The training data generators sit on top of the simulator function to turn raw simulations into usable training data for training machine learning algorithms aimed at posterior or likelihood amortization.</p>
-<p>We will use the <code>TrainingDataGenerator</code> class from <code>ssms.dataset_generators.lan_mlp</code>. Initializing the <code>TrainingDataGenerator</code> boils down to supplying a configuration dictionary.</p>
-<p>The <code>config</code> dictionary concerns choices as to what kind of training data one wants to generate, including the underlying generative <em>sequential sampling model</em>.</p>
-<p>We will consider a basic example here, concerning data generation to prepare for training <a href="https://elifesciences.org/articles/65074">LANs</a>.</p>
-<p>Let's start by peeking at an example <code>config</code>. The config is organized into sections: <code>pipeline</code>, <code>simulator</code>, <code>estimator</code>, <code>training</code>, and <code>output</code>.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-8">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_default_generator_config</span>
-
-<span class="c1"># Get generator config (defaults to "lan" approach, returns nested dictionary)</span>
-<span class="n">config</span> <span class="o">=</span> <span class="n">get_default_generator_config</span><span class="p">()</span>
-
-<span class="c1"># Show the nested structure</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Config sections:"</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Pipeline settings:"</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s2">"pipeline"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Simulator settings:"</span><span class="p">,</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="s2">"simulator"</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"n_samples"</span><span class="p">,</span> <span class="s2">"max_t"</span><span class="p">,</span> <span class="s2">"delta_t"</span><span class="p">]})</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-8">from ssms.config import get_default_generator_config
-
-# Get generator config (defaults to "lan" approach, returns nested dictionary)
-config = get_default_generator_config()
-
-# Show the nested structure
-print("Config sections:", config.keys())
-print("\nPipeline settings:", config["pipeline"])
-print("\nSimulator settings:", {k: config["simulator"][k] for k in ["n_samples", "max_t", "delta_t"]})</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Config sections: dict_keys(['pipeline', 'estimator', 'training', 'simulator', 'output', 'model'])
-
-Pipeline settings: {'n_parameter_sets': 1000, 'n_parameter_sets_rejected': 100, 'n_subruns': 10, 'n_cpus': 'all', 'simulation_filters': {'mode': 20, 'choice_cnt': 0, 'mean_rt': 17, 'std': 0, 'mode_cnt_rel': 0.95}}
-
-Simulator settings: {'n_samples': 1000, 'max_t': 20.0, 'delta_t': 0.001}
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>You usually have to make just few changes to this basic configuration dictionary.
-An example below.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-9">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
-
-<span class="c1"># Initialize the generator config (for MLP LANs)</span>
-<span class="n">generator_config</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-
-<span class="c1"># Specify number of parameter sets to simulate</span>
-<span class="n">generator_config</span><span class="p">[</span><span class="s2">"pipeline"</span><span class="p">][</span><span class="s2">"n_parameter_sets"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
-
-<span class="c1"># Specify how many samples a simulation run should entail</span>
-<span class="n">generator_config</span><span class="p">[</span><span class="s2">"simulator"</span><span class="p">][</span><span class="s2">"n_samples"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-9">from copy import deepcopy
-
-# Initialize the generator config (for MLP LANs)
-generator_config = deepcopy(config)
-
-# Specify number of parameter sets to simulate
-generator_config["pipeline"]["n_parameter_sets"] = 100
-
-# Specify how many samples a simulation run should entail
-generator_config["simulator"]["n_samples"] = 1000</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Now let's define our corresponding <code>model_config</code>.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-10">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">model_config</span> <span class="o">=</span> <span class="n">ssms</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_config</span><span class="p">[</span><span class="s2">"angle"</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">model_config</span><span class="p">)</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-10">model_config = ssms.config.model_config["angle"]
-print(model_config)</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>{'name': 'angle', 'params': ['v', 'a', 'z', 't', 'theta'], 'param_bounds': [[-3.0, 0.3, 0.1, 0.001, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]], 'boundary_name': 'angle', 'boundary': &lt;function angle at 0x1198b72e0&gt;, 'n_params': 5, 'default_params': [0.0, 1.0, 0.5, 0.001, 0.0], 'nchoices': 2, 'choices': [-1, 1], 'n_particles': 1, 'simulator': &lt;cyfunction ddm_flexbound at 0x11d37ef70&gt;, 'parameter_transforms': {'sampling': [], 'simulation': []}, 'param_bounds_dict': {'v': (-3.0, 3.0), 'a': (0.3, 3.0), 'z': (0.1, 0.9), 't': (0.001, 2.0), 'theta': (-0.1, 1.3)}}
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>We are now ready to initialize a <code>TrainingDataGenerator</code>, after which we can generate training data using the <code>generate_data_training</code> function, which will use the hypercube defined by our parameter bounds from the <code>model_config</code> to uniformly generate parameter sets and corresponding simulated datasets.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-11">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.dataset_generators.lan_mlp</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingDataGenerator</span>
-
-<span class="n">my_dataset_generator</span> <span class="o">=</span> <span class="n">TrainingDataGenerator</span><span class="p">(</span>
-    <span class="n">config</span><span class="o">=</span><span class="n">generator_config</span><span class="p">,</span> <span class="n">model_config</span><span class="o">=</span><span class="n">model_config</span>
-<span class="p">)</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-11">from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
-
-my_dataset_generator = TrainingDataGenerator(
-    config=generator_config, model_config=model_config
-)</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-12">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">training_data</span> <span class="o">=</span> <span class="n">my_dataset_generator</span><span class="o">.</span><span class="n">generate_data_training</span><span class="p">(</span><span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-12">training_data = my_dataset_generator.generate_data_training(save=False)</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>training_data</code> is a dictionary containing four keys:</p>
-<ol>
-<li><code>data</code> the features for <a href="https://elifesciences.org/articles/65074">LANs</a>, containing vectors of <em>model parameters</em>, as well as <em>rts</em> and <em>choices</em>.</li>
-<li><code>labels</code> which contain approximate likelihood values</li>
-<li><code>generator_config</code>, as defined above</li>
-<li><code>model_config</code>, as defined above</li>
-</ol>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>You can now use this training data for your purposes. If you want to train <a href="https://elifesciences.org/articles/65074">LANs</a> yourself, you might find the <a href="https://github.com/AlexanderFengler/LANfactory">LANfactory</a> package helpful.</p>
-<p>You may also simply find the basic simulators provided with the <strong>ssms</strong> package useful, without any desire to use the outputs into training data for amortization purposes.</p>
-<h5 id="end">END<a class="anchor-link" href="#end">¶</a></h5>
+<h3 id="default-behavior">Default Behavior<a class="anchor-link" href="#default-behavior">¶</a></h3><p>When you pass a <strong>config dict</strong> as the first argument, <code>TrainingDataGenerator</code> auto-creates the appropriate strategy based on <code>estimator_type</code>:</p>
+<ul>
+<li><code>estimator_type='kde'</code> → <code>SimulationPipeline</code></li>
+<li><code>estimator_type='pyddm'</code> → <code>PyDDMPipeline</code></li>
+</ul>
+<p>This should cover most basic use cases!</p>
 </div>
 </div>
 </div>

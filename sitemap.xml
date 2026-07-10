@@ -2,37 +2,90 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/api/basic_simulators/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/api/config/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/api/dataset_generators/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/api/rlssm/</loc>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/api/ssms/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/api/support_utils/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
     </url>
     <url>
          <loc>https://lnccbrown.github.io/ssm-simulators/basic_tutorial/basic_tutorial/</loc>
-         <lastmod>2025-03-20</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/contributing/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/contributing/add_models/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/contributing/add_parameter_adapters/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/choice_only_rl_models/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/kde_class/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/rlssm_advanced_tutorial/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/rlssm_simulation_hssm_handoff/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/rlssm_tutorial/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_capabilities/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_configs/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_custom_models/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_data_generators/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_simulators_vs_pyddm/</loc>
+         <lastmod>2026-07-10</lastmod>
+    </url>
+    <url>
+         <loc>https://lnccbrown.github.io/ssm-simulators/core_tutorials/using_mlflow/</loc>
+         <lastmod>2026-07-10</lastmod>
     </url>
 </urlset>
