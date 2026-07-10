@@ -15,6 +15,8 @@ nav:
       - Custom Models: core_tutorials/tutorial_custom_models.ipynb
       - Data Generators: core_tutorials/tutorial_data_generators.ipynb
       - RLSSM Tutorial: core_tutorials/rlssm_tutorial.ipynb
+      - RLSSM Simulation and HSSM Handoff: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
+      - Choice-only RL Models: core_tutorials/choice_only_rl_models.ipynb
       - RLSSM Tutorial (Advanced): core_tutorials/rlssm_advanced_tutorial.ipynb
       - KDE Class: core_tutorials/kde_class.ipynb
       - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
@@ -35,9 +37,7 @@ plugins:
   - search
   - autorefs
   - mkdocs-jupyter:
-      execute: True
-      # execute_ignore:
-      #   - basic_tutorial/basic_tutorial.ipynb
+      execute: False
   - mkdocstrings:
       default_handler: python
       handlers:

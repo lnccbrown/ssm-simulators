@@ -113,7 +113,6 @@ def gsl_available():
         print("  Install GSL for parallel RNG support:")
         print("    macOS:  brew install gsl")
         print("    Ubuntu: apt install libgsl-dev")
-        print("    Conda:  conda install -c conda-forge gsl")
 
     return _GSL_AVAILABLE
 

@@ -5,33 +5,77 @@
   </a>
 </div>
 
-## SSMS (Sequential Sampling Model Simulators)
+# SSMS: Sequential Sampling Model Simulators
 
-[![DOI](https://zenodo.org/badge/370812185.svg)](https://doi.org/10.5281/zenodo.17156205)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17156205-blue)](https://doi.org/10.5281/zenodo.17156205)
 ![PyPI](https://img.shields.io/pypi/v/ssm-simulators)
-![PyPI_dl](https://img.shields.io/pypi/dm/ssm-simulators)
+[![Downloads](https://static.pepy.tech/badge/ssm-simulators/month)](https://pepy.tech/projects/ssm-simulators)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/lnccbrown/ssm-simulators)](https://github.com/lnccbrown/ssm-simulators/pulls)
-![Python Version](https://img.shields.io/pypi/pyversions/ssm-simulators)
+[![Python Version](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](https://pypi.org/project/ssm-simulators/)
 [![Run tests](https://img.shields.io/github/actions/workflow/status/lnccbrown/ssm-simulators/run_tests.yml?branch=main&label=tests)](https://github.com/lnccbrown/ssm-simulators/actions/workflows/run_tests.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/lnccbrown/ssm-simulators/branch/main/graph/badge.svg)](https://codecov.io/gh/lnccbrown/ssm-simulators)
 
-Python Package to collect simulators for Sequential Sampling Models.
+`ssm-simulators` provides fast C/Cython simulators for sequential sampling
+models used in cognitive science, neuroscience, and amortized Bayesian
+inference, spanning classic DDM variants, multi-choice models, attention
+models, and reinforcement-learning SSMs.
 
-Find the package documentation [here](https://lnccbrown.github.io/ssm-simulators/).
+---
 
+## At a Glance
 
-### Quick Start
+| Need | Use ssms for |
+| --- | --- |
+| Simulate behavior | Generate response-time and choice data from a broad SSM library. |
+| Train likelihood networks | Produce LAN/LANfactory-style training data with configurable simulators and KDE estimators. |
+| Prototype models | Combine registered model configs, custom drift/boundary functions, parameter transforms, and Cython extensions. |
+| Work with RLSSMs | Simulate trial-wise learning models, response-only choice models, and posterior predictive functions for RL workflows. |
 
-The `ssms` package serves two purposes.
+Core links:
 
-1. Easy access to *fast simulators of sequential sampling models*
-2. Support infrastructure to construct training data for various approaches to likelihood / posterior amortization
+- Documentation: <https://lnccbrown.github.io/ssm-simulators/>
+- API reference: <https://lnccbrown.github.io/ssm-simulators/api/ssms/>
+- RLSSM API: <https://lnccbrown.github.io/ssm-simulators/api/rlssm/>
+- Issues and feature requests: <https://github.com/lnccbrown/ssm-simulators/issues>
 
-A number of tutorial notebooks are available under the `/notebooks` directory.
+---
 
-#### Installation
+## Model Coverage
+
+| Family | Examples |
+| --- | --- |
+| Diffusion models | DDM, full DDM, deadline variants, angle and Weibull boundaries, Levy, Ornstein-Uhlenbeck, gamma-drift, conflict, tradeoff, and shrink-spotlight variants. |
+| Multi-choice accumulators | Race, racing diffusion, LBA, LBA4, LCA, and Poisson race models. |
+| Attention models | aDDM with observed or self-sampled fixations, continuation strategies, and optional trajectory metadata. |
+| Reinforcement-learning SSMs | Rescorla-Wagner learning rules, RT + choice RLSSMs, inverse-temperature softmax choice-only models, and response-only posterior predictive workflows. |
+
+Choice-only RL support includes inverse-temperature softmax decision processes
+for two-, three-, and four-choice settings. Built-in RL presets currently cover
+two- and three-armed Rescorla-Wagner bandits:
+`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax`.
+
+---
+
+## Where ssms Fits
+
+`ssm-simulators` is the simulator and data-generation layer of the HSSM
+ecosystem.
+
+| Package | Relationship |
+| --- | --- |
+| [HSSM](https://github.com/lnccbrown/HSSM) | Builds Bayesian inference workflows around simulator-defined model configurations, including ssms-defined RLSSMs. |
+| [LANfactory](https://github.com/lnccbrown/LANfactory) | Trains likelihood approximation networks from ssms-generated simulation data. |
+| [LAN_pipeline_minimal](https://github.com/lnccbrown/LAN_pipeline_minimal) | Orchestrates simulation and LAN training pipelines. |
+
+The RLSSM path is ssms-first: ssms owns the learning rule, task environment,
+response mapping, and simulator/PPC behavior; HSSM consumes the assembled model
+contract through `hssm.rl.RLSSMConfig.from_ssms_model(...)` for inference.
+
+---
+
+## Installation
 
 ```sh
 pip install ssm-simulators
@@ -43,84 +87,109 @@ Install the optional JAX backend for differentiable RLSSM learning processes:
 pip install "ssm-simulators[jax]"
 ```
 
-**Recommended: Install via conda-forge for full parallel support:**
-
-```sh
-conda install -c conda-forge ssm-simulators
-```
-
 > [!NOTE]
-> **Parallel Execution Requirements:**
+> Multi-threaded simulation with `n_threads > 1` requires OpenMP and GSL.
+> Install system dependencies first:
 >
-> For multi-threaded simulation (`n_threads > 1`), the package requires:
-> - **OpenMP**: For parallel loop execution
-> - **GSL (GNU Scientific Library)**: For validated random number generation
->
-> **conda-forge users**: Both dependencies are automatically included.
->
-> **pip users**: Install system dependencies first:
 > ```bash
 > # macOS
 > brew install libomp gsl
 >
 > # Ubuntu/Debian
-> sudo apt-get install libgomp-dev libgsl-dev
+> sudo apt-get install build-essential libgsl-dev
 > ```
-> Then reinstall: `pip install --force-reinstall ssm-simulators`
 >
-> Without these dependencies, the package works in single-threaded mode using NumPy.
+> Then reinstall with `pip install --force-reinstall ssm-simulators`.
+> Without these dependencies, the package still works in single-threaded mode.
+>
+> Building from source or developing this package requires a C compiler. Most
+> users installing from PyPI wheels do not need to install GCC manually.
 
-> [!NOTE]
-> Building from source or developing this package requires a C compiler (such as GCC).
-> On Linux, you can install GCC with:
-> ```bash
-> sudo apt-get install build-essential
-> ```
-> Most users installing from PyPI wheels do **not** need to install GCC.
+---
 
-#### Parallel Execution Details
+## Quick Starts
 
-When using `n_threads > 1`, the package uses GSL's validated Ziggurat algorithm for
-Gaussian random number generation, ensuring statistically correct simulations.
+### Classic SSM Simulation
 
-**Thread Limit**: The maximum supported number of threads is **256** (compile-time limit).
-Requesting more threads will raise a `ValueError`. This limit exists because per-thread
-random number generator states are allocated as static arrays for performance.
+The `Simulator` class is the recommended user-facing API for direct simulation:
 
 ```python
-from ssms.basic_simulators import simulator
+from ssms.basic_simulators import Simulator
 
-# Single-threaded (uses NumPy RNG)
-result = simulator.simulator(model='ddm', theta=theta, n_samples=10000, n_threads=1)
+sim = Simulator("ddm")
+out = sim.simulate(
+    theta={"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.2},
+    n_samples=1000,
+)
 
-# Multi-threaded (uses GSL Ziggurat RNG, requires OpenMP + GSL)
-result = simulator.simulator(model='ddm', theta=theta, n_samples=10000, n_threads=8)
+print(out["rts"].shape, out["choices"].shape)
 ```
 
-Check your installation's parallel capabilities:
+### RLSSM Simulation
+
+RLSSMs combine a trial-wise learning process, a task environment, and an SSM or
+choice-only decision process:
+
 ```python
-from cssm._openmp_status import print_status
-print_status()
+import ssms.rl as rl
+
+config = rl.preset.get("2AB_RW_InvTempSoftmax")
+sim = rl.Simulator(config)
+
+data = sim.simulate(
+    theta={"rl_alpha": 0.2, "beta": 2.0},
+    n_trials=200,
+    n_participants=20,
+    random_state=42,
+)
+
+response_only = data.drop(columns=["rt"])
+config.validate_data(response_only).raise_for_errors()
 ```
 
-#### Command Line Interface
-The package exposes a command-line tool, `generate`, for creating training data from a YAML configuration file.
+For choice-only models, the simulator keeps `rt=-1.0` only as a compatibility
+placeholder in generative output. HSSM inference and ssms PPC use response-only
+data.
+
+---
+
+## Tutorials
+
+Start here:
+
+- [Basic tutorial](https://lnccbrown.github.io/ssm-simulators/basic_tutorial/basic_tutorial/)
+- [Package overview](https://lnccbrown.github.io/ssm-simulators/core_tutorials/tutorial_capabilities/)
+- [RLSSM tutorial](https://lnccbrown.github.io/ssm-simulators/core_tutorials/rlssm_tutorial/)
+- [RLSSM simulation and HSSM handoff](https://lnccbrown.github.io/ssm-simulators/core_tutorials/rlssm_simulation_hssm_handoff/)
+- [Choice-only RL models](https://lnccbrown.github.io/ssm-simulators/core_tutorials/choice_only_rl_models/)
+- [Contributing new models](https://lnccbrown.github.io/ssm-simulators/contributing/add_models/)
+
+---
+
+## Training Data CLI
+
+The package exposes `generate` for creating training data from a YAML
+configuration file:
 
 ```bash
-generate --config-path <path/to/config.yaml> --output <output/directory> [--log-level INFO]
+generate [--config-path <path/to/config.yaml>] --output <output/directory> [--log-level INFO]
 ```
 
-- `--config-path`: Path to your YAML configuration file (optional, uses default if not provided).
-- `--output`: Directory where generated data will be saved (required).
-- `--n-files`: (Optional) Number of data files to generate. Default is `1` file.
-- `--estimator-type`: (Optional) Likelihood estimator type (`kde` or `pyddm`). Overrides YAML config if specified.
-- `--log-level`: (Optional) Set the logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Default is `WARNING`.
+Common options:
 
-Below is a sample YAML configuration you can use with the `generate` command:
+| Option | Meaning |
+| --- | --- |
+| `--config-path` | YAML configuration path. Uses the default config if omitted. |
+| `--output` | Output directory for generated data. |
+| `--n-files` | Number of data files to generate. |
+| `--estimator-type` | Likelihood estimator override, such as `kde` or `pyddm`. |
+| `--log-level` | Logging level. |
+
+Minimal YAML example:
 
 ```yaml
-MODEL: 'ddm'
-GENERATOR_APPROACH: 'lan'
+MODEL: "ddm"
+GENERATOR_APPROACH: "lan"
 
 PIPELINE:
   N_PARAMETER_SETS: 100
@@ -134,129 +203,76 @@ TRAINING:
   N_SAMPLES_PER_PARAM: 200
 
 ESTIMATOR:
-  TYPE: 'kde'  # Options: 'kde' (default) or 'pyddm'
+  TYPE: "kde"
 ```
 
-Configuration file parameter details follow.
+---
 
-**Top-Level Parameters:**
-| Option | Definition |
-| ------ | ---------- |
-| `MODEL` | The type of model you want to simulate (e.g., `ddm`, `angle`, `levy`) |
-| `GENERATOR_APPROACH` | Type of generator used to generate data (`lan` or `cpn`) |
+## Parallel Execution
 
-**PIPELINE Section:**
-| Option | Definition |
-| ------ | ---------- |
-| `N_PARAMETER_SETS` | Number of parameter vectors that are used for training |
-| `N_SUBRUNS` | Number of repetitions of each call to generate data |
-
-**SIMULATOR Section:**
-| Option | Definition |
-| ------ | ---------- |
-| `N_SAMPLES` | Number of samples a simulation run should entail for a given parameter set |
-| `DELTA_T` | Time discretization step used in numerical simulation of the model. Interval between updates of evidence-accumulation. |
-
-**TRAINING Section:**
-| Option | Definition |
-| ------ | ---------- |
-| `N_SAMPLES_PER_PARAM` | Number of times the kernel density estimate (KDE) is evaluated after creating the KDE from simulations of each set of model parameters |
-
-**ESTIMATOR Section:**
-| Option | Definition |
-| ------ | ---------- |
-| `TYPE` | Likelihood estimator type: `kde` (default) or `pyddm` |
-
-To make your own configuration file, you can copy the example above into a new `.yaml` file and modify it with your preferences.
-
-If you are using `uv` (see below), you can use the `uv run` command to run `generate` from the command line
-
-This will generate training data according to your configuration and save it in the specified output directory.
-
-### Key Features
-
-#### Custom Parameter Transforms
-
-Register custom transformations to apply model-specific modifications to sampled parameters:
+When using `n_threads > 1`, ssms uses GSL's validated Ziggurat algorithm for
+Gaussian random number generation. The maximum supported number of threads is
+256.
 
 ```python
-from ssms import register_transform_function
-import numpy as np
+from ssms.basic_simulators import Simulator
 
-# Register a custom transform
-def exponential_drift(theta: dict) -> dict:
-    if 'v' in theta:
-        theta['v'] = np.exp(theta['v'])
-    return theta
+theta = {"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.2}
 
-register_transform_function("exp_v", exponential_drift)
-
-# Use in model configuration
-model_config = {
-    "name": "my_model",
-    "params": ["v", "a", "z", "t"],
-    "param_bounds": [...],
-    "parameter_transforms": [
-        {"type": "exp_v"}  # Your custom transform
-    ]
-}
+sim = Simulator("ddm")
+single_thread = sim.simulate(theta=theta, n_samples=10000, n_threads=1)
+multi_thread = sim.simulate(theta=theta, n_samples=10000, n_threads=8)
 ```
 
-### Tutorial
+Check your installation's parallel capabilities:
 
-Check the [basic tutorial](https://lnccbrown.github.io/ssm-simulators/basic_tutorial/basic_tutorial/) in our documentation.
+```python
+from cssm._openmp_status import print_status
 
-### Advanced: Dependency Management with uv
+print_status()
+```
 
-We use `uv` for fast and efficient dependency management. To get started:
+---
 
-1. Install `uv`:
+## Development
+
+This project uses `uv` for dependency management:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-groups
 ```
 
-2. Install dependencies (including development):
-```bash
-uv sync --all-groups  # Installs all dependency groups
-```
-
-#### Building Cython Extensions from Source
-
-For development or to rebuild with different settings:
+Rebuild Cython extensions after source changes:
 
 ```bash
-# Clean environment and sync
-rm -rf .venv && uv sync
-
-# Rebuild Cython extensions (editable install)
 uv pip install --python .venv/bin/python -e . --reinstall
 ```
 
-**Important**: Always use `uv pip install --python .venv/bin/python` to ensure extensions
-are built for the correct Python version in your virtual environment.
+Run the main local checks:
 
-### Contributing
+```bash
+uv run pytest tests/
+uv run ruff check .
+uv run ruff format --check .
+uv run --extra docs mkdocs build
+```
 
-We welcome contributions from the community! Whether you want to add a new model, improve documentation, or fix bugs, your help is appreciated.
+---
 
-#### Contributing New Models
+## Contributing
 
-Want to add your own sequential sampling model to the package? Check out our comprehensive guide:
+Contributions are welcome, including new models, documentation improvements,
+bug fixes, and simulator validation work.
 
-**[📖 Contributing New Models Tutorial](https://lnccbrown.github.io/ssm-simulators/contributing/add_models/)**
+- Add a model: <https://lnccbrown.github.io/ssm-simulators/contributing/add_models/>
+- Add a parameter adapter: <https://lnccbrown.github.io/ssm-simulators/contributing/add_parameter_adapters/>
+- Open an issue: <https://github.com/lnccbrown/ssm-simulators/issues>
+- Open a pull request: <https://github.com/lnccbrown/ssm-simulators/pulls>
 
-This guide walks you through three levels of contribution:
-- **Level 1**: Add boundary/drift variants (~15 min)
-- **Level 2**: Implement Python simulators (~20 min)
-- **Level 3**: Create high-performance Cython implementations (~30 min)
+---
 
-#### Other Contributions
+## Citation
 
-For bug reports, feature requests, or general questions:
-- Open an issue on [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues)
-- Check existing issues to avoid duplicates
-- Provide clear descriptions and reproducible examples
-
-### Cite `ssm-simulators`
-
-Please use the this DOI to cite ssm-simulators: [https://doi.org/10.5281/zenodo.17156205](https://doi.org/10.5281/zenodo.17156205)
+Please cite `ssm-simulators` with the Zenodo DOI:
+<https://doi.org/10.5281/zenodo.17156205>.
