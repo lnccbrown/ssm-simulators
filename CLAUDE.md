@@ -11,14 +11,14 @@ ssms/                          # Main package
   basic_simulators/            # Core API: simulator() function + Simulator class
   cli/                         # Typer CLI: `generate` command for batch data generation
   config/                      # Registry-based config system (models, boundaries, drifts)
-    _modelconfig/              # Per-model config definitions (22 models)
+    _modelconfig/              # Per-model config definitions (113 registered configs)
     generator_config/          # Data generation pipeline configs
   dataset_generators/          # Training data generation for LANfactory (protocols, pipelines, strategies)
   external_simulators/         # PyDDM integration (optional)
   support_utils/               # KDE class, utilities
   transforms/                  # Parameter sampling and simulation transforms
   hssm_support.py              # HSSM integration layer — critical interface contract
-src/cssm/                      # Cython/C source files (9 modules: ddm, race, lba, levy, etc.)
+src/cssm/                      # Cython/C sources (12 .pyx: 9 simulators + _c_rng/_openmp_status/_utils)
 tests/                         # pytest suite with custom markers
 docs/                          # MkDocs documentation source
 examples/                      # Example scripts (custom transforms, nested configs)
@@ -29,7 +29,7 @@ benchmarks/                    # Performance benchmarks
 
 - **Build system:** setuptools + Cython (C extensions compiled from `src/cssm/*.pyx`)
 - **Package manager:** uv (with `uv.lock`)
-- **Python:** >=3.10, <3.15 (classifiers target 3.11, 3.12, 3.13, 3.14)
+- **Python:** >=3.12, <3.15 (classifiers target 3.12, 3.13, 3.14)
 - **System dependencies (required for C extensions):**
   - C compiler (Xcode CLI tools on macOS, build-essential on Linux)
   - GSL (GNU Scientific Library) — `brew install gsl` / `apt install libgsl-dev`
@@ -72,15 +72,16 @@ Models, boundary functions, and drift functions are registered in a registry sys
 - `ssms.config.get_model_registry()` — all registered model simulators
 - `ssms.config.get_boundary_registry()` — boundary function builders
 - `ssms.config.get_drift_registry()` — drift function builders
-- `ssms.config.model_config` — CopyOnAccessDict of all 22 model configs (safe to modify)
+- `ssms.config.model_config` — CopyOnAccessDict of all 113 model configs (safe to modify)
 - `ModelConfigBuilder.from_model(name, **overrides)` — get/customize a model config
 
 ### Cython Simulator Layer
 
-Nine `.pyx` modules in `src/cssm/` implement the actual simulators in C:
-`ddm_models`, `race_models`, `lba_models`, `levy_models`, `ornstein_models`,
-`poisson_race_models`, `sequential_models`, `parallel_models`, `_c_rng`.
-These use GSL for random number generation and OpenMP for multi-threading.
+Nine `.pyx` simulator modules in `src/cssm/` implement the actual simulators in C:
+`ddm_models`, `addm_models`, `race_models`, `lba_models`, `levy_models`,
+`ornstein_models`, `poisson_race_models`, `sequential_models`, `parallel_models` —
+plus three helper modules (`_c_rng`, `_openmp_status`, `_utils`), for 12 `.pyx` files
+total. These use GSL for random number generation and OpenMP for multi-threading.
 
 ### Core Public API
 
@@ -111,7 +112,7 @@ Changing this interface requires coordinating with HSSM.
 - **Multiprocessing:** uses `spawn` method by default (required for OpenMP safety)
 - **Deadline models:** any model supports a `_deadline` suffix (e.g., `ddm_deadline`)
 - **Max threads:** 256 (compile-time limit for per-thread RNG state arrays)
-- **22 model variants** across DDM, Angle, LBA, LCA, Race, Poisson Race, Racing Diffusion, Levy, Ornstein families
+- **113 registered model configs** across DDM, Angle, Weibull, Levy, Ornstein, LBA, LCA, Race, Racing Diffusion, Poisson Race, MIC2, Conflict, shrink-spotlight, tradeoff, and RLWM/softmax choice-only families (`_deadline` variants derived at runtime)
 
 ## Skills
 
@@ -122,7 +123,7 @@ Changing this interface requires coordinating with HSSM.
 
 | Workflow | Purpose |
 |----------|---------|
-| `run_tests.yml` | Tests on Python 3.11/3.12/3.13 + separate multithreading job (installs GSL/OpenMP) |
+| `run_tests.yml` | Tests on Python 3.12/3.13/3.14 + separate multithreading job (installs GSL/OpenMP) |
 | `build_wheels.yml` | Build wheels (cibuildwheel), upload to TestPyPI → PyPI on release publish |
 
 ## Compaction

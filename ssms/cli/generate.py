@@ -492,7 +492,8 @@ def main(  # pragma: no cover
 
     - 'kde': Kernel Density Estimation (default, always available)
 
-    - 'pyddm': Analytical PDF from PyDDM (Phase 3, coming soon)
+    - 'pyddm': Analytical PDF from PyDDM (requires the 'pyddm' extra; single-particle,
+      two-choice, Gaussian-noise models only)
 
     If not specified, the estimator type is read from the YAML config file.
     If neither the CLI flag nor YAML config specifies it, defaults to 'kde'.

@@ -16,6 +16,7 @@ GSL support is OPTIONAL (but required for correct parallel RNG):
 """
 
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -251,11 +252,23 @@ def get_openmp_flags(with_openmp=True):
     Returns:
         dict with keys: extra_compile_args, extra_link_args, include_dirs, define_macros
     """
+    # -march for the distributed Linux wheels must be portable. Use x86-64-v2
+    # (SSE4.2 baseline, universal on x86-64 since ~2011) on x86; omit -march on
+    # aarch64/other so the compiler's portable default (armv8-a) applies. NEVER
+    # -march=native: it bakes the *build* host's ISA (AVX2/AVX-512) into the wheel
+    # and SIGILLs on narrower runner CPUs downstream. x86-64-v3 (AVX2) would also
+    # SIGILL on SSE4.2-only cloud CPUs, so v2 is the right floor. x86-64-v2 is an
+    # x86-only -march value, so it must be gated off aarch64 (GCC rejects it there).
+    linux_march = (
+        ["-march=x86-64-v2"]
+        if platform.machine().lower() in ("x86_64", "amd64")
+        else []
+    )
     # Base optimization flags (always applied)
     base_flags = {
-        "darwin": ["-O3", "-ffast-math"],  # Skip -march=native for portability on macOS
+        "darwin": ["-O3", "-ffast-math"],  # Skip -march for portability on macOS
         "win32": ["/O2"],
-        "linux": ["-O3", "-flto", "-ffast-math", "-march=native", "-funroll-loops"],
+        "linux": ["-O3", "-flto", "-ffast-math", *linux_march, "-funroll-loops"],
     }
 
     platform_key = "linux" if sys.platform not in ("darwin", "win32") else sys.platform
@@ -309,7 +322,7 @@ def get_openmp_flags(with_openmp=True):
                 "-O3",
                 "-flto",
                 "-ffast-math",
-                "-march=native",
+                *linux_march,  # x86-only portable baseline; see base_flags
                 "-funroll-loops",
             ],
             "extra_link_args": ["-fopenmp", "-flto"],

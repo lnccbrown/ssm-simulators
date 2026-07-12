@@ -92,9 +92,8 @@ START: What do you want to contribute?
 
 5. **Verify your setup**:
    ```bash
-   python -c "from ssms import Simulator; print(Simulator('ddm'))"
-   uv pip install pytest  # Only needed if 'pytest' was not installed above
-   uv pip run pytest tests/ -k test_ddm --verbose
+   uv run python -c "from ssms import Simulator; print(Simulator('ddm'))"
+   uv run pytest tests/ -k test_ddm --verbose
    ```
 
 ---
@@ -230,31 +229,40 @@ Edit `ssms/basic_simulators/boundary_functions.py`:
 ```python
 import numpy as np
 
-def collapsing_linear(t: float, alpha: float = 0.1) -> float:
+def collapsing_linear(
+    t: float | np.ndarray = 1, a: float = 1.0, alpha: float = 0.1
+) -> float | np.ndarray:
     """Linearly collapsing boundaries.
 
-    Boundaries start at 1.0 and collapse linearly toward 0 with rate alpha.
+    Boundaries start at ``a`` and collapse linearly toward 0 with rate alpha.
+
+    Boundary functions accept ``a`` as an explicit parameter and return the
+    *final* boundary value directly — the Cython engine no longer adds ``a``
+    itself, so every boundary must include it (mirroring the built-ins in
+    ``boundary_functions.py``: ``constant``, ``angle``, ``weibull_cdf``).
 
     Parameters
     ----------
-    t : float
+    t : float or np.ndarray
         Time since trial start
+    a : float
+        Starting boundary value (threshold at t=0)
     alpha : float
         Collapse rate (boundaries/second)
 
     Returns
     -------
-    float
+    float or np.ndarray
         Boundary value at time t
 
     Examples
     --------
-    >>> collapsing_linear(0, alpha=0.1)  # t=0
+    >>> collapsing_linear(0, a=1.0, alpha=0.1)  # t=0
     1.0
-    >>> collapsing_linear(5, alpha=0.1)  # t=5
+    >>> collapsing_linear(5, a=1.0, alpha=0.1)  # t=5
     0.5
     """
-    return np.maximum(1.0 - alpha * t, 0.1)  # Prevent collapse to 0
+    return np.maximum(a - alpha * t, 0.0)
 ```
 
 ### Step 2: Register Your Boundary
@@ -267,7 +275,7 @@ from ssms.config import register_boundary
 register_boundary(
     name="collapsing_linear",
     function=collapsing_linear,
-    params=["alpha"]  # Parameters beyond time
+    params=["a", "alpha"]  # Boundary params (must include `a`), beyond time `t`
 )
 ```
 
@@ -292,7 +300,7 @@ def get_collapsing_ddm_config():
         ],
         "boundary_name": "collapsing_linear",
         "boundary": bf.collapsing_linear,
-        "boundary_params": ["alpha"],  # Which params go to boundary
+        "boundary_params": ["a", "alpha"],  # Which params go to boundary (must include a)
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 1e-3, 0.1],
         "nchoices": 2,
@@ -355,8 +363,9 @@ def test_collapsing_ddm_runs():
         random_state=42
     )
 
-    assert result["rts"].shape == (100,)
-    assert np.all(result["choices"] == np.array([result["choices"]]).flatten())
+    assert result["rts"].shape == (100, 1)
+    assert result["choices"].shape == (100, 1)
+    assert set(np.unique(result["choices"])).issubset({-1, 1})
     assert np.all(result["rts"] > 0)
 
 def test_collapsing_effect():
@@ -640,7 +649,7 @@ def test_shifted_wald_runs(wald_sim):
         n_samples=100,
         random_state=42
     )
-    assert result["rts"].shape == (100,)
+    assert result["rts"].shape == (100, 1)
     assert np.all(result["choices"] == 1)  # Single choice
 
 def test_shifted_wald_positive_rts(wald_sim):
@@ -855,22 +864,24 @@ def shifted_wald(
         "t": t.tolist(),
     }
 
+    # Build minimal metadata first, then augment for the 'full' option
+    # (mirrors the real simulators, e.g. ornstein_models.pyx).
+    minimal_meta = build_minimal_metadata(
+        simulator_name="shifted_wald",
+        possible_choices=[1],
+        n_samples=n_samples,
+        n_trials=n_trials,
+    )
+
     if return_option == 'full':
+        sim_config = {"max_t": max_t, "n_threads": n_threads}
         metadata = build_full_metadata(
-            model="shifted_wald",
-            param_names=["v", "a", "t"],
-            param_dict=param_dict,
-            n_samples=n_samples,
-            n_trials=n_trials,
-            max_t=max_t,
-            possible_choices=[1],
+            minimal_metadata=minimal_meta,
+            params=param_dict,
+            sim_config=sim_config,
         )
     else:
-        metadata = build_minimal_metadata(
-            model="shifted_wald",
-            max_t=max_t,
-            possible_choices=[1],
-        )
+        metadata = minimal_meta
 
     return build_return_dict(rts, choices, metadata)
 ```
@@ -1076,8 +1087,8 @@ def test_model_runs(model_sim):
         n_samples=100,
         random_state=42
     )
-    assert result["rts"].shape == (100,)
-    assert result["choices"].shape == (100,)
+    assert result["rts"].shape == (100, 1)
+    assert result["choices"].shape == (100, 1)
     assert "metadata" in result
 
 # 2. Correctness Tests (MOST IMPORTANT)
@@ -1366,16 +1377,16 @@ If you're stuck:
    - [API Documentation](../api/)
 
 3. **GitHub issues**: Search for similar problems
-   - [Known issues](https://github.com/ssms/ssm-simulators/issues)
+   - [Known issues](https://github.com/lnccbrown/ssm-simulators/issues)
 
 4. **Ask questions**: Open an issue
-   - [Discussions](https://github.com/ssms/ssm-simulators/discussions)
+   - [Discussions](https://github.com/lnccbrown/ssm-simulators/discussions)
    - Use tag: `question` or `help-wanted`
    - Provide: code snippet, error message, what you've tried
 
 ### Resources
 
 - [Interactive Tutorials](../../notebooks/): Learn by doing
-- [API Reference](../../api/): Complete API documentation
-- [GitHub Issues](https://github.com/ssms/ssm-simulators/issues): Questions and bugs
-- [Disussions](https://github.com/ssms/ssm-simulators/discussions)
+- [API Reference](../api/): Complete API documentation
+- [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues): Questions and bugs
+- [Discussions](https://github.com/lnccbrown/ssm-simulators/discussions)

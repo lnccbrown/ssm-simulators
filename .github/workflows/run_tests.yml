@@ -94,3 +94,30 @@ jobs:
 
       - name: Run parallel equivalence tests
         run: uv run pytest tests/test_parallel_equivalence.py --run-statistical --no-cov -v
+
+  test_notebooks:
+    name: Execute tutorial notebooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml pdm.lock"
+
+      - name: Install package (with notebook deps)
+        run: uv sync --all-groups
+
+      # Executes every notebook under docs/ via tests/test_notebooks.py so the
+      # tutorials cannot silently drift out of sync with the code again.
+      - name: Execute tutorial notebooks
+        run: uv run pytest tests/test_notebooks.py --run-notebooks --no-cov -v
