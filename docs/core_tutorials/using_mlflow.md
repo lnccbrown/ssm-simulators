@@ -326,7 +326,7 @@ generate --config-path config.yaml --output ./data/val \
   --mlflow-experiment-name "my-project"
 
 # 4. Review in UI
-mlflow --backend-store-uri sqlite:///project_mlflow.db"
+mlflow ui --backend-store-uri sqlite:///project_mlflow.db
 ```
 
 ## Troubleshooting

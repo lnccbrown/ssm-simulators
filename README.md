@@ -52,9 +52,9 @@ Core links:
 | Reinforcement-learning SSMs | Rescorla-Wagner learning rules, RT + choice RLSSMs, inverse-temperature softmax choice-only models, and response-only posterior predictive workflows. |
 
 Choice-only RL support includes inverse-temperature softmax decision processes
-for two-, three-, and four-choice settings. Built-in RL presets currently cover
-two- and three-armed Rescorla-Wagner bandits:
-`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax`.
+for two-, three-, and four-choice settings. Built-in choice-only RL presets are
+`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax`; an SSM-based preset
+`2AB_RW_Angle` (angle decision process) is also available.
 
 ---
 

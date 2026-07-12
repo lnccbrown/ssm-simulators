@@ -9,6 +9,8 @@ Users can import functions as before: `import cssm; cssm.levy_flexbound(...)`
 Or use the new modular structure: `from cssm.levy_models import levy_flexbound`
 """
 
+import importlib.metadata
+
 # Import simulators from their respective modules
 from .ddm_models import (
     full_ddm_hddm_base,
@@ -81,4 +83,6 @@ __all__ = [
     "ornstein_uhlenbeck",
 ]
 
-__version__ = "0.11.3"
+# Single-source the version from package metadata (mirrors ssms/__init__.py) so it
+# never drifts from pyproject.toml across releases.
+__version__ = importlib.metadata.version("ssm-simulators")
