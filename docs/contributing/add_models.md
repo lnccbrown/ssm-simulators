@@ -1387,6 +1387,6 @@ If you're stuck:
 ### Resources
 
 - [Interactive Tutorials](../../notebooks/): Learn by doing
-- [API Reference](../../api/): Complete API documentation
+- [API Reference](../api/): Complete API documentation
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues): Questions and bugs
 - [Discussions](https://github.com/lnccbrown/ssm-simulators/discussions)
