@@ -53,13 +53,14 @@ ssms covers a broad simulator surface:
   models, inverse-temperature softmax choice-only models, and posterior
   predictive functions for response-only RL workflows.
 
-!!! note "Choice-only RL support"
+!!! note "RL preset support"
     ssms includes inverse-temperature softmax decision processes for two-,
-    three-, and four-choice settings. Built-in RL presets include RT + choice
-    Rescorla-Wagner DDM/angle/Weibull models, dual-alpha variants, and
-    choice-only inverse-temperature softmax bandits such as
+    three-, and four-choice settings, plus RT + choice race models. Built-in RL
+    presets include Rescorla-Wagner DDM/angle/Weibull models, dual-alpha
+    variants, choice-only inverse-temperature softmax bandits such as
     `2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, and
-    `4AB_RW_InvTempSoftmax`.
+    `4AB_RW_InvTempSoftmax`, and the four-choice RT + choice race preset
+    `4AB_RW_RaceNoBiasAngle`.
 
 ---
 

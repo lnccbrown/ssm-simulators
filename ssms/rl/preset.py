@@ -270,6 +270,25 @@ def _make_four_arm_rw_inv_temp_softmax() -> ModelConfig:
     )
 
 
+def _make_four_arm_rw_race_no_bias_angle() -> ModelConfig:
+    from .env import Bandit
+    from .learning import RescorlaWagnerRaceDrifts
+
+    return ModelConfig(
+        model_name="4AB_RW_RaceNoBiasAngle",
+        description=(
+            "Four-armed bandit with a Rescorla-Wagner delta-rule learner "
+            "and a no-bias angled race decision process. The RW-to-race scaling "
+            "contract is v_i = scaler * q_i for i=0..3."
+        ),
+        decision_process="race_no_bias_angle_4",
+        learning_process=RescorlaWagnerRaceDrifts(n_actions=4, initial_q=0.5),
+        task_environment=Bandit.bernoulli(
+            probabilities=[0.4, 0.3, 0.2, 0.1], response_labels=[0, 1, 2, 3]
+        ),
+    )
+
+
 register(
     "2AB_RW_DDM",
     _make_two_arm_rw_ddm,
@@ -393,6 +412,22 @@ register(
                 "Choice-only RL preset. Uses response-only data, beta as inverse "
                 "temperature, q0/q1/q2/q3 as learning-computed SSM parameters, "
                 "and rt=-1.0 as a non-omission simulator placeholder."
+            ),
+        },
+    },
+)
+
+register(
+    "4AB_RW_RaceNoBiasAngle",
+    _make_four_arm_rw_race_no_bias_angle,
+    metadata={
+        "task": "four-armed Bernoulli bandit",
+        "hssm_compatibility": {
+            "participant_contract": True,
+            "notes": (
+                "RT+choice RL preset. Uses race_no_bias_angle_4 LAN with "
+                "learning-computed race drifts v0/v1/v2/v3. Scaling contract: "
+                "v_i = scaler * q_i before the RW update."
             ),
         },
     },

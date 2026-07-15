@@ -387,6 +387,55 @@ class RescorlaWagnerSoftmax(RescorlaWagnerDeltaRule):
         return {name: q_values[i] for i, name in enumerate(self.computed_params)}
 
 
+class RescorlaWagnerRaceDrifts(RescorlaWagnerDeltaRule):
+    """Rescorla-Wagner learner emitting scaled race drifts ``v0..vN``.
+
+    The scaling contract is explicit: on each trial, before the RW update,
+    ``v_i = scaler * q_i`` for every action ``i``.
+    """
+
+    @property
+    def computed_params(self) -> list[str]:
+        return [f"v{i}" for i in range(self._n_actions)]
+
+    @property
+    def free_params(self) -> list[str]:
+        return ["rl_alpha", "scaler"]
+
+    @property
+    def param_bounds(self) -> dict[str, tuple[float, float]]:
+        return {"rl_alpha": (0.0, 1.0), "scaler": (0.001, 10.0)}
+
+    @property
+    def default_params(self) -> dict[str, float]:
+        return {"rl_alpha": 0.2, "scaler": 2.0}
+
+    def compute_python(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ) -> dict[str, float]:
+        scaler = params["scaler"]
+        q_values = np.asarray(state["q_values"], dtype=np.float64)
+        return {
+            name: float(scaler * q_values[i])
+            for i, name in enumerate(self.computed_params)
+        }
+
+    def compute_jax(
+        self,
+        state: LearningState,
+        params: dict[str, float],
+        context: dict[str, Any],
+    ):
+        scaler = params["scaler"]
+        q_values = state["q_values"]
+        return {
+            name: scaler * q_values[i] for i, name in enumerate(self.computed_params)
+        }
+
+
 class RescorlaWagnerDualAlphaRule(RescorlaWagnerDeltaRule):
     """Rescorla-Wagner learning core with separate learning rates.
 

@@ -106,6 +106,7 @@ class TestRegistry:
             "2AB_RW_DualAlpha_InvTempSoftmax",
             "3AB_RW_InvTempSoftmax",
             "4AB_RW_InvTempSoftmax",
+            "4AB_RW_RaceNoBiasAngle",
         }.issubset(presets)
         assert "rlssm1" not in presets
 
@@ -171,6 +172,19 @@ class TestRegistry:
                 },
                 ["rl_alpha", "rl_alpha_neg", "scaler", "a", "z", "t", "theta"],
             ),
+            (
+                "4AB_RW_RaceNoBiasAngle",
+                "race_no_bias_angle_4",
+                {
+                    "rl_alpha": 0.2,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "theta": 0.2,
+                },
+                ["rl_alpha", "scaler", "a", "z", "t", "theta"],
+            ),
         ],
     )
     def test_rt_choice_presets_validate_assemble_and_simulate(
@@ -191,10 +205,15 @@ class TestRegistry:
         assert config.decision_process == decision_process
         assert config.response == ["rt", "response"]
         assert config.list_params == expected_params
-        assert config._computed_ssm_params == ["v"]
+        expected_computed = (
+            ["v0", "v1", "v2", "v3"]
+            if preset_name == "4AB_RW_RaceNoBiasAngle"
+            else ["v"]
+        )
+        assert config._computed_ssm_params == expected_computed
         assert assembled.gradient == "available"
         assert assembled.response == ["rt", "response"]
-        assert assembled.computed_params == ["v"]
+        assert assembled.computed_params == expected_computed
         assert config.validate_data(data).ok
         assert len(data) == 20
 
@@ -229,6 +248,25 @@ class TestRegistry:
         rendered = str(info)
         assert "2AB_RW_Angle" in rendered
         assert "required parameters" in rendered.lower()
+
+    def test_four_arm_rw_race_preset_info_documents_scaling_contract(self):
+        info = rl.preset.info("4AB_RW_RaceNoBiasAngle")
+
+        assert info["name"] == "4AB_RW_RaceNoBiasAngle"
+        assert info["task"] == "four-armed Bernoulli bandit"
+        assert info["learning_process"] == "RescorlaWagnerRaceDrifts"
+        assert info["decision_process"] == "race_no_bias_angle_4"
+        assert info["required_parameters"] == [
+            "rl_alpha",
+            "scaler",
+            "a",
+            "z",
+            "t",
+            "theta",
+        ]
+        assert info["response_labels"] == (0, 1, 2, 3)
+        assert info["hssm_compatibility"]["participant_contract"] is True
+        assert "v_i = scaler * q_i" in info["hssm_compatibility"]["notes"]
 
     def test_unknown_preset_raises(self):
         with pytest.raises(KeyError, match="Unknown RLSSM preset"):

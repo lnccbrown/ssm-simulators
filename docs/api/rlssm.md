@@ -136,10 +136,15 @@ source of truth for HSSM handoff. Current public presets include:
 | `2AB_RW_DualAlpha_InvTempSoftmax` | `inv_temp_softmax_2` | `RescorlaWagnerDualAlphaSoftmax` | `response` |
 | `3AB_RW_InvTempSoftmax` | `inv_temp_softmax_3` | `RescorlaWagnerSoftmax` | `response` |
 | `4AB_RW_InvTempSoftmax` | `inv_temp_softmax_4` | `RescorlaWagnerSoftmax` | `response` |
+| `4AB_RW_RaceNoBiasAngle` | `race_no_bias_angle_4` | `RescorlaWagnerRaceDrifts` | `rt`, `response` |
 
 Use `rl.preset.list()` for the runtime list and `rl.preset.info(name)` for the
 full model contract, including required parameters, choices, response mapping,
 computed SSM parameters, and HSSM compatibility metadata.
+
+`4AB_RW_RaceNoBiasAngle` uses the four-choice `race_no_bias_angle_4` LAN. Its
+learning process computes the race drift rates from pre-update RW values with
+the explicit scaling contract `v_i = scaler * q_i` for `i=0..3`.
 
 ## Task environment protocols
 
@@ -293,10 +298,10 @@ ppc = rl.Simulator(config).simulate(
 )
 ```
 
-The lower-level `inv_temp_softmax_4` decision process is also available for
-four-choice softmax simulation. Built-in RL presets currently cover the two- and
-three-choice bandit cases; custom `ModelConfig` objects can pair
-`RescorlaWagnerSoftmax(n_actions=4)` with `decision_process="inv_temp_softmax_4"`.
+The built-in `4AB_RW_InvTempSoftmax` preset covers four-choice softmax
+simulation. Custom `ModelConfig` objects can still pair
+`RescorlaWagnerSoftmax(n_actions=4)` with `decision_process="inv_temp_softmax_4"`
+when a task needs different environment labels, rewards, or priors.
 
 ### Context fields
 
