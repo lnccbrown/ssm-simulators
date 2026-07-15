@@ -97,7 +97,17 @@ class TestToHssmConfigDictSchema:
 class TestRegistry:
     def test_list_presets(self):
         presets = rl.preset.list()
-        assert "2AB_RW_Angle" in presets
+        assert {
+            "2AB_RW_DDM",
+            "2AB_RW_Angle",
+            "2AB_RW_Weibull",
+            "2AB_RW_DualAlpha_Angle",
+            "2AB_RW_InvTempSoftmax",
+            "2AB_RW_DualAlpha_InvTempSoftmax",
+            "3AB_RW_InvTempSoftmax",
+            "4AB_RW_InvTempSoftmax",
+            "4AB_RW_RaceNoBiasAngle",
+        }.issubset(presets)
         assert "rlssm1" not in presets
 
     def test_get_two_arm_rw_angle_preset(self):
@@ -106,22 +116,105 @@ class TestRegistry:
         assert config.model_name == "2AB_RW_Angle"
         assert config.decision_process == "angle"
 
-    def test_two_arm_rw_angle_preset_simulates(self):
-        config = rl.preset.get("2AB_RW_Angle")
+    @pytest.mark.parametrize(
+        ("preset_name", "decision_process", "theta", "expected_params"),
+        [
+            (
+                "2AB_RW_DDM",
+                "ddm",
+                {
+                    "rl_alpha": 0.2,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                },
+                ["rl_alpha", "scaler", "a", "z", "t"],
+            ),
+            (
+                "2AB_RW_Angle",
+                "angle",
+                {
+                    "rl_alpha": 0.2,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "theta": 0.2,
+                },
+                ["rl_alpha", "scaler", "a", "z", "t", "theta"],
+            ),
+            (
+                "2AB_RW_Weibull",
+                "weibull",
+                {
+                    "rl_alpha": 0.2,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "alpha": 3.0,
+                    "beta": 3.0,
+                },
+                ["rl_alpha", "scaler", "a", "z", "t", "alpha", "beta"],
+            ),
+            (
+                "2AB_RW_DualAlpha_Angle",
+                "angle",
+                {
+                    "rl_alpha": 0.2,
+                    "rl_alpha_neg": 0.1,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "theta": 0.2,
+                },
+                ["rl_alpha", "rl_alpha_neg", "scaler", "a", "z", "t", "theta"],
+            ),
+            (
+                "4AB_RW_RaceNoBiasAngle",
+                "race_no_bias_angle_4",
+                {
+                    "rl_alpha": 0.2,
+                    "scaler": 2.0,
+                    "a": 1.5,
+                    "z": 0.5,
+                    "t": 0.3,
+                    "theta": 0.2,
+                },
+                ["rl_alpha", "scaler", "a", "z", "t", "theta"],
+            ),
+        ],
+    )
+    def test_rt_choice_presets_validate_assemble_and_simulate(
+        self, preset_name, decision_process, theta, expected_params
+    ):
+        config = rl.preset.get(preset_name)
+        config.validate()
+        assembled = config.assemble(backend="jax")
         sim = rl.Simulator(config)
         data = sim.simulate(
-            theta={
-                "rl_alpha": 0.2,
-                "scaler": 2.0,
-                "a": 1.5,
-                "z": 0.5,
-                "t": 0.3,
-                "theta": 0.2,
-            },
+            theta=theta,
             n_trials=10,
             n_participants=2,
             random_state=42,
         )
+
+        assert config.model_name == preset_name
+        assert config.decision_process == decision_process
+        assert config.response == ["rt", "response"]
+        assert config.list_params == expected_params
+        expected_computed = (
+            ["v0", "v1", "v2", "v3"]
+            if preset_name == "4AB_RW_RaceNoBiasAngle"
+            else ["v"]
+        )
+        assert config._computed_ssm_params == expected_computed
+        assert assembled.gradient == "available"
+        assert assembled.response == ["rt", "response"]
+        assert assembled.computed_params == expected_computed
+        assert config.validate_data(data).ok
         assert len(data) == 20
 
     def test_old_rlssm1_preset_name_is_not_public(self):
@@ -155,6 +248,25 @@ class TestRegistry:
         rendered = str(info)
         assert "2AB_RW_Angle" in rendered
         assert "required parameters" in rendered.lower()
+
+    def test_four_arm_rw_race_preset_info_documents_scaling_contract(self):
+        info = rl.preset.info("4AB_RW_RaceNoBiasAngle")
+
+        assert info["name"] == "4AB_RW_RaceNoBiasAngle"
+        assert info["task"] == "four-armed Bernoulli bandit"
+        assert info["learning_process"] == "RescorlaWagnerRaceDrifts"
+        assert info["decision_process"] == "race_no_bias_angle_4"
+        assert info["required_parameters"] == [
+            "rl_alpha",
+            "scaler",
+            "a",
+            "z",
+            "t",
+            "theta",
+        ]
+        assert info["response_labels"] == (0, 1, 2, 3)
+        assert info["hssm_compatibility"]["participant_contract"] is True
+        assert "v_i = scaler * q_i" in info["hssm_compatibility"]["notes"]
 
     def test_unknown_preset_raises(self):
         with pytest.raises(KeyError, match="Unknown RLSSM preset"):

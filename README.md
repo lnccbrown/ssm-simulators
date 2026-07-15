@@ -51,10 +51,13 @@ Core links:
 | Attention models | aDDM with observed or self-sampled fixations, continuation strategies, and optional trajectory metadata. |
 | Reinforcement-learning SSMs | Rescorla-Wagner learning rules, RT + choice RLSSMs, inverse-temperature softmax choice-only models, and response-only posterior predictive workflows. |
 
-Choice-only RL support includes inverse-temperature softmax decision processes
-for two-, three-, and four-choice settings. Built-in choice-only RL presets are
-`2AB_RW_InvTempSoftmax` and `3AB_RW_InvTempSoftmax`; an SSM-based preset
-`2AB_RW_Angle` (angle decision process) is also available.
+RL support includes inverse-temperature softmax decision processes for two-,
+three-, and four-choice settings, plus RT + choice race models. Built-in RL
+presets include Rescorla-Wagner DDM/angle/Weibull models, dual-alpha variants,
+choice-only inverse-temperature softmax bandits such as
+`2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, and
+`4AB_RW_InvTempSoftmax`, and the four-choice RT + choice race preset
+`4AB_RW_RaceNoBiasAngle`.
 
 ---
 

@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+import ssms.rl.learning as learning
 from ssms.rl.learning import (
     LearningProcess,
     RescorlaWagnerDeltaRule,
@@ -348,6 +349,30 @@ class TestRescorlaWagnerSoftmax:
         grad = jax.jit(jax.grad(q2_after_update))(jnp.asarray(0.6))
 
         assert grad == pytest.approx(0.5)
+
+
+class TestRescorlaWagnerRaceDrifts:
+    def test_computes_scaled_q_values_as_race_drifts(self):
+        learner = learning.RescorlaWagnerRaceDrifts(n_actions=4, initial_q=0.5)
+        state = learner.init_state()
+
+        computed = learner.compute_python(state, {"scaler": 2.0}, context={})
+
+        assert learner.computed_params == ["v0", "v1", "v2", "v3"]
+        assert learner.free_params == ["rl_alpha", "scaler"]
+        assert computed == {"v0": 1.0, "v1": 1.0, "v2": 1.0, "v3": 1.0}
+
+    def test_jax_matches_python_scaling_contract(self):
+        learner = learning.RescorlaWagnerRaceDrifts(n_actions=4, initial_q=0.5)
+        state = learner.init_state()
+        state["q_values"] = np.asarray([0.1, 0.2, 0.3, 0.4])
+
+        computed = learner.compute_jax(state, {"scaler": 3.0}, context={})
+
+        np.testing.assert_allclose(
+            np.asarray([computed[f"v{i}"] for i in range(4)]),
+            [0.3, 0.6, 0.9, 1.2],
+        )
 
 
 class TestRescorlaWagnerDualAlphaRule:
