@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -2978,7 +2978,7 @@ world meet.</p>
 this package, the labels are often <code>-1</code> and <code>1</code> because that is how the underlying SSM
 simulator encodes the two response boundaries.</li>
 <li>The <strong>learning process</strong> and <strong>task environment</strong> use <strong>zero-based choice indices</strong>:
-<code>0, 1, ..., n_arms - 1</code>. A bandit with two arms samples feedback for choice <code>0</code> or
+<code>0, 1, ..., n_choices - 1</code>. A bandit with two arms samples feedback for choice <code>0</code> or
 choice <code>1</code>, not for response label <code>-1</code> or <code>1</code>.</li>
 </ul>
 <p>So every non-omission trial has a translation step:</p>
@@ -3229,7 +3229,7 @@ reversed_map.response_to_choice
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>The config validates the mapping immediately. The keys must cover exactly the response
-labels, and the values must be unique choice indices from <code>0</code> to <code>n_arms - 1</code>. This
+labels, and the values must be unique choice indices from <code>0</code> to <code>n_choices - 1</code>. This
 matters because an incomplete or ambiguous mapping would update the wrong Q-value or
 sample rewards from the wrong arm.</p>
 </div>
@@ -3788,7 +3788,8 @@ type(shorthand_config.task_environment).__name__
 like: how many arms exist, which SSM response labels correspond to those arms, which
 observable context fields should be recorded, and what feedback/context should be
 available after a choice.</p>
-<p>A custom environment implements the <code>rl.env.TaskEnvironment</code> protocol:</p>
+<p>A custom environment used by <code>ModelConfig</code> implements the
+<code>rl.env.DiscreteChoiceEnvironment</code> protocol:</p>
 <table>
 <thead>
 <tr>
@@ -3799,7 +3800,7 @@ available after a choice.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>n_arms</code></td>
+<td><code>n_choices</code></td>
 <td>Number of zero-based learning choices.</td>
 <td><code>ModelConfig</code> checks compatibility with the learner.</td>
 </tr>
@@ -3830,6 +3831,9 @@ available after a choice.</p>
 </tr>
 </tbody>
 </table>
+<p>The built-in <code>Bandit</code> also exposes <code>n_arms</code> as a compatibility alias for bandit
+terminology. Custom environments only need to implement the canonical <code>n_choices</code>
+member.</p>
 <p>The key convention is that <code>sample_context</code> receives a context dictionary that already
 contains the zero-based <code>choice</code>, not just the raw SSM response label.</p>
 </div>
@@ -3887,7 +3891,7 @@ can receive them when learning requires them.</li>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rng</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">n_arms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_choices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="mi">2</span>
 
     <span class="nd">@property</span>
@@ -3916,7 +3920,10 @@ can receive them when learning requires them.</li>
         <span class="k">return</span> <span class="p">{</span><span class="s2">"feedback"</span><span class="p">:</span> <span class="n">feedback</span><span class="p">}</span>
 
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"is a TaskEnvironment:"</span><span class="p">,</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ReversalBandit</span><span class="p">(),</span> <span class="n">rl</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">TaskEnvironment</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="s2">"is a DiscreteChoiceEnvironment:"</span><span class="p">,</span>
+    <span class="nb">isinstance</span><span class="p">(</span><span class="n">ReversalBandit</span><span class="p">(),</span> <span class="n">rl</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">DiscreteChoiceEnvironment</span><span class="p">),</span>
+<span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-10">class ReversalBandit:
     """Two-armed Bernoulli bandit whose best arm flips at `reversal_at`."""
@@ -3928,7 +3935,7 @@ can receive them when learning requires them.</li>
         self._rng = None
 
     @property
-    def n_arms(self):
+    def n_choices(self):
         return 2
 
     @property
@@ -3957,7 +3964,10 @@ can receive them when learning requires them.</li>
         return {"feedback": feedback}
 
 
-print("is a TaskEnvironment:", isinstance(ReversalBandit(), rl.env.TaskEnvironment))
+print(
+    "is a DiscreteChoiceEnvironment:",
+    isinstance(ReversalBandit(), rl.env.DiscreteChoiceEnvironment),
+)
 </div>
 </div>
 </div>
@@ -3970,7 +3980,7 @@ print("is a TaskEnvironment:", isinstance(ReversalBandit(), rl.env.TaskEnvironme
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>is a TaskEnvironment: True
+<pre>is a DiscreteChoiceEnvironment: True
 </pre>
 </div>
 </div>
@@ -4787,7 +4797,7 @@ the learner uses both fields to update the condition-specific row of its state.<
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">AlternatingConditionBandit</span><span class="p">:</span>
-    <span class="n">n_arms</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">n_choices</span> <span class="o">=</span> <span class="mi">2</span>
     <span class="n">context_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"condition"</span><span class="p">,</span> <span class="s2">"feedback"</span><span class="p">]</span>
 
     <span class="nd">@property</span>
@@ -4851,7 +4861,7 @@ the learner uses both fields to update the condition-specific row of its state.<
 <span class="n">condition_data</span><span class="p">[[</span><span class="s2">"trial_id"</span><span class="p">,</span> <span class="s2">"condition"</span><span class="p">,</span> <span class="s2">"response"</span><span class="p">,</span> <span class="s2">"choice"</span><span class="p">,</span> <span class="s2">"feedback"</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-16">class AlternatingConditionBandit:
-    n_arms = 2
+    n_choices = 2
     context_fields = ["condition", "feedback"]
 
     @property
@@ -6354,7 +6364,7 @@ for the current bridge path use <code>RLSSMConfig.from_ssms_model(...)</code>.</
 <ul>
 <li><strong>Response labels vs. choices</strong> and <code>response_to_choice</code> (<code>"auto"</code> or explicit).</li>
 <li><strong>Interchangeable components</strong>: dual-alpha learners, Gaussian rewards, <code>TaskConfig</code>,
-and custom <code>TaskEnvironment</code> / <code>LearningProcess</code> classes.</li>
+and custom <code>DiscreteChoiceEnvironment</code> / <code>LearningProcess</code> classes.</li>
 <li><strong>Context-aware learning</strong>: task/design fields such as <code>condition</code>, <code>block</code>, or
 <code>stimulus_id</code> can flow through <code>context_fields</code> into learning updates.</li>
 <li><strong>Explicit-state learning methods</strong>: <code>init_state</code>, <code>compute_python</code>, and

@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -5988,6 +5988,17 @@
     <span class="md-ellipsis">
       
         RescorlaWagnerDualAlphaSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerRaceDrifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerRaceDrifts
       
     </span>
   </a>
@@ -12624,6 +12635,17 @@
     <span class="md-ellipsis">
       
         RescorlaWagnerDualAlphaSoftmax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerRaceDrifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerRaceDrifts
       
     </span>
   </a>
@@ -35446,6 +35468,57 @@ use <code>rl_alpha_neg</code>.</p>
 
 
         <p>Dual-alpha Rescorla-Wagner learner emitting Q-values <code>q0..qN</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="ssms.rl.learning.RescorlaWagnerRaceDrifts" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">RescorlaWagnerRaceDrifts</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">RescorlaWagnerRaceDrifts</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">n_actions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">initial_q</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">feedback_field</span><span class="o">=</span><span class="s2">&quot;feedback&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDeltaRule" href="../rlssm/#ssms.rl.learning.RescorlaWagnerDeltaRule">RescorlaWagnerDeltaRule</a></code></p>
+
+
+
+        <p>Rescorla-Wagner learner emitting scaled race drifts <code>v0..vN</code>.</p>
+<p>The scaling contract is explicit: on each trial, before the RW update,
+<code>v_i = scaler * q_i</code> for every action <code>i</code>.</p>
 
 
 

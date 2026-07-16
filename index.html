@@ -101,7 +101,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -703,7 +703,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -1666,10 +1666,14 @@ models, and reinforcement-learning SSMs.</p>
   predictive functions for response-only RL workflows.</li>
 </ul>
 <div class="admonition note">
-<p class="admonition-title">Choice-only RL support</p>
+<p class="admonition-title">RL preset support</p>
 <p>ssms includes inverse-temperature softmax decision processes for two-,
-three-, and four-choice settings. Built-in RL presets currently include
-<code>2AB_RW_InvTempSoftmax</code> and <code>3AB_RW_InvTempSoftmax</code>.</p>
+three-, and four-choice settings, plus RT + choice race models. Built-in RL
+presets include Rescorla-Wagner DDM/angle/Weibull models, dual-alpha
+variants, choice-only inverse-temperature softmax bandits such as
+<code>2AB_RW_InvTempSoftmax</code>, <code>3AB_RW_InvTempSoftmax</code>, and
+<code>4AB_RW_InvTempSoftmax</code>, and the four-choice RT + choice race preset
+<code>4AB_RW_RaceNoBiasAngle</code>.</p>
 </div>
 <hr />
 <h2 id="ecosystem-fit">Ecosystem Fit</h2>

@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -2458,7 +2458,15 @@ SEED = 91</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>['2AB_RW_Angle', '2AB_RW_InvTempSoftmax', '3AB_RW_InvTempSoftmax']</pre>
+<pre>['2AB_RW_Angle',
+ '2AB_RW_DDM',
+ '2AB_RW_DualAlpha_Angle',
+ '2AB_RW_DualAlpha_InvTempSoftmax',
+ '2AB_RW_InvTempSoftmax',
+ '2AB_RW_Weibull',
+ '3AB_RW_InvTempSoftmax',
+ '4AB_RW_InvTempSoftmax',
+ '4AB_RW_RaceNoBiasAngle']</pre>
 </div>
 </div>
 </div>
@@ -3347,7 +3355,7 @@ pd.DataFrame(
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6-three-and-four-choice-variants">6. Three- and four-choice variants<a class="anchor-link" href="#6-three-and-four-choice-variants">¶</a></h2><p>ssms ships two- and three-armed choice-only RL presets. The lower-level <code>inv_temp_softmax_4</code> decision process is also available for custom four-choice configs.</p>
+<h2 id="6-three-and-four-choice-variants">6. Three- and four-choice variants<a class="anchor-link" href="#6-three-and-four-choice-variants">¶</a></h2><p>ssms ships two-, three-, and four-armed choice-only RL presets. The lower-level <code>inv_temp_softmax_4</code> decision process is also available for custom four-choice configs.</p>
 </div>
 </div>
 </div>

@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -2594,15 +2594,15 @@
 <p>This guide helps academic researchers contribute new sequential sampling models to the <code>ssm-simulators</code> codebase. Whether you're a graduate student prototyping a novel model or an established researcher contributing a validated implementation, this tutorial will walk you through the process.</p>
 <h2 id="table-of-contents">Table of Contents</h2>
 <ol>
-<li><a href="#1-introduction--prerequisites">Introduction &amp; Prerequisites</a></li>
+<li><a href="#1-introduction-prerequisites">Introduction &amp; Prerequisites</a></li>
 <li><a href="#2-understanding-the-architecture">Understanding the Architecture</a></li>
 <li><a href="#3-level-1-contributing-boundarydrift-variants">Level 1: Boundary/Drift Variants</a></li>
 <li><a href="#4-level-2-contributing-python-simulators">Level 2: Python Simulators</a></li>
 <li><a href="#5-level-3-contributing-cython-simulators">Level 3: Cython Simulators</a></li>
 <li><a href="#6-testing-your-contribution">Testing Your Contribution</a></li>
 <li><a href="#7-documentation-requirements">Documentation Requirements</a></li>
-<li><a href="#8-submitting-your-pr">Submitting Your PR</a></li>
-<li><a href="#9-troubleshooting--faq">Troubleshooting &amp; FAQ</a></li>
+<li><a href="#creating-your-pull-request">Creating Your Pull Request</a></li>
+<li><a href="#getting-help">Getting Help</a></li>
 </ol>
 <hr />
 <h2 id="1-introduction-prerequisites">1. Introduction &amp; Prerequisites</h2>
@@ -2644,7 +2644,7 @@
 <p><strong>Optional</strong>:
 - Cython knowledge (Level 3 only)
 - Experience with numerical computing
-- Familiarity with the package (see <a href="../../notebooks/">tutorials</a>)</p>
+- Familiarity with the package (see the <a href="../../core_tutorials/tutorial_capabilities/">package overview tutorial</a>)</p>
 <h3 id="development-setup">Development Setup</h3>
 <ol>
 <li>
@@ -2670,9 +2670,8 @@
 </li>
 <li>
 <p><strong>Verify your setup</strong>:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from ssms import Simulator; print(Simulator(&#39;ddm&#39;))&quot;</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>pytest<span class="w">  </span><span class="c1"># Only needed if &#39;pytest&#39; was not installed above</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>uv<span class="w"> </span>pip<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span>test_ddm<span class="w"> </span>--verbose
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from ssms import Simulator; print(Simulator(&#39;ddm&#39;))&quot;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-k<span class="w"> </span>test_ddm<span class="w"> </span>--verbose
 </span></code></pre></div></p>
 </li>
 </ol>
@@ -2862,31 +2861,40 @@
 <p>Edit <code>ssms/basic_simulators/boundary_functions.py</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">collapsing_linear</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Linearly collapsing boundaries.</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="sd">    Boundaries start at 1.0 and collapse linearly toward 0 with rate alpha.</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">collapsing_linear</span><span class="p">(</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Linearly collapsing boundaries.</span>
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="sd">    Parameters</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="sd">    ----------</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="sd">    t : float</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="sd">        Time since trial start</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="sd">    alpha : float</span>
-</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="sd">        Collapse rate (boundaries/second)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="sd">    Boundaries start at ``a`` and collapse linearly toward 0 with rate alpha.</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="sd">    Boundary functions accept ``a`` as an explicit parameter and return the</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="sd">    *final* boundary value directly — the Cython engine no longer adds ``a``</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="sd">    itself, so every boundary must include it (mirroring the built-ins in</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="sd">    ``boundary_functions.py``: ``constant``, ``angle``, ``weibull_cdf``).</span>
 </span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
-</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="sd">    Returns</span>
-</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="sd">    -------</span>
-</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="sd">    float</span>
-</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="sd">        Boundary value at time t</span>
-</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
-</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="sd">    Examples</span>
-</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="sd">    --------</span>
-</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="sd">    &gt;&gt;&gt; collapsing_linear(0, alpha=0.1)  # t=0</span>
-</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="sd">    1.0</span>
-</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="sd">    &gt;&gt;&gt; collapsing_linear(5, alpha=0.1)  # t=5</span>
-</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="sd">    0.5</span>
-</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">t</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Prevent collapse to 0</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="sd">    Parameters</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="sd">    ----------</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="sd">    t : float or np.ndarray</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="sd">        Time since trial start</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="sd">    a : float</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="sd">        Starting boundary value (threshold at t=0)</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="sd">    alpha : float</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="sd">        Collapse rate (boundaries/second)</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="sd">    Returns</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="sd">    -------</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="sd">    float or np.ndarray</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="sd">        Boundary value at time t</span>
+</span><span id="__span-7-28"><a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>
+</span><span id="__span-7-29"><a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a><span class="sd">    Examples</span>
+</span><span id="__span-7-30"><a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a><span class="sd">    --------</span>
+</span><span id="__span-7-31"><a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="sd">    &gt;&gt;&gt; collapsing_linear(0, a=1.0, alpha=0.1)  # t=0</span>
+</span><span id="__span-7-32"><a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="sd">    1.0</span>
+</span><span id="__span-7-33"><a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="sd">    &gt;&gt;&gt; collapsing_linear(5, a=1.0, alpha=0.1)  # t=5</span>
+</span><span id="__span-7-34"><a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a><span class="sd">    0.5</span>
+</span><span id="__span-7-35"><a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-7-36"><a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">t</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="step-2-register-your-boundary">Step 2: Register Your Boundary</h3>
 <p>In the same file or in <code>ssms/config/boundary_registry.py</code>:</p>
@@ -2895,7 +2903,7 @@
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">register_boundary</span><span class="p">(</span>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;collapsing_linear&quot;</span><span class="p">,</span>
 </span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">function</span><span class="o">=</span><span class="n">collapsing_linear</span><span class="p">,</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span>  <span class="c1"># Parameters beyond time</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">]</span>  <span class="c1"># Boundary params (must include `a`), beyond time `t`</span>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="step-3-create-your-model-config">Step 3: Create Your Model Config</h3>
@@ -2916,7 +2924,7 @@
 </span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>        <span class="p">],</span>
 </span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        <span class="s2">&quot;boundary_name&quot;</span><span class="p">:</span> <span class="s2">&quot;collapsing_linear&quot;</span><span class="p">,</span>
 </span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        <span class="s2">&quot;boundary&quot;</span><span class="p">:</span> <span class="n">bf</span><span class="o">.</span><span class="n">collapsing_linear</span><span class="p">,</span>
-</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        <span class="s2">&quot;boundary_params&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">],</span>  <span class="c1"># Which params go to boundary</span>
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        <span class="s2">&quot;boundary_params&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">],</span>  <span class="c1"># Which params go to boundary (must include a)</span>
 </span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        <span class="s2">&quot;n_params&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
 </span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        <span class="s2">&quot;default_params&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
 </span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        <span class="s2">&quot;nchoices&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
@@ -2969,35 +2977,36 @@ Below is an example for how you would test this new boundary function.</p>
 </span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
 </span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>    <span class="p">)</span>
 </span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
-</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,)</span>
-</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]])</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
-</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>
-</span><span id="__span-11-20"><a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_collapsing_effect</span><span class="p">():</span>
-</span><span id="__span-11-21"><a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test that collapsing boundaries affect RT distribution.&quot;&quot;&quot;</span>
-</span><span id="__span-11-22"><a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    <span class="n">sim</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="s2">&quot;collapsing_ddm&quot;</span><span class="p">)</span>
-</span><span id="__span-11-23"><a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>
-</span><span id="__span-11-24"><a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>    <span class="c1"># No collapse</span>
-</span><span id="__span-11-25"><a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>    <span class="n">result_no_collapse</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
-</span><span id="__span-11-26"><a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>        <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
-</span><span id="__span-11-27"><a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-</span><span id="__span-11-28"><a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
-</span><span id="__span-11-29"><a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>    <span class="p">)</span>
-</span><span id="__span-11-30"><a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>
-</span><span id="__span-11-31"><a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>    <span class="c1"># Strong collapse</span>
-</span><span id="__span-11-32"><a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>    <span class="n">result_collapse</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
-</span><span id="__span-11-33"><a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>        <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">},</span>
-</span><span id="__span-11-34"><a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-</span><span id="__span-11-35"><a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
-</span><span id="__span-11-36"><a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>    <span class="p">)</span>
-</span><span id="__span-11-37"><a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>
-</span><span id="__span-11-38"><a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>    <span class="c1"># Collapsing boundaries should generally reduce RTs</span>
-</span><span id="__span-11-39"><a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    <span class="n">mean_rt_no_collapse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">result_no_collapse</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">])</span>
-</span><span id="__span-11-40"><a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    <span class="n">mean_rt_collapse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">result_collapse</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">])</span>
-</span><span id="__span-11-41"><a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>
-</span><span id="__span-11-42"><a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>    <span class="k">assert</span> <span class="n">mean_rt_collapse</span> <span class="o">&lt;</span> <span class="n">mean_rt_no_collapse</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="__span-11-43"><a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>        <span class="s2">&quot;Collapsing boundaries should reduce mean RT&quot;</span>
-</span><span id="__span-11-44"><a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>    <span class="p">)</span>
+</span><span id="__span-11-16"><a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-11-17"><a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-11-18"><a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]))</span><span class="o">.</span><span class="n">issubset</span><span class="p">({</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">})</span>
+</span><span id="__span-11-19"><a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-11-20"><a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>
+</span><span id="__span-11-21"><a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_collapsing_effect</span><span class="p">():</span>
+</span><span id="__span-11-22"><a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test that collapsing boundaries affect RT distribution.&quot;&quot;&quot;</span>
+</span><span id="__span-11-23"><a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>    <span class="n">sim</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="s2">&quot;collapsing_ddm&quot;</span><span class="p">)</span>
+</span><span id="__span-11-24"><a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>
+</span><span id="__span-11-25"><a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>    <span class="c1"># No collapse</span>
+</span><span id="__span-11-26"><a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>    <span class="n">result_no_collapse</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-11-27"><a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>        <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
+</span><span id="__span-11-28"><a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-11-29"><a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+</span><span id="__span-11-30"><a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>    <span class="p">)</span>
+</span><span id="__span-11-31"><a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>
+</span><span id="__span-11-32"><a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>    <span class="c1"># Strong collapse</span>
+</span><span id="__span-11-33"><a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>    <span class="n">result_collapse</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span>
+</span><span id="__span-11-34"><a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>        <span class="n">theta</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">},</span>
+</span><span id="__span-11-35"><a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-11-36"><a id="__codelineno-11-36" name="__codelineno-11-36" href="#__codelineno-11-36"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+</span><span id="__span-11-37"><a id="__codelineno-11-37" name="__codelineno-11-37" href="#__codelineno-11-37"></a>    <span class="p">)</span>
+</span><span id="__span-11-38"><a id="__codelineno-11-38" name="__codelineno-11-38" href="#__codelineno-11-38"></a>
+</span><span id="__span-11-39"><a id="__codelineno-11-39" name="__codelineno-11-39" href="#__codelineno-11-39"></a>    <span class="c1"># Collapsing boundaries should generally reduce RTs</span>
+</span><span id="__span-11-40"><a id="__codelineno-11-40" name="__codelineno-11-40" href="#__codelineno-11-40"></a>    <span class="n">mean_rt_no_collapse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">result_no_collapse</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">])</span>
+</span><span id="__span-11-41"><a id="__codelineno-11-41" name="__codelineno-11-41" href="#__codelineno-11-41"></a>    <span class="n">mean_rt_collapse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">result_collapse</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">])</span>
+</span><span id="__span-11-42"><a id="__codelineno-11-42" name="__codelineno-11-42" href="#__codelineno-11-42"></a>
+</span><span id="__span-11-43"><a id="__codelineno-11-43" name="__codelineno-11-43" href="#__codelineno-11-43"></a>    <span class="k">assert</span> <span class="n">mean_rt_collapse</span> <span class="o">&lt;</span> <span class="n">mean_rt_no_collapse</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="__span-11-44"><a id="__codelineno-11-44" name="__codelineno-11-44" href="#__codelineno-11-44"></a>        <span class="s2">&quot;Collapsing boundaries should reduce mean RT&quot;</span>
+</span><span id="__span-11-45"><a id="__codelineno-11-45" name="__codelineno-11-45" href="#__codelineno-11-45"></a>    <span class="p">)</span>
 </span></code></pre></div>
 <h3 id="step-6-verify-locally">Step 6: Verify Locally</h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Run your tests</span>
@@ -3230,7 +3239,7 @@ Below is an example for how you would test this new boundary function.</p>
 </span><span id="__span-16-16"><a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
 </span><span id="__span-16-17"><a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
 </span><span id="__span-16-18"><a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>    <span class="p">)</span>
-</span><span id="__span-16-19"><a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,)</span>
+</span><span id="__span-16-19"><a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </span><span id="__span-16-20"><a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a>    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Single choice</span>
 </span><span id="__span-16-21"><a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a>
 </span><span id="__span-16-22"><a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="k">def</span><span class="w"> </span><span class="nf">test_shifted_wald_positive_rts</span><span class="p">(</span><span class="n">wald_sim</span><span class="p">):</span>
@@ -3436,24 +3445,26 @@ optimization as motivated the original use of <code>Cython</code> in many of the
 </span><span id="__span-18-122"><a id="__codelineno-18-122" name="__codelineno-18-122" href="#__codelineno-18-122"></a>        <span class="s">&quot;t&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
 </span><span id="__span-18-123"><a id="__codelineno-18-123" name="__codelineno-18-123" href="#__codelineno-18-123"></a>    <span class="p">}</span>
 </span><span id="__span-18-124"><a id="__codelineno-18-124" name="__codelineno-18-124" href="#__codelineno-18-124"></a>
-</span><span id="__span-18-125"><a id="__codelineno-18-125" name="__codelineno-18-125" href="#__codelineno-18-125"></a>    <span class="k">if</span> <span class="n">return_option</span> <span class="o">==</span> <span class="s">&#39;full&#39;</span><span class="p">:</span>
-</span><span id="__span-18-126"><a id="__codelineno-18-126" name="__codelineno-18-126" href="#__codelineno-18-126"></a>        <span class="n">metadata</span> <span class="o">=</span> <span class="n">build_full_metadata</span><span class="p">(</span>
-</span><span id="__span-18-127"><a id="__codelineno-18-127" name="__codelineno-18-127" href="#__codelineno-18-127"></a>            <span class="n">model</span><span class="o">=</span><span class="s">&quot;shifted_wald&quot;</span><span class="p">,</span>
-</span><span id="__span-18-128"><a id="__codelineno-18-128" name="__codelineno-18-128" href="#__codelineno-18-128"></a>            <span class="n">param_names</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;v&quot;</span><span class="p">,</span> <span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;t&quot;</span><span class="p">],</span>
-</span><span id="__span-18-129"><a id="__codelineno-18-129" name="__codelineno-18-129" href="#__codelineno-18-129"></a>            <span class="n">param_dict</span><span class="o">=</span><span class="n">param_dict</span><span class="p">,</span>
-</span><span id="__span-18-130"><a id="__codelineno-18-130" name="__codelineno-18-130" href="#__codelineno-18-130"></a>            <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
-</span><span id="__span-18-131"><a id="__codelineno-18-131" name="__codelineno-18-131" href="#__codelineno-18-131"></a>            <span class="n">n_trials</span><span class="o">=</span><span class="n">n_trials</span><span class="p">,</span>
-</span><span id="__span-18-132"><a id="__codelineno-18-132" name="__codelineno-18-132" href="#__codelineno-18-132"></a>            <span class="n">max_t</span><span class="o">=</span><span class="n">max_t</span><span class="p">,</span>
-</span><span id="__span-18-133"><a id="__codelineno-18-133" name="__codelineno-18-133" href="#__codelineno-18-133"></a>            <span class="n">possible_choices</span><span class="o">=</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span>
-</span><span id="__span-18-134"><a id="__codelineno-18-134" name="__codelineno-18-134" href="#__codelineno-18-134"></a>        <span class="p">)</span>
-</span><span id="__span-18-135"><a id="__codelineno-18-135" name="__codelineno-18-135" href="#__codelineno-18-135"></a>    <span class="k">else</span><span class="p">:</span>
-</span><span id="__span-18-136"><a id="__codelineno-18-136" name="__codelineno-18-136" href="#__codelineno-18-136"></a>        <span class="n">metadata</span> <span class="o">=</span> <span class="n">build_minimal_metadata</span><span class="p">(</span>
-</span><span id="__span-18-137"><a id="__codelineno-18-137" name="__codelineno-18-137" href="#__codelineno-18-137"></a>            <span class="n">model</span><span class="o">=</span><span class="s">&quot;shifted_wald&quot;</span><span class="p">,</span>
-</span><span id="__span-18-138"><a id="__codelineno-18-138" name="__codelineno-18-138" href="#__codelineno-18-138"></a>            <span class="n">max_t</span><span class="o">=</span><span class="n">max_t</span><span class="p">,</span>
-</span><span id="__span-18-139"><a id="__codelineno-18-139" name="__codelineno-18-139" href="#__codelineno-18-139"></a>            <span class="n">possible_choices</span><span class="o">=</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span>
+</span><span id="__span-18-125"><a id="__codelineno-18-125" name="__codelineno-18-125" href="#__codelineno-18-125"></a>    <span class="c"># Build minimal metadata first, then augment for the &#39;full&#39; option</span>
+</span><span id="__span-18-126"><a id="__codelineno-18-126" name="__codelineno-18-126" href="#__codelineno-18-126"></a>    <span class="c"># (mirrors the real simulators, e.g. ornstein_models.pyx).</span>
+</span><span id="__span-18-127"><a id="__codelineno-18-127" name="__codelineno-18-127" href="#__codelineno-18-127"></a>    <span class="n">minimal_meta</span> <span class="o">=</span> <span class="n">build_minimal_metadata</span><span class="p">(</span>
+</span><span id="__span-18-128"><a id="__codelineno-18-128" name="__codelineno-18-128" href="#__codelineno-18-128"></a>        <span class="n">simulator_name</span><span class="o">=</span><span class="s">&quot;shifted_wald&quot;</span><span class="p">,</span>
+</span><span id="__span-18-129"><a id="__codelineno-18-129" name="__codelineno-18-129" href="#__codelineno-18-129"></a>        <span class="n">possible_choices</span><span class="o">=</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span>
+</span><span id="__span-18-130"><a id="__codelineno-18-130" name="__codelineno-18-130" href="#__codelineno-18-130"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+</span><span id="__span-18-131"><a id="__codelineno-18-131" name="__codelineno-18-131" href="#__codelineno-18-131"></a>        <span class="n">n_trials</span><span class="o">=</span><span class="n">n_trials</span><span class="p">,</span>
+</span><span id="__span-18-132"><a id="__codelineno-18-132" name="__codelineno-18-132" href="#__codelineno-18-132"></a>    <span class="p">)</span>
+</span><span id="__span-18-133"><a id="__codelineno-18-133" name="__codelineno-18-133" href="#__codelineno-18-133"></a>
+</span><span id="__span-18-134"><a id="__codelineno-18-134" name="__codelineno-18-134" href="#__codelineno-18-134"></a>    <span class="k">if</span> <span class="n">return_option</span> <span class="o">==</span> <span class="s">&#39;full&#39;</span><span class="p">:</span>
+</span><span id="__span-18-135"><a id="__codelineno-18-135" name="__codelineno-18-135" href="#__codelineno-18-135"></a>        <span class="n">sim_config</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;max_t&quot;</span><span class="p">:</span> <span class="n">max_t</span><span class="p">,</span> <span class="s">&quot;n_threads&quot;</span><span class="p">:</span> <span class="n">n_threads</span><span class="p">}</span>
+</span><span id="__span-18-136"><a id="__codelineno-18-136" name="__codelineno-18-136" href="#__codelineno-18-136"></a>        <span class="n">metadata</span> <span class="o">=</span> <span class="n">build_full_metadata</span><span class="p">(</span>
+</span><span id="__span-18-137"><a id="__codelineno-18-137" name="__codelineno-18-137" href="#__codelineno-18-137"></a>            <span class="n">minimal_metadata</span><span class="o">=</span><span class="n">minimal_meta</span><span class="p">,</span>
+</span><span id="__span-18-138"><a id="__codelineno-18-138" name="__codelineno-18-138" href="#__codelineno-18-138"></a>            <span class="n">params</span><span class="o">=</span><span class="n">param_dict</span><span class="p">,</span>
+</span><span id="__span-18-139"><a id="__codelineno-18-139" name="__codelineno-18-139" href="#__codelineno-18-139"></a>            <span class="n">sim_config</span><span class="o">=</span><span class="n">sim_config</span><span class="p">,</span>
 </span><span id="__span-18-140"><a id="__codelineno-18-140" name="__codelineno-18-140" href="#__codelineno-18-140"></a>        <span class="p">)</span>
-</span><span id="__span-18-141"><a id="__codelineno-18-141" name="__codelineno-18-141" href="#__codelineno-18-141"></a>
-</span><span id="__span-18-142"><a id="__codelineno-18-142" name="__codelineno-18-142" href="#__codelineno-18-142"></a>    <span class="k">return</span> <span class="n">build_return_dict</span><span class="p">(</span><span class="n">rts</span><span class="p">,</span> <span class="n">choices</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="__span-18-141"><a id="__codelineno-18-141" name="__codelineno-18-141" href="#__codelineno-18-141"></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="__span-18-142"><a id="__codelineno-18-142" name="__codelineno-18-142" href="#__codelineno-18-142"></a>        <span class="n">metadata</span> <span class="o">=</span> <span class="n">minimal_meta</span>
+</span><span id="__span-18-143"><a id="__codelineno-18-143" name="__codelineno-18-143" href="#__codelineno-18-143"></a>
+</span><span id="__span-18-144"><a id="__codelineno-18-144" name="__codelineno-18-144" href="#__codelineno-18-144"></a>    <span class="k">return</span> <span class="n">build_return_dict</span><span class="p">(</span><span class="n">rts</span><span class="p">,</span> <span class="n">choices</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="step-3-register-and-export-cython-module">Step 3: Register and Export Cython Module</h3>
 <p><strong>Register in <code>setup.py</code></strong>: Add your new <code>.pyx</code> module to the appropriate list in
@@ -3632,8 +3643,8 @@ appropriate.</p>
 </span><span id="__span-28-18"><a id="__codelineno-28-18" name="__codelineno-28-18" href="#__codelineno-28-18"></a>        <span class="n">n_samples</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
 </span><span id="__span-28-19"><a id="__codelineno-28-19" name="__codelineno-28-19" href="#__codelineno-28-19"></a>        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
 </span><span id="__span-28-20"><a id="__codelineno-28-20" name="__codelineno-28-20" href="#__codelineno-28-20"></a>    <span class="p">)</span>
-</span><span id="__span-28-21"><a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,)</span>
-</span><span id="__span-28-22"><a id="__codelineno-28-22" name="__codelineno-28-22" href="#__codelineno-28-22"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,)</span>
+</span><span id="__span-28-21"><a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-28-22"><a id="__codelineno-28-22" name="__codelineno-28-22" href="#__codelineno-28-22"></a>    <span class="k">assert</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </span><span id="__span-28-23"><a id="__codelineno-28-23" name="__codelineno-28-23" href="#__codelineno-28-23"></a>    <span class="k">assert</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">result</span>
 </span><span id="__span-28-24"><a id="__codelineno-28-24" name="__codelineno-28-24" href="#__codelineno-28-24"></a>
 </span><span id="__span-28-25"><a id="__codelineno-28-25" name="__codelineno-28-25" href="#__codelineno-28-25"></a><span class="c1"># 2. Correctness Tests (MOST IMPORTANT)</span>
@@ -3895,29 +3906,29 @@ in there is relevant to your PR and if yes, please fill out the template as conc
 <li>
 <p><strong>Read documentation</strong>:</p>
 </li>
-<li><a href="../core_tutorials/">Core Tutorials</a></li>
+<li><a href="../../core_tutorials/tutorial_capabilities/">Core Tutorials</a></li>
 <li>
-<p><a href="../api/">API Documentation</a></p>
+<p><a href="../../api/ssms/">API Documentation</a></p>
 </li>
 <li>
 <p><strong>GitHub issues</strong>: Search for similar problems</p>
 </li>
 <li>
-<p><a href="https://github.com/ssms/ssm-simulators/issues">Known issues</a></p>
+<p><a href="https://github.com/lnccbrown/ssm-simulators/issues">Known issues</a></p>
 </li>
 <li>
 <p><strong>Ask questions</strong>: Open an issue</p>
 </li>
-<li><a href="https://github.com/ssms/ssm-simulators/discussions">Discussions</a></li>
+<li><a href="https://github.com/lnccbrown/ssm-simulators/discussions">Discussions</a></li>
 <li>Use tag: <code>question</code> or <code>help-wanted</code></li>
 <li>Provide: code snippet, error message, what you've tried</li>
 </ol>
 <h3 id="resources">Resources</h3>
 <ul>
-<li><a href="../../notebooks/">Interactive Tutorials</a>: Learn by doing</li>
-<li><a href="../../api/">API Reference</a>: Complete API documentation</li>
-<li><a href="https://github.com/ssms/ssm-simulators/issues">GitHub Issues</a>: Questions and bugs</li>
-<li><a href="https://github.com/ssms/ssm-simulators/discussions">Disussions</a></li>
+<li><a href="../../basic_tutorial/basic_tutorial/">Interactive Tutorials</a>: Learn by doing</li>
+<li><a href="../../api/ssms/">API Reference</a>: Complete API documentation</li>
+<li><a href="https://github.com/lnccbrown/ssm-simulators/issues">GitHub Issues</a>: Questions and bugs</li>
+<li><a href="https://github.com/lnccbrown/ssm-simulators/discussions">Discussions</a></li>
 </ul>
 
 

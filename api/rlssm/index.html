@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -1268,6 +1268,17 @@
     <span class="md-ellipsis">
       
         Built-in Rescorla-Wagner learning processes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in presets
       
     </span>
   </a>
@@ -2101,6 +2112,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#built-in-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in presets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#task-environment-protocols" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2925,6 +2947,81 @@ concrete drift or softmax classes directly for standard presets and HSSM handoff
 is a free learning-process parameter. For softmax models, the learner emits the
 raw <code>q0..qN</code> values and the decision process uses the fixed SSM parameter <code>beta</code>
 as the inverse temperature.</p>
+<h2 id="built-in-presets">Built-in presets</h2>
+<p>Built-in presets are registered under <code>ssms.rl.preset</code> and are the canonical
+source of truth for HSSM handoff. Current public presets include:</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Decision process</th>
+<th>Learning process</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2AB_RW_DDM</code></td>
+<td><code>ddm</code></td>
+<td><code>RescorlaWagnerDrift</code></td>
+<td><code>rt</code>, <code>response</code></td>
+</tr>
+<tr>
+<td><code>2AB_RW_Angle</code></td>
+<td><code>angle</code></td>
+<td><code>RescorlaWagnerDrift</code></td>
+<td><code>rt</code>, <code>response</code></td>
+</tr>
+<tr>
+<td><code>2AB_RW_Weibull</code></td>
+<td><code>weibull</code></td>
+<td><code>RescorlaWagnerDrift</code></td>
+<td><code>rt</code>, <code>response</code></td>
+</tr>
+<tr>
+<td><code>2AB_RW_DualAlpha_Angle</code></td>
+<td><code>angle</code></td>
+<td><code>RescorlaWagnerDualAlphaDrift</code></td>
+<td><code>rt</code>, <code>response</code></td>
+</tr>
+<tr>
+<td><code>2AB_RW_InvTempSoftmax</code></td>
+<td><code>inv_temp_softmax_2</code></td>
+<td><code>RescorlaWagnerSoftmax</code></td>
+<td><code>response</code></td>
+</tr>
+<tr>
+<td><code>2AB_RW_DualAlpha_InvTempSoftmax</code></td>
+<td><code>inv_temp_softmax_2</code></td>
+<td><code>RescorlaWagnerDualAlphaSoftmax</code></td>
+<td><code>response</code></td>
+</tr>
+<tr>
+<td><code>3AB_RW_InvTempSoftmax</code></td>
+<td><code>inv_temp_softmax_3</code></td>
+<td><code>RescorlaWagnerSoftmax</code></td>
+<td><code>response</code></td>
+</tr>
+<tr>
+<td><code>4AB_RW_InvTempSoftmax</code></td>
+<td><code>inv_temp_softmax_4</code></td>
+<td><code>RescorlaWagnerSoftmax</code></td>
+<td><code>response</code></td>
+</tr>
+<tr>
+<td><code>4AB_RW_RaceNoBiasAngle</code></td>
+<td><code>race_no_bias_angle_4</code></td>
+<td><code>RescorlaWagnerRaceDrifts</code></td>
+<td><code>rt</code>, <code>response</code></td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>rl.preset.list()</code> for the runtime list and <code>rl.preset.info(name)</code> for the
+full model contract, including required parameters, choices, response mapping,
+computed SSM parameters, and HSSM compatibility metadata.</p>
+<p><code>4AB_RW_RaceNoBiasAngle</code> uses the four-choice <code>race_no_bias_angle_4</code> LAN. Its
+learning process computes the race drift rates from pre-update RW values with
+the explicit scaling contract <code>v_i = scaler * q_i</code> for <code>i=0..3</code>.</p>
 <h2 id="task-environment-protocols">Task environment protocols</h2>
 <p><code>TaskEnvironment</code> is the base protocol for per-trial context and post-decision
 signals. Models that map SSM response labels to learning choices require a
@@ -3020,10 +3117,11 @@ to <code>ModelConfig(context_fields=[...])</code>.</p>
 <p>The observed response history is used only to condition learning state; PPC output
 responses are newly simulated.</p>
 <h2 id="choice-only-inverse-temperature-softmax-presets">Choice-only inverse-temperature softmax presets</h2>
-<p><code>2AB_RW_InvTempSoftmax</code> and <code>3AB_RW_InvTempSoftmax</code> are response-only RL presets.
-They use <code>RescorlaWagnerSoftmax</code> to emit <code>q0..qN</code>, and the
-<code>inv_temp_softmax_N</code> decision process uses <code>beta</code> as the inverse temperature for
-choice probabilities.</p>
+<p><code>2AB_RW_InvTempSoftmax</code>, <code>3AB_RW_InvTempSoftmax</code>, <code>4AB_RW_InvTempSoftmax</code>, and
+<code>2AB_RW_DualAlpha_InvTempSoftmax</code> are response-only RL presets. They use
+<code>RescorlaWagnerSoftmax</code> or <code>RescorlaWagnerDualAlphaSoftmax</code> to emit <code>q0..qN</code>,
+and the <code>inv_temp_softmax_N</code> decision process uses <code>beta</code> as the inverse
+temperature for choice probabilities.</p>
 <p>These presets declare <code>response=["response"]</code> because the softmax decision
 process has no response-time likelihood. The low-level softmax simulator still
 returns an <code>rt</code> array for compatibility with the generic simulator interface,
@@ -3048,10 +3146,10 @@ must not contain an <code>rt</code> column for these presets, and PPC output omi
 </span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">)</span>
 </span></code></pre></div>
-<p>The lower-level <code>inv_temp_softmax_4</code> decision process is also available for
-four-choice softmax simulation. Built-in RL presets currently cover the two- and
-three-choice bandit cases; custom <code>ModelConfig</code> objects can pair
-<code>RescorlaWagnerSoftmax(n_actions=4)</code> with <code>decision_process="inv_temp_softmax_4"</code>.</p>
+<p>The built-in <code>4AB_RW_InvTempSoftmax</code> preset covers four-choice softmax
+simulation. Custom <code>ModelConfig</code> objects can still pair
+<code>RescorlaWagnerSoftmax(n_actions=4)</code> with <code>decision_process="inv_temp_softmax_4"</code>
+when a task needs different environment labels, rewards, or priors.</p>
 <h3 id="context-fields">Context fields</h3>
 <p>Outcome-like values are ordinary context fields. By default, built-in bandits emit a
 <code>"feedback"</code> column and built-in Rescorla-Wagner learners require <code>context["feedback"]</code>

@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.0 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -559,7 +559,7 @@
   <span class="md-ellipsis">
     
   
-    Check included models
+    Basic Tutorial: Simulate and Inspect Sequential Sampling Models
   
 
     
@@ -2512,7 +2512,7 @@ print(f"✓ Available models: {len(model_config)} predefined models")</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>✓ Imports successful
-✓ Available models: 108 predefined models
+✓ Available models: 113 predefined models
 </pre>
 </div>
 </div>
@@ -2804,8 +2804,14 @@ print(f"  ({total_trials / elapsed:.0f} trials/sec)")</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>Generating training data...
-✓ Data generation complete in 5.97 seconds
-  (83708 trials/sec)
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>✓ Data generation complete in 3.21 seconds
+  (155685 trials/sec)
 </pre>
 </div>
 </div>
@@ -2857,10 +2863,10 @@ print(f"  ({total_trials / elapsed:.0f} trials/sec)")</div>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">key</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2">: None"</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">--- Understanding the components ---"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"data: RT/choice pairs [n_parameter_sets, n_samples, 2]"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"theta: Parameter values [n_parameter_sets, n_params]"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"choice_p: Choice probabilities for each trial"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"cpn_*, opn_*, gonogo_*: Additional training labels"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"lan_data: RT/choice feature rows (n_total_rows, n_params + 2)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"lan_labels: Log-likelihood per row"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"theta: Parameter values (n_parameter_sets, n_params)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"cpn_*, opn_*, gonogo_*: Additional training labels (choice-prob / omission / go-nogo)"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-5">print("Output structure:")
 print(f"  Keys: {list(training_data.keys())}")
@@ -2877,10 +2883,10 @@ for key, value in training_data.items():
         print(f"  {key:30s}: None")
 
 print("\n--- Understanding the components ---")
-print("data: RT/choice pairs [n_parameter_sets, n_samples, 2]")
-print("theta: Parameter values [n_parameter_sets, n_params]")
-print("choice_p: Choice probabilities for each trial")
-print("cpn_*, opn_*, gonogo_*: Additional training labels")</div>
+print("lan_data: RT/choice feature rows (n_total_rows, n_params + 2)")
+print("lan_labels: Log-likelihood per row")
+print("theta: Parameter values (n_parameter_sets, n_params)")
+print("cpn_*, opn_*, gonogo_*: Additional training labels (choice-prob / omission / go-nogo)")</div>
 </div>
 </div>
 </div>
@@ -2893,30 +2899,30 @@ print("cpn_*, opn_*, gonogo_*: Additional training labels")</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>Output structure:
-  Keys: ['gonogo_data', 'binned_128', 'cpn_data', 'lan_labels', 'lan_data', 'cpn_labels', 'cpn_no_omission_data', 'opn_labels', 'cpn_no_omission_labels', 'binned_256', 'gonogo_labels', 'theta', 'opn_data', 'generator_config', 'model_config']
+  Keys: ['lan_labels', 'cpn_no_omission_data', 'cpn_data', 'binned_128', 'lan_data', 'cpn_labels', 'gonogo_data', 'opn_data', 'gonogo_labels', 'opn_labels', 'cpn_no_omission_labels', 'theta', 'binned_256', 'generator_config', 'model_config']
 
 Data shapes:
-  gonogo_data                   : (100, 4)
-  binned_128                    : (100, 128, 2)
-  cpn_data                      : (100, 4)
   lan_labels                    : (100000,)
+  cpn_no_omission_data          : (100, 4)
+  cpn_data                      : (100, 4)
+  binned_128                    : (100, 128, 2)
   lan_data                      : (100000, 6)
   cpn_labels                    : (100, 1)
-  cpn_no_omission_data          : (100, 4)
+  gonogo_data                   : (100, 4)
+  opn_data                      : (100, 4)
+  gonogo_labels                 : (100, 1)
   opn_labels                    : (100, 1)
   cpn_no_omission_labels        : (100, 1)
-  binned_256                    : (100, 256, 2)
-  gonogo_labels                 : (100, 1)
   theta                         : (100, 4)
-  opn_data                      : (100, 4)
-  generator_config              : {'pipeline': {'n_parameter_sets': 100, 'n_parameter_sets_rejected': 100, 'n_subruns': 10, 'n_cpus': 12, 'simulation_filters': {'mode': 20, 'choice_cnt': 0, 'mean_rt': 17, 'std': 0, 'mode_cnt_rel': 0.95}}, 'estimator': {'type': 'kde', 'kde_displace_t': False, 'pdf_interpolation': 'cubic', 'max_undecided_prob': 0.5, 'displace_t': False}, 'training': {'n_samples_per_param': 1000, 'mixture_probabilities': [0.8, 0.1, 0.1], 'separate_response_channels': False, 'negative_rt_log_likelihood': -66.77497}, 'simulator': {'n_samples': 5000, 'delta_t': 0.001, 'max_t': 20.0, 'smooth_unif': True}, 'output': {'folder': 'data/lan_mlp/', 'nbins': 0, 'pickle_protocol': 4, 'bin_pointwise': False}, 'model': 'ddm'}
-  model_config                  : {'name': 'ddm', 'params': ['v', 'a', 'z', 't'], 'param_bounds': [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]], 'boundary_name': 'constant', 'boundary': &lt;function constant at 0x11ad24b80&gt;, 'boundary_params': [], 'n_params': 4, 'default_params': [0.0, 1.0, 0.5, 0.001], 'nchoices': 2, 'choices': [-1, 1], 'n_particles': 1, 'simulator': &lt;cyfunction ddm_flexbound at 0x12d85b930&gt;, 'parameter_transforms': {'sampling': [], 'simulation': []}, 'param_bounds_dict': {'v': (-3.0, 3.0), 'a': (0.3, 2.5), 'z': (0.1, 0.9), 't': (0.0, 2.0)}}
+  binned_256                    : (100, 256, 2)
+  generator_config              : {'pipeline': {'n_parameter_sets': 100, 'n_parameter_sets_rejected': 100, 'n_subruns': 10, 'n_cpus': 18, 'simulation_filters': {'mode': 20, 'choice_cnt': 0, 'mean_rt': 17, 'std': 0, 'mode_cnt_rel': 0.95}}, 'estimator': {'type': 'kde', 'kde_displace_t': False, 'pdf_interpolation': 'cubic', 'max_undecided_prob': 0.5, 'displace_t': False}, 'training': {'n_samples_per_param': 1000, 'mixture_probabilities': [0.8, 0.1, 0.1], 'separate_response_channels': False, 'negative_rt_log_likelihood': -66.77497}, 'simulator': {'n_samples': 5000, 'delta_t': 0.001, 'max_t': 20.0, 'smooth_unif': True}, 'output': {'folder': 'data/lan_mlp/', 'nbins': 0, 'pickle_protocol': 4, 'bin_pointwise': False}, 'model': 'ddm'}
+  model_config                  : {'name': 'ddm', 'params': ['v', 'a', 'z', 't'], 'param_bounds': [[-3.0, 0.3, 0.1, 0.0], [3.0, 2.5, 0.9, 2.0]], 'boundary_name': 'constant', 'boundary': &lt;function constant at 0x116e40720&gt;, 'boundary_params': [], 'n_params': 4, 'default_params': [0.0, 1.0, 0.5, 0.001], 'nchoices': 2, 'choices': [-1, 1], 'n_particles': 1, 'simulator': &lt;cyfunction ddm_flexbound at 0x11c0b58b0&gt;, 'parameter_transforms': {'sampling': [], 'simulation': []}, 'param_bounds_dict': {'v': (-3.0, 3.0), 'a': (0.3, 2.5), 'z': (0.1, 0.9), 't': (0.0, 2.0)}}
 
 --- Understanding the components ---
-data: RT/choice pairs [n_parameter_sets, n_samples, 2]
-theta: Parameter values [n_parameter_sets, n_params]
-choice_p: Choice probabilities for each trial
-cpn_*, opn_*, gonogo_*: Additional training labels
+lan_data: RT/choice feature rows (n_total_rows, n_params + 2)
+lan_labels: Log-likelihood per row
+theta: Parameter values (n_parameter_sets, n_params)
+cpn_*, opn_*, gonogo_*: Additional training labels (choice-prob / omission / go-nogo)
 </pre>
 </div>
 </div>
@@ -3070,8 +3076,14 @@ print(f"  ({total_trials / elapsed:.0f} trials/sec)")</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>Generating training data...
-✓ Data generation complete in 2.29 seconds
-  (218395 trials/sec)
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>✓ Data generation complete in 1.46 seconds
+  (343615 trials/sec)
 </pre>
 </div>
 </div>
