@@ -4,15 +4,15 @@ This guide helps academic researchers contribute new sequential sampling models 
 
 ## Table of Contents
 
-1. [Introduction & Prerequisites](#1-introduction--prerequisites)
+1. [Introduction & Prerequisites](#1-introduction-prerequisites)
 2. [Understanding the Architecture](#2-understanding-the-architecture)
 3. [Level 1: Boundary/Drift Variants](#3-level-1-contributing-boundarydrift-variants)
 4. [Level 2: Python Simulators](#4-level-2-contributing-python-simulators)
 5. [Level 3: Cython Simulators](#5-level-3-contributing-cython-simulators)
 6. [Testing Your Contribution](#6-testing-your-contribution)
 7. [Documentation Requirements](#7-documentation-requirements)
-8. [Submitting Your PR](#8-submitting-your-pr)
-9. [Troubleshooting & FAQ](#9-troubleshooting--faq)
+8. [Creating Your Pull Request](#creating-your-pull-request)
+9. [Getting Help](#getting-help)
 
 ---
 
@@ -65,7 +65,7 @@ START: What do you want to contribute?
 **Optional**:
 - Cython knowledge (Level 3 only)
 - Experience with numerical computing
-- Familiarity with the package (see [tutorials](../../notebooks/))
+- Familiarity with the package (see the [package overview tutorial](../core_tutorials/tutorial_capabilities.ipynb))
 
 ### Development Setup
 
@@ -1373,8 +1373,8 @@ If you're stuck:
    - Complex: `race.py`, `lca.py`
 
 2. **Read documentation**:
-   - [Core Tutorials](../core_tutorials/)
-   - [API Documentation](../api/)
+   - [Core Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
+   - [API Documentation](../api/ssms.md)
 
 3. **GitHub issues**: Search for similar problems
    - [Known issues](https://github.com/lnccbrown/ssm-simulators/issues)
@@ -1386,7 +1386,7 @@ If you're stuck:
 
 ### Resources
 
-- [Interactive Tutorials](../../notebooks/): Learn by doing
-- [API Reference](../api/): Complete API documentation
+- [Interactive Tutorials](../basic_tutorial/basic_tutorial.ipynb): Learn by doing
+- [API Reference](../api/ssms.md): Complete API documentation
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues): Questions and bugs
 - [Discussions](https://github.com/lnccbrown/ssm-simulators/discussions)

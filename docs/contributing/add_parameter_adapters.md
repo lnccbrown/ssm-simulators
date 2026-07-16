@@ -280,6 +280,6 @@ The key insight is that **all parameter transforms are defined directly in the m
 ## Resources
 
 - [Adding Models Tutorial](add_models.md): How to contribute new models
-- [API Reference](../api/): Complete API documentation
+- [API Reference](../api/ssms.md): Complete API documentation
 - Built-in simulation transforms: `ssms/basic_simulators/parameter_adapters/`
 - Built-in sampling transforms: `ssms/transforms/sampling/`
