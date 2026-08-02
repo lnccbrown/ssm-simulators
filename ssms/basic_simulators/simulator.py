@@ -691,6 +691,13 @@ def simulator(
         or     (rt-response histogram, metadata)
         or     (rts binned pointwise, responses, metadata)
 
+        With ``return_option='full'``, the metadata entries ``boundary`` and
+        ``trajectory`` describe **trial 0** (the first row of ``theta``) on
+        every code path; per-trial parameter arrays (``t``, ``z``, ...) remain
+        full-length with one entry per trial. Before this contract was
+        enforced, sequential code paths returned the *last* trial's boundary
+        while parallel dispatchers returned trial 0's (issue #315).
+
     """
     # Preprocess theta to be a 2d numpy array with correct column ordering
     # (if supplied as 2d array or list in the first place,
