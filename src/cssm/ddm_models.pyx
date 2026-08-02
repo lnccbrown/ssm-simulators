@@ -856,6 +856,10 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
             'v': v, 'a': a, 'z': z, 't': t,
             's': s, 'deadline': deadline
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1162,6 +1166,10 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
         }
         # Add drift array to extra params
         extra_params_dict = {'drift': drift}
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1466,6 +1474,10 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
         }
         # Add drift and boundary arrays to extra params
         extra_params_dict = {'drift': drift}
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1810,6 +1822,10 @@ def ddm_flex_leak2(
             'deadline': deadline, 's': s
         }
         extra_params_dict = {'drift': drift}
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -2131,6 +2147,10 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
             'z_dist': z_dist, 'v_dist': v_dist, 't_dist': t_dist,
             'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -2452,6 +2472,10 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
             'sz': sz, 'sv': sv, 'st': st,
             'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -2747,6 +2771,10 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
             'v': v, 'a': a, 'z': z, 't': t,
             'sv': sv, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -3033,6 +3061,10 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
         extra_params_dict = {
             'trajectory': 'This simulator does not yet allow for trajectory simulation'
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -3312,6 +3344,10 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
             'v': v, 'a': a, 'z': z, 't': t,
             'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,

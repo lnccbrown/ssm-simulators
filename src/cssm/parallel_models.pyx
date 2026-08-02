@@ -576,6 +576,10 @@ def _ddm_flexbound_par2_sequential(
             'zh': zh, 'zl1': zl1, 'zl2': zl2,
             't': t, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,

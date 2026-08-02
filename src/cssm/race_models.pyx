@@ -483,6 +483,10 @@ def _race_model_sequential(
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -893,6 +897,10 @@ def _lca_sequential(
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,

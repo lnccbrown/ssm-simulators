@@ -633,6 +633,10 @@ def _ddm_flexbound_seq2_sequential(
             'zh': zh, 'zl1': zl1, 'zl2': zl2,
             't': t, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1026,6 +1030,10 @@ def _ddm_flexbound_mic2_ornstein_sequential(
             's_pre_high_level_choice': s_pre_high_level_choice,
             's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1384,6 +1392,10 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
             'd': d, 't': t, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -1739,6 +1751,10 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
             'd': d, 't': t, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
@@ -2504,6 +2520,10 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
             'a': a, 'zh': zh, 'zl1': zl1, 'zl2': zl2,
             'd': d, 't': t, 'deadline': deadline, 's': s
         }
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,

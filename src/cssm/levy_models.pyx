@@ -328,6 +328,10 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
             't': t, 'alpha': alpha, 's': s,
         }
 
+        # metadata['boundary'] documents trial 0, matching metadata['trajectory'].
+        if n_trials > 0:
+            boundary_params_tmp = {key: boundary_params[key][0] for key in boundary_params.keys()}
+            compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
         full_meta = build_full_metadata(
             minimal_metadata=minimal_meta,
             params=params,
