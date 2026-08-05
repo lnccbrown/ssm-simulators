@@ -422,3 +422,96 @@ def test_full_cli_workflow_simulation(tmp_path):
     artifacts = client.list_artifacts(worker_runs.iloc[0]["run_id"])
     artifact_names = [a.path for a in artifacts]
     assert "data_config.json" in artifact_names
+
+
+class TestRunIdentity:
+    """PR feat/mlflow-run-identity: every datagen run must be self-describing."""
+
+    def _run_identity(
+        self, test_mlflow_dir, tmp_path, monkeypatch=None, extra_tags=None
+    ):
+        import logging
+
+        from ssms.cli.generate import log_run_identity
+
+        config_yaml = tmp_path / "cfg.yaml"
+        config_yaml.write_text("MODEL: ddm\nGENERATOR_APPROACH: lan\n")
+
+        config = make_data_generator_configs(model="ddm", generator_approach="lan")
+
+        mlflow.set_experiment("identity-test")
+        with mlflow.start_run() as run:
+            log_run_identity(
+                config_dict=config,
+                config_path=config_yaml,
+                n_files=7,
+                extra_tags=extra_tags or {},
+                logger=logging.getLogger("test"),
+            )
+            run_id = run.info.run_id
+
+        client = mlflow.tracking.MlflowClient()
+        return client.get_run(run_id)
+
+    def test_identity_params_logged(self, test_mlflow_dir, tmp_path):
+        run = self._run_identity(test_mlflow_dir, tmp_path)
+        params = run.data.params
+
+        assert params["model"] == "ddm"
+        assert params["generator_approach"] == "lan"
+        assert params["n_files"] == "7"
+        # sha256 of the config file bytes, hex-encoded
+        assert len(params["config_sha256"]) == 64
+        assert "ssm_simulators_version" in params
+
+    def test_schema_tags_logged(self, test_mlflow_dir, tmp_path):
+        run = self._run_identity(test_mlflow_dir, tmp_path)
+        tags = run.data.tags
+
+        assert tags["schema_version"] == "1"
+        assert tags["phase"] == "datagen"
+
+    def test_slurm_tags_from_env(self, test_mlflow_dir, tmp_path, monkeypatch):
+        monkeypatch.setenv("SLURM_JOB_ID", "12345")
+        monkeypatch.setenv("SLURM_ARRAY_TASK_ID", "3")
+        monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
+
+        run = self._run_identity(test_mlflow_dir, tmp_path)
+        tags = run.data.tags
+
+        assert tags["slurm_job_id"] == "12345"
+        assert tags["slurm_array_task_id"] == "3"
+        assert "slurm_array_job_id" not in tags
+
+    def test_extra_tags_win_on_collision(self, test_mlflow_dir, tmp_path):
+        run = self._run_identity(
+            test_mlflow_dir,
+            tmp_path,
+            extra_tags={"generation_batch_id": "batch-42", "phase": "override"},
+        )
+        tags = run.data.tags
+
+        assert tags["generation_batch_id"] == "batch-42"
+        assert tags["phase"] == "override"
+
+    def test_missing_config_file_skips_sha(self, test_mlflow_dir, tmp_path):
+        import logging
+
+        from ssms.cli.generate import log_run_identity
+
+        config = make_data_generator_configs(model="ddm", generator_approach="lan")
+
+        mlflow.set_experiment("identity-test-nosha")
+        with mlflow.start_run() as run:
+            log_run_identity(
+                config_dict=config,
+                config_path=None,
+                n_files=1,
+                extra_tags={},
+                logger=logging.getLogger("test"),
+            )
+            run_id = run.info.run_id
+
+        client = mlflow.tracking.MlflowClient()
+        params = client.get_run(run_id).data.params
+        assert "config_sha256" not in params

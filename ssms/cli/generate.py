@@ -44,6 +44,12 @@ def make_data_generator_configs(
 
     model_config.update(model_config_arg_dict)
 
+    # Persist the approach that selected this config template. Without this the
+    # information exists only at call time — it never reaches the generated
+    # training-data pickles (which embed data_config as `generator_config`) or
+    # any MLflow record built from them.
+    data_config["generator_approach"] = generator_approach
+
     config_dict = {"model_config": model_config, "data_config": data_config}
 
     if save_name:
@@ -379,6 +385,76 @@ def generate_data(  # pragma: no cover
     return newly_generated_files, output_folder
 
 
+def parse_mlflow_tags(raw_tags: list[str]) -> dict[str, str]:
+    """Parse repeatable ``--mlflow-tag KEY=VALUE`` options into a dict.
+
+    Raises:
+        typer.BadParameter: if an entry has no ``=`` or an empty key.
+    """
+    tags: dict[str, str] = {}
+    for raw in raw_tags:
+        key, sep, value = raw.partition("=")
+        if not sep or not key:
+            raise typer.BadParameter(
+                f"--mlflow-tag expects KEY=VALUE, got {raw!r}",
+                param_hint="--mlflow-tag",
+            )
+        tags[key] = value
+    return tags
+
+
+def log_run_identity(  # pragma: no cover
+    config_dict: dict,
+    config_path: Path | None,
+    n_files: int,
+    extra_tags: dict[str, str],
+    logger: logging.Logger,
+) -> None:
+    """Make the MLflow run self-describing.
+
+    Downstream consumers (LANfactory training, the network registry) resolve
+    "which model was this data generated for" from these params/tags rather
+    than from experiment-name conventions, which only hold for orchestrated
+    runs. Schema documented in HSSMSpine `_docs/mlflow-schema.md`.
+    """
+    import hashlib
+    from importlib.metadata import PackageNotFoundError, version
+
+    import mlflow
+
+    data_config = config_dict["data_config"]
+    params: dict[str, Any] = {
+        "model": data_config.get("model"),
+        "generator_approach": data_config.get("generator_approach"),
+        "n_files": n_files,
+    }
+
+    if config_path is not None and Path(config_path).is_file():
+        params["config_sha256"] = hashlib.sha256(
+            Path(config_path).read_bytes()
+        ).hexdigest()
+
+    try:
+        params["ssm_simulators_version"] = version("ssm-simulators")
+    except PackageNotFoundError:  # editable/source checkouts without metadata
+        logger.debug("ssm-simulators version metadata unavailable; skipping param")
+
+    mlflow.log_params(params)
+
+    tags = {"schema_version": "1", "phase": "datagen"}
+    for env_key, tag in (
+        ("SLURM_JOB_ID", "slurm_job_id"),
+        ("SLURM_ARRAY_JOB_ID", "slurm_array_job_id"),
+        ("SLURM_ARRAY_TASK_ID", "slurm_array_task_id"),
+    ):
+        if os.getenv(env_key):
+            tags[tag] = os.environ[env_key]
+    # Caller-supplied tags (e.g. generation_batch_id from the orchestrator)
+    # win over the defaults on key collision.
+    tags.update(extra_tags)
+    mlflow.set_tags(tags)
+
+
 def log_to_mlflow(  # pragma: no cover
     config_dict: dict,
     newly_generated_files: list[Path],
@@ -475,6 +551,12 @@ def main(  # pragma: no cover
         help="Root directory for MLflow artifacts. "
         "Defaults to MLFLOW_ARTIFACT_LOCATION env var, then './mlruns'.",
     ),
+    mlflow_tag: list[str] = typer.Option(
+        [],
+        "--mlflow-tag",
+        help="Extra MLflow tag as KEY=VALUE. Repeatable. Lets an orchestrator "
+        "stamp e.g. generation_batch_id without this CLI knowing about it.",
+    ),
     estimator_type: str = typer.Option(
         None,
         "--estimator-type",
@@ -512,6 +594,10 @@ def main(  # pragma: no cover
         logger,
     )
 
+    # Parse tags before any work so a malformed --mlflow-tag fails fast,
+    # even when MLflow itself is inactive.
+    extra_tags = parse_mlflow_tags(mlflow_tag)
+
     # Load and prepare configuration
     config_dict = load_config(config_path, output, estimator_type, logger)
 
@@ -519,6 +605,7 @@ def main(  # pragma: no cover
     if mlflow_active:
         import mlflow
 
+        log_run_identity(config_dict, config_path, n_files, extra_tags, logger)
         mlflow.log_params(
             {f"data_{k}": v for k, v in config_dict["data_config"].items()}
         )

@@ -168,3 +168,45 @@ def test_collect_config_estimator_type_case_insensitive(tmp_path):
 
 # TODO: test app object and CLI commands with --estimator-type flag.
 # This requires using typer.testing.CliRunner, which is harder to do than with argparse
+
+
+def test_generator_approach_persisted_in_data_config():
+    """The selecting approach must survive into data_config (provenance)."""
+    from ssms.cli.generate import make_data_generator_configs
+
+    config = make_data_generator_configs(model="ddm", generator_approach="lan")
+    assert config["data_config"]["generator_approach"] == "lan"
+
+    config_re = make_data_generator_configs(
+        model="ddm", generator_approach="ratio_estimator"
+    )
+    assert config_re["data_config"]["generator_approach"] == "ratio_estimator"
+
+
+class TestParseMlflowTags:
+    def test_single_and_multiple_tags(self):
+        from ssms.cli.generate import parse_mlflow_tags
+
+        assert parse_mlflow_tags(["a=1"]) == {"a": "1"}
+        assert parse_mlflow_tags(["a=1", "b=x=y"]) == {"a": "1", "b": "x=y"}
+
+    def test_empty_value_allowed(self):
+        from ssms.cli.generate import parse_mlflow_tags
+
+        assert parse_mlflow_tags(["flag="]) == {"flag": ""}
+
+    def test_missing_separator_rejected(self):
+        import typer
+
+        from ssms.cli.generate import parse_mlflow_tags
+
+        with pytest.raises(typer.BadParameter):
+            parse_mlflow_tags(["notagvalue"])
+
+    def test_empty_key_rejected(self):
+        import typer
+
+        from ssms.cli.generate import parse_mlflow_tags
+
+        with pytest.raises(typer.BadParameter):
+            parse_mlflow_tags(["=value"])
