@@ -2,6 +2,7 @@ name: Run tests
 
 on:
   pull_request:
+  workflow_call: # Called by drift.yml (scheduled drift detection)
   push:
     branches:
       - main # Tracking coverage for main branch as well
@@ -28,7 +29,7 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml pdm.lock"
+          cache-dependency-glob: "pyproject.toml" # (a stale pdm.lock reference sat here; that file never existed)
 
       - name: Install package
         run: uv sync --all-groups
@@ -73,7 +74,7 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml pdm.lock"
+          cache-dependency-glob: "pyproject.toml" # (a stale pdm.lock reference sat here; that file never existed)
 
       - name: Install package (with GSL + OpenMP)
         run: uv sync --all-groups
@@ -112,7 +113,7 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-dependency-glob: "pyproject.toml pdm.lock"
+          cache-dependency-glob: "pyproject.toml" # (a stale pdm.lock reference sat here; that file never existed)
 
       - name: Install package (with notebook deps)
         run: uv sync --all-groups
