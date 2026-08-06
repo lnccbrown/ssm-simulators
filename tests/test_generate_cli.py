@@ -210,3 +210,12 @@ class TestParseMlflowTags:
 
         with pytest.raises(typer.BadParameter):
             parse_mlflow_tags(["=value"])
+
+    def test_reserved_schema_tags_rejected(self):
+        import typer
+
+        from ssms.cli.generate import parse_mlflow_tags
+
+        for reserved in ("schema_version=2", "phase=custom"):
+            with pytest.raises(typer.BadParameter):
+                parse_mlflow_tags([reserved])
