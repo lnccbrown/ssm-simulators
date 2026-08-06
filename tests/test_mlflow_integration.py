@@ -439,12 +439,15 @@ class TestRunIdentity:
 
         config = make_data_generator_configs(model="ddm", generator_approach="lan")
 
+        import hashlib
+
         mlflow.set_experiment("identity-test")
         with mlflow.start_run() as run:
             log_run_identity(
                 config_dict=config,
-                config_path=config_yaml,
+                config_sha256=hashlib.sha256(config_yaml.read_bytes()).hexdigest(),
                 n_files=7,
+                dry_run=False,
                 extra_tags=extra_tags or {},
                 logger=logging.getLogger("test"),
             )
@@ -483,18 +486,40 @@ class TestRunIdentity:
         assert tags["slurm_array_task_id"] == "3"
         assert "slurm_array_job_id" not in tags
 
-    def test_extra_tags_win_on_collision(self, test_mlflow_dir, tmp_path):
+    def test_extra_tags_are_applied(self, test_mlflow_dir, tmp_path):
         run = self._run_identity(
             test_mlflow_dir,
             tmp_path,
-            extra_tags={"generation_batch_id": "batch-42", "phase": "override"},
+            extra_tags={"generation_batch_id": "batch-42"},
         )
         tags = run.data.tags
 
         assert tags["generation_batch_id"] == "batch-42"
-        assert tags["phase"] == "override"
+        # schema tags survive alongside caller tags
+        assert tags["phase"] == "datagen"
 
-    def test_missing_config_file_skips_sha(self, test_mlflow_dir, tmp_path):
+    def test_dry_run_gets_distinct_phase_tag(self, test_mlflow_dir, tmp_path):
+        import logging
+
+        from ssms.cli.generate import log_run_identity
+
+        config = make_data_generator_configs(model="ddm", generator_approach="lan")
+        mlflow.set_experiment("identity-test-dry")
+        with mlflow.start_run() as run:
+            log_run_identity(
+                config_dict=config,
+                config_sha256=None,
+                n_files=5,
+                dry_run=True,
+                extra_tags={},
+                logger=logging.getLogger("test"),
+            )
+            run_id = run.info.run_id
+
+        tags = mlflow.tracking.MlflowClient().get_run(run_id).data.tags
+        assert tags["phase"] == "datagen_dry_run"
+
+    def test_missing_config_sha_skips_param(self, test_mlflow_dir, tmp_path):
         import logging
 
         from ssms.cli.generate import log_run_identity
@@ -505,8 +530,9 @@ class TestRunIdentity:
         with mlflow.start_run() as run:
             log_run_identity(
                 config_dict=config,
-                config_path=None,
+                config_sha256=None,
                 n_files=1,
+                dry_run=False,
                 extra_tags={},
                 logger=logging.getLogger("test"),
             )

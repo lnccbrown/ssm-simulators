@@ -259,23 +259,40 @@ def load_config(  # pragma: no cover
     output: Path,
     estimator_type: str,
     logger: logging.Logger,
-) -> dict:
+) -> tuple[dict, str | None]:
     """
     Load and prepare the generator configuration.
 
     Returns:
-        dict: Configuration dictionary with 'data_config' and 'model_config' keys.
+        tuple: (config_dict with 'data_config'/'model_config' keys,
+        sha256 hex digest of the driving YAML — including the packaged
+        default when no --config-path was given — or None if unreadable).
+        The hash is computed here because the packaged default only exists
+        on disk inside the ``as_file`` context.
     """
+    import hashlib
+
+    def _sha(p: Path) -> str | None:
+        try:
+            return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+        except OSError:
+            return None
+
     if config_path is None:
         logger.warning("No config path provided, using default configuration.")
         with as_file(
             files("ssms.cli") / "config_data_generation.yaml"
         ) as default_config:
             config_path = default_config
-
-    config_dict = collect_data_generator_config(
-        yaml_config_path=config_path, base_path=output
-    )
+            config_sha256 = _sha(config_path)
+            config_dict = collect_data_generator_config(
+                yaml_config_path=config_path, base_path=output
+            )
+    else:
+        config_sha256 = _sha(config_path)
+        config_dict = collect_data_generator_config(
+            yaml_config_path=config_path, base_path=output
+        )
 
     # Override estimator_type if specified via CLI
     if estimator_type is not None:
@@ -288,7 +305,7 @@ def load_config(  # pragma: no cover
     logger.debug("MODEL CONFIG")
     logger.debug(pformat(config_dict["model_config"]))
 
-    return config_dict
+    return config_dict, config_sha256
 
 
 def create_estimator(  # pragma: no cover
@@ -385,11 +402,17 @@ def generate_data(  # pragma: no cover
     return newly_generated_files, output_folder
 
 
+# Tags the schema owns; user tags must not overwrite them or downstream
+# consumers filtering on them would silently miss the run.
+RESERVED_MLFLOW_TAGS = frozenset({"schema_version", "phase"})
+
+
 def parse_mlflow_tags(raw_tags: list[str]) -> dict[str, str]:
     """Parse repeatable ``--mlflow-tag KEY=VALUE`` options into a dict.
 
     Raises:
-        typer.BadParameter: if an entry has no ``=`` or an empty key.
+        typer.BadParameter: if an entry has no ``=``, an empty key, or a
+            reserved schema tag key.
     """
     tags: dict[str, str] = {}
     for raw in raw_tags:
@@ -399,14 +422,20 @@ def parse_mlflow_tags(raw_tags: list[str]) -> dict[str, str]:
                 f"--mlflow-tag expects KEY=VALUE, got {raw!r}",
                 param_hint="--mlflow-tag",
             )
+        if key in RESERVED_MLFLOW_TAGS:
+            raise typer.BadParameter(
+                f"--mlflow-tag may not override the reserved schema tag {key!r}",
+                param_hint="--mlflow-tag",
+            )
         tags[key] = value
     return tags
 
 
 def log_run_identity(  # pragma: no cover
     config_dict: dict,
-    config_path: Path | None,
+    config_sha256: str | None,
     n_files: int,
+    dry_run: bool,
     extra_tags: dict[str, str],
     logger: logging.Logger,
 ) -> None:
@@ -416,8 +445,10 @@ def log_run_identity(  # pragma: no cover
     "which model was this data generated for" from these params/tags rather
     than from experiment-name conventions, which only hold for orchestrated
     runs. Schema documented in HSSMSpine `_docs/mlflow-schema.md`.
+
+    Dry runs are tagged ``phase=datagen_dry_run`` so schema-filtered consumers
+    (``tags.phase = 'datagen'``) never select a run that produced no data.
     """
-    import hashlib
     from importlib.metadata import PackageNotFoundError, version
 
     import mlflow
@@ -429,10 +460,8 @@ def log_run_identity(  # pragma: no cover
         "n_files": n_files,
     }
 
-    if config_path is not None and Path(config_path).is_file():
-        params["config_sha256"] = hashlib.sha256(
-            Path(config_path).read_bytes()
-        ).hexdigest()
+    if config_sha256 is not None:
+        params["config_sha256"] = config_sha256
 
     try:
         params["ssm_simulators_version"] = version("ssm-simulators")
@@ -441,7 +470,10 @@ def log_run_identity(  # pragma: no cover
 
     mlflow.log_params(params)
 
-    tags = {"schema_version": "1", "phase": "datagen"}
+    tags = {
+        "schema_version": "1",
+        "phase": "datagen_dry_run" if dry_run else "datagen",
+    }
     for env_key, tag in (
         ("SLURM_JOB_ID", "slurm_job_id"),
         ("SLURM_ARRAY_JOB_ID", "slurm_array_job_id"),
@@ -449,8 +481,9 @@ def log_run_identity(  # pragma: no cover
     ):
         if os.getenv(env_key):
             tags[tag] = os.environ[env_key]
-    # Caller-supplied tags (e.g. generation_batch_id from the orchestrator)
-    # win over the defaults on key collision.
+    # Caller-supplied tags (e.g. generation_batch_id from the orchestrator).
+    # Reserved schema tags are rejected at parse time, so these cannot
+    # overwrite schema_version/phase.
     tags.update(extra_tags)
     mlflow.set_tags(tags)
 
@@ -585,6 +618,10 @@ def main(  # pragma: no cover
     )
     logger = logging.getLogger(__name__)
 
+    # Parse tags before ANY MLflow work so a malformed --mlflow-tag fails
+    # fast without leaving a junk empty run in the tracking store.
+    extra_tags = parse_mlflow_tags(mlflow_tag)
+
     # Setup MLflow
     mlflow_active = setup_mlflow(
         mlflow_run_name,
@@ -594,18 +631,18 @@ def main(  # pragma: no cover
         logger,
     )
 
-    # Parse tags before any work so a malformed --mlflow-tag fails fast,
-    # even when MLflow itself is inactive.
-    extra_tags = parse_mlflow_tags(mlflow_tag)
-
     # Load and prepare configuration
-    config_dict = load_config(config_path, output, estimator_type, logger)
+    config_dict, config_sha256 = load_config(
+        config_path, output, estimator_type, logger
+    )
 
     # Log initial config to MLflow
     if mlflow_active:
         import mlflow
 
-        log_run_identity(config_dict, config_path, n_files, extra_tags, logger)
+        log_run_identity(
+            config_dict, config_sha256, n_files, dry_run, extra_tags, logger
+        )
         mlflow.log_params(
             {f"data_{k}": v for k, v in config_dict["data_config"].items()}
         )
