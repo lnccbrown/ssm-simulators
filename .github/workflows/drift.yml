@@ -17,16 +17,27 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   tests:
+    # Only `report` needs issue-write; the token that runs freshly-resolved
+    # third-party test code should not carry it.
+    permissions:
+      contents: read
     uses: ./.github/workflows/run_tests.yml
 
   report:
     needs: [tests]
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    # One issue reconciler at a time: the read at `gh issue list` and the write
+    # below are not atomic, so an overlapping dispatch could file a duplicate.
+    concurrency:
+      group: drift-issue-${{ github.repository }}
+      cancel-in-progress: false
     steps:
       - name: Create, update, or close the deduped drift issue
         env:
@@ -51,10 +62,19 @@ jobs:
             --state open --search "in:body \"$KEY\"" \
             --json number --jq '.[0].number // empty')
 
+          # Only a genuine success closes the issue. `report` runs under
+          # `if: always()`, which includes cancellation, and a cancelled or
+          # never-started test job is no evidence of health — treating it as
+          # green would silently retire a real drift issue.
           if [ -z "$FAILED_JOBS" ]; then
-            if [ -n "$EXISTING" ]; then
-              gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY" \
-                --comment "Scheduled drift checks green again: $RUN_URL"
+            if [ "$RESULT_TESTS" = "success" ]; then
+              if [ -n "$EXISTING" ]; then
+                gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY" \
+                  --comment "Scheduled drift checks green again: $RUN_URL"
+              fi
+            else
+              echo "::notice::Inconclusive run (tests: $RESULT_TESTS) —" \
+                "drift issue state left unchanged."
             fi
             exit 0
           fi
