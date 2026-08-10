@@ -22,20 +22,28 @@ nav:
       - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
       - Using MLflow: core_tutorials/using_mlflow.md
   - Contributing:
+      - Overview: contributing/README.md
       - Contribute New Models: contributing/add_models.md
       - Contribute Parameter Adapters: contributing/add_parameter_adapters.md
 
   - API:
-      - ssms: api/ssms.md
       - RLSSM (ssms.rl): api/rlssm.md
       - basic simulators: api/basic_simulators.md
       - config: api/config.md
       - data generators: api/dataset_generators.md
       - support utils: api/support_utils.md
 
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
 plugins:
   - search
   - autorefs
+  - redirects:
+      redirect_maps: {}
   - mkdocs-jupyter:
       execute: False
   - mkdocstrings:

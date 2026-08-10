@@ -71,6 +71,10 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocs-jupyter>=0.24.0",
     "mkdocstrings[python]>=0.24.0",
+    # <1.2.3: the 1.2.3 release moved to the ProperDocs mkdocs fork — it
+    # force-installs `properdocs`, caps mkdocs<=1.6.1, and injects an ad
+    # banner into every mkdocs build. 1.2.2 is the last canonical release.
+    "mkdocs-redirects>=1.2.0,<1.2.3",
 ]
 
 [dependency-groups]
@@ -99,6 +103,10 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocs-jupyter>=0.24.0",
     "mkdocstrings[python]>=0.24.0",
+    # <1.2.3: the 1.2.3 release moved to the ProperDocs mkdocs fork — it
+    # force-installs `properdocs`, caps mkdocs<=1.6.1, and injects an ad
+    # banner into every mkdocs build. 1.2.2 is the last canonical release.
+    "mkdocs-redirects>=1.2.0,<1.2.3",
 ]
 
 [project.urls]

@@ -427,5 +427,3 @@ planned separately in HSSM.
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaDrift
 
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax
-
-See also the full package reference on the [ssms](ssms.md) API page.
