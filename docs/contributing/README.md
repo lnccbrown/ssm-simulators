@@ -40,7 +40,7 @@ Learn how to create custom parameter transformations for your models. This guide
 ## Quick Links
 
 - [Main README](../index.md)
-- [API Documentation](../api/ssms.md)
+- [API Documentation](../api/basic_simulators.md)
 - [Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues)
 - [Pull Requests](https://github.com/lnccbrown/ssm-simulators/pulls)

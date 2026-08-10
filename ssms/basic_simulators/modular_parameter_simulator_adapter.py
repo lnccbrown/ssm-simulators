@@ -2,7 +2,7 @@
 Modular parameter simulator adapter using adaptation pipelines.
 
 This module provides the ModularParameterSimulatorAdapter class which applies
-parameter adaptations defined in model_config['parameter_transforms']['simulation'].
+parameter adaptations defined in `model_config['parameter_transforms']['simulation']`.
 """
 
 from typing import Any, Protocol

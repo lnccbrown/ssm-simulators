@@ -373,8 +373,6 @@ class ModelConfigBuilder:
             Boundary function name or callable
         boundary_params : list[str] or None
             Parameter names for boundary function (required if boundary is callable)
-        multiplicative : bool, default=True
-            Whether boundary is multiplicative (True) or additive (False)
 
         Returns
         -------

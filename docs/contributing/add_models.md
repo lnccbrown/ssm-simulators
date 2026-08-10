@@ -1374,7 +1374,7 @@ If you're stuck:
 
 2. **Read documentation**:
    - [Core Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
-   - [API Documentation](../api/ssms.md)
+   - [API Documentation](../api/basic_simulators.md)
 
 3. **GitHub issues**: Search for similar problems
    - [Known issues](https://github.com/lnccbrown/ssm-simulators/issues)
@@ -1387,6 +1387,6 @@ If you're stuck:
 ### Resources
 
 - [Interactive Tutorials](../basic_tutorial/basic_tutorial.ipynb): Learn by doing
-- [API Reference](../api/ssms.md): Complete API documentation
+- [API Reference](../api/basic_simulators.md): Complete API documentation
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues): Questions and bugs
 - [Discussions](https://github.com/lnccbrown/ssm-simulators/discussions)

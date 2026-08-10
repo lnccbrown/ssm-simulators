@@ -152,4 +152,4 @@ sudo apt-get install build-essential libgsl-dev
 - Generate LAN training data with the [data generator tutorial](core_tutorials/tutorial_data_generators.ipynb).
 - Build and simulate RLSSMs with the [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb).
 - Learn response-only RL simulation in the [choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb).
-- Use the [API reference](api/ssms.md) when integrating ssms into another package.
+- Use the [API reference](api/basic_simulators.md) when integrating ssms into another package.
