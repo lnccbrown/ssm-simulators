@@ -1,0 +1,16 @@
+# URL patterns excluded from the scheduled docs link check (lychee).
+# One regex per line. Keep this list short: only known-flaky or
+# bot-hostile domains, and links that are not meant to resolve.
+
+# DOI resolver frequently rate-limits / 403s automated clients
+https://doi.org/.*
+
+# Badge services are rate-limited and irrelevant to docs health
+https://img.shields.io/.*
+https://static.pepy.tech/.*
+https://pepy.tech/.*
+https://codecov.io/.*
+
+# Tutorial examples reference local servers (e.g. MLflow UI)
+http://localhost.*
+https://localhost.*
