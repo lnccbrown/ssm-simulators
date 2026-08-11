@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -103,7 +103,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">A new release is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -322,7 +322,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../contributing/add_models/" class="md-tabs__link">
+        <a href="../../contributing/" class="md-tabs__link">
           
   
   
@@ -344,7 +344,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../ssms/" class="md-tabs__link">
+        <a href="../rlssm/" class="md-tabs__link">
           
   
   
@@ -1006,6 +1006,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../contributing/add_models/" class="md-nav__link">
         
   
@@ -1118,34 +1146,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ssms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    ssms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -5643,7 +5643,7 @@ samples and uses it to estimate the likelihood P(RT, choice | theta).</p>
         </li>
         <li class="doc-section-item field-body">
           <b><code><span title="ssms.dataset_generators.likelihood_estimators.KDELikelihoodEstimator._kde">_kde</span></code></b>
-              (<code><a class="autorefs autorefs-internal" title="LogKDE (ssms.support_utils.kde_class.LogKDE)" href="../ssms/#ssms.support_utils.kde_class.LogKDE">LogKDE</a> | None</code>)
+              (<code><a class="autorefs autorefs-internal" title="LogKDE (ssms.support_utils.kde_class.LogKDE)" href="../support_utils/#ssms.support_utils.kde_class.LogKDE">LogKDE</a> | None</code>)
           –
           <div class="doc-md-description">
             <p>The fitted KDE object (None before fit() is called)</p>
@@ -6193,7 +6193,7 @@ samples and uses it to estimate the likelihood P(RT, choice | theta).</p>
         </li>
         <li class="doc-section-item field-body">
           <b><code><span title="ssms.dataset_generators.likelihood_estimators.kde_estimator.KDELikelihoodEstimator._kde">_kde</span></code></b>
-              (<code><a class="autorefs autorefs-internal" title="LogKDE (ssms.support_utils.kde_class.LogKDE)" href="../ssms/#ssms.support_utils.kde_class.LogKDE">LogKDE</a> | None</code>)
+              (<code><a class="autorefs autorefs-internal" title="LogKDE (ssms.support_utils.kde_class.LogKDE)" href="../support_utils/#ssms.support_utils.kde_class.LogKDE">LogKDE</a> | None</code>)
           –
           <div class="doc-md-description">
             <p>The fitted KDE object (None before fit() is called)</p>
@@ -7218,7 +7218,7 @@ Import directly from ssms.transforms instead:</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="ParameterTransform (ssms.transforms.base.ParameterTransform)" href="../ssms/#ssms.transforms.base.ParameterTransform">ParameterTransform</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="ParameterTransform (ssms.transforms.base.ParameterTransform)" href="../basic_simulators/#ssms.basic_simulators.parameter_adapters.base.ParameterTransform">ParameterTransform</a></code></p>
 
 
 
@@ -7401,7 +7401,7 @@ Default is 1e-20.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="ParameterTransform (ssms.transforms.base.ParameterTransform)" href="../ssms/#ssms.transforms.base.ParameterTransform">ParameterTransform</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="ParameterTransform (ssms.transforms.base.ParameterTransform)" href="../basic_simulators/#ssms.basic_simulators.parameter_adapters.base.ParameterTransform">ParameterTransform</a></code></p>
 
 
 
@@ -9638,10 +9638,10 @@ contains SimulationPipeline and PyDDMPipeline.</p>
   <summary>Arguments</summary>
   <p>generator_config : dict
     Configuration dictionary containing:
-    - ['training']['n_samples_per_param']: Total samples to generate
-    - ['training']['mixture_probabilities']: [p_estimator, p_unif_up, p_unif_down]
-    - ['training']['separate_response_channels']: Whether to one-hot encode choices
-    - ['training']['negative_rt_log_likelihood']: Log-likelihood value for negative RTs
+    - <code>['training']['n_samples_per_param']</code>: Total samples to generate
+    - <code>['training']['mixture_probabilities']</code>: [p_estimator, p_unif_up, p_unif_down]
+    - <code>['training']['separate_response_channels']</code>: Whether to one-hot encode choices
+    - <code>['training']['negative_rt_log_likelihood']</code>: Log-likelihood value for negative RTs
 model_config : dict
     Model configuration containing:
     - 'params': List of parameter names
@@ -9842,10 +9842,10 @@ random_state : int | None, optional
   <summary>Arguments</summary>
   <p>generator_config : dict
     Configuration dictionary containing:
-    - ['training']['n_samples_per_param']: Total samples to generate
-    - ['training']['mixture_probabilities']: [p_estimator, p_unif_up, p_unif_down]
-    - ['training']['separate_response_channels']: Whether to one-hot encode choices
-    - ['training']['negative_rt_log_likelihood']: Log-likelihood value for negative RTs
+    - <code>['training']['n_samples_per_param']</code>: Total samples to generate
+    - <code>['training']['mixture_probabilities']</code>: [p_estimator, p_unif_up, p_unif_down]
+    - <code>['training']['separate_response_channels']</code>: Whether to one-hot encode choices
+    - <code>['training']['negative_rt_log_likelihood']</code>: Log-likelihood value for negative RTs
 model_config : dict
     Model configuration containing:
     - 'params': List of parameter names
@@ -10028,7 +10028,7 @@ random_state : int | None, optional
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.path", "navigation.top", "content.code.copy", "content.action.view", "content.action.edit", "header.autohide", "announce.dismiss"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -27,7 +27,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -101,7 +101,7 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">v0.13.1 is out!</a>
+    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">A new release is out!</a>
 </span>
 <span>
     <span class="twemoji">
@@ -320,7 +320,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../contributing/add_models/" class="md-tabs__link">
+        <a href="../../contributing/" class="md-tabs__link">
           
   
   
@@ -342,7 +342,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../ssms/" class="md-tabs__link">
+        <a href="../rlssm/" class="md-tabs__link">
           
   
   
@@ -1004,6 +1004,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../contributing/add_models/" class="md-nav__link">
         
   
@@ -1116,34 +1144,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ssms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    ssms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1843,7 +1843,7 @@ auto_bandwidth: boolean
 <p><span class="doc-section-title">Methods:</span></p>
     <ul>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="compute_bandwidths (ssms.support_utils.kde_class.LogKDE.compute_bandwidths)" href="../ssms/#ssms.support_utils.kde_class.LogKDE.compute_bandwidths">compute_bandwidths</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="compute_bandwidths (ssms.support_utils.kde_class.LogKDE.compute_bandwidths)" href="#ssms.support_utils.kde_class.LogKDE.compute_bandwidths">compute_bandwidths</a></code></b>
             –
             <div class="doc-md-description">
               <p>Computes bandwidths for each choice from rt data.
@@ -2186,21 +2186,21 @@ parameters within specified constraints.</p>
 <p><span class="doc-section-title">Functions:</span></p>
     <ul>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="parse_bounds (ssms.support_utils.utils.parse_bounds)" href="../ssms/#ssms.support_utils.utils.parse_bounds">parse_bounds</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="parse_bounds (ssms.support_utils.utils.parse_bounds)" href="#ssms.support_utils.utils.parse_bounds">parse_bounds</a></code></b>
             –
             <div class="doc-md-description">
               <p>Parse the bounds of a parameter and extract any dependencies.</p>
             </div>
           </li>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="build_dependency_graph (ssms.support_utils.utils.build_dependency_graph)" href="../ssms/#ssms.support_utils.utils.build_dependency_graph">build_dependency_graph</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="build_dependency_graph (ssms.support_utils.utils.build_dependency_graph)" href="#ssms.support_utils.utils.build_dependency_graph">build_dependency_graph</a></code></b>
             –
             <div class="doc-md-description">
               <p>Build a dependency graph based on parameter bounds.</p>
             </div>
           </li>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="topological_sort_util (ssms.support_utils.utils.topological_sort_util)" href="../ssms/#ssms.support_utils.utils.topological_sort_util">topological_sort_util</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="topological_sort_util (ssms.support_utils.utils.topological_sort_util)" href="#ssms.support_utils.utils.topological_sort_util">topological_sort_util</a></code></b>
             –
             <div class="doc-md-description">
               <p>visited: Set[str],
@@ -2212,14 +2212,14 @@ Helper function for performing a depth-first search in the topological sort.</p>
             </div>
           </li>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="topological_sort (ssms.support_utils.utils.topological_sort)" href="../ssms/#ssms.support_utils.utils.topological_sort">topological_sort</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="topological_sort (ssms.support_utils.utils.topological_sort)" href="#ssms.support_utils.utils.topological_sort">topological_sort</a></code></b>
             –
             <div class="doc-md-description">
               <p>Perform a topological sort on the dependency graph to determine the sampling order.</p>
             </div>
           </li>
           <li class="doc-section-item field-body">
-            <b><code><a class="autorefs autorefs-internal" title="sample_parameters_from_constraints (ssms.support_utils.utils.sample_parameters_from_constraints)" href="../ssms/#ssms.support_utils.utils.sample_parameters_from_constraints">sample_parameters_from_constraints</a></code></b>
+            <b><code><a class="autorefs autorefs-internal" title="sample_parameters_from_constraints (ssms.support_utils.utils.sample_parameters_from_constraints)" href="#ssms.support_utils.utils.sample_parameters_from_constraints">sample_parameters_from_constraints</a></code></b>
             –
             <div class="doc-md-description">
               <p>sample_size: int)
@@ -2504,7 +2504,7 @@ For example, if 'st' has upper bound 't', then graph['t'] contains 'st'.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.path", "navigation.top", "content.code.copy", "content.action.view", "content.action.edit", "header.autohide", "announce.dismiss"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
