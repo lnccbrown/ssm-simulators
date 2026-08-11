@@ -1,5 +1,8 @@
+{#- HSSM ecosystem shared announcement banner.
+    SOURCE OF TRUTH: HSSMSpine/docs-brand/main.html — synced by
+    scripts/sync_docs_brand.py; do not edit the vendored copies.
+    Repo-agnostic: all links derive from config.repo_url. -#}
 {% extends "base.html" %}
-
 {% block announce %}
 <span class="show-on-small right-margin">
     <span class="twemoji right-margin show-on-small move-down">
@@ -8,11 +11,17 @@
     Navigate the site here!
 </span>
 <span class="right-margin">
-    <a href="https://github.com/lnccbrown/ssm-simulators/releases/latest">A new release is out!</a>
+    <a href="{{ config.repo_url | trim('/') }}/releases/latest">
+        A new release is out — read the release notes
+    </a>
 </span>
 <span>
     <span class="twemoji">
         {% include ".icons/material/head-question.svg" %}
     </span>
+    Questions?
+    <a href="https://github.com/lnccbrown/HSSM/discussions">
+        Open a discussion!
+    </a>
 </span>
 {% endblock %}
