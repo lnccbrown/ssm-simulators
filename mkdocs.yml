@@ -43,7 +43,8 @@ plugins:
   - search
   - autorefs
   - redirects:
-      redirect_maps: {}
+      redirect_maps:
+        api/ssms.md: api/basic_simulators.md
   - mkdocs-jupyter:
       execute: False
   - mkdocstrings:

@@ -5,6 +5,8 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "pyproject.toml"
+      - "ssms/**"
       - ".github/workflows/docs.yml"
   push:
     branches:
@@ -12,6 +14,8 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "pyproject.toml"
+      - "ssms/**"
       - ".github/workflows/docs.yml"
   release:
     types: [published]
@@ -19,6 +23,9 @@ on:
   schedule:
     # Weekly link check, Mondays 06:23 UTC (off-peak)
     - cron: "23 6 * * 1"
+
+permissions:
+  contents: read
 
 jobs:
   build:
