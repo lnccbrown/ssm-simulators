@@ -367,7 +367,7 @@ class TrainingDataGenerator:  # noqa: N801
         # finished run's logs or its MLflow record.
         logger.info(
             "Parameter-set generation will use %s.",
-            f"{n_cpus - 1} worker processes (n_cpus={n_cpus})"
+            f"{n_cpus} worker processes (n_cpus={n_cpus})"
             if n_cpus > 1
             else "no multiprocessing (n_cpus=1)",
         )
@@ -468,9 +468,28 @@ class TrainingDataGenerator:  # noqa: N801
             start_idx = i * subrun_n
             end_idx = (i + 1) * subrun_n
 
+            # One worker per allowed CPU, not n_cpus - 1.
+            #
+            # The reserved core was presumably meant to keep the parent
+            # responsive, which is the right instinct when the parent works
+            # while the workers do — an imap/imap_unordered consumer, a feeder,
+            # a progress loop. This parent does none of that: pool.map is
+            # blocking and eager, so it sleeps until every result is back, and
+            # its aggregation (out_list, the concat, the pickle write) happens
+            # afterwards when the workers are already idle. The two phases
+            # never overlap, so there is no contention to protect against.
+            #
+            # Measured on a live SLURM task with -c 8: parent 0.0% CPU over
+            # 2h12m (state Sl), 7 workers at 99.6% each — one of the eight
+            # allocated cores simply idle. Under a cgroup nothing else can use
+            # it either, so it is billed and wasted rather than lent back.
+            #
+            # If this ever moves to imap_unordered with incremental
+            # aggregation — which would be a good change, overlapping result
+            # unpickling with compute — reinstate the reservation.
             if self.generator_config["pipeline"]["n_cpus"] > 1:
                 with Pool(
-                    processes=self.generator_config["pipeline"]["n_cpus"] - 1
+                    processes=self.generator_config["pipeline"]["n_cpus"]
                 ) as pool:
                     # Map strategy.generate_for_parameter_set over parameter indices
                     results = pool.map(
