@@ -123,12 +123,17 @@ def collect_data_generator_config(
         "cpn_only": True if (bc.generator_approach == "cpn") else False,
     }
 
-    # Add pipeline config
+    # Add pipeline config.
+    #
+    # Forward every key the YAML declares rather than naming them one by one.
+    # This used to enumerate n_parameter_sets and n_subruns, which silently
+    # discarded `n_cpus` — a documented pipeline setting with a default in the
+    # generator config — so setting it in a YAML did nothing and gave no
+    # warning. Any key added to the pipeline section in future is now reachable
+    # without a second edit here. The deep merge in
+    # make_data_generator_configs leaves unset keys at their defaults.
     if hasattr(bc, "pipeline"):
-        data_generator_nested_dict["pipeline"] = {
-            "n_parameter_sets": bc.pipeline.n_parameter_sets,
-            "n_subruns": bc.pipeline.n_subruns,
-        }
+        data_generator_nested_dict["pipeline"] = bc.pipeline._asdict()
 
     # Add simulator config
     if hasattr(bc, "simulator"):
@@ -254,11 +259,32 @@ def setup_mlflow(  # pragma: no cover
         return False
 
 
+def parse_n_cpus(value: str | int | None) -> str | int | None:
+    """Validate a --n-cpus value: a positive integer, or the sentinel 'all'.
+
+    'all' is resolved later, at generator construction, from the cores this
+    process may actually use — under a scheduler that is the job's cpuset, not
+    the machine's core count.
+    """
+    if value is None or value == "all":
+        return value
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise typer.BadParameter(
+            f"--n-cpus must be a positive integer or 'all', got {value!r}."
+        ) from None
+    if parsed < 1:
+        raise typer.BadParameter(f"--n-cpus must be >= 1, got {parsed}.")
+    return parsed
+
+
 def load_config(  # pragma: no cover
     config_path: Path,
     output: Path,
     estimator_type: str,
     logger: logging.Logger,
+    n_cpus: str | int | None = None,
 ) -> tuple[dict, str | None]:
     """
     Load and prepare the generator configuration.
@@ -298,6 +324,13 @@ def load_config(  # pragma: no cover
     if estimator_type is not None:
         logger.info(f"Overriding estimator_type from CLI: {estimator_type}")
         config_dict["data_config"]["estimator_type"] = estimator_type.lower()
+
+    # Override n_cpus if specified via CLI. A post-construction override, like
+    # estimator_type above, so the precedence is unambiguous and visible in one
+    # place: CLI > YAML > the generator config's packaged default of "all".
+    if n_cpus is not None:
+        config_dict["data_config"].setdefault("pipeline", {})["n_cpus"] = n_cpus
+        logger.info("Overriding n_cpus from CLI: %s", n_cpus)
 
     logger.debug("GENERATOR CONFIG")
     logger.debug(pformat(config_dict["data_config"]))
@@ -554,6 +587,17 @@ def main(  # pragma: no cover
         min=1,
         show_default=True,
     ),
+    n_cpus: str = typer.Option(
+        None,
+        "--n-cpus",
+        help=(
+            "Worker processes used to generate parameter sets. An integer, or "
+            "'all' for every core this process is allowed to use — under a "
+            "scheduler that is the cpuset granted to the job (e.g. SLURM's "
+            "--cpus-per-task), not the machine's core count. Overrides "
+            "PIPELINE.N_CPUS in the config. [default: the config value, else 'all']"
+        ),
+    ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
@@ -633,7 +677,7 @@ def main(  # pragma: no cover
 
     # Load and prepare configuration
     config_dict, config_sha256 = load_config(
-        config_path, output, estimator_type, logger
+        config_path, output, estimator_type, logger, n_cpus=parse_n_cpus(n_cpus)
     )
 
     # Log initial config to MLflow

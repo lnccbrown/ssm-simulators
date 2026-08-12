@@ -219,3 +219,55 @@ class TestParseMlflowTags:
         for reserved in ("schema_version=2", "phase=custom"):
             with pytest.raises(typer.BadParameter):
                 parse_mlflow_tags([reserved])
+
+
+# n_cpus: the pipeline section used to be forwarded key-by-key, which silently
+# discarded every field except n_parameter_sets and n_subruns.
+
+
+def _config_from(yaml_dict, tmp_path):
+    buffer = io.StringIO()
+    yaml.dump(yaml_dict, buffer)
+    buffer.seek(0)
+    return collect_data_generator_config(yaml_config_path=buffer, base_path=tmp_path)
+
+
+def test_pipeline_n_cpus_from_yaml_reaches_the_generator_config(tmp_path, yaml_config):
+    """The regression this fixes: N_CPUS was accepted and thrown away."""
+    yaml_config["PIPELINE"]["N_CPUS"] = 4
+    config = _config_from(yaml_config, tmp_path)
+    assert config["data_config"]["pipeline"]["n_cpus"] == 4
+
+
+def test_pipeline_defaults_survive_a_partial_yaml(tmp_path, yaml_config):
+    # Forwarding the whole section must not wipe keys the YAML omits.
+    config = _config_from(yaml_config, tmp_path)
+    pipeline = config["data_config"]["pipeline"]
+    assert pipeline["n_parameter_sets"] == 10
+    assert pipeline["n_subruns"] == 1
+    assert pipeline["n_cpus"] == "all"  # packaged default, untouched
+
+
+def test_unknown_pipeline_keys_are_forwarded_not_dropped(tmp_path, yaml_config):
+    # The point of forwarding the section wholesale: a new key needs no second
+    # edit in the CLI bridge to become reachable.
+    yaml_config["PIPELINE"]["N_PARAMETER_SETS_REJECTED"] = 7
+    config = _config_from(yaml_config, tmp_path)
+    assert config["data_config"]["pipeline"]["n_parameter_sets_rejected"] == 7
+
+
+@pytest.mark.parametrize("value,expected", [("all", "all"), ("8", 8), (None, None)])
+def test_parse_n_cpus_accepts_valid_values(value, expected):
+    from ssms.cli.generate import parse_n_cpus
+
+    assert parse_n_cpus(value) == expected
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "eight", "2.5"])
+def test_parse_n_cpus_rejects_invalid_values(value):
+    import typer
+
+    from ssms.cli.generate import parse_n_cpus
+
+    with pytest.raises(typer.BadParameter):
+        parse_n_cpus(value)
