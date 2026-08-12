@@ -418,3 +418,52 @@ class TestTrainingDataGeneratorPipelineIntegration:
 
         # Both should produce compatible data shapes
         assert data_kde["lan_data"].shape[1] == data_pyddm["lan_data"].shape[1]
+
+
+class TestPoolWorkerCount:
+    """The pool takes one worker per allowed CPU, not n_cpus - 1.
+
+    The reserved core was protecting a parent that does no concurrent work:
+    pool.map is blocking, and the parent's aggregation runs afterwards, when
+    the workers are already idle. Measured on a live SLURM task with -c 8, the
+    parent sat at 0.0% CPU for 2h12m while 7 workers ran at 99.6% — one of
+    eight allocated cores idle, and under a cgroup unusable by anything else.
+    """
+
+    def _spawned_worker_counts(self, monkeypatch, n_cpus, n_parameter_sets=4):
+        from ssms.dataset_generators import lan_mlp
+
+        seen = []
+
+        class RecordingPool:
+            def __init__(self, processes=None, **kwargs):
+                seen.append(processes)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def map(self, fn, *iterables):
+                return [fn(*args) for args in zip(*iterables)]
+
+        monkeypatch.setattr(lan_mlp, "Pool", RecordingPool)
+
+        gen_config = get_default_generator_config("lan", model="ddm")
+        gen_config["pipeline"]["n_cpus"] = n_cpus
+        gen_config["pipeline"]["n_parameter_sets"] = n_parameter_sets
+        gen_config["pipeline"]["n_subruns"] = 1
+        gen_config["simulator"]["n_samples"] = 100
+        gen_config["training"]["n_samples_per_param"] = 5
+
+        gen = lan_mlp.TrainingDataGenerator(config=gen_config)
+        gen.generate_data_training(save=False, verbose=False)
+        return seen
+
+    def test_pool_gets_one_worker_per_allowed_cpu(self, monkeypatch):
+        assert self._spawned_worker_counts(monkeypatch, n_cpus=4) == [4]
+
+    def test_no_pool_when_only_one_cpu_is_allowed(self, monkeypatch):
+        # The sequential branch, not a one-worker pool.
+        assert self._spawned_worker_counts(monkeypatch, n_cpus=1) == []
