@@ -361,6 +361,17 @@ class TrainingDataGenerator:  # noqa: N801
             self.generator_config["pipeline"] = {}
         self.generator_config["pipeline"]["n_cpus"] = n_cpus
 
+        # Say what will actually run, not just what was requested. The worker
+        # count differs from n_cpus, and n_cpus itself may have been inferred
+        # rather than set — without this line neither is recoverable from a
+        # finished run's logs or its MLflow record.
+        logger.info(
+            "Parameter-set generation will use %s.",
+            f"{n_cpus - 1} worker processes (n_cpus={n_cpus})"
+            if n_cpus > 1
+            else "no multiprocessing (n_cpus=1)",
+        )
+
     def _save_training_data(self, data: dict) -> None:
         """Save training data to disk as pickle file.
 
