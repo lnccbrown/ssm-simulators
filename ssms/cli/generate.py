@@ -108,6 +108,45 @@ def get_basic_config_from_yaml(
     return bc, training_data_folder
 
 
+def parse_n_cpus(value: str | int | None, source: str = "--n-cpus") -> str | int | None:
+    """Validate an n_cpus value: a positive integer, or the sentinel 'all'.
+
+    Applied to BOTH entry points — the CLI option and the YAML's
+    PIPELINE.N_CPUS — so neither can smuggle a bad value into the generator.
+    ``source`` only names the offender in the message.
+
+    Zero is the value worth catching: it is falsy but not 'all', so it would
+    slip past the pool's ``n_cpus > 1`` gate and silently run sequentially.
+    A non-numeric string is worse — it reaches that same comparison and raises
+    a TypeError deep inside the generator instead of here.
+
+    'all' is resolved later, at generator construction, from the cores this
+    process may actually use — under a scheduler that is the job's cpuset, not
+    the machine's core count.
+    """
+    if value is None or value == "all":
+        return value
+    if isinstance(value, bool):  # bool is an int subclass; True would pass as 1
+        raise typer.BadParameter(
+            f"{source} must be an integer or 'all', got {value!r}."
+        )
+    if isinstance(value, float) and not value.is_integer():
+        # int(2.5) is 2, so a YAML float would silently truncate the worker
+        # count rather than being rejected.
+        raise typer.BadParameter(
+            f"{source} must be a whole number or 'all', got {value!r}."
+        )
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise typer.BadParameter(
+            f"{source} must be a positive integer or 'all', got {value!r}."
+        ) from None
+    if parsed < 1:
+        raise typer.BadParameter(f"{source} must be >= 1, got {parsed}.")
+    return parsed
+
+
 def collect_data_generator_config(
     yaml_config_path=None, base_path=None, extra_configs={}
 ) -> dict[str, Any]:
@@ -133,7 +172,14 @@ def collect_data_generator_config(
     # without a second edit here. The deep merge in
     # make_data_generator_configs leaves unset keys at their defaults.
     if hasattr(bc, "pipeline"):
-        data_generator_nested_dict["pipeline"] = bc.pipeline._asdict()
+        pipeline = bc.pipeline._asdict()
+        if "n_cpus" in pipeline:
+            # Same validation as the CLI path — forwarding the section
+            # wholesale would otherwise hand the generator an unchecked value.
+            pipeline["n_cpus"] = parse_n_cpus(
+                pipeline["n_cpus"], source="PIPELINE.N_CPUS"
+            )
+        data_generator_nested_dict["pipeline"] = pipeline
 
     # Add simulator config
     if hasattr(bc, "simulator"):
@@ -257,26 +303,6 @@ def setup_mlflow(  # pragma: no cover
             e,
         )
         return False
-
-
-def parse_n_cpus(value: str | int | None) -> str | int | None:
-    """Validate a --n-cpus value: a positive integer, or the sentinel 'all'.
-
-    'all' is resolved later, at generator construction, from the cores this
-    process may actually use — under a scheduler that is the job's cpuset, not
-    the machine's core count.
-    """
-    if value is None or value == "all":
-        return value
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        raise typer.BadParameter(
-            f"--n-cpus must be a positive integer or 'all', got {value!r}."
-        ) from None
-    if parsed < 1:
-        raise typer.BadParameter(f"--n-cpus must be >= 1, got {parsed}.")
-    return parsed
 
 
 def load_config(  # pragma: no cover
@@ -662,9 +688,10 @@ def main(  # pragma: no cover
     )
     logger = logging.getLogger(__name__)
 
-    # Parse tags before ANY MLflow work so a malformed --mlflow-tag fails
+    # Parse tags and --n-cpus before ANY MLflow work so a malformed value fails
     # fast without leaving a junk empty run in the tracking store.
     extra_tags = parse_mlflow_tags(mlflow_tag)
+    resolved_n_cpus = parse_n_cpus(n_cpus)
 
     # Setup MLflow
     mlflow_active = setup_mlflow(
@@ -677,7 +704,7 @@ def main(  # pragma: no cover
 
     # Load and prepare configuration
     config_dict, config_sha256 = load_config(
-        config_path, output, estimator_type, logger, n_cpus=parse_n_cpus(n_cpus)
+        config_path, output, estimator_type, logger, n_cpus=resolved_n_cpus
     )
 
     # Log initial config to MLflow

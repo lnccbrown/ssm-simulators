@@ -271,3 +271,36 @@ def test_parse_n_cpus_rejects_invalid_values(value):
 
     with pytest.raises(typer.BadParameter):
         parse_n_cpus(value)
+
+
+@pytest.mark.parametrize("bad", [0, -1, "eight", 2.5, True])
+def test_invalid_yaml_n_cpus_is_rejected_not_forwarded(tmp_path, yaml_config, bad):
+    """The YAML path must validate too.
+
+    Forwarding the pipeline section wholesale is what makes N_CPUS reachable;
+    it also means an unchecked value would reach the generator. Zero is the
+    nastiest: falsy but not 'all', so it slips past the pool's `n_cpus > 1`
+    gate and silently runs sequentially instead of erroring.
+    """
+    import typer
+
+    yaml_config["PIPELINE"]["N_CPUS"] = bad
+    with pytest.raises(typer.BadParameter):
+        _config_from(yaml_config, tmp_path)
+
+
+def test_yaml_n_cpus_all_sentinel_still_passes(tmp_path, yaml_config):
+    yaml_config["PIPELINE"]["N_CPUS"] = "all"
+    config = _config_from(yaml_config, tmp_path)
+    assert config["data_config"]["pipeline"]["n_cpus"] == "all"
+
+
+def test_parse_n_cpus_names_the_offending_source():
+    import typer
+
+    from ssms.cli.generate import parse_n_cpus
+
+    with pytest.raises(typer.BadParameter, match="PIPELINE.N_CPUS"):
+        parse_n_cpus(0, source="PIPELINE.N_CPUS")
+    with pytest.raises(typer.BadParameter, match="--n-cpus"):
+        parse_n_cpus(0)
