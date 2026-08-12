@@ -1,4 +1,5 @@
 # KDE GENERATORS
+import warnings
 from collections.abc import Iterable
 from copy import deepcopy
 
@@ -10,6 +11,9 @@ from ssms.basic_simulators.simulator import OMISSION_SENTINEL
 """
     This module contains a class for generating kdes from data.
 """
+
+# Models displace_t=True has been stress-tested against; ddm_st_gauss excluded (unexplained intermittent warning).
+_DISPLACE_T_VALIDATED_MODELS = {"ddm_st", "full_ddm", "full_ddm2", "ddm_sz_st"}
 
 
 class LogKDE:
@@ -77,6 +81,14 @@ class LogKDE:
             if t_vals.shape[0] != 1:
                 raise ValueError("Multiple t values in simulator data. Can't shift.")
             self.displace_t_val: float = t_vals[0]
+
+            model_name = simulator_data["metadata"].get("model")
+            if model_name not in _DISPLACE_T_VALIDATED_MODELS:
+                warnings.warn(
+                    f"displace_t=True untested for model '{model_name}' (validated: {sorted(_DISPLACE_T_VALIDATED_MODELS)}).",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         self._attach_data_from_simulator(simulator_data)
         self._generate_base_kdes(
@@ -483,11 +495,17 @@ class LogKDE:
             log_rts_tmp = simulator_data["log_rts"][simulator_data["choices"] == c]
 
             if self.displace_t is True:
-                rts_tmp[rts_tmp != filter_rts] = (
-                    rts_tmp[rts_tmp != filter_rts] - self.displace_t_val
-                )
-                log_rts_tmp[log_rts_tmp != filter_rts] = np.log(
-                    np.exp(log_rts_tmp[log_rts_tmp != filter_rts]) - self.displace_t_val
+                valid_mask = rts_tmp != filter_rts
+                rts_tmp[valid_mask] = rts_tmp[valid_mask] - self.displace_t_val
+                # rt <= t is inadmissible in shifted space; previously this fed
+                # log() a negative value, silently producing NaN. Exclude
+                # instead, matching kde_eval's own treatment of the same case.
+                inadmissible_mask = valid_mask & (rts_tmp <= 0)
+                rts_tmp[inadmissible_mask] = filter_rts
+                log_rts_tmp[inadmissible_mask] = filter_rts
+                remaining_valid_mask = rts_tmp != filter_rts
+                log_rts_tmp[remaining_valid_mask] = np.log(
+                    rts_tmp[remaining_valid_mask]
                 )
 
             prop_tmp = len(rts_tmp) / n
