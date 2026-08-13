@@ -1950,6 +1950,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerRaceDrifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerRaceDrifts
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2812,6 +2823,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#ssms.rl.learning.RescorlaWagnerRaceDrifts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RescorlaWagnerRaceDrifts
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2933,8 +2955,8 @@ and <a href="../../core_tutorials/choice_only_rl_models/">choice-only RL models<
 <td>Preset registry (<code>get</code>, <code>list</code>, <code>info</code>, <code>register</code>)</td>
 </tr>
 <tr>
-<td><code>validate_rlssm_data</code></td>
-<td>Standalone validation helper used by <code>ModelConfig.validate_data()</code></td>
+<td><code>validation</code></td>
+<td>Data-validation module; <code>ssms.rl.validation.validate_rlssm_data</code> is the standalone helper behind <code>ModelConfig.validate_data()</code> (not re-exported at the <code>rl</code> namespace)</td>
 </tr>
 </tbody>
 </table>
@@ -3016,6 +3038,12 @@ decision-process parameters emitted on each trial:</p>
 <td><code>q0</code>, <code>q1</code>, ...</td>
 <td><code>n_actions &gt;= 2</code></td>
 <td>Choice-only softmax models with separate positive/negative learning rates</td>
+</tr>
+<tr>
+<td><code>RescorlaWagnerRaceDrifts</code></td>
+<td><code>v0</code>, <code>v1</code>, ...</td>
+<td><code>n_actions &gt;= 2</code></td>
+<td>Per-accumulator drifts for race SSMs (e.g. <code>4AB_RW_RaceNoBiasAngle</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -3282,8 +3310,9 @@ computed-parameter contract.</p>
 learning rule, response-to-choice mapping, and task context source of truth in
 ssms. For choice-only RL models, pass response-only data to HSSM, not the
 generative simulator's placeholder <code>rt</code> column.</p>
-<p><strong>Note:</strong> HSSM's bridge factory still calls the pre-refactor <code>compile()</code> API
-until the separate <code>hssm-rlssm-api</code> task updates it to <code>assemble()</code>.</p>
+<p>HSSM's bridge factory (<code>hssm.rl.RLSSMConfig.from_ssms_model</code>) consumes the
+<code>assemble(backend=...)</code> API and requires an available gradient for JAX-based
+sampling.</p>
 <p><code>ModelConfig.to_hssm_config_dict()</code> remains useful for structural inspection
 and compatibility with lower-level HSSM config workflows. It exports shared
 structural fields, plus:</p>
@@ -5315,6 +5344,64 @@ use <code>rl_alpha_neg</code>.</p>
 
 
         <p>Dual-alpha Rescorla-Wagner learner emitting Q-values <code>q0..qN</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="ssms.rl.learning.RescorlaWagnerRaceDrifts" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ssms.rl.learning.RescorlaWagnerRaceDrifts</span>
+
+
+<a href="#ssms.rl.learning.RescorlaWagnerRaceDrifts" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">RescorlaWagnerRaceDrifts</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">n_actions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">initial_q</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">feedback_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;feedback&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="ssms.rl.learning.RescorlaWagnerDeltaRule" href="#ssms.rl.learning.RescorlaWagnerDeltaRule">RescorlaWagnerDeltaRule</a></code></p>
+
+
+
+        <p>Rescorla-Wagner learner emitting scaled race drifts <code>v0..vN</code>.</p>
+<p>The scaling contract is explicit: on each trial, before the RW update,
+<code>v_i = scaler * q_i</code> for every action <code>i</code>.</p>
 
 
 
