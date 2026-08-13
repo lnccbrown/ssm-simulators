@@ -64,22 +64,15 @@ ssms covers a broad simulator surface:
 
 ---
 
-## Ecosystem Fit
+## Ecosystem fit
 
 `ssm-simulators` is the simulator and data-generation layer of the HSSM
-ecosystem.
+ecosystem: it defines the models, simulates from them, and produces the
+training data that likelihood networks are fitted to.
 
-| Package | Role |
-| --- | --- |
-| [HSSM](https://github.com/lnccbrown/HSSM) | Consumes simulator-defined model contracts for Bayesian inference, including ssms-defined RLSSMs. |
-| [LANfactory](https://github.com/lnccbrown/LANfactory) | Trains likelihood approximation networks from ssms-generated data. |
-| [LAN_pipeline_minimal](https://github.com/lnccbrown/LAN_pipeline_minimal) | Runs data-generation and LAN-training pipelines. |
-
-For RLSSMs, ssms owns the learning rule, task environment, response mapping,
-simulation loop, and posterior predictive behavior. HSSM consumes the assembled
-ssms model through `hssm.rl.RLSSMConfig.from_ssms_model(...)`.
-
----
+For the full map — what each package owns, how artifacts flow between them,
+and which versions work together — see
+[The HSSM ecosystem](https://lnccbrown.github.io/HSSM/ecosystem/).
 
 ## Quick Start
 
