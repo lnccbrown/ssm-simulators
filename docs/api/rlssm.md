@@ -59,7 +59,7 @@ and [choice-only RL models](../core_tutorials/choice_only_rl_models.ipynb).
 | `env` | Task environments (`Bandit`, `TaskConfig`, …) |
 | `learning` | Learning processes (`RescorlaWagnerDrift`, `RescorlaWagnerSoftmax`, …) |
 | `preset` | Preset registry (`get`, `list`, `info`, `register`) |
-| `validate_rlssm_data` | Standalone validation helper used by `ModelConfig.validate_data()` |
+| `validation` | Data-validation module; `ssms.rl.validation.validate_rlssm_data` is the standalone helper behind `ModelConfig.validate_data()` (not re-exported at the `rl` namespace) |
 
 Import style: `import ssms.rl as rl`.
 
@@ -111,6 +111,7 @@ decision-process parameters emitted on each trial:
 | `RescorlaWagnerDualAlphaRule` | none | `n_actions >= 2` | Core dual-alpha Q-value state/update class |
 | `RescorlaWagnerDualAlphaDrift` | `v` | `n_actions == 2` | Two-action drift models with separate positive/negative learning rates |
 | `RescorlaWagnerDualAlphaSoftmax` | `q0`, `q1`, ... | `n_actions >= 2` | Choice-only softmax models with separate positive/negative learning rates |
+| `RescorlaWagnerRaceDrifts` | `v0`, `v1`, ... | `n_actions >= 2` | Per-accumulator drifts for race SSMs (e.g. `4AB_RW_RaceNoBiasAngle`) |
 
 Use `RescorlaWagnerDeltaRule` and `RescorlaWagnerDualAlphaRule` when you need
 the update rule but want to write a custom decision-facing adapter. Use the
@@ -377,8 +378,9 @@ learning rule, response-to-choice mapping, and task context source of truth in
 ssms. For choice-only RL models, pass response-only data to HSSM, not the
 generative simulator's placeholder `rt` column.
 
-**Note:** HSSM's bridge factory still calls the pre-refactor `compile()` API
-until the separate `hssm-rlssm-api` task updates it to `assemble()`.
+HSSM's bridge factory (`hssm.rl.RLSSMConfig.from_ssms_model`) consumes the
+`assemble(backend=...)` API and requires an available gradient for JAX-based
+sampling.
 
 `ModelConfig.to_hssm_config_dict()` remains useful for structural inspection
 and compatibility with lower-level HSSM config workflows. It exports shared
@@ -427,3 +429,5 @@ planned separately in HSSM.
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaDrift
 
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax
+
+::: ssms.rl.learning.RescorlaWagnerRaceDrifts
