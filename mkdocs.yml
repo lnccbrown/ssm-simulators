@@ -7,31 +7,32 @@ edit_uri: edit/main/docs
 nav:
   - Home:
       - Overview: index.md
-  - Getting Started:
-      - Basic Tutorial: basic_tutorial/basic_tutorial.ipynb
-  - Core Tutorials:
-      - Package Overview: core_tutorials/tutorial_capabilities.ipynb
-      - Configuration Systems: core_tutorials/tutorial_configs.ipynb
-      - Custom Models: core_tutorials/tutorial_custom_models.ipynb
-      - Data Generators: core_tutorials/tutorial_data_generators.ipynb
-      - RLSSM Tutorial: core_tutorials/rlssm_tutorial.ipynb
-      - RLSSM Simulation and HSSM Handoff: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
-      - Choice-only RL Models: core_tutorials/choice_only_rl_models.ipynb
-      - RLSSM Tutorial (Advanced): core_tutorials/rlssm_advanced_tutorial.ipynb
-      - KDE Class: core_tutorials/kde_class.ipynb
-      - PyDDM Integration: core_tutorials/tutorial_simulators_vs_pyddm.ipynb
-      - Using MLflow: core_tutorials/using_mlflow.md
+  - Learn:
+      - Simulate and inspect your first SSM: basic_tutorial/basic_tutorial.ipynb
+      - Simulate your first RLSSM: core_tutorials/rlssm_tutorial.ipynb
+  - How-to guides:
+      - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
+      - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
+      - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
+      - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
+      - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
+      - Hand off simulated RLSSM data to HSSM: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
+      - Write a custom parameter transform: contributing/add_parameter_adapters.md
+      - Track data generation runs with MLflow: core_tutorials/using_mlflow.md
+  - Explanations:
+      - What ssm-simulators can do: core_tutorials/tutorial_capabilities.ipynb
+      - Simulation vs. analytical solutions (PyDDM): core_tutorials/tutorial_simulators_vs_pyddm.ipynb
+  - Reference:
+      - Configuration systems: core_tutorials/tutorial_configs.ipynb
+      - API:
+          - RLSSM (ssms.rl): api/rlssm.md
+          - basic simulators: api/basic_simulators.md
+          - config: api/config.md
+          - data generators: api/dataset_generators.md
+          - support utils: api/support_utils.md
   - Contributing:
       - Overview: contributing/README.md
-      - Contribute New Models: contributing/add_models.md
-      - Contribute Parameter Adapters: contributing/add_parameter_adapters.md
-
-  - API:
-      - RLSSM (ssms.rl): api/rlssm.md
-      - basic simulators: api/basic_simulators.md
-      - config: api/config.md
-      - data generators: api/dataset_generators.md
-      - support utils: api/support_utils.md
+      - Add a new model: contributing/add_models.md
 
 validation:
   omitted_files: warn
