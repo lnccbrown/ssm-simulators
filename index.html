@@ -457,6 +457,8 @@
           
         
       
+        
+      
     
     
     
@@ -494,6 +496,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
@@ -507,6 +514,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://lnccbrown.github.io/HSSM/ecosystem/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HSSM ecosystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -1520,7 +1555,7 @@
   <a href="#ecosystem-fit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ecosystem Fit
+        Ecosystem fit
       
     </span>
   </a>
@@ -1711,35 +1746,13 @@ variants, choice-only inverse-temperature softmax bandits such as
 <code>4AB_RW_RaceNoBiasAngle</code>.</p>
 </div>
 <hr />
-<h2 id="ecosystem-fit">Ecosystem Fit<a class="headerlink" href="#ecosystem-fit" title="Permanent link">&para;</a></h2>
+<h2 id="ecosystem-fit">Ecosystem fit<a class="headerlink" href="#ecosystem-fit" title="Permanent link">&para;</a></h2>
 <p><code>ssm-simulators</code> is the simulator and data-generation layer of the HSSM
-ecosystem.</p>
-<table>
-<thead>
-<tr>
-<th>Package</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="https://github.com/lnccbrown/HSSM">HSSM</a></td>
-<td>Consumes simulator-defined model contracts for Bayesian inference, including ssms-defined RLSSMs.</td>
-</tr>
-<tr>
-<td><a href="https://github.com/lnccbrown/LANfactory">LANfactory</a></td>
-<td>Trains likelihood approximation networks from ssms-generated data.</td>
-</tr>
-<tr>
-<td><a href="https://github.com/lnccbrown/LAN_pipeline_minimal">LAN_pipeline_minimal</a></td>
-<td>Runs data-generation and LAN-training pipelines.</td>
-</tr>
-</tbody>
-</table>
-<p>For RLSSMs, ssms owns the learning rule, task environment, response mapping,
-simulation loop, and posterior predictive behavior. HSSM consumes the assembled
-ssms model through <code>hssm.rl.RLSSMConfig.from_ssms_model(...)</code>.</p>
-<hr />
+ecosystem: it defines the models, simulates from them, and produces the
+training data that likelihood networks are fitted to.</p>
+<p>For the full map — what each package owns, how artifacts flow between them,
+and which versions work together — see
+<a href="https://lnccbrown.github.io/HSSM/ecosystem/">The HSSM ecosystem</a>.</p>
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <h3 id="classic-ssm">Classic SSM<a class="headerlink" href="#classic-ssm" title="Permanent link">&para;</a></h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
