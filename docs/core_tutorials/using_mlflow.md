@@ -1,4 +1,4 @@
-# MLflow Tutorial for SSM-Simulators
+# Track data generation runs with MLflow
 
 Track and manage your data generation experiments with MLflow.
 
