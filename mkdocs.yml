@@ -7,6 +7,7 @@ edit_uri: edit/main/docs
 nav:
   - Home:
       - Overview: index.md
+      - The HSSM ecosystem: https://lnccbrown.github.io/HSSM/ecosystem/
   - Learn:
       - Simulate and inspect your first SSM: basic_tutorial/basic_tutorial.ipynb
       - Simulate your first RLSSM: core_tutorials/rlssm_tutorial.ipynb
