@@ -3,6 +3,8 @@ repo_name: lnccbrown/ssm-simulators
 repo_url: https://github.com/lnccbrown/ssm-simulators
 site_url: https://lnccbrown.github.io/ssm-simulators
 edit_uri: edit/main/docs
+exclude_docs: |
+  snippets/
 
 nav:
   - Home:
@@ -23,8 +25,10 @@ nav:
   - Explanations:
       - What ssm-simulators can do: core_tutorials/tutorial_capabilities.ipynb
       - Simulation vs. analytical solutions (PyDDM): core_tutorials/tutorial_simulators_vs_pyddm.ipynb
+      - Why structured observations exist: explanations/structured_observations.md
   - Reference:
       - Configuration systems: core_tutorials/tutorial_configs.ipynb
+      - Structured observation results: reference/observation_result_contract.md
       - API:
           - RLSSM (ssms.rl): api/rlssm.md
           - basic simulators: api/basic_simulators.md

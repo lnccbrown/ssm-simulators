@@ -33,6 +33,7 @@ models, and reinforcement-learning SSMs.
 | Training data generation | [Data generators](core_tutorials/tutorial_data_generators.ipynb), [dataset generator API](api/dataset_generators.md) |
 | RLSSM simulation | [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb), [RLSSM API](api/rlssm.md) |
 | Choice-only RL models | [Choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb), [RLSSM API](api/rlssm.md#choice-only-inverse-temperature-softmax-presets) |
+| Structured observation results | [Why structured observations exist](explanations/structured_observations.md), [result contract](reference/observation_result_contract.md) |
 | New model contributions | [Contribute new models](contributing/add_models.md), [parameter adapters](contributing/add_parameter_adapters.md) |
 
 ---
@@ -145,4 +146,5 @@ sudo apt-get install build-essential libgsl-dev
 - Generate LAN training data with the [data generator tutorial](core_tutorials/tutorial_data_generators.ipynb).
 - Build and simulate RLSSMs with the [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb).
 - Learn response-only RL simulation in the [choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb).
+- Understand native fixed-width outputs in [Why structured observations exist](explanations/structured_observations.md).
 - Use the [API reference](api/basic_simulators.md) when integrating ssms into another package.
