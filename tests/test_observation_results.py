@@ -6,17 +6,10 @@ from typing import Any
 import numpy as np
 import pytest
 
-pytestmark = pytest.mark.xfail(
-    strict=True,
-    raises=ImportError,
-    reason="The native observation-result validator is introduced in the next commit.",
-)
-
-
 Schema = tuple[Mapping[str, Any], ...]
 
 
-def _validate(result: Mapping[str, Any]) -> dict[str, Any]:
+def _validate(result: Any) -> dict[str, Any]:
     from ssms.basic_simulators import validate_observation_result
 
     return validate_observation_result(result)
@@ -171,6 +164,7 @@ def test_validate_observation_result_rejects_unknown_or_non_integer_versions(
             ),
             "unique",
         ),
+        (({"name": "x"},), "kind"),
         (({"name": "x", "kind": "unknown"},), "kind"),
         (({"name": "x", "kind": "continuous", "typo": 1.0},), "typo"),
         (({"name": "x", "kind": "categorical"},), "values"),
@@ -364,6 +358,123 @@ def test_validate_observation_result_rejects_invalid_array_contracts(
 
     with pytest.raises((TypeError, ValueError), match=message):
         _validate(result)
+
+
+@pytest.mark.parametrize(
+    ("result", "message"),
+    [
+        ([], "mapping"),
+        ({"metadata": {}}, "missing required"),
+        (
+            {
+                "observations": [[[0.5]]],
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": (RT,),
+                },
+            },
+            "NumPy array",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.5]]]),
+                "omission_mask": [[False]],
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": (RT,),
+                },
+            },
+            "NumPy array",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.5]]]),
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": [],
+            },
+            "metadata must be a mapping",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.5]]]),
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": [RT],
+                },
+            },
+            "ordered tuple",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.5]]]),
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": ("rt",),
+                },
+            },
+            "entry 0 must be a mapping",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.5, 0.6]]]),
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": (RT,),
+                },
+            },
+            "width",
+        ),
+        (
+            {
+                "observations": np.asarray([[[0.0]]]),
+                "omission_mask": np.zeros((1, 1), dtype=bool),
+                "metadata": {
+                    "observation_schema_version": 1,
+                    "observation_schema": (
+                        {"name": "choice", "kind": "categorical", "values": "01"},
+                    ),
+                },
+            },
+            "non-empty sequence",
+        ),
+    ],
+)
+def test_validate_observation_result_rejects_invalid_container_contracts(
+    result: object,
+    message: str,
+) -> None:
+    with pytest.raises((TypeError, ValueError), match=message):
+        _validate(result)
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"name": "angle", "kind": "circular", "lower": -np.inf, "upper": np.pi},
+        {"name": "angle", "kind": "circular", "lower": 1.0, "upper": 1.0},
+    ],
+)
+def test_validate_observation_result_rejects_invalid_circular_domains(
+    entry: Mapping[str, Any],
+) -> None:
+    with pytest.raises(ValueError, match="circular"):
+        _validate(_result((entry,), [[[0.0]]]))
+
+
+def test_validate_observation_result_accepts_an_all_omitted_batch() -> None:
+    result = _result(
+        (RT, CHOICE),
+        [[[np.nan, np.nan], [np.nan, np.nan]]],
+        omission_mask=[[True, True]],
+    )
+
+    validated = _validate(result)
+
+    assert validated["omission_mask"].all()
 
 
 def test_validate_observation_result_preserves_open_metadata_without_mutation() -> None:
