@@ -1,4 +1,5 @@
 """Model configuration module for SSM simulators."""
+from .dev_rlddm import get_dev_rlddm_config
 
 from .ddm import (
     get_ddm_config,
@@ -191,6 +192,7 @@ def get_model_config():
     """
     # TODO: Refactor to load these lazily
     configs = {
+        "dev_rlddm": get_dev_rlddm_config(),
         "ddm": get_ddm_config(),
         "ddm_st": get_ddm_st_config(),
         "ddm_truncnormt": get_ddm_truncnormt_config(),
@@ -311,6 +313,7 @@ def get_model_config():
 
 
 __all__ = [
+    "get_dev_rlddm_config",
     "get_model_config",
     "get_ddm_config",
     "get_angle_config",
