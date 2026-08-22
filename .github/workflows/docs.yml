@@ -1,115 +1,41 @@
-name: docs
+name: Docs
 
 on:
   pull_request:
     paths:
+      - ".github/workflows/docs.yml"
+      - ".lychee.toml"
       - "docs/**"
       - "mkdocs.yml"
       - "pyproject.toml"
+      - "scripts/docs.sh"
+      - "src/cssm/**"
       - "ssms/**"
-      - ".github/workflows/docs.yml"
+      - "uv.lock"
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
+      - ".github/workflows/docs.yml"
+      - ".lychee.toml"
       - "docs/**"
       - "mkdocs.yml"
       - "pyproject.toml"
+      - "scripts/docs.sh"
+      - "src/cssm/**"
       - "ssms/**"
-      - ".github/workflows/docs.yml"
-  release:
-    types: [published]
-  workflow_dispatch:
+      - "uv.lock"
   schedule:
-    # Weekly link check, Mondays 06:23 UTC (off-peak)
+    # Retain the established Monday 06:23 UTC rendered-link check.
     - cron: "23 6 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build:
-    name: Build docs (strict)
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Update apt cache
-        run: sudo apt-get update
-      - name: Install GSL
-        run: sudo apt-get install -y libgsl-dev
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "latest"
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
-
-      - name: Install package with docs dependencies
-        run: uv sync --no-dev --group docs
-
-      - name: Build docs (strict)
-        run: uv run mkdocs build --strict
-
-  deploy:
-    name: Deploy docs to GitHub Pages
-    needs: build
-    if: >-
-      github.event_name == 'release' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Update apt cache
-        run: sudo apt-get update
-      - name: Install GSL
-        run: sudo apt-get install -y libgsl-dev
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "latest"
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
-
-      - name: Install package with docs dependencies
-        run: uv sync --no-dev --group docs
-
-      - name: Configure git for deploy
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy to gh-pages
-        run: uv run mkdocs gh-deploy --force
-
-  linkcheck:
-    name: Check external links
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Run lychee link checker
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: --no-progress './docs/**/*.md' 'README.md'
-          fail: true
+  docs:
+    uses: lnccbrown/HSSMSpine/.github/workflows/reusable-docs.yml@1c8129bb4c0997ada5b4d062e05357757c86eb90
+    with:
+      system-profile: gsl
