@@ -56,9 +56,9 @@ uv run ruff check . && uv run ruff format --check .
 # Rebuild Cython extensions after C/pyx changes
 uv run python setup.py build_ext --inplace
 
-# Build docs
-uv run --extra docs mkdocs build
-uv run --extra docs mkdocs serve
+# Build docs strictly or preview them locally
+./scripts/docs.sh build
+./scripts/docs.sh serve
 
 # CLI: generate training data from YAML config
 uv run generate --config-path <path> --output <dir>
