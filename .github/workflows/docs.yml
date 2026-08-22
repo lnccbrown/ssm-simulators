@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/docs.yml"
+      - ".github/workflows/reusable-docs.yml"
       - ".lychee.toml"
       - "docs/**"
       - "mkdocs.yml"
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/docs.yml"
+      - ".github/workflows/reusable-docs.yml"
       - ".lychee.toml"
       - "docs/**"
       - "mkdocs.yml"
@@ -36,6 +38,6 @@ permissions:
 
 jobs:
   docs:
-    uses: lnccbrown/HSSMSpine/.github/workflows/reusable-docs.yml@1c8129bb4c0997ada5b4d062e05357757c86eb90
+    uses: ./.github/workflows/reusable-docs.yml
     with:
       system-profile: gsl
