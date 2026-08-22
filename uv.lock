@@ -2364,11 +2364,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5d/5b/4c1902e8bdd5c4db63284e9d101dece4038d4025d6d88850ffe0a1578980/mkdocstrings-1.0.6-py3-none-any.whl", hash = "sha256:2703708697487d1b6d6d7b412e176fa436edf120c1bf81dc9e126b12d00893c7", size = 35787, upload-time = "2026-07-11T19:38:04.417Z" },
 ]
 
-[package.optional-dependencies]
-python = [
-    { name = "mkdocstrings-python" },
-]
-
 [[package]]
 name = "mkdocstrings-python"
 version = "2.0.5"
@@ -4593,13 +4588,6 @@ dev = [
     { name = "ruff" },
     { name = "types-pyyaml" },
 ]
-docs = [
-    { name = "mkdocs" },
-    { name = "mkdocs-jupyter" },
-    { name = "mkdocs-material" },
-    { name = "mkdocs-redirects" },
-    { name = "mkdocstrings", extra = ["python"] },
-]
 jax = [
     { name = "jax" },
     { name = "jaxlib" },
@@ -4651,10 +4639,12 @@ dev = [
 ]
 docs = [
     { name = "mkdocs" },
+    { name = "mkdocs-autorefs" },
     { name = "mkdocs-jupyter" },
     { name = "mkdocs-material" },
     { name = "mkdocs-redirects" },
-    { name = "mkdocstrings", extra = ["python"] },
+    { name = "mkdocstrings" },
+    { name = "mkdocstrings-python" },
 ]
 
 [package.metadata]
@@ -4674,11 +4664,6 @@ requires-dist = [
     { name = "marimo", extras = ["recommended"], marker = "extra == 'dev'" },
     { name = "matplotlib" },
     { name = "maturin", marker = "extra == 'parallel-all'", specifier = ">=1.4" },
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.5.0" },
-    { name = "mkdocs-jupyter", marker = "extra == 'docs'", specifier = ">=0.24.0" },
-    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5.0" },
-    { name = "mkdocs-redirects", marker = "extra == 'docs'", specifier = ">=1.2.0,<1.2.3" },
-    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.24.0" },
     { name = "mlflow", marker = "extra == 'dev'", specifier = ">=3.6.0" },
     { name = "mlflow", marker = "extra == 'mlflow'", specifier = ">=3.6.0" },
     { name = "mypy", marker = "extra == 'dev'" },
@@ -4708,7 +4693,7 @@ requires-dist = [
     { name = "typer", specifier = ">=0.15.3" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
 ]
-provides-extras = ["mlflow", "pyddm", "numba", "jax", "jax-cuda", "parallel", "parallel-all", "dev", "docs"]
+provides-extras = ["mlflow", "pyddm", "numba", "jax", "jax-cuda", "parallel", "parallel-all", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -4732,11 +4717,13 @@ dev = [
     { name = "ruff", specifier = ">=0.15.1,<0.16" },
 ]
 docs = [
-    { name = "mkdocs", specifier = ">=1.5.0" },
-    { name = "mkdocs-jupyter", specifier = ">=0.24.0" },
-    { name = "mkdocs-material", specifier = ">=9.5.0" },
-    { name = "mkdocs-redirects", specifier = ">=1.2.0,<1.2.3" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24.0" },
+    { name = "mkdocs", specifier = "==1.6.1" },
+    { name = "mkdocs-autorefs", specifier = "==1.4.4" },
+    { name = "mkdocs-jupyter", specifier = "==0.26.3" },
+    { name = "mkdocs-material", specifier = "==9.7.7" },
+    { name = "mkdocs-redirects", specifier = "==1.2.2" },
+    { name = "mkdocstrings", specifier = "==1.0.6" },
+    { name = "mkdocstrings-python", specifier = "==2.0.5" },
 ]
 
 [[package]]
