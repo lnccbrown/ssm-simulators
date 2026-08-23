@@ -45,8 +45,10 @@ sample and one trial has shape `(1, 1, 1)`, while an RT-plus-confidence model ha
 axis represented samples, trials, or observation fields.
 
 Legacy `rts` and `choices` may still use their historical squeezed shapes. Converting
-those results is a separate compatibility layer; the native validator does not guess how
-legacy arrays should be interpreted.
+those results requires the opt-in
+[legacy-result normalizer](../how_to/normalize_simulator_results.md), explicit original
+sample/trial counts, and an explicit source mapping. The native validator and normalizer
+do not guess how legacy arrays should be interpreted.
 
 ## Why schema entries are closed but metadata is open
 
