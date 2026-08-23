@@ -1,7 +1,9 @@
-"""Validation for native fixed-width simulator observation results.
+"""Validation and explicit legacy projection for observation results.
 
-This module defines only the package-native result contract. It does not adapt legacy
-``rts``/``choices`` results or attach schemas to registered simulators.
+The native fixed-width contract is validated by :func:`validate_observation_result`.
+Legacy results can opt into that contract through :func:`normalize_simulator_result`
+when the caller supplies the exact source-to-schema projection and unsqueezed counts.
+No simulator is registered, wrapped, or changed by this module.
 """
 
 from collections.abc import Mapping, Sequence
@@ -10,6 +12,8 @@ from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
+
+from .simulator import OMISSION_SENTINEL
 
 OBSERVATION_SCHEMA_VERSION = 1
 
@@ -24,6 +28,157 @@ _SCHEMA_KEYS_BY_KIND = {
     | {"lower", "upper", "lower_inclusive", "upper_inclusive"},
     "circular": _COMMON_SCHEMA_KEYS | {"lower", "upper"},
 }
+
+
+def normalize_simulator_result(
+    result: Mapping[str, Any],
+    *,
+    expected_n_samples: int,
+    expected_n_trials: int,
+    observation_schema: tuple[Mapping[str, Any], ...],
+    source_projection: tuple[tuple[str, str], ...],
+) -> dict[str, Any]:
+    """Project a one- or two-field legacy result into the native contract.
+
+    Parameters
+    ----------
+    result
+        Legacy simulator result. It must contain a metadata mapping and every NumPy
+        array named by ``source_projection``. Existing legacy keys are retained.
+    expected_n_samples
+        Caller-supplied positive sample count before historical singleton squeezing.
+    expected_n_trials
+        Caller-supplied positive trial count before historical singleton squeezing.
+    observation_schema
+        Ordered native schema with one or two fields.
+    source_projection
+        Ordered ``(legacy source key, schema field name)`` pairs. The pairs must cover
+        the schema exactly once and in schema order.
+
+    Returns
+    -------
+    dict
+        A shallow copy of the legacy result with native ``observations`` and
+        ``omission_mask`` arrays and a shallow-copied metadata mapping containing the
+        reserved schema keys.
+
+    Raises
+    ------
+    TypeError
+        If containers, counts, projection entries, or source dtypes have invalid
+        types.
+    ValueError
+        If counts, projection coverage, exact historical source shapes, omissions,
+        reserved metadata, or projected values violate the contract.
+
+    Notes
+    -----
+    This adapter never guesses axes or field semantics. It accepts only the exact
+    legacy squeeze shapes implied by the two caller-supplied counts. A legacy
+    ``OMISSION_SENTINEL`` is converted only when every projected source contains the
+    sentinel for the same row; the resulting native row is all NaN. Unprojected
+    sources, including choice-only simulators' dummy ``rts``, are ignored and retained.
+
+    Native results and schemas with three or more fields should be passed directly to
+    :func:`validate_observation_result`.
+    """
+    if not isinstance(result, Mapping):
+        raise TypeError("legacy simulator result must be a mapping")
+
+    preexisting_canonical_keys = {"observations", "omission_mask"}.intersection(result)
+    if preexisting_canonical_keys:
+        raise ValueError(
+            "legacy simulator result already contains reserved canonical key(s): "
+            f"{_format_keys(preexisting_canonical_keys)}"
+        )
+
+    n_samples = _validate_expected_count(expected_n_samples, "expected_n_samples")
+    n_trials = _validate_expected_count(expected_n_trials, "expected_n_trials")
+
+    if "metadata" not in result:
+        raise ValueError("legacy simulator result is missing required key 'metadata'")
+    metadata = result["metadata"]
+    if not isinstance(metadata, Mapping):
+        raise TypeError("legacy simulator result metadata must be a mapping")
+
+    schema_names = _legacy_schema_names(observation_schema)
+    source_keys = _validate_source_projection(source_projection, schema_names)
+    expected_shape = _expected_legacy_shape(n_samples, n_trials)
+
+    sources: list[np.ndarray] = []
+    projected_values: list[np.ndarray] = []
+    omission_components: list[np.ndarray] = []
+    for source_key in source_keys:
+        if source_key not in result:
+            raise ValueError(
+                f"legacy simulator result is missing projected source {source_key!r}"
+            )
+        source = result[source_key]
+        if not isinstance(source, np.ndarray):
+            raise TypeError(f"projected source {source_key!r} must be a NumPy array")
+        if not (
+            np.issubdtype(source.dtype, np.integer)
+            or np.issubdtype(source.dtype, np.floating)
+        ):
+            raise TypeError(
+                f"projected source {source_key!r} must have a real numeric NumPy dtype"
+            )
+        if source.shape != expected_shape:
+            raise ValueError(
+                f"projected source {source_key!r} must have historical legacy shape "
+                f"{expected_shape} for expected_n_samples={n_samples} and "
+                f"expected_n_trials={n_trials}; got {source.shape}"
+            )
+
+        values = source.reshape(n_samples, n_trials)
+        sources.append(source)
+        projected_values.append(values)
+        omission_components.append(values == OMISSION_SENTINEL)
+
+    sentinel_rows = np.stack(omission_components, axis=-1)
+    any_sentinel = np.any(sentinel_rows, axis=-1)
+    all_sentinel = np.all(sentinel_rows, axis=-1)
+    if np.any(any_sentinel & ~all_sentinel):
+        raise ValueError(
+            "legacy omission sentinel must occur in every projected source for a row"
+        )
+
+    observation_dtype = _projected_observation_dtype(sources)
+    _validate_categorical_source_precision(
+        observation_schema,
+        source_keys,
+        projected_values,
+        observation_dtype,
+        all_sentinel,
+    )
+    observations = np.empty(
+        (n_samples, n_trials, len(source_keys)), dtype=observation_dtype
+    )
+    for field_index, values in enumerate(projected_values):
+        observations[..., field_index] = values
+    observations[all_sentinel] = np.nan
+
+    projected_metadata = dict(metadata)
+    _insert_reserved_metadata(
+        projected_metadata,
+        "observation_schema_version",
+        OBSERVATION_SCHEMA_VERSION,
+    )
+    _insert_reserved_metadata(
+        projected_metadata,
+        "observation_schema",
+        observation_schema,
+    )
+
+    projected_result = dict(result)
+    projected_result.update(
+        {
+            "observations": observations,
+            "omission_mask": all_sentinel,
+            "metadata": projected_metadata,
+        }
+    )
+    return validate_observation_result(projected_result)
 
 
 def validate_observation_result(result: Mapping[str, Any]) -> dict[str, Any]:
@@ -357,8 +512,147 @@ def _integer_is_exactly_representable(
     return bool(np.isfinite(cast_value)) and int(cast_value) == value
 
 
+def _validate_expected_count(value: object, name: str) -> int:
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral):
+        raise TypeError(f"{name} must be an integer")
+    count = int(value)
+    if count <= 0:
+        raise ValueError(f"{name} must be positive")
+    return count
+
+
+def _legacy_schema_names(
+    observation_schema: object,
+) -> tuple[str, ...]:
+    if not isinstance(observation_schema, tuple):
+        raise TypeError("observation_schema must be an ordered tuple of mappings")
+    if not 1 <= len(observation_schema) <= 2:
+        raise ValueError(
+            "legacy result projection supports schemas with one or two fields"
+        )
+
+    names: list[str] = []
+    for index, entry in enumerate(observation_schema):
+        if not isinstance(entry, Mapping):
+            raise TypeError(f"observation_schema entry {index} must be a mapping")
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(
+                f"observation_schema entry {index} name must be a non-empty string"
+            )
+        names.append(name)
+    if len(names) != len(set(names)):
+        raise ValueError("observation_schema field names must be unique")
+    return tuple(names)
+
+
+def _validate_source_projection(
+    source_projection: object,
+    schema_names: tuple[str, ...],
+) -> tuple[str, ...]:
+    if not isinstance(source_projection, tuple):
+        raise TypeError("source_projection must be an ordered tuple of pairs")
+    if len(source_projection) != len(schema_names):
+        raise ValueError("source_projection must cover the schema exactly")
+
+    source_keys: list[str] = []
+    target_names: list[str] = []
+    for index, pair in enumerate(source_projection):
+        if not isinstance(pair, tuple) or len(pair) != 2:
+            raise TypeError(f"source_projection entry {index} must be a pair")
+        source_key, target_name = pair
+        if not (
+            isinstance(source_key, str)
+            and source_key.strip()
+            and isinstance(target_name, str)
+            and target_name.strip()
+        ):
+            raise TypeError(
+                f"source_projection entry {index} must contain non-empty strings"
+            )
+        source_keys.append(source_key)
+        target_names.append(target_name)
+
+    if len(source_keys) != len(set(source_keys)):
+        raise ValueError("source_projection source keys must be unique")
+    if tuple(target_names) != schema_names:
+        raise ValueError(
+            "source_projection target names must match every field in schema order"
+        )
+    return tuple(source_keys)
+
+
+def _expected_legacy_shape(n_samples: int, n_trials: int) -> tuple[int, ...]:
+    if n_trials == 1:
+        return (n_samples, 1)
+    if n_samples == 1:
+        return (n_trials, 1)
+    return (n_samples, n_trials, 1)
+
+
+def _projected_observation_dtype(sources: Sequence[np.ndarray]) -> np.dtype[Any]:
+    promoted: np.dtype[Any] = np.dtype(
+        np.result_type(*(source.dtype for source in sources))
+    )
+    if np.issubdtype(promoted, np.floating):
+        return promoted
+    return np.dtype(np.float64)
+
+
+def _validate_categorical_source_precision(
+    observation_schema: tuple[Mapping[str, Any], ...],
+    source_keys: tuple[str, ...],
+    projected_values: Sequence[np.ndarray],
+    observation_dtype: np.dtype[Any],
+    omission_mask: np.ndarray,
+) -> None:
+    for schema_entry, source_key, values in zip(
+        observation_schema, source_keys, projected_values, strict=True
+    ):
+        if schema_entry.get("kind") != "categorical" or not np.issubdtype(
+            values.dtype, np.integer
+        ):
+            continue
+
+        with np.errstate(over="ignore", invalid="ignore"):
+            round_trip = values.astype(observation_dtype).astype(values.dtype)
+        if not np.array_equal(round_trip[~omission_mask], values[~omission_mask]):
+            raise ValueError(
+                f"categorical projected source {source_key!r} contains value(s) not "
+                f"exactly representable in observations dtype {observation_dtype.name}"
+            )
+
+
+def _insert_reserved_metadata(
+    metadata: dict[str, Any],
+    key: str,
+    value: object,
+) -> None:
+    if key in metadata:
+        if not _metadata_values_equal(metadata[key], value):
+            raise ValueError(
+                f"legacy metadata contains conflicting reserved key {key!r}"
+            )
+        return
+    metadata[key] = value
+
+
+def _metadata_values_equal(left: object, right: object) -> bool:
+    if left is right:
+        return True
+    try:
+        equal = left == right
+    except (TypeError, ValueError):
+        return False
+    return isinstance(equal, (bool, np.bool_)) and bool(equal)
+
+
 def _format_keys(keys: Sequence[str] | set[str] | frozenset[str]) -> str:
     return ", ".join(repr(key) for key in sorted(keys))
 
 
-__all__ = ["OBSERVATION_SCHEMA_VERSION", "validate_observation_result"]
+__all__ = [
+    "OBSERVATION_SCHEMA_VERSION",
+    "normalize_simulator_result",
+    "validate_observation_result",
+]

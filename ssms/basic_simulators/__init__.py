@@ -6,6 +6,7 @@ from . import (
 )
 from .observation_results import (
     OBSERVATION_SCHEMA_VERSION,
+    normalize_simulator_result,
     validate_observation_result,
 )
 from .simulator import OMISSION_SENTINEL
@@ -18,6 +19,7 @@ __all__ = [
     "boundary_functions",
     "drift_functions",
     "modular_parameter_simulator_adapter",
+    "normalize_simulator_result",
     "simulator",
     "validate_observation_result",
 ]
