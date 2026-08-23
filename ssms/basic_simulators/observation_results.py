@@ -2,8 +2,9 @@
 
 The native fixed-width contract is validated by :func:`validate_observation_result`.
 Legacy results can opt into that contract through :func:`normalize_simulator_result`
-when the caller supplies the exact source-to-schema projection and unsqueezed counts.
-No simulator is registered, wrapped, or changed by this module.
+when the caller supplies the exact source-to-schema projection, unsqueezed counts,
+and projected source that authoritatively records omissions. No simulator is
+registered, wrapped, or changed by this module.
 """
 
 from collections.abc import Mapping, Sequence
@@ -37,6 +38,7 @@ def normalize_simulator_result(
     expected_n_trials: int,
     observation_schema: tuple[Mapping[str, Any], ...],
     source_projection: tuple[tuple[str, str], ...],
+    omission_source: str,
 ) -> dict[str, Any]:
     """Project a one- or two-field legacy result into the native contract.
 
@@ -54,6 +56,10 @@ def normalize_simulator_result(
     source_projection
         Ordered ``(legacy source key, schema field name)`` pairs. The pairs must cover
         the schema exactly once and in schema order.
+    omission_source
+        One source key from ``source_projection`` whose ``OMISSION_SENTINEL`` is
+        authoritative. For RT-and-response results this is normally ``"rts"``; for
+        response-only results it is normally ``"choices"``.
 
     Returns
     -------
@@ -74,10 +80,12 @@ def normalize_simulator_result(
     Notes
     -----
     This adapter never guesses axes or field semantics. It accepts only the exact
-    legacy squeeze shapes implied by the two caller-supplied counts. A legacy
-    ``OMISSION_SENTINEL`` is converted only when every projected source contains the
-    sentinel for the same row; the resulting native row is all NaN. Unprojected
-    sources, including choice-only simulators' dummy ``rts``, are ignored and retained.
+    legacy squeeze shapes implied by the two caller-supplied counts. A row is omitted
+    exactly when ``omission_source`` contains ``OMISSION_SENTINEL``; auxiliary
+    projected values on that row are ignored and the resulting native row is all NaN.
+    An auxiliary sentinel while the authoritative source is non-sentinel is
+    contradictory and rejected. Unprojected sources, including choice-only simulators'
+    dummy ``rts``, are ignored and retained.
 
     Native results and schemas with three or more fields should be passed directly to
     :func:`validate_observation_result`.
@@ -103,6 +111,7 @@ def normalize_simulator_result(
 
     schema_names = _legacy_schema_names(observation_schema)
     source_keys = _validate_source_projection(source_projection, schema_names)
+    omission_source_index = _validate_omission_source(omission_source, source_keys)
     expected_shape = _expected_legacy_shape(n_samples, n_trials)
 
     sources: list[np.ndarray] = []
@@ -136,11 +145,18 @@ def normalize_simulator_result(
         omission_components.append(values == OMISSION_SENTINEL)
 
     sentinel_rows = np.stack(omission_components, axis=-1)
-    any_sentinel = np.any(sentinel_rows, axis=-1)
-    all_sentinel = np.all(sentinel_rows, axis=-1)
-    if np.any(any_sentinel & ~all_sentinel):
+    omission_mask = sentinel_rows[..., omission_source_index]
+    contradictory_source_keys = tuple(
+        source_key
+        for source_index, source_key in enumerate(source_keys)
+        if source_index != omission_source_index
+        and np.any(sentinel_rows[..., source_index] & ~omission_mask)
+    )
+    if contradictory_source_keys:
         raise ValueError(
-            "legacy omission sentinel must occur in every projected source for a row"
+            "legacy omission sentinel occurs in non-authoritative projected "
+            f"source(s) {_format_keys(contradictory_source_keys)} while "
+            f"omission_source {omission_source!r} is non-sentinel"
         )
 
     observation_dtype = _projected_observation_dtype(sources)
@@ -149,14 +165,14 @@ def normalize_simulator_result(
         source_keys,
         projected_values,
         observation_dtype,
-        all_sentinel,
+        omission_mask,
     )
     observations = np.empty(
         (n_samples, n_trials, len(source_keys)), dtype=observation_dtype
     )
     for field_index, values in enumerate(projected_values):
         observations[..., field_index] = values
-    observations[all_sentinel] = np.nan
+    observations[omission_mask] = np.nan
 
     projected_metadata = dict(metadata)
     _insert_reserved_metadata(
@@ -174,7 +190,7 @@ def normalize_simulator_result(
     projected_result.update(
         {
             "observations": observations,
-            "omission_mask": all_sentinel,
+            "omission_mask": omission_mask,
             "metadata": projected_metadata,
         }
     )
@@ -588,6 +604,24 @@ def _expected_legacy_shape(n_samples: int, n_trials: int) -> tuple[int, ...]:
     if n_samples == 1:
         return (n_trials, 1)
     return (n_samples, n_trials, 1)
+
+
+def _validate_omission_source(
+    omission_source: object,
+    source_keys: tuple[str, ...],
+) -> int:
+    if not isinstance(omission_source, str) or not omission_source.strip():
+        raise TypeError(
+            "omission_source must be a non-empty string naming a projected "
+            "legacy source key"
+        )
+    try:
+        return source_keys.index(omission_source)
+    except ValueError as error:
+        raise ValueError(
+            "omission_source must name one projected legacy source key; "
+            f"got {omission_source!r}"
+        ) from error
 
 
 def _projected_observation_dtype(sources: Sequence[np.ndarray]) -> np.dtype[Any]:
