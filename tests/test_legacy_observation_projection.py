@@ -149,6 +149,18 @@ def test_normalize_simulator_result_projects_response_only_for_every_legacy_shap
     assert np.all(result["rts"] == -1.0)
 
 
+def test_normalize_simulator_result_preserves_floating_choice_only_dtype() -> None:
+    result = _legacy_result(choice_dtype=np.float32)
+
+    normalized = _normalize(
+        result,
+        observation_schema=(BINARY_RESPONSE,),
+        source_projection=RESPONSE_ONLY_PROJECTION,
+    )
+
+    assert normalized["observations"].dtype == np.dtype(np.float32)
+
+
 def test_normalize_simulator_result_projects_existing_rt_rlssm_response() -> None:
     result = _legacy_result(n_samples=2, n_trials=2)
     result["choices"] = _legacy_shape([0, 1, 2, 3], 2, 2).astype(np.int8)
@@ -190,6 +202,8 @@ def test_normalize_simulator_result_converts_consistent_rt_response_omission() -
     result = _legacy_result(n_samples=2, n_trials=2)
     result["rts"][1, 0] = OMISSION_SENTINEL
     result["choices"][1, 0] = OMISSION_SENTINEL
+    original_rts = result["rts"].copy()
+    original_choices = result["choices"].copy()
 
     normalized = _normalize(
         result,
@@ -201,6 +215,8 @@ def test_normalize_simulator_result_converts_consistent_rt_response_omission() -
         normalized["omission_mask"], [[False, False], [True, False]]
     )
     assert np.isnan(normalized["observations"][1, 0]).all()
+    np.testing.assert_array_equal(result["rts"], original_rts)
+    np.testing.assert_array_equal(result["choices"], original_choices)
 
 
 def test_normalize_simulator_result_converts_choice_only_omission_and_ignores_dummy_rt() -> (
@@ -269,7 +285,7 @@ def test_normalize_simulator_result_rejects_equal_size_nonhistorical_shapes(
 @pytest.mark.parametrize(
     ("source_projection", "message"),
     [
-        (("choices", "response"), "cover the schema exactly"),
+        ((("choices", "response"),), "cover the schema exactly"),
         (
             (("choices", "response"), ("rts", "rt")),
             "schema order",
@@ -382,6 +398,10 @@ def test_normalize_simulator_result_accepts_identical_reserved_metadata() -> Non
 
     assert normalized["metadata"]["observation_schema_version"] == 1
     assert normalized["metadata"]["observation_schema"] == schema
+    assert (
+        normalized["metadata"]["observation_schema"]
+        is result["metadata"]["observation_schema"]
+    )
 
 
 @pytest.mark.parametrize(
@@ -437,6 +457,25 @@ def test_normalize_simulator_result_revalidates_labels_after_dtype_promotion() -
     }
 
     with pytest.raises(ValueError, match="not exactly representable.*float64"):
+        _normalize(result, observation_schema=(RT, response))
+
+
+def test_normalize_simulator_result_rejects_raw_label_that_rounds_to_allowed_label() -> (
+    None
+):
+    allowed_label = 2**53
+    result = _legacy_result(rt_dtype=np.float64, choice_dtype=np.int64)
+    result["choices"].fill(allowed_label + 1)
+    response = {
+        "name": "response",
+        "kind": "categorical",
+        "values": (allowed_label,),
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="categorical projected source 'choices'.*not exactly representable.*float64",
+    ):
         _normalize(result, observation_schema=(RT, response))
 
 
