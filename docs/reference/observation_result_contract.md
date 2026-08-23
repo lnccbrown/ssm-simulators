@@ -16,8 +16,8 @@ A native result is a mapping with three required keys:
 
 The three observation axes are never squeezed. `obs_dim` must equal the number of ordered
 schema entries and must be at least one. Integer, complex, object, and structured
-observation dtypes are rejected; a floating dtype permits both numeric categorical labels
-and NaN omission rows.
+observation dtypes are rejected; a floating dtype permits numeric categorical labels that
+it can represent exactly, together with NaN omission rows.
 
 ## Reserved metadata
 
@@ -51,12 +51,21 @@ and no keys beyond those allowed for that kind.
 
 | Kind | Required keys | Optional keys | Support |
 | --- | --- | --- | --- |
-| `categorical` | `name`, `kind`, `values` | none | exact membership in finite, unique, integer-valued numeric labels |
+| `categorical` | `name`, `kind`, `values` | none | exact membership in finite, unique, integer-valued numeric labels that are exactly representable in `observations.dtype` |
 | `continuous` | `name`, `kind` | `lower`, `upper`, `lower_inclusive`, `upper_inclusive` | unbounded or one/two-sided scalar interval |
 | `circular` | `name`, `kind`, `lower`, `upper` | none | lower-inclusive, upper-exclusive interval `[lower, upper)` |
 
 Categorical booleans, strings, non-integral labels, infinities, and duplicate labels are
-invalid.
+invalid. Every categorical label must also survive an exact round trip through the
+concrete floating `observations.dtype`. This dtype check runs even when the observation
+array is empty or every row is omitted, so schema compatibility never depends on which
+values happened to be simulated.
+
+Representability is checked label by label, not with a blanket magnitude limit. For
+example, `2**24 + 1` is not exactly representable in `float32`, while `2**24 + 2` is.
+Producers must select a wider dtype or different integer labels rather than relying on a
+lossy cast. This prevents a declared label from being rounded to a different stored value
+or colliding with another label after conversion.
 
 Continuous endpoints must be finite when present. The corresponding inclusion flag is
 allowed only when its endpoint is present, must be boolean, and defaults to `True`.
@@ -72,7 +81,8 @@ validated differently from another positive continuous field.
 
 Every non-omitted value must be finite and valid for its schema entry:
 
-- categorical values use exact numeric membership;
+- categorical values use exact numeric membership after the schema labels pass the
+  observation-dtype representability check;
 - continuous values respect each declared endpoint and its inclusion flag;
 - circular values satisfy `lower <= value < upper`.
 
