@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ssms.basic_simulators" class="md-skip">
+        <a href="#basic-simulators-api" class="md-skip">
           Skip to content
         </a>
       
@@ -983,6 +983,8 @@
       
         
       
+        
+      
     
     
     
@@ -1084,6 +1086,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../explanations/structured_observations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why structured observations exist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1101,6 +1131,8 @@
   
     
     
+      
+        
       
         
       
@@ -1186,6 +1218,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/observation_result_contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Structured observation results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1219,10 +1279,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
             
   
   
@@ -1240,8 +1300,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1292,6 +1352,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -1333,6 +1395,8 @@
 <nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
+  
+    
   
   
     <label class="md-nav__title" for="__toc">
@@ -1411,6 +1475,17 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.validate_observation_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_observation_result
+      
+    </span>
+  </a>
   
 </li>
         
@@ -1800,6 +1875,34 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        observation_results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="observation_results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results.validate_observation_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_observation_result
+      
+    </span>
+  </a>
   
 </li>
         
@@ -2827,6 +2930,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -2904,6 +3009,17 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.validate_observation_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_observation_result
+      
+    </span>
+  </a>
   
 </li>
         
@@ -3293,6 +3409,34 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        observation_results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="observation_results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results.validate_observation_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_observation_result
+      
+    </span>
+  </a>
   
 </li>
         
@@ -4173,7 +4317,11 @@
   
 
 
-  <h1>basic simulators</h1>
+<h1 id="basic-simulators-api">Basic simulators API<a class="headerlink" href="#basic-simulators-api" title="Permanent link">&para;</a></h1>
+<p>The package-native structured-observation validator is exported from
+<code>ssms.basic_simulators</code>. See the <a href="../../reference/observation_result_contract/">contract reference</a>
+for its versioned schema and compatibility boundary.</p>
+
 
 <div class="doc doc-object doc-module">
 
@@ -4230,6 +4378,13 @@
           </div>
         </li>
         <li class="doc-section-item field-body">
+          <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.observation_results" href="#ssms.basic_simulators.observation_results">observation_results</a></code></b>
+          –
+          <div class="doc-md-description">
+            <p>Validation for native fixed-width simulator observation results.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
           <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.parameter_adapters" href="#ssms.basic_simulators.parameter_adapters">parameter_adapters</a></code></b>
           –
           <div class="doc-md-description">
@@ -4269,6 +4424,18 @@
     </ul>
 
 
+
+
+<p><span class="doc-section-title">Functions:</span></p>
+    <ul>
+          <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.validate_observation_result" href="#ssms.basic_simulators.validate_observation_result">validate_observation_result</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Validate a native fixed-width simulator observation result.</p>
+            </div>
+          </li>
+    </ul>
 
 
 
@@ -4810,6 +4977,84 @@ available with n_threads=1.</p>
 
 </div>
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ssms.basic_simulators.validate_observation_result" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.basic_simulators.validate_observation_result</span>
+
+
+<a href="#ssms.basic_simulators.validate_observation_result" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate_observation_result</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate a native fixed-width simulator observation result.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>result</code></b>
+              (<code><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Mapping with <code>observations</code>, <code>omission_mask</code>, and <code>metadata</code>. The
+observations must be a floating NumPy array with shape
+<code>(n_samples, n_trials, obs_dim)</code>. Metadata must contain the versioned,
+ordered <code>observation_schema</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></code>
+          –
+          <div class="doc-md-description">
+            <p>A shallow plain-dictionary view of the validated result. Observation and mask
+arrays are not copied. Metadata is shallow-copied, so producer-owned extension
+values retain identity.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code>
+            –
+          <div class="doc-md-description">
+            <p>If the result, arrays, metadata, or schema entries use invalid container or
+dtype types.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            –
+          <div class="doc-md-description">
+            <p>If required fields, schema definitions, shapes, omission encodings, or
+observation values violate the contract.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Validation is pure: the source mapping, arrays, schema, and metadata values are
+never mutated. Metadata keys other than <code>observation_schema_version</code> and
+<code>observation_schema</code> are producer-owned extensions and are not interpreted.</p>
+</details>
+
+    </div>
+
+</div>
 
 
 <div class="doc doc-object doc-module">
@@ -6570,6 +6815,145 @@ can be used as a parameter adapter.</p>
 
 </div>
 
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="ssms.basic_simulators.observation_results" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">ssms.basic_simulators.observation_results</span>
+
+
+<a href="#ssms.basic_simulators.observation_results" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Validation for native fixed-width simulator observation results.</p>
+<p>This module defines only the package-native result contract. It does not adapt legacy
+<code>rts</code>/<code>choices</code> results or attach schemas to registered simulators.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+<p><span class="doc-section-title">Functions:</span></p>
+    <ul>
+          <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="validate_observation_result (ssms.basic_simulators.observation_results.validate_observation_result)" href="#ssms.basic_simulators.observation_results.validate_observation_result">validate_observation_result</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Validate a native fixed-width simulator observation result.</p>
+            </div>
+          </li>
+    </ul>
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ssms.basic_simulators.observation_results.validate_observation_result" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">validate_observation_result</span>
+
+
+<a href="#ssms.basic_simulators.observation_results.validate_observation_result" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">validate_observation_result</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Validate a native fixed-width simulator observation result.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>result</code></b>
+              (<code><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Mapping with <code>observations</code>, <code>omission_mask</code>, and <code>metadata</code>. The
+observations must be a floating NumPy array with shape
+<code>(n_samples, n_trials, obs_dim)</code>. Metadata must contain the versioned,
+ordered <code>observation_schema</code>.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Returns:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></code>
+          –
+          <div class="doc-md-description">
+            <p>A shallow plain-dictionary view of the validated result. Observation and mask
+arrays are not copied. Metadata is shallow-copied, so producer-owned extension
+values retain identity.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code>
+            –
+          <div class="doc-md-description">
+            <p>If the result, arrays, metadata, or schema entries use invalid container or
+dtype types.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            –
+          <div class="doc-md-description">
+            <p>If required fields, schema definitions, shapes, omission encodings, or
+observation values violate the contract.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Validation is pure: the source mapping, arrays, schema, and metadata values are
+never mutated. Metadata keys other than <code>observation_schema_version</code> and
+<code>observation_schema</code> are producer-owned extensions and are not interpreted.</p>
+</details>
+
+    </div>
+
+</div>
 
 
 
