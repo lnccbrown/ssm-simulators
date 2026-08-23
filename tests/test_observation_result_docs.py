@@ -16,7 +16,6 @@ def test_structured_observation_snippet_set_is_explicit() -> None:
     assert tuple(path.name for path in SNIPPETS) == (
         "legacy_response_only.py",
         "legacy_rt_choice.py",
-        "native_multi_field.py",
         "response_only_omission.py",
         "rt_confidence.py",
     )
