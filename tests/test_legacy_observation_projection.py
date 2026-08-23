@@ -191,12 +191,13 @@ def test_registered_deadline_models_use_rt_as_omission_authority(
     assert np.isnan(normalized["observations"]).all()
 
 
-def test_rejects_auxiliary_sentinel_on_available_row() -> None:
-    result = _legacy_result(2, 2)
-    result["choices"][0, 1] = OMISSION_SENTINEL
+@pytest.mark.parametrize(("auth", "aux"), [("rts", "choices"), ("choices", "rts")])
+def test_rejects_auxiliary_sentinel(auth: str, aux: str) -> None:
+    result = _legacy_result()
+    result[aux][0, 1, 0] = OMISSION_SENTINEL
 
-    with pytest.raises(ValueError, match="non-authoritative.*choices"):
-        _normalize(result, expected_n_samples=2, expected_n_trials=2)
+    with pytest.raises(ValueError, match=rf"non-authoritative.*{aux}"):
+        _normalize(result, omission_source=auth)
 
 
 def test_omission_authority_controls_projected_and_unprojected_values() -> None:
@@ -338,7 +339,9 @@ def test_rejects_preexisting_canonical_arrays(key: str) -> None:
     ("rt_dtype", "choice_dtype", "expected_dtype"),
     [
         (np.float16, np.int16, np.float32),
+        (np.float32, np.int8, np.float32),
         (np.float32, np.int32, np.float64),
+        (np.float64, np.int64, np.float64),
     ],
 )
 def test_uses_numpy_promotion_for_projected_sources(
@@ -374,6 +377,25 @@ def test_rejects_categorical_precision_loss(
         _normalize(result, observation_schema=(RT, response))
 
 
+def test_accepts_large_exactly_representable_label_after_promotion() -> None:
+    label = 2**53 + 2
+    result = _legacy_result(rt_dtype=np.float32, choice_dtype=np.int64)
+    result["choices"].fill(label)
+    response = {"name": "response", "kind": "categorical", "values": (label,)}
+
+    normalized = _normalize(result, observation_schema=(RT, response))
+
+    assert np.all(normalized["observations"][..., 1] == label)
+
+
+def test_final_native_validation_rejects_out_of_domain_response() -> None:
+    result = _legacy_result()
+    result["choices"][0, 0, 0] = 3
+
+    with pytest.raises(ValueError, match="response.*outside its categorical domain"):
+        _normalize(result)
+
+
 @pytest.mark.parametrize(
     ("n_samples", "n_trials", "error", "message"),
     [
@@ -406,6 +428,13 @@ def test_requires_positive_integer_counts(
         (
             lambda result: result.__setitem__(
                 "choices", result["choices"].astype(np.complex64)
+            ),
+            TypeError,
+            "choices.*real numeric",
+        ),
+        (
+            lambda result: result.__setitem__(
+                "choices", result["choices"].astype(np.bool_)
             ),
             TypeError,
             "choices.*real numeric",
