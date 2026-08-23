@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 Schema = tuple[Mapping[str, Any], ...]
@@ -19,12 +20,15 @@ def _result(
     schema: Schema,
     observations: Sequence[Sequence[Sequence[float]]],
     *,
+    dtype: npt.DTypeLike = np.float64,
     omission_mask: Sequence[Sequence[bool]] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    observation_array = np.asarray(observations, dtype=np.float64)
+    observation_array = np.asarray(observations, dtype=dtype)
     if omission_mask is None:
-        omission_mask = np.zeros(observation_array.shape[:2], dtype=bool)
+        omission_array = np.zeros(observation_array.shape[:2], dtype=bool)
+    else:
+        omission_array = np.asarray(omission_mask, dtype=bool)
 
     result_metadata = dict(metadata or {})
     result_metadata.update(
@@ -35,7 +39,7 @@ def _result(
     )
     return {
         "observations": observation_array,
-        "omission_mask": np.asarray(omission_mask, dtype=bool),
+        "omission_mask": omission_array,
         "metadata": result_metadata,
     }
 
@@ -267,6 +271,82 @@ def test_validate_observation_result_rejects_invalid_categorical_labels(
 
     with pytest.raises(ValueError, match="values"):
         _validate(_result((entry,), [[[0.0]]]))
+
+
+@pytest.mark.parametrize(
+    ("dtype", "label"),
+    [
+        (np.float16, 2**11 + 1),
+        (np.float32, 2**24 + 1),
+        (np.float64, 2**53 + 1),
+    ],
+    ids=("float16", "float32", "float64"),
+)
+@pytest.mark.parametrize("batch", ["non-omitted", "all-omitted", "empty"])
+def test_validate_observation_result_rejects_categorical_labels_not_exactly_representable(
+    dtype: npt.DTypeLike,
+    label: int,
+    batch: str,
+) -> None:
+    if batch == "non-omitted":
+        observations = np.asarray([[[label]]], dtype=dtype)
+        omission_mask = np.zeros((1, 1), dtype=bool)
+    elif batch == "all-omitted":
+        observations = np.full((1, 1, 1), np.nan, dtype=dtype)
+        omission_mask = np.ones((1, 1), dtype=bool)
+    else:
+        observations = np.empty((0, 1, 1), dtype=dtype)
+        omission_mask = np.empty((0, 1), dtype=bool)
+
+    result = {
+        "observations": observations,
+        "omission_mask": omission_mask,
+        "metadata": {
+            "observation_schema_version": 1,
+            "observation_schema": (
+                {"name": "choice", "kind": "categorical", "values": (label,)},
+            ),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=rf"choice.*not exactly representable.*{np.dtype(dtype).name}",
+    ):
+        _validate(result)
+
+
+@pytest.mark.parametrize("label", [10**1000, -(10**1000)], ids=("positive", "negative"))
+def test_validate_observation_result_rejects_categorical_labels_too_large_for_dtype(
+    label: int,
+) -> None:
+    entry = {"name": "choice", "kind": "categorical", "values": (label,)}
+
+    with pytest.raises(ValueError, match="not exactly representable.*float64"):
+        _validate(_result((entry,), [[[0.0]]]))
+
+
+@pytest.mark.parametrize(
+    ("dtype", "label"),
+    [
+        (np.float16, 2**11 + 2),
+        (np.float32, 2**24 + 2),
+        (np.float64, 2**53 + 2),
+    ],
+    ids=("float16", "float32", "float64"),
+)
+def test_validate_observation_result_accepts_large_exactly_representable_categorical_labels(
+    dtype: npt.DTypeLike,
+    label: int,
+) -> None:
+    entry = {"name": "choice", "kind": "categorical", "values": (-label, label)}
+    result = _result((entry,), [[[-label], [label]]], dtype=dtype)
+
+    validated = _validate(result)
+
+    np.testing.assert_array_equal(
+        validated["observations"], np.asarray([[[-label], [label]]], dtype=dtype)
+    )
 
 
 def test_validate_observation_result_enforces_categorical_membership() -> None:
