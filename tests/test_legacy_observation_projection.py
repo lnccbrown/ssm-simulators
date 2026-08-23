@@ -123,6 +123,11 @@ def test_projects_every_historical_legacy_shape(
         normalized["observations"][..., -1],
         result["choices"].reshape(n_samples, n_trials),
     )
+    if not response_only:
+        np.testing.assert_array_equal(
+            normalized["observations"][..., 0],
+            result["rts"].reshape(n_samples, n_trials),
+        )
     assert normalized["observations"].dtype == (
         np.dtype(np.float64) if response_only else np.dtype(np.float32)
     )
@@ -217,6 +222,10 @@ def test_omission_authority_controls_projected_and_unprojected_values() -> None:
     np.testing.assert_array_equal(rt_response["rts"], original["rts"])
     np.testing.assert_array_equal(rt_response["choices"], original["choices"])
 
+    rt_response["choices"][1, 0] = 123
+    normalized = _normalize(rt_response, expected_n_samples=2, expected_n_trials=2)
+    assert np.isnan(normalized["observations"][1, 0]).all()
+
     response_only = _legacy_result(1, 3)
     response_only["rts"].fill(OMISSION_SENTINEL)
     response_only["choices"] = _legacy_shape([0, OMISSION_SENTINEL, 2], 1, 3).astype(
@@ -237,20 +246,30 @@ def test_omission_authority_controls_projected_and_unprojected_values() -> None:
 
 
 @pytest.mark.parametrize(
-    ("source_projection", "message"),
+    ("source_projection", "error", "message"),
     [
-        (("choices", "response"), "pair"),
-        ((("choices", "response"),), "cover the schema exactly"),
-        ((("choices", "response"), ("rts", "rt")), "schema order"),
-        ((("rts", "rt"), ("rts", "response")), "source keys must be unique"),
-        ((("rts", "rt"), ("missing", "response")), "missing projected source"),
+        (("choices", "response"), TypeError, "pair"),
+        ([("rts", "rt"), ("choices", "response")], TypeError, "ordered tuple"),
+        ((("choices", "response"),), ValueError, "cover the schema exactly"),
+        ((("choices", "response"), ("rts", "rt")), ValueError, "schema order"),
+        (
+            (("rts", "rt"), ("rts", "response")),
+            ValueError,
+            "source keys must be unique",
+        ),
+        (
+            (("rts", "rt"), ("missing", "response")),
+            ValueError,
+            "missing projected source",
+        ),
     ],
 )
 def test_requires_explicit_ordered_schema_projection(
     source_projection: Any,
+    error: type[Exception],
     message: str,
 ) -> None:
-    with pytest.raises((TypeError, ValueError), match=message):
+    with pytest.raises(error, match=message):
         _normalize(
             _legacy_result(),
             source_projection=source_projection,
@@ -301,14 +320,15 @@ def test_shallow_copies_without_mutating_legacy_result() -> None:
 
 def test_retains_identical_reserved_metadata() -> None:
     schema = (RT, BINARY_RESPONSE)
+    stored_schema = tuple(dict(entry) for entry in schema)
     result = _legacy_result()
     result["metadata"].update(
-        {"observation_schema_version": 1, "observation_schema": schema}
+        {"observation_schema_version": 1, "observation_schema": stored_schema}
     )
 
     normalized = _normalize(result, observation_schema=schema)
 
-    assert normalized["metadata"]["observation_schema"] is schema
+    assert normalized["metadata"]["observation_schema"] is stored_schema
 
 
 @pytest.mark.parametrize(
@@ -354,6 +374,17 @@ def test_uses_numpy_promotion_for_projected_sources(
     )
 
     assert normalized["observations"].dtype == np.dtype(expected_dtype)
+
+
+def test_response_only_float_source_preserves_dtype() -> None:
+    normalized = _normalize(
+        _legacy_result(choice_dtype=np.float32),
+        observation_schema=(BINARY_RESPONSE,),
+        source_projection=RESPONSE_ONLY_PROJECTION,
+        omission_source="choices",
+    )
+
+    assert normalized["observations"].dtype == np.dtype(np.float32)
 
 
 @pytest.mark.parametrize(
@@ -464,3 +495,9 @@ def test_requires_mapping_and_projected_omission_source() -> None:
             source_projection=RESPONSE_ONLY_PROJECTION,
             omission_source="rts",
         )
+
+
+@pytest.mark.parametrize("omission_source", ["", None])
+def test_rejects_invalid_omission_source_type(omission_source: Any) -> None:
+    with pytest.raises(TypeError, match="omission_source"):
+        _normalize(_legacy_result(), omission_source=omission_source)
