@@ -7,7 +7,8 @@ boundary = np.linspace(1.0, 0.0, 100)
 legacy_result = {
     # n_samples=2 and n_trials=1 historically produces shape (2, 1).
     "rts": np.array([[0.42], [OMISSION_SENTINEL]], dtype=np.float32),
-    "choices": np.array([[1.0], [OMISSION_SENTINEL]], dtype=np.float32),
+    # Deadline models retain a sampled/placeholder choice on an omitted RT row.
+    "choices": np.array([[1.0], [-1.0]], dtype=np.float32),
     "metadata": {
         "simulator": "ddm",
         "possible_choices": (-1, 1),
@@ -33,6 +34,7 @@ validated_result = normalize_simulator_result(
         },
     ),
     source_projection=(("rts", "rt"), ("choices", "response")),
+    omission_source="rts",
 )
 
 assert validated_result["observations"].shape == (2, 1, 2)
@@ -41,3 +43,4 @@ assert np.isnan(validated_result["observations"][1, 0]).all()
 assert validated_result["rts"] is legacy_result["rts"]
 assert validated_result["metadata"]["boundary"] is boundary
 assert legacy_result["rts"][1, 0] == OMISSION_SENTINEL
+assert legacy_result["choices"][1, 0] == -1.0

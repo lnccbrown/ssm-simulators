@@ -36,8 +36,8 @@ Learn how to create custom parameter transformations for your models. This guide
 
 Use the opt-in normalizer when a consumer needs a structured view of an existing
 `rts`/`choices` result. New producers with three or more observation fields should emit
-the native contract directly; the guide explains that boundary and links the normative
-schema reference.
+the native contract directly; the guide explains the explicit source mapping and
+omission-authority requirements, that boundary, and links the normative schema reference.
 
 ### Other Ways to Contribute
 

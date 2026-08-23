@@ -26,6 +26,7 @@ validated_result = normalize_simulator_result(
         },
     ),
     source_projection=(("choices", "response"),),
+    omission_source="choices",
 )
 
 assert validated_result["observations"].shape == (1, 3, 1)

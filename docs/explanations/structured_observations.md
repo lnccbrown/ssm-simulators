@@ -47,8 +47,9 @@ axis represented samples, trials, or observation fields.
 Legacy `rts` and `choices` may still use their historical squeezed shapes. Converting
 those results requires the opt-in
 [legacy-result normalizer](../how_to/normalize_simulator_results.md), explicit original
-sample/trial counts, and an explicit source mapping. The native validator and normalizer
-do not guess how legacy arrays should be interpreted.
+sample/trial counts, an explicit source mapping, and one projected source named as the
+omission authority. The native validator and normalizer do not guess how legacy arrays
+or their omission sentinels should be interpreted.
 
 ## Why schema entries are closed but metadata is open
 
