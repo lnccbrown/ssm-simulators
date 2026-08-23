@@ -6,7 +6,7 @@ This module defines only the package-native result contract. It does not adapt l
 
 from collections.abc import Mapping, Sequence
 import math
-from numbers import Real
+from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
@@ -108,7 +108,7 @@ def validate_observation_result(result: Mapping[str, Any]) -> dict[str, Any]:
             f"{OBSERVATION_SCHEMA_VERSION}; got {version!r}"
         )
 
-    schema = _validate_schema(metadata["observation_schema"])
+    schema = _validate_schema(metadata["observation_schema"], observations.dtype)
     if observations.shape[-1] != len(schema):
         raise ValueError(
             "observations width must equal observation_schema length: "
@@ -123,7 +123,9 @@ def validate_observation_result(result: Mapping[str, Any]) -> dict[str, Any]:
     return validated
 
 
-def _validate_schema(schema: object) -> tuple[Mapping[str, Any], ...]:
+def _validate_schema(
+    schema: object, observation_dtype: np.dtype[Any]
+) -> tuple[Mapping[str, Any], ...]:
     if not isinstance(schema, tuple):
         raise TypeError("observation_schema must be an ordered tuple of mappings")
     if not schema:
@@ -163,7 +165,7 @@ def _validate_schema(schema: object) -> tuple[Mapping[str, Any], ...]:
             )
 
         if kind == "categorical":
-            _validate_categorical_schema(entry, name)
+            _validate_categorical_schema(entry, name, observation_dtype)
         elif kind == "continuous":
             _validate_continuous_schema(entry, name)
         else:
@@ -176,7 +178,9 @@ def _validate_schema(schema: object) -> tuple[Mapping[str, Any], ...]:
     return schema
 
 
-def _validate_categorical_schema(entry: Mapping[str, Any], name: str) -> None:
+def _validate_categorical_schema(
+    entry: Mapping[str, Any], name: str, observation_dtype: np.dtype[Any]
+) -> None:
     if "values" not in entry:
         raise ValueError(f"categorical field {name!r} requires values")
 
@@ -188,14 +192,20 @@ def _validate_categorical_schema(entry: Mapping[str, Any], name: str) -> None:
     if not values:
         raise ValueError(f"categorical field {name!r} values must not be empty")
 
-    validated_values: list[float] = []
+    validated_values: list[int] = []
     for value in values:
-        if not _is_finite_real(value) or not float(value).is_integer():
+        integer_value = _as_finite_integer(value)
+        if integer_value is None:
             raise ValueError(
                 f"categorical field {name!r} values must be finite, "
                 "integer-valued numeric labels"
             )
-        validated_values.append(float(value))
+        if not _integer_is_exactly_representable(integer_value, observation_dtype):
+            raise ValueError(
+                f"categorical field {name!r} value {value!r} is not exactly "
+                f"representable in observations dtype {observation_dtype.name}"
+            )
+        validated_values.append(integer_value)
 
     if len(validated_values) != len(set(validated_values)):
         raise ValueError(f"categorical field {name!r} values must be unique")
@@ -274,7 +284,8 @@ def _validate_observation_values(
         valid = np.ones(values.shape, dtype=bool)
 
         if kind == "categorical":
-            valid &= np.isin(values, tuple(entry["values"]))
+            categorical_values = np.asarray(entry["values"], dtype=observations.dtype)
+            valid &= np.isin(values, categorical_values)
         elif kind == "continuous":
             if "lower" in entry:
                 if entry.get("lower_inclusive", True):
@@ -299,11 +310,51 @@ def _validate_observation_values(
 
 
 def _is_finite_real(value: object) -> bool:
-    return (
-        not isinstance(value, (bool, np.bool_))
-        and isinstance(value, Real)
-        and math.isfinite(float(value))
-    )
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        return False
+    try:
+        return math.isfinite(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+
+
+def _as_finite_integer(value: object) -> int | None:
+    """Return the exact integer represented by a valid categorical label."""
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        return None
+    if isinstance(value, Integral):
+        return int(value)
+
+    as_integer_ratio = getattr(value, "as_integer_ratio", None)
+    if as_integer_ratio is not None:
+        try:
+            numerator, denominator = as_integer_ratio()
+        except (OverflowError, TypeError, ValueError):
+            return None
+        if denominator != 1:
+            return None
+        return int(numerator)
+
+    try:
+        as_float = float(value)
+        if not math.isfinite(as_float) or not as_float.is_integer():
+            return None
+        integer_value = int(as_float)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    return integer_value if value == integer_value else None
+
+
+def _integer_is_exactly_representable(
+    value: int, observation_dtype: np.dtype[Any]
+) -> bool:
+    """Return whether ``value`` survives an exact round trip through ``dtype``."""
+    try:
+        with np.errstate(over="ignore", invalid="ignore"):
+            cast_value = np.asarray(value, dtype=observation_dtype)[()]
+    except (OverflowError, TypeError, ValueError):
+        return False
+    return bool(np.isfinite(cast_value)) and int(cast_value) == value
 
 
 def _format_keys(keys: Sequence[str] | set[str] | frozenset[str]) -> str:
