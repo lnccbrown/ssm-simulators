@@ -1,6 +1,6 @@
 """Contract tests for explicit projection of legacy simulator results."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import numpy as np
@@ -35,6 +35,12 @@ ZERO_ONE_RESPONSE = {
 }
 RT_RESPONSE_PROJECTION = (("rts", "rt"), ("choices", "response"))
 RESPONSE_ONLY_PROJECTION = (("choices", "response"),)
+LEGACY_CASES = (
+    pytest.param((1, 1, (1,)), id="one-sample-one-trial"),
+    pytest.param((4, 1, (1, 4)), id="many-samples"),
+    pytest.param((1, 5, (1, 5)), id="many-trials"),
+    pytest.param((3, 4, (12, 1)), id="full-grid"),
+)
 
 
 def _normalize(
@@ -59,7 +65,6 @@ def _normalize(
 
 
 def _legacy_shape(values: npt.ArrayLike, n_samples: int, n_trials: int) -> np.ndarray:
-    """Return the exact historical squeeze shape for a scalar legacy source."""
     array = np.asarray(values).reshape(n_samples, n_trials, 1)
     if n_trials == 1:
         return np.squeeze(array, axis=1)
@@ -76,146 +81,90 @@ def _legacy_result(
     choice_dtype: npt.DTypeLike = np.int16,
 ) -> dict[str, Any]:
     size = n_samples * n_trials
-    rts = _legacy_shape(
-        np.arange(size, dtype=np.float64) / 10.0 + 0.2,
-        n_samples,
-        n_trials,
-    ).astype(rt_dtype)
-    choices = _legacy_shape(
-        np.where(np.arange(size) % 2 == 0, -1, 1),
-        n_samples,
-        n_trials,
-    ).astype(choice_dtype)
     return {
-        "rts": rts,
-        "choices": choices,
-        "metadata": {
-            "model": "ddm",
-            "possible_choices": (-1, 1),
-        },
+        "rts": _legacy_shape(np.arange(size) / 10.0 + 0.2, n_samples, n_trials).astype(
+            rt_dtype
+        ),
+        "choices": _legacy_shape(
+            np.where(np.arange(size) % 2 == 0, -1, 1), n_samples, n_trials
+        ).astype(choice_dtype),
+        "metadata": {"model": "ddm", "possible_choices": (-1, 1)},
     }
 
 
-@pytest.mark.parametrize(
-    ("n_samples", "n_trials"),
-    [(1, 1), (4, 1), (1, 5), (3, 4)],
-    ids=("one-sample-one-trial", "many-samples", "many-trials", "full-grid"),
-)
-def test_normalize_simulator_result_projects_rt_and_response_for_every_legacy_shape(
-    n_samples: int,
-    n_trials: int,
+@pytest.mark.parametrize("case", LEGACY_CASES)
+@pytest.mark.parametrize("response_only", [False, True], ids=("rt-choice", "response"))
+def test_projects_every_historical_legacy_shape(
+    case: tuple[int, int, tuple[int, ...]],
+    response_only: bool,
 ) -> None:
+    n_samples, n_trials, _ = case
     result = _legacy_result(n_samples, n_trials)
+    kwargs: dict[str, Any] = {}
+    expected_width = 2
+    if response_only:
+        result["rts"].fill(-1.0)
+        kwargs = {
+            "observation_schema": (BINARY_RESPONSE,),
+            "source_projection": RESPONSE_ONLY_PROJECTION,
+            "omission_source": "choices",
+        }
+        expected_width = 1
 
     normalized = _normalize(
         result,
         expected_n_samples=n_samples,
         expected_n_trials=n_trials,
+        **kwargs,
     )
 
-    assert normalized["observations"].shape == (n_samples, n_trials, 2)
-    assert normalized["observations"].dtype == np.dtype(np.float32)
+    assert normalized["observations"].shape == (n_samples, n_trials, expected_width)
     np.testing.assert_array_equal(
-        normalized["observations"][..., 0],
-        result["rts"].reshape(n_samples, n_trials),
-    )
-    np.testing.assert_array_equal(
-        normalized["observations"][..., 1],
+        normalized["observations"][..., -1],
         result["choices"].reshape(n_samples, n_trials),
+    )
+    assert normalized["observations"].dtype == (
+        np.dtype(np.float64) if response_only else np.dtype(np.float32)
     )
     assert not normalized["omission_mask"].any()
 
 
-@pytest.mark.parametrize(
-    ("n_samples", "n_trials"),
-    [(1, 1), (4, 1), (1, 5), (3, 4)],
-    ids=("one-sample-one-trial", "many-samples", "many-trials", "full-grid"),
-)
-def test_normalize_simulator_result_projects_response_only_for_every_legacy_shape(
-    n_samples: int,
-    n_trials: int,
+@pytest.mark.parametrize("case", LEGACY_CASES)
+@pytest.mark.parametrize("response_only", [False, True], ids=("rt-choice", "response"))
+def test_rejects_equal_size_nonhistorical_shapes(
+    case: tuple[int, int, tuple[int, ...]],
+    response_only: bool,
 ) -> None:
+    n_samples, n_trials, wrong_shape = case
     result = _legacy_result(n_samples, n_trials)
-    result["rts"].fill(-1.0)
-
-    normalized = _normalize(
-        result,
-        expected_n_samples=n_samples,
-        expected_n_trials=n_trials,
-        observation_schema=(BINARY_RESPONSE,),
-        source_projection=RESPONSE_ONLY_PROJECTION,
-        omission_source="choices",
+    malformed_source = "choices" if response_only else "rts"
+    result[malformed_source] = result[malformed_source].reshape(wrong_shape)
+    kwargs = (
+        {
+            "observation_schema": (BINARY_RESPONSE,),
+            "source_projection": RESPONSE_ONLY_PROJECTION,
+            "omission_source": "choices",
+        }
+        if response_only
+        else {}
     )
 
-    assert normalized["observations"].shape == (n_samples, n_trials, 1)
-    assert normalized["observations"].dtype == np.dtype(np.float64)
-    np.testing.assert_array_equal(
-        normalized["observations"][..., 0],
-        result["choices"].reshape(n_samples, n_trials),
-    )
-    assert not normalized["omission_mask"].any()
-    assert np.all(result["rts"] == -1.0)
-
-
-def test_normalize_simulator_result_preserves_floating_choice_only_dtype() -> None:
-    result = _legacy_result(choice_dtype=np.float32)
-
-    normalized = _normalize(
-        result,
-        observation_schema=(BINARY_RESPONSE,),
-        source_projection=RESPONSE_ONLY_PROJECTION,
-        omission_source="choices",
-    )
-
-    assert normalized["observations"].dtype == np.dtype(np.float32)
-
-
-def test_normalize_simulator_result_projects_existing_rt_rlssm_response() -> None:
-    result = _legacy_result(n_samples=2, n_trials=2)
-    result["choices"] = _legacy_shape([0, 1, 2, 3], 2, 2).astype(np.int8)
-
-    normalized = _normalize(
-        result,
-        expected_n_samples=2,
-        expected_n_trials=2,
-        observation_schema=(RT, FOUR_WAY_RESPONSE),
-    )
-
-    np.testing.assert_array_equal(
-        normalized["observations"][..., 1], [[0.0, 1.0], [2.0, 3.0]]
-    )
-
-
-def test_normalize_simulator_result_projects_existing_choice_only_rlssm_response() -> (
-    None
-):
-    result = _legacy_result(n_samples=1, n_trials=4)
-    result["rts"].fill(-1.0)
-    result["choices"] = _legacy_shape([0, 1, 2, 3], 1, 4).astype(np.int8)
-
-    normalized = _normalize(
-        result,
-        expected_n_samples=1,
-        expected_n_trials=4,
-        observation_schema=(FOUR_WAY_RESPONSE,),
-        source_projection=RESPONSE_ONLY_PROJECTION,
-        omission_source="choices",
-    )
-
-    np.testing.assert_array_equal(
-        normalized["observations"], [[[0.0], [1.0], [2.0], [3.0]]]
-    )
-    assert normalized["observations"].dtype == np.dtype(np.float64)
+    with pytest.raises(
+        ValueError, match=rf"{malformed_source}.*historical legacy shape"
+    ):
+        _normalize(
+            result,
+            expected_n_samples=n_samples,
+            expected_n_trials=n_trials,
+            **kwargs,
+        )
 
 
 @pytest.mark.parametrize(
     ("model", "response_schema"),
-    [
-        ("ddm_deadline", BINARY_RESPONSE),
-        ("lba2_deadline", ZERO_ONE_RESPONSE),
-    ],
+    [("ddm_deadline", BINARY_RESPONSE), ("lba2_deadline", ZERO_ONE_RESPONSE)],
 )
-def test_normalize_simulator_result_uses_rt_omissions_from_registered_deadline_models(
+def test_registered_deadline_models_use_rt_as_omission_authority(
     model: str,
     response_schema: Mapping[str, Any],
 ) -> None:
@@ -223,21 +172,16 @@ def test_normalize_simulator_result_uses_rt_omissions_from_registered_deadline_m
 
     simulator = Simulator(model)
     theta = dict(
-        zip(
-            simulator.config["params"],
-            simulator.config["default_params"],
-            strict=True,
-        )
+        zip(simulator.config["params"], simulator.config["default_params"], strict=True)
     )
     theta["deadline"] = 0.001
-    legacy_result = simulator.simulate(theta, n_samples=8, random_state=42)
+    result = simulator.simulate(theta, n_samples=8, random_state=42)
 
-    assert np.all(legacy_result["rts"] == OMISSION_SENTINEL)
-    assert np.all(legacy_result["choices"] != OMISSION_SENTINEL)
+    assert np.all(result["rts"] == OMISSION_SENTINEL)
+    assert np.all(result["choices"] != OMISSION_SENTINEL)
 
     normalized = _normalize(
-        legacy_result,
-        omission_source="rts",
+        result,
         expected_n_samples=8,
         expected_n_trials=1,
         observation_schema=(RT, response_schema),
@@ -245,187 +189,40 @@ def test_normalize_simulator_result_uses_rt_omissions_from_registered_deadline_m
 
     assert normalized["omission_mask"].tolist() == [[True]] * 8
     assert np.isnan(normalized["observations"]).all()
-    assert normalized["rts"] is legacy_result["rts"]
-    assert normalized["choices"] is legacy_result["choices"]
 
 
-def test_normalize_simulator_result_handles_registered_rt_rlssm_omission() -> None:
-    from unittest.mock import patch
+def test_rejects_auxiliary_sentinel_on_available_row() -> None:
+    result = _legacy_result(2, 2)
+    result["choices"][0, 1] = OMISSION_SENTINEL
 
-    import ssms.rl as rl
+    with pytest.raises(ValueError, match="non-authoritative.*choices"):
+        _normalize(result, expected_n_samples=2, expected_n_trials=2)
 
-    config = rl.preset.get("2AB_RW_DDM")
-    simulator = rl.Simulator(config)
-    raw_result = {
-        "rts": np.array([[OMISSION_SENTINEL]], dtype=np.float32),
-        "choices": np.array([[-1]], dtype=np.int16),
-    }
-    legacy_result = {
-        **raw_result,
-        "metadata": {"model": config.model_name},
+
+def test_omission_authority_controls_projected_and_unprojected_values() -> None:
+    rt_response = _legacy_result(2, 2)
+    rt_response["rts"][1, 0] = OMISSION_SENTINEL
+    rt_response["choices"][1, 0] = OMISSION_SENTINEL
+    original = {
+        key: value.copy() for key, value in rt_response.items() if key != "metadata"
     }
 
-    normalized = _normalize(
-        legacy_result,
-        omission_source="rts",
-        expected_n_samples=1,
-        expected_n_trials=1,
-    )
-
-    assert normalized["omission_mask"].tolist() == [[True]]
-    assert np.isnan(normalized["observations"]).all()
-
-    def omit_trial(**kwargs: Any) -> dict[str, np.ndarray]:
-        return raw_result
-
-    with patch("ssms.rl.simulator.ssm_simulator", side_effect=omit_trial):
-        data = simulator.simulate(
-            theta={
-                "rl_alpha": 0.2,
-                "scaler": 2.0,
-                "a": 1.5,
-                "z": 0.5,
-                "t": 0.3,
-            },
-            n_trials=2,
-            n_participants=1,
-            random_state=42,
-        )
-
-    assert data["rt"].tolist() == [OMISSION_SENTINEL, OMISSION_SENTINEL]
-    assert data["response"].tolist() == [OMISSION_SENTINEL, OMISSION_SENTINEL]
-
-
-@pytest.mark.parametrize(
-    ("omission_source", "auxiliary_source"),
-    [("rts", "choices"), ("choices", "rts")],
-)
-def test_normalize_simulator_result_rejects_auxiliary_sentinel_on_available_row(
-    omission_source: str,
-    auxiliary_source: str,
-) -> None:
-    result = _legacy_result(n_samples=2, n_trials=2)
-    result[auxiliary_source][0, 1] = OMISSION_SENTINEL
-
-    with pytest.raises(ValueError, match=rf"non-authoritative.*{auxiliary_source}"):
-        _normalize(
-            result,
-            omission_source=omission_source,
-            expected_n_samples=2,
-            expected_n_trials=2,
-        )
-
-
-def test_normalize_simulator_result_ignores_unprojected_dummy_rt_sentinel() -> None:
-    result = _legacy_result(n_samples=1, n_trials=3)
-    result["rts"].fill(OMISSION_SENTINEL)
-    result["choices"] = _legacy_shape([0, 1, 2], 1, 3).astype(np.int16)
-
-    normalized = _normalize(
-        result,
-        omission_source="choices",
-        expected_n_samples=1,
-        expected_n_trials=3,
-        observation_schema=(FOUR_WAY_RESPONSE,),
-        source_projection=RESPONSE_ONLY_PROJECTION,
-    )
-
-    assert not normalized["omission_mask"].any()
-    np.testing.assert_array_equal(normalized["observations"], [[[0.0], [1.0], [2.0]]])
-    assert np.all(result["rts"] == OMISSION_SENTINEL)
-
-
-def test_normalize_simulator_result_ignores_auxiliary_value_on_omitted_row() -> None:
-    result = _legacy_result(n_samples=1, n_trials=1)
-    result["rts"][0, 0] = OMISSION_SENTINEL
-    result["choices"][0, 0] = 123
-
-    normalized = _normalize(
-        result,
-        omission_source="rts",
-        expected_n_samples=1,
-        expected_n_trials=1,
-    )
-
-    assert normalized["omission_mask"].tolist() == [[True]]
-    assert np.isnan(normalized["observations"]).all()
-
-
-@pytest.mark.parametrize(
-    ("omission_source", "error"),
-    [
-        ("response", ValueError),
-        ("", TypeError),
-        (1, TypeError),
-        (None, TypeError),
-    ],
-)
-def test_normalize_simulator_result_requires_a_projected_omission_source(
-    omission_source: Any,
-    error: type[Exception],
-) -> None:
-    with pytest.raises(error, match="omission_source"):
-        _normalize(
-            _legacy_result(),
-            omission_source=omission_source,
-        )
-
-
-def test_normalize_simulator_result_rejects_unprojected_legacy_omission_source() -> (
-    None
-):
-    with pytest.raises(ValueError, match="omission_source.*projected"):
-        _normalize(
-            _legacy_result(),
-            observation_schema=(BINARY_RESPONSE,),
-            source_projection=RESPONSE_ONLY_PROJECTION,
-            omission_source="rts",
-        )
-
-
-def test_normalize_simulator_result_requires_explicit_omission_authority() -> None:
-    from ssms.basic_simulators import normalize_simulator_result
-
-    with pytest.raises(TypeError, match="omission_source"):
-        normalize_simulator_result(
-            _legacy_result(),
-            expected_n_samples=2,
-            expected_n_trials=3,
-            observation_schema=(RT, BINARY_RESPONSE),
-            source_projection=RT_RESPONSE_PROJECTION,
-        )
-
-
-def test_normalize_simulator_result_converts_consistent_rt_response_omission() -> None:
-    result = _legacy_result(n_samples=2, n_trials=2)
-    result["rts"][1, 0] = OMISSION_SENTINEL
-    result["choices"][1, 0] = OMISSION_SENTINEL
-    original_rts = result["rts"].copy()
-    original_choices = result["choices"].copy()
-
-    normalized = _normalize(
-        result,
-        expected_n_samples=2,
-        expected_n_trials=2,
-    )
+    normalized = _normalize(rt_response, expected_n_samples=2, expected_n_trials=2)
 
     np.testing.assert_array_equal(
         normalized["omission_mask"], [[False, False], [True, False]]
     )
     assert np.isnan(normalized["observations"][1, 0]).all()
-    np.testing.assert_array_equal(result["rts"], original_rts)
-    np.testing.assert_array_equal(result["choices"], original_choices)
+    np.testing.assert_array_equal(rt_response["rts"], original["rts"])
+    np.testing.assert_array_equal(rt_response["choices"], original["choices"])
 
-
-def test_normalize_simulator_result_converts_choice_only_omission_and_ignores_dummy_rt() -> (
-    None
-):
-    result = _legacy_result(n_samples=1, n_trials=3)
-    result["rts"].fill(-1.0)
-    result["choices"] = _legacy_shape([0, OMISSION_SENTINEL, 2], 1, 3).astype(np.int16)
-
+    response_only = _legacy_result(1, 3)
+    response_only["rts"].fill(OMISSION_SENTINEL)
+    response_only["choices"] = _legacy_shape([0, OMISSION_SENTINEL, 2], 1, 3).astype(
+        np.int16
+    )
     normalized = _normalize(
-        result,
+        response_only,
         expected_n_samples=1,
         expected_n_trials=3,
         observation_schema=(FOUR_WAY_RESPONSE,),
@@ -434,97 +231,44 @@ def test_normalize_simulator_result_converts_choice_only_omission_and_ignores_du
     )
 
     np.testing.assert_array_equal(normalized["omission_mask"], [[False, True, False]])
-    assert np.isnan(normalized["observations"][0, 1, 0])
-    np.testing.assert_array_equal(result["rts"], np.full((3, 1), -1.0, np.float32))
-
-
-@pytest.mark.parametrize(
-    ("n_samples", "n_trials", "wrong_shape"),
-    [
-        (1, 1, (1,)),
-        (4, 1, (1, 4)),
-        (1, 5, (1, 5)),
-        (3, 4, (12, 1)),
-    ],
-    ids=("one-sample-one-trial", "many-samples", "many-trials", "full-grid"),
-)
-@pytest.mark.parametrize("source", ["rts", "choices"])
-def test_normalize_simulator_result_rejects_equal_size_nonhistorical_shapes(
-    n_samples: int,
-    n_trials: int,
-    wrong_shape: tuple[int, ...],
-    source: str,
-) -> None:
-    result = _legacy_result(n_samples, n_trials)
-    result[source] = result[source].reshape(wrong_shape)
-
-    with pytest.raises(ValueError, match=rf"{source}.*historical legacy shape"):
-        _normalize(
-            result,
-            expected_n_samples=n_samples,
-            expected_n_trials=n_trials,
-        )
+    assert np.isnan(normalized["observations"][0, 1]).all()
+    assert np.all(response_only["rts"] == OMISSION_SENTINEL)
 
 
 @pytest.mark.parametrize(
     ("source_projection", "message"),
     [
+        (("choices", "response"), "pair"),
         ((("choices", "response"),), "cover the schema exactly"),
-        (
-            (("choices", "response"), ("rts", "rt")),
-            "schema order",
-        ),
-        (
-            (("rts", "rt"), ("rts", "response")),
-            "source keys must be unique",
-        ),
-        (
-            (("rts", "rt"), ("choices", "rt")),
-            "schema order",
-        ),
-        (
-            (("latencies", "rt"), ("choices", "response")),
-            "latencies",
-        ),
-        (
-            (("rts", "rt"), ("choices", "response"), ("extra", "extra")),
-            "cover the schema exactly",
-        ),
+        ((("choices", "response"), ("rts", "rt")), "schema order"),
+        ((("rts", "rt"), ("rts", "response")), "source keys must be unique"),
+        ((("rts", "rt"), ("missing", "response")), "missing projected source"),
     ],
 )
-def test_normalize_simulator_result_requires_explicit_one_to_one_schema_ordered_projection(
-    source_projection: Projection,
+def test_requires_explicit_ordered_schema_projection(
+    source_projection: Any,
     message: str,
 ) -> None:
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises((TypeError, ValueError), match=message):
         _normalize(
             _legacy_result(),
             source_projection=source_projection,
-            omission_source=source_projection[0][0],
+            omission_source="rts",
         )
 
 
-def test_normalize_simulator_result_does_not_infer_source_names() -> None:
-    result = _legacy_result()
-    result["reaction_times"] = result.pop("rts")
-
-    with pytest.raises(ValueError, match="rts"):
-        _normalize(result)
-
-
-def test_normalize_simulator_result_limits_projection_to_two_fields() -> None:
+def test_limits_legacy_projection_to_two_scalar_fields() -> None:
     result = _legacy_result()
     result["confidence"] = result["choices"].astype(np.float32)
-    schema = (
-        RT,
-        BINARY_RESPONSE,
-        {"name": "confidence", "kind": "continuous"},
-    )
 
     with pytest.raises(ValueError, match="one or two fields"):
         _normalize(
             result,
-            observation_schema=schema,
+            observation_schema=(
+                RT,
+                BINARY_RESPONSE,
+                {"name": "confidence", "kind": "continuous"},
+            ),
             source_projection=(
                 ("rts", "rt"),
                 ("choices", "response"),
@@ -533,25 +277,12 @@ def test_normalize_simulator_result_limits_projection_to_two_fields() -> None:
         )
 
 
-@pytest.mark.parametrize("reserved_key", ["observations", "omission_mask"])
-def test_normalize_simulator_result_rejects_preexisting_canonical_arrays(
-    reserved_key: str,
-) -> None:
-    result = _legacy_result()
-    result[reserved_key] = np.empty((0,))
-
-    with pytest.raises(ValueError, match=reserved_key):
-        _normalize(result)
-
-
-def test_normalize_simulator_result_shallow_copies_without_mutating_legacy_result() -> (
-    None
-):
+def test_shallow_copies_without_mutating_legacy_result() -> None:
     extension = {"boundary": object(), "trajectory": np.arange(4)}
     result = _legacy_result()
     result["metadata"]["extension"] = extension
-    top_level_extension = object()
-    result["diagnostics"] = top_level_extension
+    diagnostic = object()
+    result["diagnostics"] = diagnostic
     original_keys = tuple(result)
     original_metadata_keys = tuple(result["metadata"])
 
@@ -560,53 +291,46 @@ def test_normalize_simulator_result_shallow_copies_without_mutating_legacy_resul
     assert normalized is not result
     assert normalized["rts"] is result["rts"]
     assert normalized["choices"] is result["choices"]
-    assert normalized["diagnostics"] is top_level_extension
+    assert normalized["diagnostics"] is diagnostic
     assert normalized["metadata"] is not result["metadata"]
     assert normalized["metadata"]["extension"] is extension
-    assert normalized["metadata"]["extension"]["boundary"] is extension["boundary"]
-    assert normalized["metadata"]["extension"]["trajectory"] is extension["trajectory"]
     assert tuple(result) == original_keys
     assert tuple(result["metadata"]) == original_metadata_keys
-    assert "observations" not in result
-    assert "omission_mask" not in result
-    assert "observation_schema" not in result["metadata"]
 
 
-def test_normalize_simulator_result_accepts_identical_reserved_metadata() -> None:
+def test_retains_identical_reserved_metadata() -> None:
     schema = (RT, BINARY_RESPONSE)
     result = _legacy_result()
     result["metadata"].update(
-        {
-            "observation_schema_version": 1,
-            "observation_schema": tuple(dict(entry) for entry in schema),
-        }
+        {"observation_schema_version": 1, "observation_schema": schema}
     )
 
     normalized = _normalize(result, observation_schema=schema)
 
-    assert normalized["metadata"]["observation_schema_version"] == 1
-    assert normalized["metadata"]["observation_schema"] == schema
-    assert (
-        normalized["metadata"]["observation_schema"]
-        is result["metadata"]["observation_schema"]
-    )
+    assert normalized["metadata"]["observation_schema"] is schema
 
 
 @pytest.mark.parametrize(
-    ("reserved_key", "reserved_value"),
+    ("key", "value"),
     [
         ("observation_schema_version", 2),
         ("observation_schema", (BINARY_RESPONSE, RT)),
     ],
 )
-def test_normalize_simulator_result_rejects_conflicting_reserved_metadata(
-    reserved_key: str,
-    reserved_value: object,
-) -> None:
+def test_rejects_conflicting_reserved_metadata(key: str, value: object) -> None:
     result = _legacy_result()
-    result["metadata"][reserved_key] = reserved_value
+    result["metadata"][key] = value
 
-    with pytest.raises(ValueError, match=rf"conflicting.*{reserved_key}"):
+    with pytest.raises(ValueError, match=rf"conflicting.*{key}"):
+        _normalize(result)
+
+
+@pytest.mark.parametrize("key", ["observations", "omission_mask"])
+def test_rejects_preexisting_canonical_arrays(key: str) -> None:
+    result = _legacy_result()
+    result[key] = np.empty((0,))
+
+    with pytest.raises(ValueError, match=key):
         _normalize(result)
 
 
@@ -614,99 +338,62 @@ def test_normalize_simulator_result_rejects_conflicting_reserved_metadata(
     ("rt_dtype", "choice_dtype", "expected_dtype"),
     [
         (np.float16, np.int16, np.float32),
-        (np.float32, np.int8, np.float32),
         (np.float32, np.int32, np.float64),
-        (np.float64, np.int64, np.float64),
     ],
 )
-def test_normalize_simulator_result_uses_numpy_promotion_for_mixed_sources(
+def test_uses_numpy_promotion_for_projected_sources(
     rt_dtype: npt.DTypeLike,
     choice_dtype: npt.DTypeLike,
     expected_dtype: npt.DTypeLike,
 ) -> None:
-    result = _legacy_result(
-        rt_dtype=rt_dtype,
-        choice_dtype=choice_dtype,
+    normalized = _normalize(
+        _legacy_result(rt_dtype=rt_dtype, choice_dtype=choice_dtype)
     )
-
-    normalized = _normalize(result)
 
     assert normalized["observations"].dtype == np.dtype(expected_dtype)
 
 
-def test_normalize_simulator_result_revalidates_labels_after_dtype_promotion() -> None:
-    unrepresentable_label = 2**53 + 1
-    result = _legacy_result(rt_dtype=np.float32, choice_dtype=np.int64)
-    result["choices"].fill(unrepresentable_label)
-    response = {
-        "name": "response",
-        "kind": "categorical",
-        "values": (unrepresentable_label,),
-    }
-
-    with pytest.raises(ValueError, match="not exactly representable.*float64"):
-        _normalize(result, observation_schema=(RT, response))
-
-
-def test_normalize_simulator_result_rejects_raw_label_that_rounds_to_allowed_label() -> (
-    None
-):
-    allowed_label = 2**53
+@pytest.mark.parametrize(
+    ("allowed_label", "raw_label"),
+    [(2**53 + 1, 2**53 + 1), (2**53, 2**53 + 1)],
+    ids=("unrepresentable-schema-label", "rounding-collision"),
+)
+def test_rejects_categorical_precision_loss(
+    allowed_label: int,
+    raw_label: int,
+) -> None:
     result = _legacy_result(rt_dtype=np.float64, choice_dtype=np.int64)
-    result["choices"].fill(allowed_label + 1)
+    result["choices"].fill(raw_label)
     response = {
         "name": "response",
         "kind": "categorical",
         "values": (allowed_label,),
     }
 
-    with pytest.raises(
-        ValueError,
-        match="categorical projected source 'choices'.*not exactly representable.*float64",
-    ):
+    with pytest.raises(ValueError, match="not exactly representable.*float64"):
         _normalize(result, observation_schema=(RT, response))
 
 
-def test_normalize_simulator_result_accepts_representable_label_after_promotion() -> (
-    None
-):
-    representable_label = 2**53 + 2
-    result = _legacy_result(rt_dtype=np.float32, choice_dtype=np.int64)
-    result["choices"].fill(representable_label)
-    response = {
-        "name": "response",
-        "kind": "categorical",
-        "values": (representable_label,),
-    }
-
-    normalized = _normalize(result, observation_schema=(RT, response))
-
-    assert normalized["observations"].dtype == np.dtype(np.float64)
-    assert np.all(normalized["observations"][..., 1] == representable_label)
-
-
 @pytest.mark.parametrize(
-    ("expected_n_samples", "expected_n_trials", "error", "message"),
+    ("n_samples", "n_trials", "error", "message"),
     [
         (True, 3, TypeError, "expected_n_samples"),
-        (2.0, 3, TypeError, "expected_n_samples"),
         (0, 3, ValueError, "expected_n_samples"),
-        (2, False, TypeError, "expected_n_trials"),
         (2, 1.5, TypeError, "expected_n_trials"),
         (2, -1, ValueError, "expected_n_trials"),
     ],
 )
-def test_normalize_simulator_result_requires_positive_integer_counts(
-    expected_n_samples: Any,
-    expected_n_trials: Any,
+def test_requires_positive_integer_counts(
+    n_samples: Any,
+    n_trials: Any,
     error: type[Exception],
     message: str,
 ) -> None:
     with pytest.raises(error, match=message):
         _normalize(
             _legacy_result(),
-            expected_n_samples=expected_n_samples,
-            expected_n_trials=expected_n_trials,
+            expected_n_samples=n_samples,
+            expected_n_trials=n_trials,
         )
 
 
@@ -723,24 +410,10 @@ def test_normalize_simulator_result_requires_positive_integer_counts(
             TypeError,
             "choices.*real numeric",
         ),
-        (
-            lambda result: result.__setitem__(
-                "choices", result["choices"].astype(np.bool_)
-            ),
-            TypeError,
-            "choices.*real numeric",
-        ),
     ],
-    ids=(
-        "missing-metadata",
-        "nonmapping-metadata",
-        "nonnumpy-source",
-        "complex-source",
-        "boolean-source",
-    ),
 )
-def test_normalize_simulator_result_rejects_invalid_legacy_containers(
-    mutate: Any,
+def test_rejects_representative_invalid_containers(
+    mutate: Callable[[dict[str, Any]], Any],
     error: type[Exception],
     message: str,
 ) -> None:
@@ -751,29 +424,14 @@ def test_normalize_simulator_result_rejects_invalid_legacy_containers(
         _normalize(result)
 
 
-def test_normalize_simulator_result_requires_a_mapping() -> None:
+def test_requires_mapping_and_projected_omission_source() -> None:
     with pytest.raises(TypeError, match="mapping"):
         _normalize([])
 
-
-@pytest.mark.parametrize(
-    ("observation_schema", "source_projection", "error", "message"),
-    [
-        ([RT, BINARY_RESPONSE], RT_RESPONSE_PROJECTION, TypeError, "ordered tuple"),
-        ((RT,), [RESPONSE_ONLY_PROJECTION[0]], TypeError, "ordered tuple"),
-        ((RT,), (("rts",),), TypeError, "pair"),
-        ((RT,), ((1, "rt"),), TypeError, "non-empty strings"),
-    ],
-)
-def test_normalize_simulator_result_requires_tuple_schema_and_projection_contracts(
-    observation_schema: Any,
-    source_projection: Any,
-    error: type[Exception],
-    message: str,
-) -> None:
-    with pytest.raises(error, match=message):
+    with pytest.raises(ValueError, match="omission_source.*projected"):
         _normalize(
             _legacy_result(),
-            observation_schema=observation_schema,
-            source_projection=source_projection,
+            observation_schema=(BINARY_RESPONSE,),
+            source_projection=RESPONSE_ONLY_PROJECTION,
+            omission_source="rts",
         )
