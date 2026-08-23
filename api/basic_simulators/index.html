@@ -694,6 +694,8 @@
       
         
       
+        
+      
     
     
     
@@ -782,6 +784,34 @@
     
   
     Generate training data for LANs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how_to/normalize_simulator_results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Normalize legacy simulator results
   
 
     
@@ -1479,6 +1509,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.normalize_simulator_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_simulator_result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ssms.basic_simulators.validate_observation_result" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1894,6 +1935,17 @@
   
     <nav class="md-nav" aria-label="observation_results">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results.normalize_simulator_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_simulator_result
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ssms.basic_simulators.observation_results.validate_observation_result" class="md-nav__link">
@@ -3013,6 +3065,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.normalize_simulator_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_simulator_result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ssms.basic_simulators.validate_observation_result" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3428,6 +3491,17 @@
   
     <nav class="md-nav" aria-label="observation_results">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssms.basic_simulators.observation_results.normalize_simulator_result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_simulator_result
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ssms.basic_simulators.observation_results.validate_observation_result" class="md-nav__link">
@@ -4320,7 +4394,9 @@
 <h1 id="basic-simulators-api">Basic simulators API<a class="headerlink" href="#basic-simulators-api" title="Permanent link">&para;</a></h1>
 <p>The package-native structured-observation validator is exported from
 <code>ssms.basic_simulators</code>. See the <a href="../../reference/observation_result_contract/">contract reference</a>
-for its versioned schema and compatibility boundary.</p>
+for its versioned schema and compatibility boundary. Existing <code>rts</code>/<code>choices</code> consumers
+can opt into the canonical view with the
+<a href="../../how_to/normalize_simulator_results/">legacy-result normalization guide</a>.</p>
 
 
 <div class="doc doc-object doc-module">
@@ -4381,7 +4457,7 @@ for its versioned schema and compatibility boundary.</p>
           <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.observation_results" href="#ssms.basic_simulators.observation_results">observation_results</a></code></b>
           –
           <div class="doc-md-description">
-            <p>Validation for native fixed-width simulator observation results.</p>
+            <p>Validate native observation results and explicitly project legacy results.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
@@ -4428,6 +4504,13 @@ for its versioned schema and compatibility boundary.</p>
 
 <p><span class="doc-section-title">Functions:</span></p>
     <ul>
+          <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.normalize_simulator_result" href="#ssms.basic_simulators.normalize_simulator_result">normalize_simulator_result</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Project an explicitly described legacy result into the native contract.</p>
+            </div>
+          </li>
           <li class="doc-section-item field-body">
             <b><code><a class="autorefs autorefs-internal" title="ssms.basic_simulators.validate_observation_result" href="#ssms.basic_simulators.validate_observation_result">validate_observation_result</a></code></b>
             –
@@ -4977,6 +5060,94 @@ available with n_threads=1.</p>
 
 </div>
 
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ssms.basic_simulators.normalize_simulator_result" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ssms.basic_simulators.normalize_simulator_result</span>
+
+
+<a href="#ssms.basic_simulators.normalize_simulator_result" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">normalize_simulator_result</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">result</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">expected_n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">expected_n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">observation_schema</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">source_projection</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">omission_source</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Project an explicitly described legacy result into the native contract.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>result</code></b>
+              (<code><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Result containing metadata and each projected NumPy array.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>expected_n_samples</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Positive counts before historical singleton-axis squeezing.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>expected_n_trials</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Positive counts before historical singleton-axis squeezing.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>observation_schema</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>], ...]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Ordered native schema with one or two fields.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>source_projection</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>], ...]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Ordered <code>(legacy key, schema name)</code> pairs covering the schema exactly.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>omission_source</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Projected key whose <code>OMISSION_SENTINEL</code> authoritatively marks omissions.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Axes and semantics are never inferred. Inputs remain unchanged; the result and
+metadata are shallow-copied. Use :func:<code>validate_observation_result</code> directly for
+native results or schemas wider than two fields.</p>
+</details>
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 
@@ -6836,9 +7007,8 @@ can be used as a parameter adapter.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Validation for native fixed-width simulator observation results.</p>
-<p>This module defines only the package-native result contract. It does not adapt legacy
-<code>rts</code>/<code>choices</code> results or attach schemas to registered simulators.</p>
+        <p>Validate native observation results and explicitly project legacy results.</p>
+<p>This module does not register, wrap, or change simulators.</p>
 
 
 
@@ -6853,6 +7023,13 @@ can be used as a parameter adapter.</p>
 
 <p><span class="doc-section-title">Functions:</span></p>
     <ul>
+          <li class="doc-section-item field-body">
+            <b><code><a class="autorefs autorefs-internal" title="normalize_simulator_result (ssms.basic_simulators.observation_results.normalize_simulator_result)" href="#ssms.basic_simulators.observation_results.normalize_simulator_result">normalize_simulator_result</a></code></b>
+            –
+            <div class="doc-md-description">
+              <p>Project an explicitly described legacy result into the native contract.</p>
+            </div>
+          </li>
           <li class="doc-section-item field-body">
             <b><code><a class="autorefs autorefs-internal" title="validate_observation_result (ssms.basic_simulators.observation_results.validate_observation_result)" href="#ssms.basic_simulators.observation_results.validate_observation_result">validate_observation_result</a></code></b>
             –
@@ -6876,6 +7053,94 @@ can be used as a parameter adapter.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ssms.basic_simulators.observation_results.normalize_simulator_result" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">normalize_simulator_result</span>
+
+
+<a href="#ssms.basic_simulators.observation_results.normalize_simulator_result" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">normalize_simulator_result</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">result</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">expected_n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">expected_n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">observation_schema</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">source_projection</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="o">...</span><span class="p">],</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">omission_source</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Project an explicitly described legacy result into the native contract.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <ul>
+        <li class="doc-section-item field-body">
+            <b><code>result</code></b>
+              (<code><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Result containing metadata and each projected NumPy array.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>expected_n_samples</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Positive counts before historical singleton-axis squeezing.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>expected_n_trials</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Positive counts before historical singleton-axis squeezing.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>observation_schema</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>], ...]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Ordered native schema with one or two fields.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>source_projection</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>], ...]</code>)
+          –
+          <div class="doc-md-description">
+            <p>Ordered <code>(legacy key, schema name)</code> pairs covering the schema exactly.</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
+            <b><code>omission_source</code></b>
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+          –
+          <div class="doc-md-description">
+            <p>Projected key whose <code>OMISSION_SENTINEL</code> authoritatively marks omissions.</p>
+          </div>
+        </li>
+    </ul>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Axes and semantics are never inferred. Inputs remain unchanged; the result and
+metadata are shallow-copied. Use :func:<code>validate_observation_result</code> directly for
+native results or schemas wider than two fields.</p>
+</details>
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-function">
 

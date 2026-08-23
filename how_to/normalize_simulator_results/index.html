@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://lnccbrown.github.io/ssm-simulators/explanations/structured_observations/">
+        <link rel="canonical" href="https://lnccbrown.github.io/ssm-simulators/how_to/normalize_simulator_results/">
       
       
-        <link rel="prev" href="../../core_tutorials/tutorial_simulators_vs_pyddm/">
+        <link rel="prev" href="../../core_tutorials/tutorial_data_generators/">
       
       
-        <link rel="next" href="../../core_tutorials/tutorial_configs/">
+        <link rel="next" href="../../core_tutorials/kde_class/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Why structured observations exist - SSMS (Sequential Sampling Model Simulators)</title>
+        <title>Normalize legacy simulator results - SSMS (Sequential Sampling Model Simulators)</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#why-structured-observation-results-exist" class="md-skip">
+        <a href="#normalize-legacy-simulator-results" class="md-skip">
           Skip to content
         </a>
       
@@ -151,7 +151,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Why structured observations exist
+              Normalize legacy simulator results
             
           </span>
         </div>
@@ -308,10 +308,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../../core_tutorials/tutorial_custom_models/" class="md-tabs__link">
           
   
@@ -330,12 +332,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../core_tutorials/tutorial_capabilities/" class="md-tabs__link">
           
   
@@ -673,8 +673,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -700,19 +702,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
             
   
   
@@ -730,7 +735,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -801,10 +806,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../how_to/normalize_simulator_results/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Normalize legacy simulator results
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -820,6 +852,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#project-rt-and-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project RT and choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-a-response-only-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project a response-only result
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handle-omissions-and-metadata-deliberately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handle omissions and metadata deliberately
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#respect-the-compatibility-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Respect the compatibility boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1004,10 +1100,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1021,22 +1115,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -1054,7 +1145,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1125,37 +1216,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Why structured observations exist
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../explanations/structured_observations/" class="md-nav__link">
         
   
   
@@ -1171,70 +1235,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#observations-are-not-every-numeric-output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Observations are not every numeric output
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-the-shape-is-never-squeezed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why the shape is never squeezed
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why-schema-entries-are-closed-but-metadata-is-open" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Why schema entries are closed but metadata is open
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-version-1-deliberately-does-not-represent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What version 1 deliberately does not represent
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1713,10 +1713,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#observations-are-not-every-numeric-output" class="md-nav__link">
+  <a href="#project-rt-and-choice" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Observations are not every numeric output
+        Project RT and choice
       
     </span>
   </a>
@@ -1724,10 +1724,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-the-shape-is-never-squeezed" class="md-nav__link">
+  <a href="#project-a-response-only-result" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why the shape is never squeezed
+        Project a response-only result
       
     </span>
   </a>
@@ -1735,10 +1735,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-schema-entries-are-closed-but-metadata-is-open" class="md-nav__link">
+  <a href="#handle-omissions-and-metadata-deliberately" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why schema entries are closed but metadata is open
+        Handle omissions and metadata deliberately
       
     </span>
   </a>
@@ -1746,10 +1746,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-version-1-deliberately-does-not-represent" class="md-nav__link">
+  <a href="#respect-the-compatibility-boundary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What version 1 deliberately does not represent
+        Respect the compatibility boundary
       
     </span>
   </a>
@@ -1779,7 +1779,7 @@
 
 
   
-    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/explanations/structured_observations.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/lnccbrown/ssm-simulators/edit/main/docs/how_to/normalize_simulator_results.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1788,72 +1788,179 @@
     
       
     
-    <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/explanations/structured_observations.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/lnccbrown/ssm-simulators/raw/main/docs/how_to/normalize_simulator_results.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="why-structured-observation-results-exist">Why structured observation results exist<a class="headerlink" href="#why-structured-observation-results-exist" title="Permanent link">&para;</a></h1>
-<p>Sequential-sampling models do not all produce the same kind of observation. The familiar
-case is reaction time plus a categorical choice, but a model may instead produce only a
-choice, a bounded confidence rating, several continuous measurements, a circular angle,
-or a fixed-width mixture of those fields.</p>
-<p>Historically, ssm-simulators has exposed <code>rts</code> and <code>choices</code>. Those arrays remain the
-default interface for existing simulators. They are heavily used by likelihood-estimation,
-training-data, HSSM, RLSSM, plotting, and external integration code, and this new contract
-does not silently migrate any of those consumers.</p>
-<p>The native structured-observation contract gives <em>new or explicitly opted-in producers</em>
-one general representation:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>observations[n_samples, n_trials, obs_dim]
+<h1 id="normalize-legacy-simulator-results">Normalize legacy simulator results<a class="headerlink" href="#normalize-legacy-simulator-results" title="Permanent link">&para;</a></h1>
+<p>Use <code>normalize_simulator_result</code> when a consumer needs an opt-in structured view of an
+existing <code>rts</code>/<code>choices</code> result. The adapter returns a shallow copy, retains every legacy
+key, and does not change registered simulators or their default outputs.</p>
+<p>The caller supplies the original sample and trial counts, ordered
+<a href="../../reference/observation_result_contract/">observation schema</a>, exact source-to-field
+projection, and projected source that authoritatively records omissions. The adapter
+never infers these from values, names, or model metadata.</p>
+<h2 id="project-rt-and-choice">Project RT and choice<a class="headerlink" href="#project-rt-and-choice" title="Permanent link">&para;</a></h2>
+<p>Projection pairs use <code>(legacy source key, schema field name)</code> order and must cover the
+schema exactly once in schema order. Deadline and RT-based RL simulators use
+<code>omission_source="rts"</code>, because an omitted RT can retain a sampled or placeholder choice.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators</span><span class="w"> </span><span class="kn">import</span> <span class="n">OMISSION_SENTINEL</span><span class="p">,</span> <span class="n">normalize_simulator_result</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">boundary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">legacy_result</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="c1"># n_samples=2 and n_trials=1 historically produces shape (2, 1).</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="s2">&quot;rts&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.42</span><span class="p">],</span> <span class="p">[</span><span class="n">OMISSION_SENTINEL</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="c1"># Deadline models retain a sampled/placeholder choice on an omitted RT row.</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="s2">&quot;choices&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="s2">&quot;simulator&quot;</span><span class="p">:</span> <span class="s2">&quot;ddm&quot;</span><span class="p">,</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="s2">&quot;possible_choices&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="s2">&quot;boundary&quot;</span><span class="p">:</span> <span class="n">boundary</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="p">},</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="p">}</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="n">validated_result</span> <span class="o">=</span> <span class="n">normalize_simulator_result</span><span class="p">(</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">legacy_result</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">expected_n_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">expected_n_trials</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">observation_schema</span><span class="o">=</span><span class="p">(</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        <span class="p">{</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;rt&quot;</span><span class="p">,</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>            <span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="s2">&quot;continuous&quot;</span><span class="p">,</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>            <span class="s2">&quot;lower&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>            <span class="s2">&quot;lower_inclusive&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="p">},</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        <span class="p">{</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>            <span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="s2">&quot;categorical&quot;</span><span class="p">,</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>            <span class="s2">&quot;values&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="p">},</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="p">),</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="n">source_projection</span><span class="o">=</span><span class="p">((</span><span class="s2">&quot;rts&quot;</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;choices&quot;</span><span class="p">,</span> <span class="s2">&quot;response&quot;</span><span class="p">)),</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    <span class="n">omission_source</span><span class="o">=</span><span class="s2">&quot;rts&quot;</span><span class="p">,</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="p">)</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;observations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;omission_mask&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">==</span> <span class="p">[[</span><span class="kc">False</span><span class="p">],</span> <span class="p">[</span><span class="kc">True</span><span class="p">]]</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;observations&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="n">legacy_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;boundary&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="n">boundary</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="k">assert</span> <span class="n">legacy_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">OMISSION_SENTINEL</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="k">assert</span> <span class="n">legacy_result</span><span class="p">[</span><span class="s2">&quot;choices&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mf">1.0</span>
 </span></code></pre></div>
-<p>The final axis is described by an ordered, versioned schema. Every stochastic scalar
-observation—including reaction time, when present—is treated symmetrically. A sidecar
-mask identifies complete omitted rows.</p>
-<h2 id="observations-are-not-every-numeric-output">Observations are not every numeric output<a class="headerlink" href="#observations-are-not-every-numeric-output" title="Permanent link">&para;</a></h2>
-<p>The schema contains only fields that are jointly observed and evaluated by a model's
-likelihood. It does not absorb auxiliary state merely because that state is numeric.
-Examples that remain outside the observation axis include:</p>
-<ul>
-<li>simulated trajectories and time-varying boundaries;</li>
-<li>participant and trial identifiers;</li>
-<li>task context, feedback, and block labels;</li>
-<li>latent reinforcement-learning values and computed trial parameters;</li>
-<li>training labels and likelihood-density metadata.</li>
-</ul>
-<p>Those values remain in their existing result or open <code>metadata</code> locations. This boundary
-keeps a fixed-width observation vector useful without pretending that it can encode every
-kind of simulator output.</p>
-<h2 id="why-the-shape-is-never-squeezed">Why the shape is never squeezed<a class="headerlink" href="#why-the-shape-is-never-squeezed" title="Permanent link">&para;</a></h2>
-<p>Keeping all three axes makes singleton cases unambiguous. A response-only model with one
-sample and one trial has shape <code>(1, 1, 1)</code>, while an RT-plus-confidence model has shape
-<code>(1, 1, 2)</code>. Consumers do not need model-name rules or guesses about whether a singleton
-axis represented samples, trials, or observation fields.</p>
-<p>Legacy <code>rts</code> and <code>choices</code> may still use their historical squeezed shapes. Converting
-those results requires the opt-in
-<a href="../../how_to/normalize_simulator_results/">legacy-result normalizer</a>, explicit original
-sample/trial counts, an explicit source mapping, and one projected source named as the
-omission authority. The native validator and normalizer do not guess how legacy arrays
-or their omission sentinels should be interpreted.</p>
-<h2 id="why-schema-entries-are-closed-but-metadata-is-open">Why schema entries are closed but metadata is open<a class="headerlink" href="#why-schema-entries-are-closed-but-metadata-is-open" title="Permanent link">&para;</a></h2>
-<p>Version 1 recognizes exactly three scalar-domain kinds: <code>categorical</code>, <code>continuous</code>, and
-<code>circular</code>. Each entry accepts only the keys defined for that kind, so a misspelled bound
-or an unsupported observation semantic fails immediately.</p>
-<p>The surrounding <code>metadata</code> mapping has the opposite policy. Only
-<code>observation_schema_version</code> and <code>observation_schema</code> are reserved. Producer-owned fields
-such as simulator identity, possible choices, parameters, timing limits, boundaries, and
-trajectories are accepted without interpretation and retain object identity in the
-validated shallow view.</p>
-<p>Adding unrelated producer metadata therefore does not require a schema-version change.
-Adding a new stochastic-observation semantic that version 1 cannot express does.</p>
-<h2 id="what-version-1-deliberately-does-not-represent">What version 1 deliberately does not represent<a class="headerlink" href="#what-version-1-deliberately-does-not-represent" title="Permanent link">&para;</a></h2>
-<p>Version 1 covers dense, fixed-width, floating NumPy arrays of scalar numeric fields and
-complete-row omissions. It does not claim support for ragged events, partial observation
-vectors, array-valued fields, string categories, simplex or unit-vector joint support, or
-continuous/mixed-response likelihood-estimation and LAN training.</p>
-<p>See the <a href="../../reference/observation_result_contract/">normative result contract</a> for the
-exact schema, support, omission, and validation rules.</p>
+<p>The expected counts reverse only the package's historical singleton squeezing:</p>
+<table>
+<thead>
+<tr>
+<th>Samples</th>
+<th>Trials</th>
+<th>Required legacy shape</th>
+<th>Canonical shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1</td>
+<td><code>(1, 1)</code></td>
+<td><code>(1, 1, obs_dim)</code></td>
+</tr>
+<tr>
+<td>many</td>
+<td>1</td>
+<td><code>(n_samples, 1)</code></td>
+<td><code>(n_samples, 1, obs_dim)</code></td>
+</tr>
+<tr>
+<td>1</td>
+<td>many</td>
+<td><code>(n_trials, 1)</code></td>
+<td><code>(1, n_trials, obs_dim)</code></td>
+</tr>
+<tr>
+<td>many</td>
+<td>many</td>
+<td><code>(n_samples, n_trials, 1)</code></td>
+<td><code>(n_samples, n_trials, obs_dim)</code></td>
+</tr>
+</tbody>
+</table>
+<p>An equal-size array with another shape is rejected. This keeps <code>(N, 1)</code> deterministic:
+the caller states whether <code>N</code> means samples or trials.</p>
+<h2 id="project-a-response-only-result">Project a response-only result<a class="headerlink" href="#project-a-response-only-result" title="Permanent link">&para;</a></h2>
+<p>For a choice-only RLSSM, map only <code>choices</code> and set <code>omission_source="choices"</code>. Its
+compatibility <code>rts=-1</code> array remains available but is neither projected nor interpreted.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ssms.basic_simulators</span><span class="w"> </span><span class="kn">import</span> <span class="n">OMISSION_SENTINEL</span><span class="p">,</span> <span class="n">normalize_simulator_result</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">legacy_result</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="c1"># n_samples=1 and n_trials=3 historically produces shape (3, 1).</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="s2">&quot;rts&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="s2">&quot;choices&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="n">OMISSION_SENTINEL</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">),</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="s2">&quot;simulator&quot;</span><span class="p">:</span> <span class="s2">&quot;choice_only_rlssm&quot;</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="s2">&quot;possible_choices&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="s2">&quot;placeholder_rt&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="p">},</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="p">}</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="n">validated_result</span> <span class="o">=</span> <span class="n">normalize_simulator_result</span><span class="p">(</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">legacy_result</span><span class="p">,</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">expected_n_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">expected_n_trials</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">observation_schema</span><span class="o">=</span><span class="p">(</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>        <span class="p">{</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;response&quot;</span><span class="p">,</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>            <span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="s2">&quot;categorical&quot;</span><span class="p">,</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>            <span class="s2">&quot;values&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>        <span class="p">},</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="p">),</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">source_projection</span><span class="o">=</span><span class="p">((</span><span class="s2">&quot;choices&quot;</span><span class="p">,</span> <span class="s2">&quot;response&quot;</span><span class="p">),),</span>
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="n">omission_source</span><span class="o">=</span><span class="s2">&quot;choices&quot;</span><span class="p">,</span>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="p">)</span>
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;observations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;observations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span>
+</span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;omission_mask&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">==</span> <span class="p">[[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">]]</span>
+</span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+</span><span id="__span-1-36"><a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="k">assert</span> <span class="n">validated_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="n">legacy_result</span><span class="p">[</span><span class="s2">&quot;rts&quot;</span><span class="p">]</span>
+</span></code></pre></div>
+<p>An integer-only response is promoted to <code>float64</code> so the canonical array can contain NaN
+omissions; a floating response keeps its dtype. For two sources, NumPy selects their
+combined floating dtype. Categorical labels and source values must remain exactly
+representable after that promotion.</p>
+<h2 id="handle-omissions-and-metadata-deliberately">Handle omissions and metadata deliberately<a class="headerlink" href="#handle-omissions-and-metadata-deliberately" title="Permanent link">&para;</a></h2>
+<p><code>omission_source</code> is required and must name a projected source. Its sentinel marks the
+whole canonical row omitted, replaces that row with NaNs, and makes auxiliary projected
+values irrelevant. This covers both deadline output with a valid retained choice and
+legacy output where every projected source contains the sentinel.</p>
+<p>A sentinel in an auxiliary source while the authority is available is contradictory and
+raises an error. Unprojected sources never participate, so response-only normalization
+ignores a dummy RT even if it contains the sentinel.</p>
+<p>The result and metadata are shallow-copied; legacy arrays and producer-owned values such
+as boundaries and trajectories retain identity. The adapter adds <code>observations</code> and
+<code>omission_mask</code> to the result, and adds only <code>observation_schema_version</code> and
+<code>observation_schema</code> to metadata. Identical reserved metadata is retained, conflicts are
+rejected, and existing canonical result keys are never overwritten.</p>
+<h2 id="respect-the-compatibility-boundary">Respect the compatibility boundary<a class="headerlink" href="#respect-the-compatibility-boundary" title="Permanent link">&para;</a></h2>
+<p>The legacy adapter accepts one or two scalar fields. Wider new producers should emit the
+native fixed-width contract and call <code>validate_observation_result</code> directly; see the
+<a href="../../reference/observation_result_contract/#executable-examples">executable native examples</a>
+and <a href="../../api/basic_simulators/">basic simulator API</a>.</p>
+<p>Normalization is additive and opt-in. It does not migrate dataset generation;
+KDE/LAN/CPN/OPN paths; RL trial extraction or panel assembly; HSSM <code>simulate_data</code>;
+ssms-gui; or external consumers of the existing keys and squeezed shapes. Such consumers
+can construct a normalized view alongside the untouched legacy result when they
+explicitly adopt the structured contract. Contributors should also review the
+<a href="../../contributing/">integration guidance</a>.</p>
 
 
 
@@ -1889,7 +1996,7 @@ exact schema, support, omission, and validation rules.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../core_tutorials/tutorial_simulators_vs_pyddm/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Simulation vs. analytical solutions (PyDDM)">
+          <a href="../../core_tutorials/tutorial_data_generators/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Generate training data for LANs">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1899,20 +2006,20 @@ exact schema, support, omission, and validation rules.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Simulation vs. analytical solutions (PyDDM)
+                Generate training data for LANs
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../core_tutorials/tutorial_configs/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration systems">
+          <a href="../../core_tutorials/kde_class/" class="md-footer__link md-footer__link--next" aria-label="Next: Estimate a likelihood with the KDE class">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Configuration systems
+                Estimate a likelihood with the KDE class
               </div>
             </div>
             <div class="md-footer__button md-icon">

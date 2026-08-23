@@ -694,6 +694,8 @@
       
         
       
+        
+      
     
     
     
@@ -782,6 +784,34 @@
     
   
     Generate training data for LANs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how_to/normalize_simulator_results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Normalize legacy simulator results
   
 
     
@@ -1957,9 +1987,9 @@ it can represent exactly, together with NaN omission rows.</p>
 accepted without interpretation, and retained in the returned shallow mapping. This
 includes fields such as <code>simulator</code>, <code>possible_choices</code>, parameter/configuration values,
 <code>max_t</code>, boundary information, and trajectories.</p>
-<p>The validator never inserts or overwrites reserved metadata. A future adapter that is
-given schema arguments must reject a conflicting pre-existing reserved value rather than
-silently replacing producer data.</p>
+<p>The validator never inserts or overwrites reserved metadata. The opt-in legacy normalizer
+adds missing reserved values, retains identical pre-existing values, and rejects a
+conflict rather than silently replacing producer data.</p>
 <p>Unknown schema versions fail explicitly.</p>
 <h2 id="version-1-schema-entries">Version 1 schema entries<a class="headerlink" href="#version-1-schema-entries" title="Permanent link">&para;</a></h2>
 <p><code>observation_schema</code> is a non-empty tuple of mappings. Its order defines the final
@@ -2106,10 +2136,15 @@ producer-extension values. It never mutates the source.</p>
 </span></code></pre></div>
 <p>The documentation test suite executes these exact files, including their assertions.</p>
 <h2 id="compatibility-boundary">Compatibility boundary<a class="headerlink" href="#compatibility-boundary" title="Permanent link">&para;</a></h2>
-<p>This validator does not adapt legacy <code>rts</code>/<code>choices</code>, attach schemas to registered
-simulators, modify <code>Simulator.simulate</code>, or migrate dataset, KDE, LAN, RLSSM, HSSM, or GUI
-consumers. Those changes require separate compatibility work. Existing simulator outputs
-remain unchanged by version 1 validation support.</p>
+<p>The validator itself does not adapt legacy <code>rts</code>/<code>choices</code>. Consumers that know the
+original sample/trial counts, exact source mapping, and projected source that
+authoritatively records omission can use the additive
+<a href="../../how_to/normalize_simulator_results/">legacy-result normalization guide</a>. The
+normalizer requires that omission authority explicitly and supports only one- or
+two-field legacy projections; wider results must be native.</p>
+<p>Neither function attaches schemas to registered simulators, modifies
+<code>Simulator.simulate</code>, or migrates dataset, KDE, LAN/CPN/OPN, RL trial extraction, HSSM
+<code>simulate_data</code>, or GUI consumers. Existing simulator outputs remain unchanged.</p>
 
 
 
