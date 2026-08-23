@@ -6,14 +6,17 @@ result and needs an opt-in view of the
 The adapter does not change `simulator`, `Simulator.simulate`, or any registered model.
 It returns a new shallow dictionary and retains every legacy key.
 
-The caller must know four things: the original sample count, the original trial count,
-the ordered observation schema, and the exact legacy-source-to-schema mapping. The
-adapter never derives them from array values, key names, or model names.
+The caller must know five things: the original sample count, the original trial count,
+the ordered observation schema, the exact legacy-source-to-schema mapping, and which
+projected legacy source authoritatively records omissions. The adapter never derives
+them from array values, key names, schema field names, or model names.
 
 ## Project RT and choice
 
 Pass projection pairs in `(legacy source key, schema field name)` order. They must cover
-the schema exactly once and in schema order.
+the schema exactly once and in schema order. Set `omission_source="rts"` because
+deadline and RT-based RL simulators record omission in the RT source even when the
+choice source retains a sampled or placeholder label.
 
 ```python
 --8<-- "docs/snippets/observation_results/legacy_rt_choice.py"
@@ -34,8 +37,9 @@ keeps a squeezed `(N, 1)` source deterministic: the caller, not the adapter, say
 
 ## Project a response-only result
 
-For a choice-only RLSSM, map only `choices`. Its compatibility `rts=-1` array is neither
-an observation nor an omission signal; it remains available under the original key.
+For a choice-only RLSSM, map only `choices` and set `omission_source="choices"`. Its
+compatibility `rts=-1` array is neither an observation nor an omission signal; it remains
+available under the original key.
 
 ```python
 --8<-- "docs/snippets/observation_results/legacy_response_only.py"
@@ -49,11 +53,18 @@ values used for them—remain exactly representable in that dtype.
 
 ## Handle omissions and metadata deliberately
 
-For a two-field projection, `OMISSION_SENTINEL` must occur in both mapped sources for the
-same row. The adapter converts that row to all NaN and marks the corresponding boolean
-mask entry. A sentinel in only one mapped source is contradictory and raises an error.
-For a response-only projection, the mapped `choices` sentinel is sufficient; the
-unmapped dummy RT is ignored.
+`omission_source` is required and must name exactly one key in `source_projection`. The
+adapter marks a row omitted exactly when that source contains `OMISSION_SENTINEL`, then
+converts every canonical field in the row to NaN. Auxiliary projected values on that
+omitted row are ignored. This supports historical deadline output where `rts=-999` but
+`choices` retains a valid label, as well as legacy rows where both sources contain the
+sentinel.
+
+If the authoritative source is non-sentinel, a sentinel in any auxiliary projected
+source is contradictory and raises an error. Unprojected sources never participate, so
+a response-only projection ignores its dummy RT even if that array happens to contain
+the sentinel. The required keyword makes the policy explicit; the adapter does not infer
+authority from field names, source keys, values, or model metadata.
 
 The returned result and metadata are shallow copies. Legacy arrays and producer-owned
 metadata values such as boundaries and trajectories keep their identity. The adapter

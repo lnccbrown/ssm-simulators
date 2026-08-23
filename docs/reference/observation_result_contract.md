@@ -132,10 +132,11 @@ The documentation test suite executes these exact files, including their asserti
 ## Compatibility boundary
 
 The validator itself does not adapt legacy `rts`/`choices`. Consumers that know the
-original sample/trial counts and exact source mapping can use the additive
+original sample/trial counts, exact source mapping, and projected source that
+authoritatively records omission can use the additive
 [legacy-result normalization guide](../how_to/normalize_simulator_results.md). The
-normalizer supports only one- or two-field legacy projections; wider results must be
-native.
+normalizer requires that omission authority explicitly and supports only one- or
+two-field legacy projections; wider results must be native.
 
 Neither function attaches schemas to registered simulators, modifies
 `Simulator.simulate`, or migrates dataset, KDE, LAN/CPN/OPN, RL trial extraction, HSSM
