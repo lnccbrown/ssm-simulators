@@ -37,9 +37,9 @@ accepted without interpretation, and retained in the returned shallow mapping. T
 includes fields such as `simulator`, `possible_choices`, parameter/configuration values,
 `max_t`, boundary information, and trajectories.
 
-The validator never inserts or overwrites reserved metadata. A future adapter that is
-given schema arguments must reject a conflicting pre-existing reserved value rather than
-silently replacing producer data.
+The validator never inserts or overwrites reserved metadata. The opt-in legacy normalizer
+adds missing reserved values, retains identical pre-existing values, and rejects a
+conflict rather than silently replacing producer data.
 
 Unknown schema versions fail explicitly.
 
@@ -131,7 +131,12 @@ The documentation test suite executes these exact files, including their asserti
 
 ## Compatibility boundary
 
-This validator does not adapt legacy `rts`/`choices`, attach schemas to registered
-simulators, modify `Simulator.simulate`, or migrate dataset, KDE, LAN, RLSSM, HSSM, or GUI
-consumers. Those changes require separate compatibility work. Existing simulator outputs
-remain unchanged by version 1 validation support.
+The validator itself does not adapt legacy `rts`/`choices`. Consumers that know the
+original sample/trial counts and exact source mapping can use the additive
+[legacy-result normalization guide](../how_to/normalize_simulator_results.md). The
+normalizer supports only one- or two-field legacy projections; wider results must be
+native.
+
+Neither function attaches schemas to registered simulators, modifies
+`Simulator.simulate`, or migrates dataset, KDE, LAN/CPN/OPN, RL trial extraction, HSSM
+`simulate_data`, or GUI consumers. Existing simulator outputs remain unchanged.

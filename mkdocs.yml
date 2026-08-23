@@ -16,6 +16,7 @@ nav:
   - How-to guides:
       - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
       - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
+      - Normalize legacy simulator results: how_to/normalize_simulator_results.md
       - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
       - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
       - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
