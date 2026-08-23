@@ -28,6 +28,11 @@ FOUR_WAY_RESPONSE = {
     "kind": "categorical",
     "values": (0, 1, 2, 3),
 }
+ZERO_ONE_RESPONSE = {
+    "name": "response",
+    "kind": "categorical",
+    "values": (0, 1),
+}
 RT_RESPONSE_PROJECTION = (("rts", "rt"), ("choices", "response"))
 RESPONSE_ONLY_PROJECTION = (("choices", "response"),)
 
@@ -48,6 +53,27 @@ def _normalize(
         expected_n_trials=expected_n_trials,
         observation_schema=observation_schema,
         source_projection=source_projection,
+    )
+
+
+def _normalize_with_omission_source(
+    result: Any,
+    *,
+    omission_source: str,
+    expected_n_samples: int = 2,
+    expected_n_trials: int = 3,
+    observation_schema: Schema = (RT, BINARY_RESPONSE),
+    source_projection: Projection = RT_RESPONSE_PROJECTION,
+) -> dict[str, Any]:
+    from ssms.basic_simulators import normalize_simulator_result
+
+    return normalize_simulator_result(
+        result,
+        expected_n_samples=expected_n_samples,
+        expected_n_trials=expected_n_trials,
+        observation_schema=observation_schema,
+        source_projection=source_projection,
+        omission_source=omission_source,
     )
 
 
@@ -196,6 +222,139 @@ def test_normalize_simulator_result_projects_existing_choice_only_rlssm_response
         normalized["observations"], [[[0.0], [1.0], [2.0], [3.0]]]
     )
     assert normalized["observations"].dtype == np.dtype(np.float64)
+
+
+@pytest.mark.parametrize(
+    ("model", "response_schema"),
+    [
+        ("ddm_deadline", BINARY_RESPONSE),
+        ("lba2_deadline", ZERO_ONE_RESPONSE),
+    ],
+)
+def test_normalize_simulator_result_uses_rt_omissions_from_registered_deadline_models(
+    model: str,
+    response_schema: Mapping[str, Any],
+) -> None:
+    from ssms import Simulator
+
+    simulator = Simulator(model)
+    theta = dict(
+        zip(
+            simulator.config["params"],
+            simulator.config["default_params"],
+            strict=True,
+        )
+    )
+    theta["deadline"] = 0.001
+    legacy_result = simulator.simulate(theta, n_samples=8, random_state=42)
+
+    assert np.all(legacy_result["rts"] == OMISSION_SENTINEL)
+    assert np.all(legacy_result["choices"] != OMISSION_SENTINEL)
+
+    normalized = _normalize_with_omission_source(
+        legacy_result,
+        omission_source="rts",
+        expected_n_samples=8,
+        expected_n_trials=1,
+        observation_schema=(RT, response_schema),
+    )
+
+    assert normalized["omission_mask"].tolist() == [[True]] * 8
+    assert np.isnan(normalized["observations"]).all()
+    assert normalized["rts"] is legacy_result["rts"]
+    assert normalized["choices"] is legacy_result["choices"]
+
+
+def test_normalize_simulator_result_handles_registered_rt_rlssm_omission() -> None:
+    from unittest.mock import patch
+
+    import ssms.rl as rl
+
+    config = rl.preset.get("2AB_RW_DDM")
+    simulator = rl.Simulator(config)
+
+    def omit_trial(**kwargs: Any) -> dict[str, np.ndarray]:
+        return {
+            "rts": np.array([[OMISSION_SENTINEL]], dtype=np.float32),
+            "choices": np.array([[-1]], dtype=np.int16),
+        }
+
+    with patch("ssms.rl.simulator.ssm_simulator", side_effect=omit_trial):
+        data = simulator.simulate(
+            theta={
+                "rl_alpha": 0.2,
+                "scaler": 2.0,
+                "a": 1.5,
+                "z": 0.5,
+                "t": 0.3,
+            },
+            n_trials=2,
+            n_participants=1,
+            random_state=42,
+        )
+
+    assert data["rt"].tolist() == [OMISSION_SENTINEL, OMISSION_SENTINEL]
+    assert data["response"].tolist() == [OMISSION_SENTINEL, OMISSION_SENTINEL]
+    legacy_result = {
+        "rts": data["rt"].to_numpy().reshape(2, 1),
+        "choices": data["response"].to_numpy().reshape(2, 1),
+        "metadata": {"model": config.model_name},
+    }
+
+    normalized = _normalize_with_omission_source(
+        legacy_result,
+        omission_source="rts",
+        expected_n_samples=1,
+        expected_n_trials=2,
+    )
+
+    assert normalized["omission_mask"].tolist() == [[True, True]]
+    assert np.isnan(normalized["observations"]).all()
+
+
+def test_normalize_simulator_result_rejects_auxiliary_sentinel_on_available_row() -> (
+    None
+):
+    result = _legacy_result(n_samples=2, n_trials=2)
+    result["choices"][0, 1] = OMISSION_SENTINEL
+
+    with pytest.raises(ValueError, match="non-authoritative.*choices"):
+        _normalize_with_omission_source(
+            result,
+            omission_source="rts",
+            expected_n_samples=2,
+            expected_n_trials=2,
+        )
+
+
+def test_normalize_simulator_result_ignores_unprojected_dummy_rt_sentinel() -> None:
+    result = _legacy_result(n_samples=1, n_trials=3)
+    result["rts"].fill(OMISSION_SENTINEL)
+    result["choices"] = _legacy_shape([0, 1, 2], 1, 3).astype(np.int16)
+
+    normalized = _normalize_with_omission_source(
+        result,
+        omission_source="choices",
+        expected_n_samples=1,
+        expected_n_trials=3,
+        observation_schema=(FOUR_WAY_RESPONSE,),
+        source_projection=RESPONSE_ONLY_PROJECTION,
+    )
+
+    assert not normalized["omission_mask"].any()
+    np.testing.assert_array_equal(normalized["observations"], [[[0.0], [1.0], [2.0]]])
+    assert np.all(result["rts"] == OMISSION_SENTINEL)
+
+
+@pytest.mark.parametrize("omission_source", ["response", "", 1, None])
+def test_normalize_simulator_result_requires_a_projected_omission_source(
+    omission_source: Any,
+) -> None:
+    with pytest.raises((TypeError, ValueError), match="omission_source"):
+        _normalize_with_omission_source(
+            _legacy_result(),
+            omission_source=omission_source,
+        )
 
 
 def test_normalize_simulator_result_converts_consistent_rt_response_omission() -> None:
