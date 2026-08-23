@@ -30,6 +30,15 @@ Learn how to create custom parameter transformations for your models. This guide
 - Creating custom adaptations
 - Real-world examples and best practices
 
+### Structured Observation Integrations
+
+**[📖 Guide: Normalize Legacy Simulator Results](../how_to/normalize_simulator_results.md)**
+
+Use the opt-in normalizer when a consumer needs a structured view of an existing
+`rts`/`choices` result. New producers with three or more observation fields should emit
+the native contract directly; the guide explains that boundary and links the normative
+schema reference.
+
 ### Other Ways to Contribute
 
 - **Bug Reports**: Found a bug? [Open an issue](https://github.com/lnccbrown/ssm-simulators/issues) with a minimal reproducible example
@@ -41,6 +50,7 @@ Learn how to create custom parameter transformations for your models. This guide
 
 - [Main README](../index.md)
 - [API Documentation](../api/basic_simulators.md)
+- [Structured Observation Contract](../reference/observation_result_contract.md)
 - [Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues)
 - [Pull Requests](https://github.com/lnccbrown/ssm-simulators/pulls)
