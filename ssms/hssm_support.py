@@ -7,7 +7,7 @@ import numpy as np
 
 from .basic_simulators.observation_metadata import validate_observation_metadata
 from .basic_simulators.simulator import simulator
-from .config import get_model_registry
+from .config import ModelConfigBuilder, get_model_registry
 
 
 _logger = logging.getLogger(__name__)
@@ -333,8 +333,13 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
 
     simulator_fun_str = simulator_fun
     registry = get_model_registry()
-    if registry.has_model(simulator_fun_str):
-        config = deepcopy(registry.get(simulator_fun_str))
+    base_model = (
+        simulator_fun_str.replace("_deadline", "")
+        if "_deadline" in simulator_fun_str
+        else simulator_fun_str
+    )
+    if registry.has_model(base_model):
+        config = ModelConfigBuilder.from_model(simulator_fun_str)
     else:
         _logger.warning(
             "You supplied a model '%s', which is currently not supported in "

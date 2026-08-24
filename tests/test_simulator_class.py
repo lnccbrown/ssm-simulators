@@ -228,7 +228,7 @@ class TestSimulation:
         np.testing.assert_array_equal(results1["rts"], results2["rts"])
         np.testing.assert_array_equal(results1["choices"], results2["choices"])
 
-    def test_observation_metadata_access_is_rng_free_and_out_of_band(self):
+    def test_observation_metadata_access_does_not_change_simulation_output(self):
         sim = Simulator("ddm")
         theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
 
