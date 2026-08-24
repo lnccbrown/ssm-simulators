@@ -143,6 +143,13 @@ from .addm import get_addm_config
 from .validation import get_invalid_configs
 
 
+def _rt_choice(config: dict) -> dict:
+    """Mark an explicitly selected config as a legacy RT/choice producer."""
+    config["observation_schema_version"] = 1
+    config["observation_schema_profile"] = "legacy_rt_choice"
+    return config
+
+
 def _normalize_param_bounds(config: dict) -> dict:
     """Normalize param_bounds to param_bounds_dict format.
 
@@ -191,119 +198,175 @@ def get_model_config():
     """
     # TODO: Refactor to load these lazily
     configs = {
-        "ddm": get_ddm_config(),
-        "ddm_st": get_ddm_st_config(),
-        "ddm_truncnormt": get_ddm_truncnormt_config(),
-        "ddm_rayleight": get_ddm_rayleight_config(),
-        "ddm_sdv": get_ddm_sdv_config(),
-        "ddm_par2": get_ddm_par2_config(),
-        "ddm_par2_no_bias": get_ddm_par2_no_bias_config(),
-        "ddm_par2_conflict_gamma_no_bias": get_ddm_par2_conflict_gamma_no_bias_config(),
-        "ddm_par2_angle_no_bias": get_ddm_par2_angle_no_bias_config(),
-        "ddm_par2_weibull_no_bias": get_ddm_par2_weibull_no_bias_config(),
-        "ddm_seq2": get_ddm_seq2_config(),
-        "ddm_seq2_no_bias": get_ddm_seq2_no_bias_config(),
-        "ddm_seq2_conflict_gamma_no_bias": get_ddm_seq2_conflict_gamma_no_bias_config(),
-        "ddm_seq2_angle_no_bias": get_ddm_seq2_angle_no_bias_config(),
-        "ddm_seq2_weibull_no_bias": get_ddm_seq2_weibull_no_bias_config(),
-        "ddm_mic2_adj": get_ddm_mic2_adj_config(),
-        "ddm_mic2_adj_no_bias": get_ddm_mic2_adj_no_bias_config(),
-        "ddm_mic2_adj_conflict_gamma_no_bias": get_ddm_mic2_adj_conflict_gamma_no_bias_config(),
-        "ddm_mic2_adj_angle_no_bias": get_ddm_mic2_adj_angle_no_bias_config(),
-        "ddm_mic2_adj_weibull_no_bias": get_ddm_mic2_adj_weibull_no_bias_config(),
-        "ddm_mic2_ornstein": get_ddm_mic2_ornstein_config(),
-        "ddm_mic2_ornstein_no_bias": get_ddm_mic2_ornstein_no_bias_config(),
-        "ddm_mic2_ornstein_no_bias_no_lowdim_noise": get_ddm_mic2_ornstein_no_bias_config(),
-        "ddm_mic2_ornstein_conflict_gamma_no_bias": get_ddm_mic2_ornstein_conflict_gamma_no_bias_config(),
-        "ddm_mic2_ornstein_conflict_gamma_no_bias_no_lowdim_noise": get_ddm_mic2_ornstein_conflict_gamma_no_bias_config(),
-        "ddm_mic2_ornstein_angle_no_bias": get_ddm_mic2_ornstein_angle_no_bias_config(),
-        "ddm_mic2_ornstein_angle_no_bias_no_lowdim_noise": get_ddm_mic2_ornstein_angle_no_bias_config(),
-        "ddm_mic2_ornstein_weibull_no_bias": get_ddm_mic2_ornstein_weibull_no_bias_config(),
-        "ddm_mic2_ornstein_weibull_no_bias_no_lowdim_noise": get_ddm_mic2_ornstein_weibull_no_bias_config(),
-        "ddm_mic2_leak": get_ddm_mic2_leak_config(),
-        "ddm_mic2_leak_no_bias": get_ddm_mic2_leak_no_bias_config(),
-        "ddm_mic2_leak_no_bias_no_lowdim_noise": get_ddm_mic2_leak_no_bias_config(),
-        "ddm_mic2_leak_conflict_gamma_no_bias": get_ddm_mic2_leak_conflict_gamma_no_bias_config(),
-        "ddm_mic2_leak_conflict_gamma_no_bias_no_lowdim_noise": get_ddm_mic2_leak_conflict_gamma_no_bias_config(),
-        "ddm_mic2_leak_angle_no_bias": get_ddm_mic2_leak_angle_no_bias_config(),
-        "ddm_mic2_leak_angle_no_bias_no_lowdim_noise": get_ddm_mic2_leak_angle_no_bias_config(),
-        "ddm_mic2_leak_weibull_no_bias": get_ddm_mic2_leak_weibull_no_bias_config(),
-        "ddm_mic2_leak_weibull_no_bias_no_lowdim_noise": get_ddm_mic2_leak_weibull_no_bias_config(),
-        "ddm_mic2_multinoise_no_bias": get_ddm_mic2_multinoise_no_bias_config(),
-        "ddm_mic2_multinoise_conflict_gamma_no_bias": get_ddm_mic2_multinoise_conflict_gamma_no_bias_config(),
-        "ddm_mic2_multinoise_angle_no_bias": get_ddm_mic2_multinoise_angle_no_bias_config(),
-        "ddm_mic2_multinoise_weibull_no_bias": get_ddm_mic2_multinoise_weibull_no_bias_config(),
-        "addm": get_addm_config(),
-        "full_ddm": get_full_ddm_config(),
-        "full_ddm_rv": get_full_ddm_rv_config(),
-        "levy": get_levy_config(),
-        "levy_angle": get_levy_angle_config(),
-        "angle": get_angle_config(),
-        "weibull": get_weibull_config(),
-        "gamma_drift": get_gamma_drift_config(),
+        "ddm": _rt_choice(get_ddm_config()),
+        "ddm_st": _rt_choice(get_ddm_st_config()),
+        "ddm_truncnormt": _rt_choice(get_ddm_truncnormt_config()),
+        "ddm_rayleight": _rt_choice(get_ddm_rayleight_config()),
+        "ddm_sdv": _rt_choice(get_ddm_sdv_config()),
+        "ddm_par2": _rt_choice(get_ddm_par2_config()),
+        "ddm_par2_no_bias": _rt_choice(get_ddm_par2_no_bias_config()),
+        "ddm_par2_conflict_gamma_no_bias": _rt_choice(
+            get_ddm_par2_conflict_gamma_no_bias_config()
+        ),
+        "ddm_par2_angle_no_bias": _rt_choice(get_ddm_par2_angle_no_bias_config()),
+        "ddm_par2_weibull_no_bias": _rt_choice(get_ddm_par2_weibull_no_bias_config()),
+        "ddm_seq2": _rt_choice(get_ddm_seq2_config()),
+        "ddm_seq2_no_bias": _rt_choice(get_ddm_seq2_no_bias_config()),
+        "ddm_seq2_conflict_gamma_no_bias": _rt_choice(
+            get_ddm_seq2_conflict_gamma_no_bias_config()
+        ),
+        "ddm_seq2_angle_no_bias": _rt_choice(get_ddm_seq2_angle_no_bias_config()),
+        "ddm_seq2_weibull_no_bias": _rt_choice(get_ddm_seq2_weibull_no_bias_config()),
+        "ddm_mic2_adj": _rt_choice(get_ddm_mic2_adj_config()),
+        "ddm_mic2_adj_no_bias": _rt_choice(get_ddm_mic2_adj_no_bias_config()),
+        "ddm_mic2_adj_conflict_gamma_no_bias": _rt_choice(
+            get_ddm_mic2_adj_conflict_gamma_no_bias_config()
+        ),
+        "ddm_mic2_adj_angle_no_bias": _rt_choice(
+            get_ddm_mic2_adj_angle_no_bias_config()
+        ),
+        "ddm_mic2_adj_weibull_no_bias": _rt_choice(
+            get_ddm_mic2_adj_weibull_no_bias_config()
+        ),
+        "ddm_mic2_ornstein": _rt_choice(get_ddm_mic2_ornstein_config()),
+        "ddm_mic2_ornstein_no_bias": _rt_choice(get_ddm_mic2_ornstein_no_bias_config()),
+        "ddm_mic2_ornstein_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_ornstein_no_bias_config())
+        ),
+        "ddm_mic2_ornstein_conflict_gamma_no_bias": (
+            _rt_choice(get_ddm_mic2_ornstein_conflict_gamma_no_bias_config())
+        ),
+        "ddm_mic2_ornstein_conflict_gamma_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_ornstein_conflict_gamma_no_bias_config())
+        ),
+        "ddm_mic2_ornstein_angle_no_bias": _rt_choice(
+            get_ddm_mic2_ornstein_angle_no_bias_config()
+        ),
+        "ddm_mic2_ornstein_angle_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_ornstein_angle_no_bias_config())
+        ),
+        "ddm_mic2_ornstein_weibull_no_bias": _rt_choice(
+            get_ddm_mic2_ornstein_weibull_no_bias_config()
+        ),
+        "ddm_mic2_ornstein_weibull_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_ornstein_weibull_no_bias_config())
+        ),
+        "ddm_mic2_leak": _rt_choice(get_ddm_mic2_leak_config()),
+        "ddm_mic2_leak_no_bias": _rt_choice(get_ddm_mic2_leak_no_bias_config()),
+        "ddm_mic2_leak_no_bias_no_lowdim_noise": _rt_choice(
+            get_ddm_mic2_leak_no_bias_config()
+        ),
+        "ddm_mic2_leak_conflict_gamma_no_bias": _rt_choice(
+            get_ddm_mic2_leak_conflict_gamma_no_bias_config()
+        ),
+        "ddm_mic2_leak_conflict_gamma_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_leak_conflict_gamma_no_bias_config())
+        ),
+        "ddm_mic2_leak_angle_no_bias": _rt_choice(
+            get_ddm_mic2_leak_angle_no_bias_config()
+        ),
+        "ddm_mic2_leak_angle_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_leak_angle_no_bias_config())
+        ),
+        "ddm_mic2_leak_weibull_no_bias": _rt_choice(
+            get_ddm_mic2_leak_weibull_no_bias_config()
+        ),
+        "ddm_mic2_leak_weibull_no_bias_no_lowdim_noise": (
+            _rt_choice(get_ddm_mic2_leak_weibull_no_bias_config())
+        ),
+        "ddm_mic2_multinoise_no_bias": _rt_choice(
+            get_ddm_mic2_multinoise_no_bias_config()
+        ),
+        "ddm_mic2_multinoise_conflict_gamma_no_bias": (
+            _rt_choice(get_ddm_mic2_multinoise_conflict_gamma_no_bias_config())
+        ),
+        "ddm_mic2_multinoise_angle_no_bias": _rt_choice(
+            get_ddm_mic2_multinoise_angle_no_bias_config()
+        ),
+        "ddm_mic2_multinoise_weibull_no_bias": _rt_choice(
+            get_ddm_mic2_multinoise_weibull_no_bias_config()
+        ),
+        "addm": _rt_choice(get_addm_config()),
+        "full_ddm": _rt_choice(get_full_ddm_config()),
+        "full_ddm_rv": _rt_choice(get_full_ddm_rv_config()),
+        "levy": _rt_choice(get_levy_config()),
+        "levy_angle": _rt_choice(get_levy_angle_config()),
+        "angle": _rt_choice(get_angle_config()),
+        "weibull": _rt_choice(get_weibull_config()),
+        "gamma_drift": _rt_choice(get_gamma_drift_config()),
         "inv_temp_softmax_2": get_inv_temp_softmax_2_config(),
         "inv_temp_softmax_3": get_inv_temp_softmax_3_config(),
         "inv_temp_softmax_4": get_inv_temp_softmax_4_config(),
-        "shrink_spot": get_shrink_spot_config(),
-        "shrink_spot_extended": get_shrink_spot_extended_config(),
-        "shrink_spot_simple": get_shrink_spot_simple_config(),
-        "shrink_spot_simple_extended": get_shrink_spot_simple_extended_config(),
-        "gamma_drift_angle": get_gamma_drift_angle_config(),
-        "conflict_ds": get_conflict_ds_config(),
-        "conflict_ds_angle": get_conflict_ds_angle_config(),
-        "conflict_dsstimflex": get_conflict_dsstimflex_config(),
-        "conflict_dsstimflex_angle": get_conflict_dsstimflex_angle_config(),
-        "conflict_stimflex": get_conflict_stimflex_config(),
-        "conflict_stimflex_angle": get_conflict_stimflex_angle_config(),
-        "conflict_stimflexrel1": get_conflict_stimflexrel1_config(),
-        "conflict_stimflexrel1_angle": get_conflict_stimflexrel1_angle_config(),
-        "conflict_stimflexrel1_leak": get_conflict_stimflexrel1_leak_config(),
-        "conflict_stimflexrel1_leak2": get_conflict_stimflexrel1_leak2_config(),
-        "ornstein": get_ornstein_config(),
-        "ornstein_angle": get_ornstein_angle_config(),
-        "race_2": get_race_2_config(),
-        "race_no_bias_2": get_race_no_bias_2_config(),
-        "race_no_z_2": get_race_no_z_2_config(),
-        "race_no_bias_angle_2": get_race_no_bias_angle_2_config(),
-        "race_no_z_angle_2": get_race_no_z_angle_2_config(),
-        "race_3": get_race_3_config(),
-        "race_no_bias_3": get_race_no_bias_3_config(),
-        "race_no_z_3": get_race_no_z_3_config(),
-        "race_no_bias_angle_3": get_race_no_bias_angle_3_config(),
-        "race_no_z_angle_3": get_race_no_z_angle_3_config(),
-        "race_4": get_race_4_config(),
-        "race_no_bias_4": get_race_no_bias_4_config(),
-        "race_no_z_4": get_race_no_z_4_config(),
-        "race_no_bias_angle_4": get_race_no_bias_angle_4_config(),
-        "race_no_z_angle_4": get_race_no_z_angle_4_config(),
-        "racing_diffusion_3": get_racing_diffusion_3_config(),
-        "poisson_race": get_poisson_race_config(),
-        "dev_rlwm_lba_pw_v1": get_dev_rlwm_lba_pw_v1_config(),
-        "dev_rlwm_lba_race_v1": get_dev_rlwm_lba_race_v1_config(),
-        "dev_rlwm_lba_race_v2": get_dev_rlwm_lba_race_v2_config(),
-        "lba2": get_lba2_config(),
-        "lba3": get_lba3_config(),
-        "lba4": get_lba4_config(),
-        "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
-        "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
-        "lba_angle_3": get_lba_angle_3_config(),
-        "lca_3": get_lca_3_config(),
-        "lca_no_bias_3": get_lca_no_bias_3_config(),
-        "lca_no_z_3": get_lca_no_z_3_config(),
-        "lca_no_bias_angle_3": get_lca_no_bias_angle_3_config(),
-        "lca_no_z_angle_3": get_lca_no_z_angle_3_config(),
-        "lca_4": get_lca_4_config(),
-        "lca_no_bias_4": get_lca_no_bias_4_config(),
-        "lca_no_z_4": get_lca_no_z_4_config(),
-        "lca_no_bias_angle_4": get_lca_no_bias_angle_4_config(),
-        "lca_no_z_angle_4": get_lca_no_z_angle_4_config(),
-        "tradeoff_no_bias": get_tradeoff_no_bias_config(),
-        "tradeoff_angle_no_bias": get_tradeoff_angle_no_bias_config(),
-        "tradeoff_weibull_no_bias": get_tradeoff_weibull_no_bias_config(),
-        "tradeoff_conflict_gamma_no_bias": get_tradeoff_conflict_gamma_no_bias_config(),
-        "weibull_cdf": get_weibull_config(),
-        "full_ddm2": get_full_ddm_config(),
-        "ddm_legacy": get_ddm_legacy_config(),
+        "shrink_spot": _rt_choice(get_shrink_spot_config()),
+        "shrink_spot_extended": _rt_choice(get_shrink_spot_extended_config()),
+        "shrink_spot_simple": _rt_choice(get_shrink_spot_simple_config()),
+        "shrink_spot_simple_extended": _rt_choice(
+            get_shrink_spot_simple_extended_config()
+        ),
+        "gamma_drift_angle": _rt_choice(get_gamma_drift_angle_config()),
+        "conflict_ds": _rt_choice(get_conflict_ds_config()),
+        "conflict_ds_angle": _rt_choice(get_conflict_ds_angle_config()),
+        "conflict_dsstimflex": _rt_choice(get_conflict_dsstimflex_config()),
+        "conflict_dsstimflex_angle": _rt_choice(get_conflict_dsstimflex_angle_config()),
+        "conflict_stimflex": _rt_choice(get_conflict_stimflex_config()),
+        "conflict_stimflex_angle": _rt_choice(get_conflict_stimflex_angle_config()),
+        "conflict_stimflexrel1": _rt_choice(get_conflict_stimflexrel1_config()),
+        "conflict_stimflexrel1_angle": _rt_choice(
+            get_conflict_stimflexrel1_angle_config()
+        ),
+        "conflict_stimflexrel1_leak": _rt_choice(
+            get_conflict_stimflexrel1_leak_config()
+        ),
+        "conflict_stimflexrel1_leak2": _rt_choice(
+            get_conflict_stimflexrel1_leak2_config()
+        ),
+        "ornstein": _rt_choice(get_ornstein_config()),
+        "ornstein_angle": _rt_choice(get_ornstein_angle_config()),
+        "race_2": _rt_choice(get_race_2_config()),
+        "race_no_bias_2": _rt_choice(get_race_no_bias_2_config()),
+        "race_no_z_2": _rt_choice(get_race_no_z_2_config()),
+        "race_no_bias_angle_2": _rt_choice(get_race_no_bias_angle_2_config()),
+        "race_no_z_angle_2": _rt_choice(get_race_no_z_angle_2_config()),
+        "race_3": _rt_choice(get_race_3_config()),
+        "race_no_bias_3": _rt_choice(get_race_no_bias_3_config()),
+        "race_no_z_3": _rt_choice(get_race_no_z_3_config()),
+        "race_no_bias_angle_3": _rt_choice(get_race_no_bias_angle_3_config()),
+        "race_no_z_angle_3": _rt_choice(get_race_no_z_angle_3_config()),
+        "race_4": _rt_choice(get_race_4_config()),
+        "race_no_bias_4": _rt_choice(get_race_no_bias_4_config()),
+        "race_no_z_4": _rt_choice(get_race_no_z_4_config()),
+        "race_no_bias_angle_4": _rt_choice(get_race_no_bias_angle_4_config()),
+        "race_no_z_angle_4": _rt_choice(get_race_no_z_angle_4_config()),
+        "racing_diffusion_3": _rt_choice(get_racing_diffusion_3_config()),
+        "poisson_race": _rt_choice(get_poisson_race_config()),
+        "dev_rlwm_lba_pw_v1": _rt_choice(get_dev_rlwm_lba_pw_v1_config()),
+        "dev_rlwm_lba_race_v1": _rt_choice(get_dev_rlwm_lba_race_v1_config()),
+        "dev_rlwm_lba_race_v2": _rt_choice(get_dev_rlwm_lba_race_v2_config()),
+        "lba2": _rt_choice(get_lba2_config()),
+        "lba3": _rt_choice(get_lba3_config()),
+        "lba4": _rt_choice(get_lba4_config()),
+        "lba_3_vs_constraint": _rt_choice(get_lba_3_vs_constraint_config()),
+        "lba_angle_3_vs_constraint": _rt_choice(get_lba_angle_3_vs_constraint_config()),
+        "lba_angle_3": _rt_choice(get_lba_angle_3_config()),
+        "lca_3": _rt_choice(get_lca_3_config()),
+        "lca_no_bias_3": _rt_choice(get_lca_no_bias_3_config()),
+        "lca_no_z_3": _rt_choice(get_lca_no_z_3_config()),
+        "lca_no_bias_angle_3": _rt_choice(get_lca_no_bias_angle_3_config()),
+        "lca_no_z_angle_3": _rt_choice(get_lca_no_z_angle_3_config()),
+        "lca_4": _rt_choice(get_lca_4_config()),
+        "lca_no_bias_4": _rt_choice(get_lca_no_bias_4_config()),
+        "lca_no_z_4": _rt_choice(get_lca_no_z_4_config()),
+        "lca_no_bias_angle_4": _rt_choice(get_lca_no_bias_angle_4_config()),
+        "lca_no_z_angle_4": _rt_choice(get_lca_no_z_angle_4_config()),
+        "tradeoff_no_bias": _rt_choice(get_tradeoff_no_bias_config()),
+        "tradeoff_angle_no_bias": _rt_choice(get_tradeoff_angle_no_bias_config()),
+        "tradeoff_weibull_no_bias": _rt_choice(get_tradeoff_weibull_no_bias_config()),
+        "tradeoff_conflict_gamma_no_bias": _rt_choice(
+            get_tradeoff_conflict_gamma_no_bias_config()
+        ),
+        "weibull_cdf": _rt_choice(get_weibull_config()),
+        "full_ddm2": _rt_choice(get_full_ddm_config()),
+        "ddm_legacy": _rt_choice(get_ddm_legacy_config()),
     }
 
     # Normalize all configs to include param_bounds_dict
