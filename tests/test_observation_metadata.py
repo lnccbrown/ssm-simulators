@@ -252,6 +252,56 @@ def test_get_observation_metadata_requires_explicit_callable_declaration() -> No
     assert producer.calls == 0
 
 
+def test_get_observation_metadata_resolves_every_registered_model_name() -> None:
+    from ssms.config import get_model_registry
+
+    registry = get_model_registry()
+
+    for model_name in registry.list_models():
+        assert _get(model_name) == _validate(registry.get(model_name)), model_name
+
+
+def test_get_observation_metadata_resolves_derived_deadline_models() -> None:
+    assert _get("ddm_deadline") == _get("ddm")
+
+
+def test_get_observation_metadata_reads_live_registry(monkeypatch) -> None:
+    from ssms.config import get_model_registry
+
+    def simulator() -> None:
+        raise AssertionError("metadata lookup must not execute the simulator")
+
+    registry = get_model_registry()
+    model_name = "test_live_observation_metadata"
+    config = {
+        "name": model_name,
+        "simulator": simulator,
+        **_explicit((RESPONSE,)),
+    }
+    monkeypatch.setitem(registry._configs, model_name, config)
+
+    assert _get(model_name)["observation_schema"] == (RESPONSE,)
+
+
+def test_get_observation_metadata_rejects_unknown_model_names() -> None:
+    with pytest.raises(ValueError, match="Unknown model"):
+        _get("not_a_registered_model")
+
+
+def test_get_observation_metadata_uses_explicit_provider_hook() -> None:
+    class Provider:
+        calls = 0
+
+        def get_observation_metadata(self) -> dict[str, Any]:
+            self.calls += 1
+            return _explicit((RESPONSE,))
+
+    provider = Provider()
+
+    assert _get(provider)["observation_schema"] == (RESPONSE,)
+    assert provider.calls == 1
+
+
 def test_get_observation_metadata_requires_profile_choices_on_callable() -> None:
     class Producer:
         observation_schema_version = 1
