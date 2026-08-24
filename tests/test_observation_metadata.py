@@ -252,13 +252,11 @@ def test_get_observation_metadata_requires_explicit_callable_declaration() -> No
     assert producer.calls == 0
 
 
-def test_get_observation_metadata_resolves_every_registered_model_name() -> None:
-    from ssms.config import get_model_registry
+def test_get_observation_metadata_resolves_every_builtin_model_name() -> None:
+    from ssms.config._modelconfig import get_model_config
 
-    registry = get_model_registry()
-
-    for model_name in registry.list_models():
-        assert _get(model_name) == _validate(registry.get(model_name)), model_name
+    for model_name, config in get_model_config().items():
+        assert _get(model_name) == _validate(config), model_name
 
 
 def test_get_observation_metadata_resolves_derived_deadline_models() -> None:
