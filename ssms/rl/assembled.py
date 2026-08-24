@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -110,6 +110,15 @@ class AssembledModel:
     context_fields: list[str]
     computed_params: list[str]
     response_to_choice: dict[int, int]
+    _observation_metadata: dict[str, Any] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        """Snapshot semantic observation metadata without widening the constructor."""
+        object.__setattr__(
+            self,
+            "_observation_metadata",
+            self.config.get_observation_metadata(),
+        )
 
     @classmethod
     def from_config(
@@ -136,6 +145,14 @@ class AssembledModel:
             computed_params=list(config._computed_ssm_params),
             response_to_choice=dict(config.resolved_response_to_choice),
         )
+
+    def get_observation_metadata(self) -> dict[str, Any]:
+        """Return the observation schema snapshot captured during assembly."""
+        from ssms.basic_simulators.observation_metadata import (
+            validate_observation_metadata,
+        )
+
+        return validate_observation_metadata(self._observation_metadata)
 
     def get_participant_input_fields(
         self,
