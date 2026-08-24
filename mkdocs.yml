@@ -131,7 +131,7 @@ theme:
         icon: material/brightness-4
         name: Switch to automatic mode
 
-copyright: Copyright &copy; 2021 Alexander Fengler. MIT License.
+copyright: Copyright © 2021 Alexander Fengler. MIT License.
 
 extra:
   homepage: "https://lnccbrown.github.io/ssm-simulators/"
