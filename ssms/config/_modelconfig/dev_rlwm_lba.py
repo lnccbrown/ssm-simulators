@@ -37,6 +37,7 @@ def get_dev_rlwm_lba_pw_v1_config():
         "n_params": 9,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2, 0.1],
         "nchoices": 3,
+        "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_pw_v1,
         "parameter_transforms": {
@@ -138,6 +139,7 @@ def get_dev_rlwm_lba_race_v2_config():
         "n_params": 8,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.2],
         "nchoices": 3,
+        "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.rlwm_lba_race,
         "parameter_transforms": {

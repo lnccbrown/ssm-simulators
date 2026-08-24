@@ -210,6 +210,7 @@ def get_lba_angle_3_config():
         "n_params": 6,
         "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
         "nchoices": 3,
+        "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.lba_angle,
         # Unified parameter_transforms - both sampling and simulation in one place

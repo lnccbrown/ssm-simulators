@@ -7,6 +7,15 @@ from ssms.config.model_config_builder import ModelConfigBuilder
 from ssms.transforms import SwapIfLessConstraint
 
 
+REGISTERED_CHOICE_LABELS = (
+    ("dev_rlwm_lba_pw_v1", (0, 1, 2)),
+    ("dev_rlwm_lba_race_v2", (0, 1, 2)),
+    ("lba_angle_3", (0, 1, 2)),
+    ("lca_3", (0, 1, 2)),
+    ("tradeoff_weibull_no_bias", (0, 1, 2, 3)),
+)
+
+
 class TestModelConfig:
     def test_model_config_dict_type(self):
         assert isinstance(model_config, ssms.config.CopyOnAccessDict)
@@ -17,6 +26,17 @@ class TestModelConfig:
         list_params = selected_model["params"]
         list_params.append("p_outlier")
         assert "p_outlier" not in model_config[model_name]["params"]
+
+    @pytest.mark.parametrize(("model_name", "expected"), REGISTERED_CHOICE_LABELS)
+    def test_declared_choices_match_simulator_metadata(self, model_name, expected):
+        config = ModelConfigBuilder.from_model(model_name)
+        result = ssms.Simulator(model_name).simulate(
+            config["default_params"], n_samples=1, random_state=42
+        )
+
+        assert tuple(config["choices"]) == expected
+        assert tuple(result["metadata"]["possible_choices"]) == expected
+        assert set(np.unique(result["choices"])).issubset(expected)
 
 
 class TestModelConfigBuilder:
