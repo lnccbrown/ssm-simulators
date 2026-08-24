@@ -1,11 +1,13 @@
+from copy import deepcopy
 from functools import partial
-from typing import Any, Callable, cast
 import logging
+from typing import Any, Callable, cast
 
 import numpy as np
 
+from .basic_simulators.observation_metadata import validate_observation_metadata
 from .basic_simulators.simulator import simulator
-from .config import model_config as ssms_model_config
+from .config import get_model_registry
 
 
 _logger = logging.getLogger(__name__)
@@ -330,7 +332,10 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
         return cast("Callable[..., Any]", simulator_fun)
 
     simulator_fun_str = simulator_fun
-    if simulator_fun_str not in ssms_model_config:
+    registry = get_model_registry()
+    if registry.has_model(simulator_fun_str):
+        config = deepcopy(registry.get(simulator_fun_str))
+    else:
         _logger.warning(
             "You supplied a model '%s', which is currently not supported in "
             "the ssm_simulators package. An error will be thrown when sampling "
@@ -338,12 +343,32 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
             "posterior or prior predictive sampling methods.",
             simulator_fun_str,
         )
-    choices = ssms_model_config.get(simulator_fun_str, {}).get("choices", [0, 1, 2])
+        config = {}
+    choices = deepcopy(config.get("choices", [0, 1, 2]))
     simulator_fun_internal = _build_decorated_simulator(
         model_name=simulator_fun_str,
         choices=choices,
     )
+    _attach_observation_metadata(simulator_fun_internal, config)
     return simulator_fun_internal
+
+
+def _attach_observation_metadata(
+    simulator_fun: Callable[..., Any], config: dict[str, Any]
+) -> None:
+    """Attach validated schema declarations without changing the legacy wrapper."""
+    try:
+        validate_observation_metadata(config)
+    except (TypeError, ValueError):
+        return
+
+    for name in (
+        "observation_schema_version",
+        "observation_schema",
+        "observation_schema_profile",
+    ):
+        if name in config:
+            setattr(simulator_fun, name, deepcopy(config[name]))
 
 
 def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
