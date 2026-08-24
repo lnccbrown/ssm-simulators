@@ -102,7 +102,7 @@ generative output. Use response-only data for HSSM handoff and choice-only PPC.
 | Training data generation | [Data-generator guide](core_tutorials/tutorial_data_generators.ipynb), [MLflow tracking](core_tutorials/using_mlflow.md), [dataset generator API](api/dataset_generators.md) |
 | Likelihood estimation | [KDE guide](core_tutorials/kde_class.ipynb), [PyDDM comparison](core_tutorials/tutorial_simulators_vs_pyddm.ipynb), [support-utils API](api/support_utils.md) |
 | RLSSM simulation | [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb), [RLSSM API](api/rlssm.md) |
-| Choice-only RL models | [Choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb), [RLSSM API](api/rlssm.md#choice-only-inverse-temperature-softmax-presets) |
+| Choice-only RL models | [Choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb), [RLSSM API](api/rlssm.md#choice-only-contract) |
 | Structured observation results | [Why structured observations exist](explanations/structured_observations.md), [normalize legacy results](how_to/normalize_simulator_results.md), [result contract](reference/observation_result_contract.md) |
 | New model contributions | [Contribute new models](contributing/add_models.md), [parameter adapters](contributing/add_parameter_adapters.md) |
 
