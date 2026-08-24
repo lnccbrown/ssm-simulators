@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -111,6 +111,24 @@ class AssembledModel:
     computed_params: list[str]
     response_to_choice: dict[int, int]
 
+    # Materialized per instance in __post_init__, while ClassVar keeps the private
+    # cache outside the public dataclass field/serialization contract.
+    _observation_metadata: ClassVar[dict[str, Any]]
+
+    def __post_init__(self) -> None:
+        """Snapshot semantic observation metadata without widening the constructor."""
+        if self.response != self.config.response or self.choices != tuple(
+            self.config.choices or ()
+        ):
+            raise ValueError(
+                "AssembledModel response and choices must match its ModelConfig"
+            )
+        object.__setattr__(
+            self,
+            "_observation_metadata",
+            self.config.get_observation_metadata(),
+        )
+
     @classmethod
     def from_config(
         cls,
@@ -136,6 +154,14 @@ class AssembledModel:
             computed_params=list(config._computed_ssm_params),
             response_to_choice=dict(config.resolved_response_to_choice),
         )
+
+    def get_observation_metadata(self) -> dict[str, Any]:
+        """Return the observation schema snapshot captured during assembly."""
+        from ssms.basic_simulators.observation_metadata import (
+            validate_observation_metadata,
+        )
+
+        return validate_observation_metadata(self._observation_metadata)
 
     def get_participant_input_fields(
         self,

@@ -273,6 +273,24 @@ class TestAssembledModel:
         assembled = _make_default_config(
             learning_backend="python",
             response=["rt", "response", "choice_response"],
+            observation_schema=(
+                {
+                    "name": "rt",
+                    "kind": "continuous",
+                    "lower": 0.0,
+                    "lower_inclusive": False,
+                },
+                {
+                    "name": "response",
+                    "kind": "categorical",
+                    "values": (-1, 1),
+                },
+                {
+                    "name": "choice_response",
+                    "kind": "categorical",
+                    "values": (-1, 1),
+                },
+            ),
         ).assemble(backend="python")
 
         assert assembled.participant_input_fields(response_field="choice_response") == [

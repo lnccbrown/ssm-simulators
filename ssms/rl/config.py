@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 import importlib.util
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -137,6 +138,11 @@ class ModelConfig:
     ssm_kwargs : dict
         Default kwargs for the underlying SSM simulator call.
         Default: {"delta_t": 0.001, "max_t": 20.0}.
+    observation_schema_version : int
+        Structured-observation schema version. Version 1 is currently supported.
+    observation_schema : tuple[Mapping[str, Any], ...] | None
+        Explicit ordered schema for non-standard response layouts. The existing
+        ``["rt", "response"]`` and ``["response"]`` layouts are derived directly.
     """
 
     model_name: str
@@ -163,6 +169,13 @@ class ModelConfig:
     # SSM simulator defaults
     ssm_kwargs: dict[str, Any] = field(
         default_factory=lambda: {"delta_t": 0.001, "max_t": 20.0}
+    )
+
+    # Additive observation-metadata contract. These are keyword-only so the existing
+    # positional constructor and pattern-matching surfaces remain unchanged.
+    observation_schema_version: int = field(default=1, kw_only=True)
+    observation_schema: tuple[Mapping[str, Any], ...] | None = field(
+        default=None, kw_only=True
     )
 
     def __post_init__(self):
@@ -583,6 +596,81 @@ class ModelConfig:
     ) -> _ParticipantContract:
         """Return the derived participant input layout for this config."""
         return derive_participant_contract(self, response_field=response_field)
+
+    def get_observation_metadata(self) -> dict[str, Any]:
+        """Return a fresh schema for the configured stochastic response columns."""
+        from ssms.basic_simulators.observation_metadata import (
+            validate_observation_metadata,
+        )
+
+        response_fields = tuple(self.response)
+        if DEFAULT_RESPONSE_FIELD not in response_fields:
+            raise ValueError(
+                f"response must include {DEFAULT_RESPONSE_FIELD!r} for observation "
+                f"metadata; got {response_fields}"
+            )
+        standard_layouts = {("rt", "response"), ("response",)}
+        if self.observation_schema is not None and response_fields in standard_layouts:
+            raise ValueError(
+                "observation_schema must be omitted for the standard RL response "
+                f"layout {list(response_fields)!r}; its schema is derived"
+            )
+
+        schema: tuple[Mapping[str, Any], ...]
+        if response_fields == ("rt", "response"):
+            schema = (
+                {
+                    "name": "rt",
+                    "kind": "continuous",
+                    "lower": 0.0,
+                    "lower_inclusive": False,
+                },
+                self._response_schema_entry(),
+            )
+        elif response_fields == ("response",):
+            schema = (self._response_schema_entry(),)
+        else:
+            if self.observation_schema is None:
+                raise ValueError(
+                    "RL response layouts other than ['rt', 'response'] and "
+                    "['response'] require an explicit observation_schema"
+                )
+            schema = self.observation_schema
+
+        descriptor = validate_observation_metadata(
+            {
+                "observation_schema_version": self.observation_schema_version,
+                "observation_schema": schema,
+            }
+        )
+        field_names = tuple(field["name"] for field in descriptor["observation_schema"])
+        if field_names != response_fields:
+            raise ValueError(
+                "observation_schema names and order must exactly match response: "
+                f"expected {response_fields}, got {field_names}"
+            )
+
+        response_entry = descriptor["observation_schema"][
+            response_fields.index(DEFAULT_RESPONSE_FIELD)
+        ]
+        expected_choices = tuple(self.choices or ())
+        if (
+            response_entry["kind"] != "categorical"
+            or tuple(response_entry["values"]) != expected_choices
+        ):
+            raise ValueError(
+                "the observation_schema 'response' field must be categorical with "
+                f"values equal to choices in order: {expected_choices}"
+            )
+        return descriptor
+
+    def _response_schema_entry(self) -> dict[str, Any]:
+        """Build the categorical schema entry from raw SSM response labels."""
+        return {
+            "name": DEFAULT_RESPONSE_FIELD,
+            "kind": "categorical",
+            "values": tuple(self.choices or ()),
+        }
 
     def to_hssm_config_dict(self) -> dict[str, Any]:
         """Produce a dict compatible with HSSM's RLSSMConfig.from_rlssm_dict().
