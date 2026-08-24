@@ -97,6 +97,7 @@ def get_tradeoff_weibull_no_bias_config():
         "n_params": 8,
         "default_params": [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 2.5, 3.5],
         "nchoices": 4,
+        "choices": [0, 1, 2, 3],
         "n_particles": 1,
         "simulator": cssm.ddm_flexbound_tradeoff,
         "parameter_transforms": {

@@ -26,6 +26,7 @@ def get_lca_3_config():
         "n_params": 10,
         "default_params": [0.0, 0.0, 0.0, 2.0, 0.5, 0.5, 0.5, 0.0, 0.0, 1e-3],
         "nchoices": 3,
+        "choices": [0, 1, 2],
         "n_particles": 3,
         "simulator": cssm.lca,
         "parameter_transforms": {

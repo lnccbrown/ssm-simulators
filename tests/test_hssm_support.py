@@ -28,6 +28,15 @@ from ssms.hssm_support import (
 )
 
 
+REGISTERED_CHOICE_LABELS = (
+    ("dev_rlwm_lba_pw_v1", [0, 1, 2]),
+    ("dev_rlwm_lba_race_v2", [0, 1, 2]),
+    ("lba_angle_3", [0, 1, 2]),
+    ("lca_3", [0, 1, 2]),
+    ("tradeoff_weibull_no_bias", [0, 1, 2, 3]),
+)
+
+
 class MockHasListParams:
     """Mock class that implements _HasListParams protocol."""
 
@@ -427,6 +436,12 @@ class TestGetSimulatorFunInternal:
         match = "`simulator_fun` must be a string or a callable"
         with pytest.raises(ValueError, match=match):
             get_simulator_fun_internal(123)
+
+    @pytest.mark.parametrize(("model_name", "expected"), REGISTERED_CHOICE_LABELS)
+    def test_registered_choice_labels_reach_hssm_wrapper(self, model_name, expected):
+        contract = validate_simulator_fun(get_simulator_fun_internal(model_name))
+
+        assert contract == (model_name, expected, 2)
 
 
 class TestValidateSimulatorFun:
