@@ -14,8 +14,8 @@ An RLSSM links two time scales:
 The same ssms-defined learning rule can therefore serve three workflows:
 
 1. synthetic data generation in `ssms.rl.Simulator`;
-2. RLSSM likelihood construction in HSSM through
-   `hssm.rl.RLSSMConfig.from_ssms_model(...)`;
+2. RLSSM likelihood construction in HSSM through the named-model
+   `hssm.RLSSM(data, model=...)` entry point;
 3. posterior predictive simulation by conditioning learning on observed trial
    histories and resimulating responses with posterior parameter draws.
 
@@ -355,32 +355,23 @@ config = rl.resolve_model("2AB_RW_Angle")  # str or ModelConfig
 assembled = config.assemble(backend="auto")
 ```
 
-## HSSM bridge
+## HSSM bridge contract
 
-The active HSSM handoff path is HSSM's bridge factory:
+HSSM owns inference and exposes `hssm.RLSSM(data, model=...)` as the normal
+entry point for named ssms presets. The
+[HSSM handoff guide](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb)
+owns the complete procedure, and HSSM's rendered
+[RLSSM reference](https://lnccbrown.github.io/HSSM/api/rl/) owns its constructor
+and sampling options.
 
-```python
-import hssm
-import ssms.rl as rl
-
-ssms_config = rl.preset.get("2AB_RW_Angle")
-hssm_config = hssm.rl.RLSSMConfig.from_ssms_model(ssms_config)
-model = hssm.RLSSM(data=data, model_config=hssm_config)
-```
-
-`RLSSMConfig.from_ssms_model(...)` resolves the `ssms.rl` model, assembles it
+For an in-memory custom `ssms.rl.ModelConfig`, the advanced
+`hssm.rl.RLSSMConfig.from_ssms_model(...)` path resolves and assembles the model
 with the JAX backend, checks gradient support, and wraps
 `AssembledModel.assemble_participant_fn(output="dict")` for HSSM's annotated
-computed-parameter contract.
-
-This bridge is what lets HSSM evaluate RLSSM likelihoods while keeping the
-learning rule, response-to-choice mapping, and task context source of truth in
-ssms. For choice-only RL models, pass response-only data to HSSM, not the
-generative simulator's placeholder `rt` column.
-
-HSSM's bridge factory (`hssm.rl.RLSSMConfig.from_ssms_model`) consumes the
-`assemble(backend=...)` API and requires an available gradient for JAX-based
-sampling.
+computed-parameter contract. This bridge keeps the learning rule,
+response-to-choice mapping, and task context source of truth in ssms. For
+choice-only RL models, its input is the response-only table, not the generative
+simulator's placeholder `rt` column.
 
 `ModelConfig.to_hssm_config_dict()` remains useful for structural inspection
 and compatibility with lower-level HSSM config workflows. It exports shared
@@ -392,9 +383,9 @@ structural fields, plus:
   this directly; it is exported for bridge metadata and debugging.
 
 Inference-only placeholders in `to_hssm_config_dict()` (`ssm_logp_func`,
-`learning_process`) are not a complete model by themselves. A higher-level
-`hssm.RLSSM(data, model=...)` wrapper that consumes `ssms.rl` directly is
-planned separately in HSSM.
+`learning_process`) are not a complete model by themselves. Use HSSM's direct
+named-model constructor or its advanced `RLSSMConfig.from_ssms_model(...)`
+factory rather than assembling those placeholders manually.
 
 ## Module reference
 
