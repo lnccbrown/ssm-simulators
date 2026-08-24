@@ -6,6 +6,7 @@ edit_uri: edit/main/docs
 exclude_docs: |
   overrides/
   snippets/
+  core_tutorials/tutorial_capabilities.ipynb
 
 nav:
   - Home:
@@ -15,23 +16,26 @@ nav:
       - Simulate and inspect your first SSM: basic_tutorial/basic_tutorial.ipynb
       - Simulate your first RLSSM: core_tutorials/rlssm_tutorial.ipynb
   - How-to guides:
-      - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
-      - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
-      - Normalize legacy simulator results: how_to/normalize_simulator_results.md
-      - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
-      - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
-      - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
-      - Hand off simulated RLSSM data to HSSM: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
-      - Write a custom parameter transform: contributing/add_parameter_adapters.md
-      - Track data generation runs with MLflow: core_tutorials/using_mlflow.md
-      - Contribute to ssm-simulators: contributing/README.md
-      - Add a new model: contributing/add_models.md
+      - Models and simulation:
+          - Configure models and data generation: core_tutorials/tutorial_configs.ipynb
+          - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
+          - Normalize legacy simulator results: how_to/normalize_simulator_results.md
+          - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
+          - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
+          - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
+          - Hand off simulated RLSSM data to HSSM: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
+      - Data generation:
+          - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
+          - Track data generation runs with MLflow: core_tutorials/using_mlflow.md
+      - Contributing:
+          - Write a custom parameter transform: contributing/add_parameter_adapters.md
+          - Contribute to ssm-simulators: contributing/README.md
+          - Add a new model: contributing/add_models.md
   - Explanations:
-      - What ssm-simulators can do: core_tutorials/tutorial_capabilities.ipynb
+      - Simulator and data-generation capabilities: explanations/capabilities.md
       - Simulation vs. analytical solutions (PyDDM): core_tutorials/tutorial_simulators_vs_pyddm.ipynb
       - Why structured observations exist: explanations/structured_observations.md
   - Reference:
-      - Configuration systems: core_tutorials/tutorial_configs.ipynb
       - Structured observation results: reference/observation_result_contract.md
       - API:
           - RLSSM (ssms.rl): api/rlssm.md
@@ -51,6 +55,7 @@ plugins:
   - redirects:
       redirect_maps:
         api/ssms.md: api/basic_simulators.md
+        core_tutorials/tutorial_capabilities.md: explanations/capabilities.md
   - mkdocs-jupyter:
       execute: False
   - mkdocstrings:

@@ -22,58 +22,27 @@ models used in cognitive science, neuroscience, and amortized Bayesian
 inference, spanning classic DDM variants, multi-choice models, attention
 models, and reinforcement-learning SSMs.
 
----
+## Installation
 
-## What ssms Provides
+```sh
+pip install ssm-simulators
+```
 
-| Area | Documentation path |
-| --- | --- |
-| Direct SSM simulation | [Basic tutorial](basic_tutorial/basic_tutorial.ipynb), [basic simulator API](api/basic_simulators.md) |
-| Model configuration | [Configuration systems](core_tutorials/tutorial_configs.ipynb), [config API](api/config.md) |
-| Training data generation | [Data generators](core_tutorials/tutorial_data_generators.ipynb), [dataset generator API](api/dataset_generators.md) |
-| RLSSM simulation | [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb), [RLSSM API](api/rlssm.md) |
-| Choice-only RL models | [Choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb), [RLSSM API](api/rlssm.md#choice-only-inverse-temperature-softmax-presets) |
-| Structured observation results | [Why structured observations exist](explanations/structured_observations.md), [normalize legacy results](how_to/normalize_simulator_results.md), [result contract](reference/observation_result_contract.md) |
-| New model contributions | [Contribute new models](contributing/add_models.md), [parameter adapters](contributing/add_parameter_adapters.md) |
+Install the optional JAX backend for differentiable RLSSM learning processes:
 
----
+```sh
+pip install "ssm-simulators[jax]"
+```
 
-## Model Families
+Users who need multi-threaded simulation should install OpenMP and GSL first:
 
-ssms covers a broad simulator surface:
+```bash
+# macOS
+brew install libomp gsl
 
-- **Diffusion models**: DDM, full DDM, deadline variants, angle and Weibull
-  boundaries, Levy, Ornstein-Uhlenbeck, gamma-drift, conflict, tradeoff, and
-  shrink-spotlight variants.
-- **Multi-choice accumulators**: race, racing diffusion, LBA, LBA4, LCA, and
-  Poisson race models.
-- **Attention and fixation-conditioned models**: aDDM simulators with observed
-  or self-sampled fixation inputs, continuation strategies, and optional
-  trajectory metadata.
-- **Reinforcement-learning SSMs**: Rescorla-Wagner learning rules, RT + choice
-  models, inverse-temperature softmax choice-only models, and posterior
-  predictive functions for response-only RL workflows.
-
-!!! note "RL preset support"
-    ssms includes inverse-temperature softmax decision processes for two-,
-    three-, and four-choice settings, plus RT + choice race models. Built-in RL
-    presets include Rescorla-Wagner DDM/angle/Weibull models, dual-alpha
-    variants, choice-only inverse-temperature softmax bandits such as
-    `2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, and
-    `4AB_RW_InvTempSoftmax`, and the four-choice RT + choice race preset
-    `4AB_RW_RaceNoBiasAngle`.
-
----
-
-## Ecosystem fit
-
-`ssm-simulators` is the simulator and data-generation layer of the HSSM
-ecosystem: it defines the models, simulates from them, and produces the
-training data that likelihood networks are fitted to.
-
-For the full map — what each package owns, how artifacts flow between them,
-and which versions work together — see
-[The HSSM ecosystem](https://lnccbrown.github.io/HSSM/ecosystem/).
+# Ubuntu/Debian
+sudo apt-get install build-essential libgsl-dev
+```
 
 ## Quick Start
 
@@ -113,38 +82,61 @@ config.validate_data(response_only).raise_for_errors()
 Choice-only simulations emit `rt=-1.0` only as a compatibility placeholder in
 generative output. Use response-only data for HSSM handoff and choice-only PPC.
 
----
-
-## Installation
-
-```sh
-pip install ssm-simulators
-```
-
-Install the optional JAX backend for differentiable RLSSM learning processes:
-
-```sh
-pip install "ssm-simulators[jax]"
-```
-
-Users who need multi-threaded simulation should install OpenMP and GSL first:
-
-```bash
-# macOS
-brew install libomp gsl
-
-# Ubuntu/Debian
-sudo apt-get install build-essential libgsl-dev
-```
-
----
-
 ## Next Steps
 
 - Learn the basic simulator API in the [basic tutorial](basic_tutorial/basic_tutorial.ipynb).
-- Explore model families in the [package overview](core_tutorials/tutorial_capabilities.ipynb).
+- Understand the package surface in [Simulator and data-generation capabilities](explanations/capabilities.md).
+- Configure a registered model with [Configure models and data generation](core_tutorials/tutorial_configs.ipynb).
 - Generate LAN training data with the [data generator tutorial](core_tutorials/tutorial_data_generators.ipynb).
 - Build and simulate RLSSMs with the [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb).
 - Learn response-only RL simulation in the [choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb).
 - Understand native fixed-width outputs in [Why structured observations exist](explanations/structured_observations.md).
 - Use the [API reference](api/basic_simulators.md) when integrating ssms into another package.
+
+## What ssms provides
+
+| Area | Documentation path |
+| --- | --- |
+| Direct SSM simulation | [Basic tutorial](basic_tutorial/basic_tutorial.ipynb), [basic simulator API](api/basic_simulators.md) |
+| Model configuration | [Configuration guide](core_tutorials/tutorial_configs.ipynb), [config API](api/config.md) |
+| Training data generation | [Data-generator guide](core_tutorials/tutorial_data_generators.ipynb), [MLflow tracking](core_tutorials/using_mlflow.md), [dataset generator API](api/dataset_generators.md) |
+| Likelihood estimation | [KDE guide](core_tutorials/kde_class.ipynb), [PyDDM comparison](core_tutorials/tutorial_simulators_vs_pyddm.ipynb), [support-utils API](api/support_utils.md) |
+| RLSSM simulation | [RLSSM tutorial](core_tutorials/rlssm_tutorial.ipynb), [RLSSM API](api/rlssm.md) |
+| Choice-only RL models | [Choice-only RL tutorial](core_tutorials/choice_only_rl_models.ipynb), [RLSSM API](api/rlssm.md#choice-only-inverse-temperature-softmax-presets) |
+| Structured observation results | [Why structured observations exist](explanations/structured_observations.md), [normalize legacy results](how_to/normalize_simulator_results.md), [result contract](reference/observation_result_contract.md) |
+| New model contributions | [Contribute new models](contributing/add_models.md), [parameter adapters](contributing/add_parameter_adapters.md) |
+
+## Model families
+
+ssms covers a broad simulator surface:
+
+- **Diffusion models**: DDM, full DDM, deadline variants, angle and Weibull
+  boundaries, Levy, Ornstein-Uhlenbeck, gamma-drift, conflict, tradeoff, and
+  shrink-spotlight variants.
+- **Multi-choice accumulators**: race, racing diffusion, LBA, LBA4, LCA, and
+  Poisson race models.
+- **Attention and fixation-conditioned models**: aDDM simulators with observed
+  or self-sampled fixation inputs, continuation strategies, and optional
+  trajectory metadata.
+- **Reinforcement-learning SSMs**: Rescorla-Wagner learning rules, RT + choice
+  models, inverse-temperature softmax choice-only models, and posterior
+  predictive functions for response-only RL workflows.
+
+!!! note "RL preset support"
+    ssms includes inverse-temperature softmax decision processes for two-,
+    three-, and four-choice settings, plus RT + choice race models. Built-in RL
+    presets include Rescorla-Wagner DDM/angle/Weibull models, dual-alpha
+    variants, choice-only inverse-temperature softmax bandits such as
+    `2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, and
+    `4AB_RW_InvTempSoftmax`, and the four-choice RT + choice race preset
+    `4AB_RW_RaceNoBiasAngle`.
+
+## Ecosystem fit
+
+`ssm-simulators` is the simulator and data-generation layer of the HSSM
+ecosystem: it defines the models, simulates from them, and produces the
+training data that likelihood networks are fitted to.
+
+For the full map — what each package owns, how artifacts flow between them,
+and which versions work together — see
+[The HSSM ecosystem](https://lnccbrown.github.io/HSSM/ecosystem/).
