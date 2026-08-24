@@ -4,6 +4,12 @@
 
 Parameter transforms prepare user-provided parameters for simulation. They're defined directly in your model configuration under the `parameter_transforms` field.
 
+This guide owns the reusable transform interface and its package-level testing
+expectations. For composing an existing transform into a user-owned model, use
+[Create a custom model](../core_tutorials/tutorial_custom_models.ipynb). For the
+broader workflow that adds a built-in model to ssms, use
+[Add a new model](add_models.md).
+
 ---
 
 ## Quick Start
@@ -279,7 +285,8 @@ The key insight is that **all parameter transforms are defined directly in the m
 
 ## Resources
 
-- [Adding Models Tutorial](add_models.md): How to contribute new models
+- [Create a custom model](../core_tutorials/tutorial_custom_models.ipynb): compose transforms into a runtime model
+- [Add a new model](add_models.md): ship a model in the package
 - [API Reference](../api/basic_simulators.md): Complete API documentation
 - Built-in simulation transforms: `ssms/basic_simulators/parameter_adapters/`
 - Built-in sampling transforms: `ssms/transforms/sampling/`

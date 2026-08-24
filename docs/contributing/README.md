@@ -52,7 +52,7 @@ schema reference.
 - [Main README](../index.md)
 - [API Documentation](../api/basic_simulators.md)
 - [Structured Observation Contract](../reference/observation_result_contract.md)
-- [Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
+- [Simulator and data-generation capabilities](../explanations/capabilities.md)
 - [GitHub Issues](https://github.com/lnccbrown/ssm-simulators/issues)
 - [Pull Requests](https://github.com/lnccbrown/ssm-simulators/pulls)
 
