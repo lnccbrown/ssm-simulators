@@ -1,15 +1,21 @@
 # RLSSM API (`ssms.rl`)
 
+<span id="rlssm-simulation-ssmsrl" aria-hidden="true"></span>
+
 The `ssms.rl` namespace is the simulator-side API for reinforcement-learning
 sequential sampling models. It defines model structure, task environments,
 learning processes, simulation, validation, and the neutral assembled-model
 contract consumed by inference packages.
+
+<span id="quick-start" aria-hidden="true"></span>
 
 This page is a reference roll-up. For procedures, start with
 [Simulate your first RLSSM](../core_tutorials/rlssm_tutorial.ipynb), then use the
 [advanced component guide](../core_tutorials/rlssm_advanced_tutorial.ipynb),
 [choice-only guide](../core_tutorials/choice_only_rl_models.ipynb), or
 [HSSM handoff guide](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb).
+
+<span id="public-api" aria-hidden="true"></span>
 
 ## Namespace exports
 
@@ -24,6 +30,9 @@ Use `import ssms.rl as rl`. The root namespace exports:
 | `env` | Task-environment protocols, implementations, and registry |
 | `learning` | Learning-process protocol and built-in implementations |
 | `preset` | Preset registry (`get`, `list`, `info`, `register`) |
+
+<span id="model-configuration" aria-hidden="true"></span>
+<span id="derived-decision-process-config-_ssm_config" aria-hidden="true"></span>
 
 ## Model configuration contract
 
@@ -41,9 +50,12 @@ fields are:
 | `include_choice` | Whether simulator output includes the derived zero-based choice |
 
 The private derived `_ssm_config` is built from the registered decision process
-and is not a constructor input. Public derived fields such as `list_params`,
-`bounds`, `computed_params`, and `response_to_choice` are the supported
-integration surface.
+and is not a constructor input. Public `ModelConfig` integration fields include
+`list_params`, `bounds`, `params_default`, `required_params`, and
+`response_to_choice`. After assembly, `AssembledModel.computed_params` exposes
+the ordered decision-process parameters supplied by the learning process.
+
+<span id="built-in-rescorla-wagner-learning-processes" aria-hidden="true"></span>
 
 ## Built-in learning processes
 
@@ -61,6 +73,8 @@ Drift learners compute trial-wise drift from learned value differences.
 Softmax learners expose Q-values and leave inverse-temperature application to
 the decision process. The dual-alpha variants distinguish positive and
 negative prediction errors.
+
+<span id="built-in-presets" aria-hidden="true"></span>
 
 ## Preset registry
 
@@ -80,6 +94,9 @@ runtime registry with `preset.list()` and inspect a resolved contract with
 | `4AB_RW_InvTempSoftmax` | `inv_temp_softmax_4` | `RescorlaWagnerSoftmax` | `response` |
 | `4AB_RW_RaceNoBiasAngle` | `race_no_bias_angle_4` | `RescorlaWagnerRaceDrifts` | `rt`, `response` |
 
+<span id="participant-wise-parameters" aria-hidden="true"></span>
+<span id="simulation-modes" aria-hidden="true"></span>
+
 ## Simulator contract
 
 `Simulator.simulate()` accepts scalar parameter values shared by all
@@ -97,6 +114,8 @@ PPC input must satisfy the same panel contract as inference validation. The
 observed response history conditions learning; returned responses are newly
 simulated.
 
+<span id="choice-only-inverse-temperature-softmax-presets" aria-hidden="true"></span>
+
 ## Choice-only contract
 
 The inverse-temperature softmax presets declare `response=["response"]` and do
@@ -107,6 +126,9 @@ compatibility placeholder. That value is distinct from
 Validation, PPC, and HSSM handoff use a response-only table with the placeholder
 column removed. Custom tasks may pair an `inv_temp_softmax_N` decision process
 with a compatible learning process and environment.
+
+<span id="task-environment-protocols" aria-hidden="true"></span>
+<span id="context-fields" aria-hidden="true"></span>
 
 ## Task environments and registry
 
@@ -119,6 +141,8 @@ Built-in bandits satisfy the discrete protocol; `Bandit.n_arms` aliases
 `register_task()` adds a builder, `registered_tasks()` lists available names,
 and `TaskConfig.build_environment()` resolves one. The built-in `bandit` task
 supports Bernoulli and Gaussian rewards.
+
+<span id="data-validation" aria-hidden="true"></span>
 
 ## Data-validation contract
 
@@ -136,6 +160,9 @@ Validation checks balanced panels, contiguous participant blocks, response
 labels and mappings, missing values, RT validity, and omission sentinels. Rows
 within each participant are processed in their existing order. `trial_id` is an
 ordinary column, not a reserved ordering instruction.
+
+<span id="assembled-model-inference-integration" aria-hidden="true"></span>
+<span id="hssm-bridge" aria-hidden="true"></span>
 
 ## Assembled-model and HSSM contracts
 
@@ -155,6 +182,8 @@ options.
 `ModelConfig.to_hssm_config_dict()` remains an inspection and compatibility
 surface. Its inference placeholders are not a complete HSSM model and should
 not be assembled manually.
+
+<span id="module-reference" aria-hidden="true"></span>
 
 ## Core objects
 
@@ -181,6 +210,8 @@ not be assembled manually.
 ::: ssms.rl.env.TaskEnvironment
 
 ::: ssms.rl.env.DiscreteChoiceEnvironment
+
+::: ssms.rl.env.TaskEnvironmentBuilder
 
 ::: ssms.rl.env.Bandit
 

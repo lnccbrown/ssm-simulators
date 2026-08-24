@@ -7,6 +7,11 @@ The root `ssms.basic_simulators` namespace exports `Simulator`, the legacy
 
 ## Observation constants
 
+<span id="ssms.OMISSION_SENTINEL" aria-hidden="true"></span>
+<span id="ssms.basic_simulators.OBSERVATION_SCHEMA_VERSION" aria-hidden="true"></span>
+<span id="ssms.basic_simulators.OMISSION_SENTINEL" aria-hidden="true"></span>
+<span id="ssms.basic_simulators.observation_results.OBSERVATION_SCHEMA_VERSION" aria-hidden="true"></span>
+
 | Export | Value and role |
 | --- | --- |
 | `OBSERVATION_SCHEMA_VERSION` | Current native structured-observation schema version (`1`) |
