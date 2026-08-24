@@ -150,20 +150,26 @@ def test_validate_observation_metadata_rejects_malformed_descriptors(
 
 
 @pytest.mark.parametrize(
-    ("profile", "choices", "message"),
+    ("profile", "choices", "error", "message"),
     [
-        ("unknown", (-1, 1), "profile"),
-        ("legacy_rt_choice", None, "choices"),
-        ("legacy_rt_choice", (), "values"),
-        ("legacy_rt_choice", (0.5, 1), "values"),
-        ("legacy_rt_choice", (1, 1), "unique"),
-        ("legacy_rt_choice", "01", "sequence"),
-        ("legacy_rt_choice", np.zeros((1, 2), dtype=int), "one-dimensional"),
+        ("unknown", (-1, 1), ValueError, "profile"),
+        ("legacy_rt_choice", None, ValueError, "choices"),
+        ("legacy_rt_choice", (), ValueError, "values"),
+        ("legacy_rt_choice", (0.5, 1), ValueError, "values"),
+        ("legacy_rt_choice", (1, 1), ValueError, "unique"),
+        ("legacy_rt_choice", "01", TypeError, "sequence"),
+        (
+            "legacy_rt_choice",
+            np.zeros((1, 2), dtype=int),
+            TypeError,
+            "one-dimensional",
+        ),
     ],
 )
 def test_validate_observation_metadata_rejects_malformed_profiles(
     profile: str,
     choices: object,
+    error: type[Exception],
     message: str,
 ) -> None:
     metadata: dict[str, Any] = {
@@ -173,7 +179,7 @@ def test_validate_observation_metadata_rejects_malformed_profiles(
     if choices is not None:
         metadata["choices"] = choices
 
-    with pytest.raises((TypeError, ValueError), match=message):
+    with pytest.raises(error, match=message):
         _validate(metadata)
 
 
@@ -210,6 +216,23 @@ def test_get_observation_metadata_reads_callable_attributes_without_execution() 
     assert producer.calls == 0
     assert descriptor["obs_dim"] == 2
     assert descriptor["observation_schema"][1]["values"] == (0, 1, 2)
+
+
+def test_get_observation_metadata_reads_explicit_schema_callable() -> None:
+    calls: list[bool] = []
+
+    def producer() -> None:
+        calls.append(True)
+        raise AssertionError("metadata inspection must not execute the producer")
+
+    setattr(producer, "observation_schema_version", 1)
+    setattr(producer, "observation_schema", (RESPONSE,))
+
+    descriptor = _get(producer)
+
+    assert not calls
+    assert descriptor["observation_schema"] == (RESPONSE,)
+    assert descriptor["obs_dim"] == 1
 
 
 def test_get_observation_metadata_requires_explicit_callable_declaration() -> None:
@@ -277,6 +300,9 @@ def test_result_validation_keeps_dtype_specific_categorical_precision_check() ->
             ({"name": "response", "kind": "categorical", "values": (label,)},)
         ),
     }
+    descriptor = _validate(result["metadata"])
+
+    assert descriptor["observation_schema"][0]["values"] == (label,)
 
     with pytest.raises(ValueError, match="not exactly representable.*float32"):
         validate_observation_result(result)
