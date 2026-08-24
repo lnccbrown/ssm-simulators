@@ -287,6 +287,6 @@ The key insight is that **all parameter transforms are defined directly in the m
 
 - [Create a custom model](../core_tutorials/tutorial_custom_models.ipynb): compose transforms into a runtime model
 - [Add a new model](add_models.md): ship a model in the package
-- [API Reference](../api/basic_simulators.md): Complete API documentation
+- [Parameter-transform API](../api/parameter_adapters.md): canonical class and registry reference
 - Built-in simulation transforms: `ssms/basic_simulators/parameter_adapters/`
 - Built-in sampling transforms: `ssms/transforms/sampling/`

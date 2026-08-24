@@ -40,8 +40,11 @@ nav:
       - API:
           - RLSSM (ssms.rl): api/rlssm.md
           - basic simulators: api/basic_simulators.md
-          - config: api/config.md
+          - configuration exports: api/config.md
           - data generators: api/dataset_generators.md
+          - HSSM integration: api/hssm_support.md
+          - external simulators: api/external_simulators.md
+          - parameter transforms: api/parameter_adapters.md
           - support utils: api/support_utils.md
 validation:
   omitted_files: warn
