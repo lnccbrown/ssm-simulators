@@ -1,6 +1,6 @@
 """Validate and inspect explicit producer observation metadata."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from numbers import Integral
 from typing import Any
 
@@ -51,19 +51,30 @@ def validate_observation_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]
     }
 
 
-def get_observation_metadata(
-    producer: Mapping[str, Any] | Callable[..., Any],
-) -> dict[str, Any]:
-    """Return explicit observation metadata for a mapping or callable producer.
+def get_observation_metadata(producer: object) -> dict[str, Any]:
+    """Return explicit observation metadata for a producer.
 
+    Model names are resolved from the live registry without running their simulators.
+    Objects may provide a zero-argument ``get_observation_metadata`` hook.
     Callable producers are inspected through the explicit schema attributes only and
     are never executed. Their legacy ``obs_dim`` attribute is deliberately ignored:
     semantic width always comes from the declared schema.
     """
+    if isinstance(producer, str):
+        from ssms.config import ModelConfigBuilder
+
+        return validate_observation_metadata(ModelConfigBuilder.from_model(producer))
     if isinstance(producer, Mapping):
         return validate_observation_metadata(producer)
+
+    provider = getattr(producer, "get_observation_metadata", None)
+    if callable(provider):
+        return validate_observation_metadata(provider())
     if not callable(producer):
-        raise TypeError("producer must be an observation metadata mapping or callable")
+        raise TypeError(
+            "producer must be a model name, observation metadata mapping or callable, "
+            "or expose get_observation_metadata()"
+        )
 
     metadata = _callable_metadata(producer)
     if not {

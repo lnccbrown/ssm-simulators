@@ -10,10 +10,14 @@ import inspect
 import warnings
 from collections.abc import Callable
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from ssms.basic_simulators.observation_metadata import (
+    get_observation_metadata as _get_observation_metadata,
+)
 from ssms.basic_simulators.simulator import (
     _get_unique_seed,
     _preprocess_theta_deadline,
@@ -697,6 +701,10 @@ class Simulator:
         """
         model_name = self._config.get("name", "")
         validate_ssm_parameters(model_name, theta)
+
+    def get_observation_metadata(self) -> dict[str, Any]:
+        """Return fresh validated metadata for this simulator's observations."""
+        return _get_observation_metadata(self._config)
 
     @property
     def config(self) -> dict:

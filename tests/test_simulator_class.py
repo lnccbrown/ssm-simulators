@@ -44,6 +44,15 @@ class TestSimulatorInitialization:
         assert sim.config["param_bounds"][0][0] == -4
         assert sim.config["param_bounds"][1][0] == 4
 
+    def test_observation_metadata_is_fresh(self):
+        sim = Simulator("ddm")
+
+        first = sim.get_observation_metadata()
+        first["observation_schema"][0]["name"] = "changed"
+
+        assert sim.get_observation_metadata()["observation_schema"][0]["name"] == "rt"
+        assert sim.config["observation_schema_profile"] == "legacy_rt_choice"
+
     def test_init_with_custom_simulator_function(self):
         """Test initialization with custom simulator function."""
 
@@ -218,6 +227,19 @@ class TestSimulation:
 
         np.testing.assert_array_equal(results1["rts"], results2["rts"])
         np.testing.assert_array_equal(results1["choices"], results2["choices"])
+
+    def test_observation_metadata_access_does_not_change_simulation_output(self):
+        sim = Simulator("ddm")
+        theta = {"v": 0.5, "a": 1.0, "z": 0.5, "t": 0.3}
+
+        before = sim.simulate(theta, n_samples=20, random_state=42)
+        sim.get_observation_metadata()
+        after = sim.simulate(theta, n_samples=20, random_state=42)
+
+        np.testing.assert_array_equal(before["rts"], after["rts"])
+        np.testing.assert_array_equal(before["choices"], after["choices"])
+        assert "observation_schema" not in after["metadata"]
+        assert "observation_schema_version" not in after["metadata"]
 
     def test_lba4_simulation(self):
         """Test plain 4-choice LBA simulation."""

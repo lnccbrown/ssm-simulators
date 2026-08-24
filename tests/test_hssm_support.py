@@ -1,11 +1,13 @@
 """Tests for ssms.hssm_support module."""
 
 import random
+from threading import Lock
 
 import numpy as np
 import pytest
 from unittest.mock import Mock, patch
 
+from ssms.basic_simulators import get_observation_metadata
 from ssms.basic_simulators.simulator import (
     _RNG_SEED_C_LONG_MAX,
     _validate_random_state_for_c_rng,
@@ -398,30 +400,37 @@ class TestGetSimulatorFunInternal:
         result = get_simulator_fun_internal(mock_simulator)
         assert result is mock_simulator
 
-    @patch("ssms.hssm_support.ssms_model_config")
+    @patch("ssms.hssm_support.get_model_registry")
+    @patch("ssms.hssm_support.ModelConfigBuilder")
     @patch("ssms.hssm_support._build_decorated_simulator")
     def test_get_simulator_fun_internal_string_known_model(
-        self, mock_build, mock_config
+        self, mock_build, mock_builder, mock_get_registry
     ):
         """Test get_simulator_fun_internal with known model string."""
-        mock_config.__contains__ = Mock(return_value=True)
-        mock_config.get = Mock(return_value={"choices": [0, 1]})
+        registry = mock_get_registry.return_value
+        registry.has_model.return_value = True
+        mock_builder.from_model.return_value = {
+            "choices": [0, 1],
+            # Unrelated config extensions may hold non-copyable runtime state.
+            "runtime_extension": Lock(),
+        }
         mock_build.return_value = Mock()
 
         result = get_simulator_fun_internal("ddm")
 
+        mock_builder.from_model.assert_called_once_with("ddm")
         mock_build.assert_called_once_with(model_name="ddm", choices=[0, 1])
         assert result == mock_build.return_value
 
-    @patch("ssms.hssm_support.ssms_model_config")
+    @patch("ssms.hssm_support.get_model_registry")
     @patch("ssms.hssm_support._build_decorated_simulator")
     @patch("ssms.hssm_support._logger")
     def test_get_simulator_fun_internal_string_unknown_model(
-        self, mock_logger, mock_build, mock_config
+        self, mock_logger, mock_build, mock_get_registry
     ):
         """Test get_simulator_fun_internal with unknown model string."""
-        mock_config.__contains__ = Mock(return_value=False)
-        mock_config.get = Mock(return_value={"choices": [0, 1, 2]})
+        registry = mock_get_registry.return_value
+        registry.has_model.return_value = False
         mock_build.return_value = Mock()
 
         get_simulator_fun_internal("unknown_model")
@@ -430,6 +439,17 @@ class TestGetSimulatorFunInternal:
         mock_build.assert_called_once_with(
             model_name="unknown_model", choices=[0, 1, 2]
         )
+
+    @patch("ssms.hssm_support.get_model_registry")
+    @patch("ssms.hssm_support.ModelConfigBuilder")
+    def test_registered_model_resolution_errors_propagate(
+        self, mock_builder, mock_get_registry
+    ):
+        mock_get_registry.return_value.has_model.return_value = True
+        mock_builder.from_model.side_effect = ValueError("broken config")
+
+        with pytest.raises(ValueError, match="broken config"):
+            get_simulator_fun_internal("broken")
 
     def test_get_simulator_fun_internal_invalid_type(self):
         """Test get_simulator_fun_internal with invalid type."""
@@ -442,6 +462,84 @@ class TestGetSimulatorFunInternal:
         contract = validate_simulator_fun(get_simulator_fun_internal(model_name))
 
         assert contract == (model_name, expected, 2)
+
+    @pytest.mark.parametrize(
+        ("model_name", "expected_choices"),
+        [("ddm_deadline", [-1, 1]), ("lba2_deadline", [0, 1])],
+    )
+    def test_derived_deadline_wrapper_uses_base_model_metadata(
+        self, model_name, expected_choices
+    ):
+        wrapper = get_simulator_fun_internal(model_name)
+
+        assert validate_simulator_fun(wrapper) == (model_name, expected_choices, 2)
+        assert get_observation_metadata(wrapper) == get_observation_metadata(model_name)
+
+    def test_registered_wrapper_exposes_semantic_observation_metadata(self):
+        rt_choice = get_simulator_fun_internal("ddm")
+        response_only = get_simulator_fun_internal("inv_temp_softmax_3")
+        raw_response_only = response_only(
+            theta=np.asarray([1.0, 0.5, 0.5, 0.5]),
+            n_replicas=4,
+            random_state=42,
+        )
+
+        assert validate_simulator_fun(rt_choice) == ("ddm", [-1, 1], 2)
+        assert get_observation_metadata(rt_choice)["obs_dim"] == 2
+        assert validate_simulator_fun(response_only) == (
+            "inv_temp_softmax_3",
+            [0, 1, 2],
+            2,
+        )
+        assert get_observation_metadata(response_only) == {
+            "observation_schema_version": 1,
+            "observation_schema": (
+                {
+                    "name": "response",
+                    "kind": "categorical",
+                    "values": (0, 1, 2),
+                },
+            ),
+            "obs_dim": 1,
+        }
+        assert raw_response_only.shape == (4, 2)
+        assert np.all(raw_response_only[:, 0] == -1)
+
+    @patch("ssms.hssm_support._logger")
+    def test_unknown_wrapper_does_not_gain_schema_from_fallback(self, _mock_logger):
+        wrapper = get_simulator_fun_internal("not_a_registered_model")
+
+        assert validate_simulator_fun(wrapper) == (
+            "not_a_registered_model",
+            [0, 1, 2],
+            2,
+        )
+        with pytest.raises(ValueError, match="explicit observation metadata"):
+            get_observation_metadata(wrapper)
+
+    @patch("ssms.hssm_support.get_model_registry")
+    @patch("ssms.hssm_support.ModelConfigBuilder")
+    def test_incomplete_profile_does_not_gain_choices_from_fallback(
+        self, mock_builder, mock_get_registry
+    ):
+        registry = mock_get_registry.return_value
+        registry.has_model.return_value = True
+        mock_builder.from_model.return_value = {
+            "observation_schema_version": 1,
+            "observation_schema_profile": "legacy_rt_choice",
+        }
+
+        wrapper = get_simulator_fun_internal("incomplete")
+
+        assert validate_simulator_fun(wrapper) == ("incomplete", [0, 1, 2], 2)
+        with pytest.raises(ValueError, match="explicit observation metadata"):
+            get_observation_metadata(wrapper)
+
+    def test_wrapper_choices_do_not_alias_registry_config(self):
+        first = get_simulator_fun_internal("ddm")
+        first.choices.append(99)
+
+        assert get_simulator_fun_internal("ddm").choices == [-1, 1]
 
 
 class TestValidateSimulatorFun:
