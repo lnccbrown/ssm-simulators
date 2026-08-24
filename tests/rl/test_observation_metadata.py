@@ -227,6 +227,20 @@ def test_assembled_metadata_is_an_independent_fresh_snapshot():
     assert first["observation_schema"][0] is not second["observation_schema"][0]
 
 
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"response": ["response"]},
+        {"choices": (1, -1)},
+    ],
+)
+def test_assembled_response_contract_cannot_diverge_from_config(change):
+    assembled = rl.preset.get("2AB_RW_Angle").assemble(backend="python")
+
+    with pytest.raises(ValueError, match="must match its ModelConfig"):
+        replace(assembled, **change)
+
+
 def test_metadata_access_does_not_change_or_extend_the_hssm_config_dict():
     config = rl.preset.get("2AB_RW_Angle")
     before = config.to_hssm_config_dict()

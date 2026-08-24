@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -110,10 +110,19 @@ class AssembledModel:
     context_fields: list[str]
     computed_params: list[str]
     response_to_choice: dict[int, int]
-    _observation_metadata: dict[str, Any] = field(init=False, repr=False, compare=False)
+
+    # Materialized per instance in __post_init__, while ClassVar keeps the private
+    # cache outside the public dataclass field/serialization contract.
+    _observation_metadata: ClassVar[dict[str, Any]]
 
     def __post_init__(self) -> None:
         """Snapshot semantic observation metadata without widening the constructor."""
+        if self.response != self.config.response or self.choices != tuple(
+            self.config.choices or ()
+        ):
+            raise ValueError(
+                "AssembledModel response and choices must match its ModelConfig"
+            )
         object.__setattr__(
             self,
             "_observation_metadata",

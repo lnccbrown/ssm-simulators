@@ -171,10 +171,12 @@ class ModelConfig:
         default_factory=lambda: {"delta_t": 0.001, "max_t": 20.0}
     )
 
-    # Additive observation-metadata contract. Keep these fields last so existing
-    # positional constructor calls retain their meaning.
-    observation_schema_version: int = 1
-    observation_schema: tuple[Mapping[str, Any], ...] | None = None
+    # Additive observation-metadata contract. These are keyword-only so the existing
+    # positional constructor and pattern-matching surfaces remain unchanged.
+    observation_schema_version: int = field(default=1, kw_only=True)
+    observation_schema: tuple[Mapping[str, Any], ...] | None = field(
+        default=None, kw_only=True
+    )
 
     def __post_init__(self):
         """Auto-build task environment and derive missing fields."""
