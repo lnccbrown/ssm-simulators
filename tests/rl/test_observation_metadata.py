@@ -145,15 +145,24 @@ def test_nonstandard_response_layout_requires_an_explicit_v1_ordered_schema():
     ("schema", "match"),
     [
         (
-            (_response_field((-1, 1)), _rt_field()),
+            (
+                _response_field((-1, 1)),
+                {"name": "latency", "kind": "continuous"},
+            ),
             "names and order must exactly match response",
         ),
         (
-            (_rt_field(), _response_field((1, -1))),
+            (
+                {"name": "latency", "kind": "continuous"},
+                _response_field((1, -1)),
+            ),
             "values equal to choices in order",
         ),
         (
-            (_rt_field(), {"name": "response", "kind": "continuous"}),
+            (
+                {"name": "latency", "kind": "continuous"},
+                {"name": "response", "kind": "continuous"},
+            ),
             "must be categorical",
         ),
     ],
@@ -162,6 +171,7 @@ def test_nonstandard_response_layout_requires_an_explicit_v1_ordered_schema():
 def test_explicit_schema_must_match_the_rl_response_contract(schema, match):
     config = replace(
         rl.preset.get("2AB_RW_Angle"),
+        response=["latency", "response"],
         observation_schema=schema,
     )
 
@@ -169,12 +179,29 @@ def test_explicit_schema_must_match_the_rl_response_contract(schema, match):
         get_observation_metadata(config)
 
 
+def test_standard_response_layout_rejects_an_explicit_schema_override():
+    config = replace(
+        rl.preset.get("2AB_RW_Angle"),
+        observation_schema=(_rt_field(), _response_field((-1, 1))),
+    )
+
+    with pytest.raises(ValueError, match="must be omitted for the standard RL"):
+        get_observation_metadata(config)
+
+
 def test_assembled_metadata_is_an_independent_fresh_snapshot():
     raw_values = [-1, 1]
     config = replace(
         rl.preset.get("2AB_RW_Angle"),
+        response=["rt", "confidence", "response"],
         observation_schema=(
             _rt_field(),
+            {
+                "name": "confidence",
+                "kind": "continuous",
+                "lower": 0.0,
+                "upper": 1.0,
+            },
             {"name": "response", "kind": "categorical", "values": raw_values},
         ),
     )
@@ -182,10 +209,19 @@ def test_assembled_metadata_is_an_independent_fresh_snapshot():
 
     raw_values[0] = 99
     first = get_observation_metadata(assembled)
-    first["observation_schema"][1]["values"] = (99, 100)
+    first["observation_schema"][2]["values"] = (99, 100)
     second = get_observation_metadata(assembled)
 
-    assert second == _descriptor(_rt_field(), _response_field((-1, 1)))
+    assert second == _descriptor(
+        _rt_field(),
+        {
+            "name": "confidence",
+            "kind": "continuous",
+            "lower": 0.0,
+            "upper": 1.0,
+        },
+        _response_field((-1, 1)),
+    )
     assert first is not second
     assert first["observation_schema"] is not second["observation_schema"]
     assert first["observation_schema"][0] is not second["observation_schema"][0]

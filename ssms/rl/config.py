@@ -601,31 +601,39 @@ class ModelConfig:
             validate_observation_metadata,
         )
 
-        schema = self.observation_schema
         response_fields = tuple(self.response)
         if DEFAULT_RESPONSE_FIELD not in response_fields:
             raise ValueError(
                 f"response must include {DEFAULT_RESPONSE_FIELD!r} for observation "
                 f"metadata; got {response_fields}"
             )
-        if schema is None:
-            if response_fields == ("rt", "response"):
-                schema = (
-                    {
-                        "name": "rt",
-                        "kind": "continuous",
-                        "lower": 0.0,
-                        "lower_inclusive": False,
-                    },
-                    self._response_schema_entry(),
-                )
-            elif response_fields == ("response",):
-                schema = (self._response_schema_entry(),)
-            else:
+        standard_layouts = {("rt", "response"), ("response",)}
+        if self.observation_schema is not None and response_fields in standard_layouts:
+            raise ValueError(
+                "observation_schema must be omitted for the standard RL response "
+                f"layout {list(response_fields)!r}; its schema is derived"
+            )
+
+        schema: tuple[Mapping[str, Any], ...]
+        if response_fields == ("rt", "response"):
+            schema = (
+                {
+                    "name": "rt",
+                    "kind": "continuous",
+                    "lower": 0.0,
+                    "lower_inclusive": False,
+                },
+                self._response_schema_entry(),
+            )
+        elif response_fields == ("response",):
+            schema = (self._response_schema_entry(),)
+        else:
+            if self.observation_schema is None:
                 raise ValueError(
                     "RL response layouts other than ['rt', 'response'] and "
                     "['response'] require an explicit observation_schema"
                 )
+            schema = self.observation_schema
 
         descriptor = validate_observation_metadata(
             {
