@@ -16,6 +16,18 @@ class LogKDE:
     """
     Class for generating kdes from (rt, choice) data. Works for any number of choices.
 
+    Only samples usable as log-RT KDE input are retained per choice: omission
+    sentinels, non-positive RTs and non-finite log-RTs are dropped from
+    ``data['rts']`` and ``data['log_rts']``. Non-positive RTs are legitimate
+    simulator output for models whose non-decision-time kernel has unbounded
+    support (a ``Normal(t, st)`` kernel, say). ``data['choice_proportions']`` is
+    computed before this filter, so it still counts the dropped samples.
+
+    Known limitation: a choice left with exactly one retained sample falls through
+    to ``bandwidth_silverman``'s ``std_n_1`` default, yielding a bandwidth of about
+    10.59 that passes the ``bandwidth > 0`` check. That choice's density estimate
+    is not meaningful.
+
     Attributes
     ----------
         simulator_data: dict, default<None
@@ -450,6 +462,8 @@ class LogKDE:
             Value to filter rts by, default is OMISSION_SENTINEL (-999).
             This is the sentinel value returned by simulators when a trial
             exceeds max_t or deadline (i.e., an omission).
+            Only rts that differ from this value, are strictly positive and have
+            a finite log are retained per choice.
         """
 
         simulator_data = deepcopy(simulator_data)
@@ -493,12 +507,17 @@ class LogKDE:
             prop_tmp = len(rts_tmp) / n
             self.data["choices"].append(c)
 
-            self.data["log_rts"].append(
-                np.expand_dims(log_rts_tmp[log_rts_tmp != filter_rts], axis=1)
-            )
-            self.data["rts"].append(
-                np.expand_dims(rts_tmp[rts_tmp != filter_rts], axis=1)
-            )
+            # Retain only samples usable as log-RT KDE input: not the omission
+            # sentinel, strictly positive rt, and a finite log-rt. Applied to the
+            # final (possibly displace_t-shifted) values. `rts` and `log_rts` are
+            # maintained as two independent arrays, so the last two terms cover
+            # different samples: `> 0` alone admits rt = +inf, and on the
+            # displace_t boundary float rounding makes `rt - t` and
+            # `exp(log(rt)) - t` disagree in sign in both directions.
+            valid = (rts_tmp != filter_rts) & (rts_tmp > 0) & np.isfinite(log_rts_tmp)
+
+            self.data["log_rts"].append(np.expand_dims(log_rts_tmp[valid], axis=1))
+            self.data["rts"].append(np.expand_dims(rts_tmp[valid], axis=1))
             self.data["choice_proportions"].append(prop_tmp)
 
         self.data["n_trials"] = simulator_data["choices"].shape[0]
