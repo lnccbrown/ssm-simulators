@@ -2,11 +2,14 @@ from copy import deepcopy
 import logging
 from unittest.mock import patch
 
+import functools
+
 import numpy as np
+import scipy.stats as sps
 import pandas as pd
 import pytest
 
-from ssms.basic_simulators.simulator import simulator
+from ssms.basic_simulators.simulator import _accepts_random_state, simulator
 from ssms.config import model_config
 
 logger = logging.getLogger(__name__)
@@ -330,3 +333,73 @@ def test_random_state_boundary_max_ok():
         random_state=2**31 - 1,
     )
     assert "rts" in out
+
+
+@pytest.mark.rng_validation
+@pytest.mark.parametrize("model", ["ddm", "ddm_st", "full_ddm_rv", "ddm_sdv"])
+def test_random_state_pins_variability_draws(sim_input_data, model):
+    """A repeated integer random_state reproduces the trial-to-trial variability
+    draws (sv/sz/st), not just the diffusion path, and is unaffected by unrelated
+    consumption of NumPy's global RNG between calls."""
+    theta = dict(sim_input_data[model]["theta_dict_all_scalars"])
+    # The registry defaults put sv/sz/st at 1e-3, below what a float32 RT
+    # resolves; raise them so a differing draw shows up in the output.
+    theta.update(
+        {k: v for k, v in {"sv": 0.5, "sz": 0.1, "st": 0.13}.items() if k in theta}
+    )
+
+    state = np.random.get_state()
+    try:
+        first = simulator(model=model, theta=theta, n_samples=500, random_state=7)
+        # The variability draws come from a generator derived from the seed, so
+        # the call leaves the process-global RNG exactly where it found it. A
+        # global reseed or a global draw would move it.
+        after_first = np.random.get_state()
+        np.testing.assert_array_equal(after_first[1], state[1])
+        assert after_first[2] == state[2]
+        # unrelated consumption of the global RNG must not affect the draws
+        np.random.uniform(size=1234)
+        second = simulator(model=model, theta=theta, n_samples=500, random_state=7)
+    finally:
+        np.random.set_state(state)
+
+    np.testing.assert_array_equal(first["rts"], second["rts"])
+    np.testing.assert_array_equal(first["choices"], second["choices"])
+
+
+@pytest.mark.rng_validation
+def test_accepts_random_state_rejects_positional_only():
+    """A positional-only ``random_state`` cannot be filled by keyword.
+
+    Binding one would either divert the value into ``**kwargs`` while the
+    parameter kept its default, or raise, so such callables are left alone.
+    """
+
+    def positional_only(size=1, random_state=None, /, **kwargs):
+        """Take random_state positionally only; keyword use lands in kwargs."""
+        return random_state
+
+    def keyword_ok(size=1, random_state=None):
+        """Accept random_state by keyword."""
+        return random_state
+
+    def variadic_only(**kwargs):
+        """Accept random_state only through **kwargs, as scipy rvs does."""
+        return kwargs.get("random_state")
+
+    assert not _accepts_random_state(positional_only)
+    assert _accepts_random_state(keyword_ok)
+    assert _accepts_random_state(variadic_only)
+    # the failure mode the exclusion prevents: value diverted, default kept
+    assert functools.partial(positional_only, random_state="RNG")() is None
+
+
+@pytest.mark.rng_validation
+def test_bound_random_state_is_not_overridden():
+    """A distribution that already carries its own random_state keeps it."""
+    own = np.random.default_rng(123)
+    dist = functools.partial(sps.uniform.rvs, loc=0.0, scale=1.0, random_state=own)
+    # accepted by the predicate, but already bound, so the simulator leaves it
+    assert _accepts_random_state(dist)
+    assert "random_state" in dist.keywords
+    assert dist.keywords["random_state"] is own
