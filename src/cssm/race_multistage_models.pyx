@@ -193,6 +193,23 @@ cdef void _run_race_trial(
         particle[i] = x0[row, i]
         stage[i] = 0
 
+    # An initial value can already cross its stage-0 boundary. Report this
+    # before drawing noise; iterating in index order preserves tie-breaking.
+    winner = -1
+    for i in range(n_accumulators):
+        boundary = _upper_boundary_at(
+            upper_intercept, upper_slope, nodes,
+            row, i, stage[i], t_particle,
+        )
+        if particle[i] >= boundary and winner < 0:
+            winner = i
+    if winner >= 0:
+        result.rt = 0.0
+        result.choice = winner
+        for i in range(n_accumulators):
+            x_final_out[i] = particle[i]
+        return
+
     for step in range(config.max_steps):
         # A node reached by the preceding propagation begins its new stage
         # before this iteration can draw additional noise.
@@ -280,6 +297,7 @@ cdef void _validate_race_inputs(
     cdef:
         int n_rows = mu.shape[0]
         int n_accumulators = mu.shape[1]
+        int row, accumulator, stage
 
     if n_accumulators > MAX_ACCUMULATORS:
         raise ValueError(
@@ -303,6 +321,11 @@ cdef void _validate_race_inputs(
         raise ValueError("seeds must contain one seed per row")
     if np.any(np.asarray(d) < 1) or np.any(np.asarray(d) > mu.shape[2]):
         raise ValueError("each d entry must lie between 1 and the padded stage count")
+    for row in range(n_rows):
+        for accumulator in range(n_accumulators):
+            for stage in range(d[row, accumulator] - 1):
+                if nodes[row, accumulator, stage + 1] < nodes[row, accumulator, stage]:
+                    raise ValueError("active stage nodes must be nondecreasing")
 
 
 def _simulate_race_multistage(

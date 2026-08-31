@@ -45,9 +45,7 @@ def _nonpassage_density(
     terminal_mean = x0 + mu * T
     variance = sigma**2 * T
     gaussian = np.exp(-((x - terminal_mean) ** 2) / (2.0 * variance))
-    killed_factor = 1.0 - np.exp(
-        2.0 * distance_to_boundary * (x - boundary) / variance
-    )
+    killed_factor = 1.0 - np.exp(2.0 * distance_to_boundary * (x - boundary) / variance)
     return gaussian * killed_factor
 
 
@@ -100,9 +98,8 @@ def big_F(
     passage_z_score = (relative_drift * elapsed - distance) / standard_error
     survival_z_score = (-distance - relative_drift * elapsed) / standard_error
     reflection_factor = np.exp(2.0 * relative_drift * distance / sigma**2)
-    out[valid] = (
-        _normal_cdf(passage_z_score)
-        + reflection_factor * _normal_cdf(survival_z_score)
+    out[valid] = _normal_cdf(passage_z_score) + reflection_factor * _normal_cdf(
+        survival_z_score
     )
     return out
 
@@ -123,9 +120,7 @@ def q(
     out = np.zeros_like(x)
     inside = x < boundary
     x_inside = x[inside]
-    out[inside] = _nonpassage_density(
-        x_inside, mu, sigma, boundary, T, a, x0
-    )
+    out[inside] = _nonpassage_density(x_inside, mu, sigma, boundary, T, a, x0)
     out[inside] /= _SQRT_2PI * sigma * sqrt(T)
     return out
 
