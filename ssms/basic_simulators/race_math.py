@@ -7,19 +7,48 @@ simulator and the later multi-stage race likelihood implementation.
 
 from __future__ import annotations
 
-from math import erf, sqrt
+from math import sqrt
 
 import numpy as np
+from scipy.special import ndtr
 
 
-_SQRT_2 = sqrt(2.0)
 _SQRT_2PI = sqrt(2.0 * np.pi)
 
 
 def _normal_cdf(x: np.ndarray | float) -> np.ndarray:
-    """Standard-normal CDF without requiring SciPy."""
-    x = np.asarray(x, dtype=float)
-    return 0.5 * (1.0 + np.vectorize(erf, otypes=[float])(x / _SQRT_2))
+    """Standard-normal CDF."""
+    return ndtr(np.asarray(x, dtype=float))
+
+
+def _validate_race_parameters(sigma: float, T: float, a: float, x0: float) -> None:
+    """Validate the shared scalar parameters of the one-sided race model."""
+    if sigma <= 0.0:
+        raise ValueError("sigma must be positive")
+    if T <= 0.0:
+        raise ValueError("T must be positive")
+    if x0 >= a:
+        raise ValueError("x0 must be less than a")
+
+
+def _nonpassage_density(
+    x: np.ndarray,
+    mu: float,
+    sigma: float,
+    boundary: float,
+    T: float,
+    a: float,
+    x0: float,
+) -> np.ndarray:
+    """Return the Gaussian density corrected for absorption at the boundary."""
+    distance_to_boundary = a - x0
+    terminal_mean = x0 + mu * T
+    variance = sigma**2 * T
+    gaussian = np.exp(-((x - terminal_mean) ** 2) / (2.0 * variance))
+    killed_factor = 1.0 - np.exp(
+        2.0 * distance_to_boundary * (x - boundary) / variance
+    )
+    return gaussian * killed_factor
 
 
 def small_f(
@@ -32,8 +61,7 @@ def small_f(
     x0: float,
 ) -> np.ndarray:
     """One-sided FPT density ``f_tau(t)`` in race-model equation (14)."""
-    if sigma <= 0.0 or T <= 0.0:
-        raise ValueError("sigma and T must be positive")
+    _validate_race_parameters(sigma, T, a, x0)
     t = np.asarray(t, dtype=float)
     out = np.zeros_like(t)
     valid = (t > 0.0) & (t <= T)
@@ -60,8 +88,7 @@ def big_F(
     x0: float,
 ) -> np.ndarray:
     """One-sided FPT CDF ``F_tau(t)`` in race-model equation (14)."""
-    if sigma <= 0.0 or T <= 0.0:
-        raise ValueError("sigma and T must be positive")
+    _validate_race_parameters(sigma, T, a, x0)
     t = np.asarray(t, dtype=float)
     out = np.zeros_like(t)
     valid = t > 0.0
@@ -69,10 +96,13 @@ def big_F(
     distance = a - x0
     relative_drift = mu - b
     root_elapsed = np.sqrt(elapsed)
-    out[valid] = _normal_cdf(
-        (relative_drift * elapsed - distance) / (sigma * root_elapsed)
-    ) + np.exp(2.0 * relative_drift * distance / sigma**2) * _normal_cdf(
-        (-distance - relative_drift * elapsed) / (sigma * root_elapsed)
+    standard_error = sigma * root_elapsed
+    passage_z_score = (relative_drift * elapsed - distance) / standard_error
+    survival_z_score = (-distance - relative_drift * elapsed) / standard_error
+    reflection_factor = np.exp(2.0 * relative_drift * distance / sigma**2)
+    out[valid] = (
+        _normal_cdf(passage_z_score)
+        + reflection_factor * _normal_cdf(survival_z_score)
     )
     return out
 
@@ -87,18 +117,16 @@ def q(
     x0: float,
 ) -> np.ndarray:
     """Killed/non-passage density ``q(x; ..., T, x0)`` in equation (14)."""
-    if sigma <= 0.0 or T <= 0.0:
-        raise ValueError("sigma and T must be positive")
+    _validate_race_parameters(sigma, T, a, x0)
     x = np.asarray(x, dtype=float)
     boundary = a + b * T
     out = np.zeros_like(x)
     inside = x < boundary
     x_inside = x[inside]
-    gaussian = np.exp(-((x_inside - x0 - mu * T) ** 2) / (2.0 * sigma**2 * T))
-    killed_factor = 1.0 - np.exp(
-        2.0 * (a - x0) * (x_inside - boundary) / (sigma**2 * T)
+    out[inside] = _nonpassage_density(
+        x_inside, mu, sigma, boundary, T, a, x0
     )
-    out[inside] = gaussian * killed_factor / (_SQRT_2PI * sigma * sqrt(T))
+    out[inside] /= _SQRT_2PI * sigma * sqrt(T)
     return out
 
 

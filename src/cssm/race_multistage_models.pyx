@@ -21,6 +21,7 @@ or ``n_threads``.
 import numpy as np
 cimport numpy as np
 from libc.math cimport sqrt, log, cos, sin, M_PI
+from libc.stdlib cimport free, malloc
 from libc.stdint cimport uint64_t
 from cython.parallel cimport prange
 
@@ -33,6 +34,21 @@ from cssm._utils import (
 
 cdef double OMISSION = -999.0
 DEF MAX_ACCUMULATORS = 32
+cdef int UNIFORM_BITS = 11
+cdef double UINT64_TO_DOUBLE = 1.0 / 9007199254740992.0
+cdef double MIN_UNIFORM = 1e-300
+cdef double TWO_PI = 2.0 * M_PI
+
+
+cdef struct SimulationConfig:
+    double dt
+    double horizon
+    int max_steps
+
+
+cdef struct TrialResult:
+    double rt
+    int choice
 
 
 # Inline xoshiro256++ / Box-Muller RNG, matching the Efficient-FPT-derived
@@ -78,23 +94,64 @@ cdef inline void _seed(Xoshiro256State *state, uint64_t seed) noexcept nogil:
 
 
 cdef struct BoxMullerState:
+    # Box-Muller produces two normals from a pair of uniforms. ``spare``
+    # stores the second value, and ``has_spare`` marks it for the next call.
     double spare
     int has_spare
 
 
 cdef inline double _normal(Xoshiro256State *rng, BoxMullerState *bm) noexcept nogil:
+    """Return one standard normal and cache its Box-Muller companion.
+
+    A call first consumes ``bm.spare`` when available. Otherwise it generates
+    a pair of normals, returns the cosine component, and caches the sine
+    component for the following call.
+    """
     cdef double u1, u2, magnitude
+    # Consume the cached companion before drawing new uniforms.
     if bm.has_spare:
         bm.has_spare = 0
         return bm.spare
-    u1 = <double>(_next(rng) >> 11) * (1.0 / 9007199254740992.0)
-    u2 = <double>(_next(rng) >> 11) * (1.0 / 9007199254740992.0)
-    if u1 < 1e-300:
-        u1 = 1e-300
+    u1 = <double>(_next(rng) >> UNIFORM_BITS) * UINT64_TO_DOUBLE
+    u2 = <double>(_next(rng) >> UNIFORM_BITS) * UINT64_TO_DOUBLE
+    if u1 < MIN_UNIFORM:
+        u1 = MIN_UNIFORM
     magnitude = sqrt(-2.0 * log(u1))
-    bm.spare = magnitude * sin(2.0 * M_PI * u2)
+    bm.spare = magnitude * sin(TWO_PI * u2)
     bm.has_spare = 1
-    return magnitude * cos(2.0 * M_PI * u2)
+    return magnitude * cos(TWO_PI * u2)
+
+
+cdef inline double _upper_boundary_at(
+    double[:, :, ::1] upper_intercept,
+    double[:, :, ::1] upper_slope,
+    double[:, :, ::1] nodes,
+    int row,
+    int accumulator,
+    int stage,
+    double time,
+) noexcept nogil:
+    """Return an accumulator's upper boundary at ``time`` in ``stage``."""
+    return (
+        upper_intercept[row, accumulator, stage]
+        + upper_slope[row, accumulator, stage]
+        * (time - nodes[row, accumulator, stage])
+    )
+
+
+cdef inline bint _has_reached_next_stage(
+    double[:, :, ::1] nodes,
+    int[:, ::1] d,
+    int row,
+    int accumulator,
+    int current_stage,
+    double time,
+) noexcept nogil:
+    """Return whether an accumulator should advance to its next stage."""
+    return (
+        current_stage + 1 < d[row, accumulator]
+        and time >= nodes[row, accumulator, current_stage + 1]
+    )
 
 
 cdef void _run_race_trial(
@@ -106,14 +163,10 @@ cdef void _run_race_trial(
     double[:, :, ::1] upper_slope,
     int row,
     double[:, ::1] x0,
-    double dt,
-    int max_steps,
-    double horizon,
+    SimulationConfig config,
     uint64_t seed,
-    double *rt_out,
-    int *choice_out,
+    TrialResult *result,
     double *x_final_out,
-    int n_accumulators,
 ) noexcept nogil:
     """Simulate one race. A same-grid-step tie uses the lowest index.
 
@@ -125,40 +178,75 @@ cdef void _run_race_trial(
         Xoshiro256State rng
         BoxMullerState bm
         double particle[MAX_ACCUMULATORS]
-        double t_particle, dt_current, sqrt_dt, boundary
+        double t_particle, dt_current, sqrt_dt, boundary, next_node
+        double drift_increment, diffusion_increment
         int stage[MAX_ACCUMULATORS]
-        int i, step, winner
+        int i, step, winner, stage_changed, n_accumulators
 
     _seed(&rng, seed)
     bm.has_spare = 0
     t_particle = 0.0
-    rt_out[0] = -1.0
-    choice_out[0] = 0
+    result.rt = -1.0
+    result.choice = 0
+    n_accumulators = mu.shape[1]
     for i in range(n_accumulators):
         particle[i] = x0[row, i]
         stage[i] = 0
 
-    for step in range(max_steps):
-        dt_current = horizon - t_particle
+    for step in range(config.max_steps):
+        # A node reached by the preceding propagation begins its new stage
+        # before this iteration can draw additional noise.
+        stage_changed = 0
+        for i in range(n_accumulators):
+            while _has_reached_next_stage(
+                nodes, d, row, i, stage[i], t_particle
+            ):
+                stage[i] += 1
+                stage_changed = 1
+
+        # A discontinuity in the boundary can itself end the race. Use the
+        # previous Euler-step midpoint convention (or zero at the start).
+        if stage_changed:
+            winner = -1
+            for i in range(n_accumulators):
+                boundary = _upper_boundary_at(
+                    upper_intercept, upper_slope, nodes,
+                    row, i, stage[i], t_particle,
+                )
+                if particle[i] >= boundary and winner < 0:
+                    winner = i
+            if winner >= 0:
+                result.rt = t_particle - 0.5 * dt_current if step > 0 else 0.0
+                result.choice = winner
+                break
+
+        dt_current = config.horizon - t_particle
         if dt_current <= 0.0:
             break
-        if dt_current > dt:
-            dt_current = dt
+        dt_current = min(dt_current, config.dt)
+
+        # Do not propagate through a stage node with the preceding stage's
+        # dynamics. The earliest pending node controls this Euler step.
+        for i in range(n_accumulators):
+            if stage[i] + 1 < d[row, i]:
+                next_node = nodes[row, i, stage[i] + 1]
+                if next_node < t_particle + dt_current:
+                    dt_current = next_node - t_particle
         sqrt_dt = sqrt(dt_current)
 
         for i in range(n_accumulators):
-            particle[i] += (
-                mu[row, i, stage[i]] * dt_current
-                + sigma[row, i, stage[i]] * sqrt_dt * _normal(&rng, &bm)
+            drift_increment = mu[row, i, stage[i]] * dt_current
+            diffusion_increment = (
+                sigma[row, i, stage[i]] * sqrt_dt * _normal(&rng, &bm)
             )
+            particle[i] += drift_increment + diffusion_increment
         t_particle += dt_current
 
         winner = -1
         for i in range(n_accumulators):
-            boundary = (
-                upper_intercept[row, i, stage[i]]
-                + upper_slope[row, i, stage[i]]
-                * (t_particle - nodes[row, i, stage[i]])
+            boundary = _upper_boundary_at(
+                upper_intercept, upper_slope, nodes,
+                row, i, stage[i], t_particle,
             )
             if particle[i] >= boundary and winner < 0:
                 winner = i
@@ -166,19 +254,18 @@ cdef void _run_race_trial(
         if winner >= 0:
             # The aDDM Efficient-FPT-compatible simulator reports the midpoint
             # of the Euler step; use the same first-order convention here.
-            rt_out[0] = t_particle - 0.5 * dt_current
-            choice_out[0] = winner
+            result.rt = t_particle - 0.5 * dt_current
+            result.choice = winner
             break
 
-        for i in range(n_accumulators):
-            while stage[i] + 1 < d[row, i] and t_particle >= nodes[row, i, stage[i] + 1]:
-                stage[i] += 1
+        # Stage updates happen at the beginning of the next iteration, where
+        # the new boundary is checked before another noise draw.
 
     for i in range(n_accumulators):
         x_final_out[i] = particle[i]
 
 
-def _simulate_race_multistage(
+cdef void _validate_race_inputs(
     double[:, :, ::1] mu,
     double[:, :, ::1] sigma,
     double[:, :, ::1] nodes,
@@ -187,16 +274,12 @@ def _simulate_race_multistage(
     double[:, :, ::1] upper_slope,
     double[:, ::1] x0,
     double dt,
-    double horizon,
     uint64_t[::1] seeds,
-    int n_threads=1,
-):
-    """Low-level batch kernel used by :func:`race_multistage` and tests."""
+) except *:
+    """Validate the low-level multi-stage race simulator input contract."""
     cdef:
         int n_rows = mu.shape[0]
         int n_accumulators = mu.shape[1]
-        int max_steps = int(np.ceil(horizon / dt)) if horizon > 0.0 else 0
-        int row
 
     if n_accumulators > MAX_ACCUMULATORS:
         raise ValueError(
@@ -221,6 +304,33 @@ def _simulate_race_multistage(
     if np.any(np.asarray(d) < 1) or np.any(np.asarray(d) > mu.shape[2]):
         raise ValueError("each d entry must lie between 1 and the padded stage count")
 
+
+def _simulate_race_multistage(
+    double[:, :, ::1] mu,
+    double[:, :, ::1] sigma,
+    double[:, :, ::1] nodes,
+    int[:, ::1] d,
+    double[:, :, ::1] upper_intercept,
+    double[:, :, ::1] upper_slope,
+    double[:, ::1] x0,
+    double dt,
+    double horizon,
+    uint64_t[::1] seeds,
+    int n_threads=1,
+):
+    """Low-level batch kernel used by :func:`race_multistage` and tests."""
+    cdef:
+        int n_rows = mu.shape[0]
+        int n_accumulators = mu.shape[1]
+        int max_steps = int(np.ceil(horizon / dt)) if horizon > 0.0 else 0
+        int row
+        SimulationConfig config
+        TrialResult *trial_results
+
+    _validate_race_inputs(
+        mu, sigma, nodes, d, upper_intercept, upper_slope, x0, dt, seeds
+    )
+
     rt = np.empty(n_rows, dtype=np.float64)
     choice = np.empty(n_rows, dtype=np.int32)
     x_final = np.empty((n_rows, n_accumulators), dtype=np.float64)
@@ -236,12 +346,23 @@ def _simulate_race_multistage(
         x_final[:] = np.asarray(x0)
         return rt, choice, x_final
 
-    for row in prange(n_rows, nogil=True, num_threads=n_threads, schedule='dynamic'):
-        _run_race_trial(
-            mu, sigma, nodes, d, upper_intercept, upper_slope, row, x0,
-            dt, max_steps, horizon, seeds[row], &rt_view[row],
-            &choice_view[row], &final_view[row, 0], n_accumulators,
-        )
+    config.dt = dt
+    config.horizon = horizon
+    config.max_steps = max_steps
+    trial_results = <TrialResult *>malloc(n_rows * sizeof(TrialResult))
+    if trial_results == NULL:
+        raise MemoryError("could not allocate race trial results")
+    try:
+        for row in prange(n_rows, nogil=True, num_threads=n_threads, schedule='dynamic'):
+            _run_race_trial(
+                mu, sigma, nodes, d, upper_intercept, upper_slope, row, x0,
+                config, seeds[row], &trial_results[row], &final_view[row, 0],
+            )
+        for row in range(n_rows):
+            rt_view[row] = trial_results[row].rt
+            choice_view[row] = trial_results[row].choice
+    finally:
+        free(trial_results)
     return rt, choice, x_final
 
 
