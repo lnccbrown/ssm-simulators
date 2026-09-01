@@ -40,7 +40,7 @@ from .tradeoff import (
     get_tradeoff_weibull_no_bias_config,
 )
 
-from .angle import get_angle_config
+from .angle import get_angle_config, get_angle_extended_config
 from .weibull import get_weibull_config
 from .ddm_par2 import (
     get_ddm_par2_angle_no_bias_config,
@@ -239,6 +239,7 @@ def get_model_config():
         "levy": get_levy_config(),
         "levy_angle": get_levy_angle_config(),
         "angle": get_angle_config(),
+        "angle_extended": get_angle_extended_config(),
         "weibull": get_weibull_config(),
         "gamma_drift": get_gamma_drift_config(),
         "inv_temp_softmax_2": get_inv_temp_softmax_2_config(),
@@ -314,6 +315,7 @@ __all__ = [
     "get_model_config",
     "get_ddm_config",
     "get_angle_config",
+    "get_angle_extended_config",
     "get_weibull_config",
     "get_full_ddm_config",
     "get_ddm_st_config",
