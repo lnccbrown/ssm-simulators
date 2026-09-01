@@ -75,6 +75,15 @@ Models, boundary functions, and drift functions are registered in a registry sys
 - `ssms.config.model_config` — CopyOnAccessDict of all 113 model configs (safe to modify)
 - `ModelConfigBuilder.from_model(name, **overrides)` — get/customize a model config
 
+Every entry above is a **consumer** API — how to *read* a config. Authoring one
+goes the other way round: a module under `ssms/config/_modelconfig/` names its
+boundary and drift functions directly (`bf.angle`, `df.gamma_drift`) and is added
+to the `configs` dict in `_modelconfig/__init__.py`. `model_registry.py` builds
+the registry from that dict at import, so a new entry there is registered
+everywhere automatically — reaching for `get_model_registry()` inside a config
+module would bypass the source the registry is built from. See the
+`add-ssm-model` skill for the full workflow.
+
 ### Cython Simulator Layer
 
 Nine `.pyx` simulator modules in `src/cssm/` implement the actual simulators in C:
