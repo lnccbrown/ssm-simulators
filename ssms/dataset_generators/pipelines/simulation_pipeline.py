@@ -296,8 +296,14 @@ class SimulationPipeline:
         for i, choice in enumerate(possible_choices):
             choice_p[0, i] = np.sum(choices == choice) / n_samples
 
+        # An omitted trial is marked in `rts`, not in `choices`: the simulator
+        # records -999.0 as the reaction time and leaves the latent choice
+        # alone. Masking on `choices` therefore never excludes anything, which
+        # is what made `omission_p` below read zero on every deadline model.
+        omitted = rts == OMISSION_SENTINEL
+
         # Compute choice probabilities excluding omissions
-        non_omitted = choices != OMISSION_SENTINEL
+        non_omitted = ~omitted
         if np.any(non_omitted):
             choices_no_omission = choices[non_omitted]
             n_no_omission = len(choices_no_omission)
@@ -310,14 +316,12 @@ class SimulationPipeline:
             choice_p_no_omission[0, :] = 1.0 / len(possible_choices)
 
         # Compute omission probability
-        omission_p[0, 0] = np.sum(choices == OMISSION_SENTINEL) / n_samples
+        omission_p[0, 0] = np.sum(omitted) / n_samples
 
         # Compute go/nogo probabilities
         # nogo = not choosing max choice OR omission
         max_choice = max(possible_choices)
-        nogo_p[0, 0] = (
-            np.sum((choices != max_choice) | (rts == OMISSION_SENTINEL)) / n_samples
-        )
+        nogo_p[0, 0] = np.sum((choices != max_choice) | omitted) / n_samples
         go_p[0, 0] = 1 - nogo_p[0, 0]
 
         # Compute RT histograms (separated by choice)
