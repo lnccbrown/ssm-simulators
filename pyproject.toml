@@ -72,8 +72,17 @@ config = [
     "pydantic>=2.13.4",
 ]
 
+[tool.uv.workspace]
+members = ["ssm_configs"]
+
+[tool.uv.sources]
+ssm-configs = { workspace = true }
+
 [dependency-groups]
 dev = [
+    # Workspace member, kept out of the runtime dependencies while it is
+    # still being developed.
+    "ssm-configs",
     "pytest",
     "mypy",
     "black",
