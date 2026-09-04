@@ -50,8 +50,9 @@ hookimpl = pluggy.HookimplMarker(PROJECT_NAME)
 class SSMConfigsHookSpec:
     """The hooks a ``ssm_configs`` plugin may implement."""
 
+    @staticmethod
     @hookspec
-    def ssm_configs_config_path() -> str | Path:  # type: ignore[empty-body,misc]
+    def ssm_configs_config_path() -> str | Path:
         """Return the path to this plugin's JSON model configuration.
 
         Returns
@@ -61,6 +62,9 @@ class SSMConfigsHookSpec:
             it lands in are taken from the plugin's distribution name, so the
             path is all a plugin has to supply.
         """
+        # Specs describe the hook and are never called; the body exists so that
+        # type checkers do not read a docstring-only function as an empty body.
+        raise NotImplementedError
 
 
 plugin_manager = pluggy.PluginManager(PROJECT_NAME)

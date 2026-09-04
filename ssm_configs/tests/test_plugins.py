@@ -153,7 +153,8 @@ def test_re_running_discovery_is_idempotent(tmp_path):
     register(make_plugin(make_config(tmp_path, "stable")), "hssm-stable")
     ssm_configs.load_plugins(force=True)
 
-    assert ssm_configs.hssm_registry.external_models["stable"].name == "stable.json"
+    registered = Path(ssm_configs.hssm_registry.external_models["stable"])
+    assert registered.name == "stable.json"
 
 
 def test_raising_hook_warns_and_skips():
