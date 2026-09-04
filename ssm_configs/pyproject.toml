@@ -13,3 +13,11 @@ dependencies = [
     "pluggy>=1.5.0",
     "pydantic>=2.13.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
