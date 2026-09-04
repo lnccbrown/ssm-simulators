@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Generic, TypeVar
+from typing import ClassVar, Generic, TypeVar
 
 from .schema import BaseConfigSchema, HSSMConfigSchema, RLSSMConfigSchema
 
@@ -38,9 +38,11 @@ class BaseModelRegistry(Generic[C]):
     """
 
     initialized: bool = False
-    model_schema: C
-    internal_models: list[str]
-    external_models = {}
+    prefix: ClassVar[str]
+    base_path: ClassVar[Path]
+    model_schema: type[C]
+    internal_models: ClassVar[list[str]]
+    external_models: ClassVar[dict[str, str | Path]] = {}
 
     def __init__(self):
         # Ensures that the registry is a singleton and only initialized once.
@@ -48,7 +50,7 @@ class BaseModelRegistry(Generic[C]):
             return
         self.initialized = True
 
-    def __init__subclass__(cls, prefix: str, **kwargs):
+    def __init_subclass__(cls, prefix: str, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.prefix = prefix
         cls.base_path = Path(__file__).parent / prefix

@@ -27,6 +27,7 @@ class HSSMConfigSchema(BaseConfigSchema):
     # TODO: Add any HSSM-specific parameters here
     pass
 
+
 class RLSSMConfigSchema(BaseConfigSchema):
     """Configuration schema for RLSSM models."""
 
