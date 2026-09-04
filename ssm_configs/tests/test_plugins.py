@@ -259,6 +259,23 @@ def test_entry_point_discovery(tmp_path, monkeypatch):
         sys.modules.pop("hssm_model_from_entry_point", None)
 
 
+def test_bundled_example_plugin_is_discovered():
+    """The example package in the repo works as a real installed plugin."""
+    from importlib.metadata import PackageNotFoundError, distribution
+
+    try:
+        distribution("hssm-example-model")
+    except PackageNotFoundError:
+        pytest.skip("hssm-example-model is not installed in this environment")
+
+    ssm_configs.load_plugins(force=True)
+
+    assert ssm_configs.hssm_registry.is_external("example_model")
+    assert (
+        ssm_configs.hssm_registry.load_config("example_model").name == "example_model"
+    )
+
+
 def test_registries_are_registered_by_prefix():
     """Every concrete registry is discoverable by its prefix."""
     assert BaseModelRegistry.registries_by_prefix["hssm"] is HSSMRegistry

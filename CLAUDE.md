@@ -22,6 +22,7 @@ src/cssm/                      # Cython/C sources (12 .pyx: 9 simulators + _c_rn
 ssm_configs/                   # Workspace subpackage: Pydantic config schemas, registries, plugin system
   src/ssm_configs/             # Package source (schema.py, registry.py, _plugins.py)
   tests/                       # Its own pytest suite — NOT collected by the root suite
+hssm_example_model/            # Standalone workspace member: minimal example ssm_configs plugin
 tests/                         # pytest suite with custom markers
 docs/                          # MkDocs documentation source
 examples/                      # Example scripts (custom transforms, nested configs)
@@ -111,6 +112,12 @@ Third-party packages extend the registries as plugins: a distribution named
 `external_models` on install — no import required. Discovery is lazy (first read
 of `external_models`) and warns-and-skips on any problem. See
 `ssm_configs/README.md` for the author-facing contract.
+
+`hssm_example_model/` at the repo root is a complete, working plugin — its own
+distribution depending only on `ssm-configs` and `pluggy`, and the template to
+copy when writing one. It is a workspace member installed by
+`uv sync --all-groups`, so CI exercises the plugin path against a real installed
+distribution.
 
 ### Cython Simulator Layer
 
