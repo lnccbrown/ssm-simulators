@@ -66,11 +66,6 @@ dev = [
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
 ]
-# Temporarily add Pydantic to an optional group to avoid the main package depending on pydentic
-# while the config package is still being developed.
-config = [
-    "pydantic>=2.13.4",
-]
 
 [tool.uv.workspace]
 members = ["ssm_configs"]
