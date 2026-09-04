@@ -1,21 +1,14 @@
 """Configuration schemas and registries for sequential sampling models."""
 
-from .registry import (
-    BaseModelRegistry,
-    HSSMRegistry,
-    RLSSMRegistry,
-    hssm_registry,
-    rlssm_registry,
-)
+from .registry import hssm_registry, rlssm_registry
 from .schema import BaseConfigSchema, HSSMConfigSchema, RLSSMConfigSchema
 
+# The registry classes are deliberately not exported: `hssm_registry` and
+# `rlssm_registry` are the singletons meant to be used.
 __all__ = [
     "BaseConfigSchema",
-    "BaseModelRegistry",
     "HSSMConfigSchema",
-    "HSSMRegistry",
     "RLSSMConfigSchema",
-    "RLSSMRegistry",
     "hssm_registry",
     "rlssm_registry",
 ]
