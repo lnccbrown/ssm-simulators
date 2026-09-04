@@ -43,6 +43,11 @@ jobs:
       - name: Run pytest
         run: uv run pytest
 
+      # The ssm_configs subpackage has its own pytest config, so the root run
+      # above does not collect it.
+      - name: Run ssm_configs tests
+        run: uv run pytest ssm_configs/tests
+
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
         with:
