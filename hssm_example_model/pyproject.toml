@@ -1,0 +1,22 @@
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "hssm-example-model"
+version = "0.1.0"
+description = "A minimal example of an ssm-configs plugin package"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "pluggy>=1.5.0",
+    "ssm-configs",
+]
+
+# The distribution name is what does the work: the `hssm-` prefix selects the
+# HSSM registry and the rest becomes the model name `example_model`. The entry
+# point only has to point ssm_configs at the module implementing the hook; its
+# own name is not used for anything.
+[project.entry-points."ssm_configs"]
+example_model = "hssm_example_model"

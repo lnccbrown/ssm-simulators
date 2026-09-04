@@ -19,6 +19,10 @@ ssms/                          # Main package
   transforms/                  # Parameter sampling and simulation transforms
   hssm_support.py              # HSSM integration layer — critical interface contract
 src/cssm/                      # Cython/C sources (12 .pyx: 9 simulators + _c_rng/_openmp_status/_utils)
+ssm_configs/                   # Workspace subpackage: Pydantic config schemas, registries, plugin system
+  src/ssm_configs/             # Package source (schema.py, registry.py, _plugins.py)
+  tests/                       # Its own pytest suite — NOT collected by the root suite
+hssm_example_model/            # Standalone workspace member: minimal example ssm_configs plugin
 tests/                         # pytest suite with custom markers
 docs/                          # MkDocs documentation source
 examples/                      # Example scripts (custom transforms, nested configs)
@@ -45,6 +49,10 @@ uv sync --extra dev
 
 # Run tests (fast subset)
 uv run pytest tests/ -x --timeout=60
+
+# Run the ssm_configs subpackage's own tests (either form works)
+uv run pytest ssm_configs/tests            # from the repo root
+cd ssm_configs && uv run pytest            # from the subpackage
 
 # Run with custom test categories
 uv run pytest tests/ --run-notebooks      # execute notebook tests
@@ -83,6 +91,33 @@ the registry from that dict at import, so a new entry there is registered
 everywhere automatically — reaching for `get_model_registry()` inside a config
 module would bypass the source the registry is built from. See the
 `add-ssm-model` skill for the full workflow.
+
+### `ssm_configs` Subpackage
+
+`ssm_configs/` is a separate distribution (`ssm-configs`) inside the uv
+workspace, installed through the `dev` dependency group rather than as a runtime
+dependency of `ssm-simulators`. It holds the Pydantic config schemas
+(`schema.py`), the prefix-keyed model registries (`registry.py` — `hssm_registry`,
+`rlssm_registry`), and the pluggy-based plugin system (`_plugins.py`).
+
+**It owns its tests.** They live in `ssm_configs/tests/` and are configured by
+`ssm_configs/pyproject.toml`, so the root `uv run pytest` (whose `testpaths` is
+`["tests"]`) does **not** pick them up — run them with `uv run pytest
+ssm_configs/tests`. Tests for the subpackage belong there, not in the root
+`tests/` tree.
+
+Third-party packages extend the registries as plugins: a distribution named
+`<registry prefix>-<model name>` (e.g. `hssm-my-cool-model`) that implements the
+`ssm_configs_config_path` hook adds `my_cool_model` to the HSSM registry's
+`external_models` on install — no import required. Discovery is lazy (first read
+of `external_models`) and warns-and-skips on any problem. See
+`ssm_configs/README.md` for the author-facing contract.
+
+`hssm_example_model/` at the repo root is a complete, working plugin — its own
+distribution depending only on `ssm-configs` and `pluggy`, and the template to
+copy when writing one. It is a workspace member installed by
+`uv sync --all-groups`, so CI exercises the plugin path against a real installed
+distribution.
 
 ### Cython Simulator Layer
 

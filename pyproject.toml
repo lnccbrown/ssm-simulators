@@ -67,8 +67,21 @@ dev = [
     "jaxlib>=0.4.20",
 ]
 
+[tool.uv.workspace]
+members = ["ssm_configs", "hssm_example_model"]
+
+[tool.uv.sources]
+ssm-configs = { workspace = true }
+hssm-example-model = { workspace = true }
+
 [dependency-groups]
 dev = [
+    # Workspace member, kept out of the runtime dependencies while it is
+    # still being developed.
+    "ssm-configs",
+    # Example plugin package, installed so that the plugin system is exercised
+    # end to end against a real distribution.
+    "hssm-example-model",
     "pytest",
     "mypy",
     "black",
