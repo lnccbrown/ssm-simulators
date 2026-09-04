@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, Self, TypeVar
 
 from .schema import BaseConfigSchema, HSSMConfigSchema, RLSSMConfigSchema
 
@@ -42,10 +42,22 @@ class BaseModelRegistry(Generic[C]):
     base_path: ClassVar[Path]
     model_schema: type[C]
     internal_models: ClassVar[list[str]]
-    external_models: ClassVar[dict[str, str | Path]] = {}
+    external_models: ClassVar[dict[str, str | Path]]
+    _instance: ClassVar["BaseModelRegistry[Any] | None"] = None
+
+    def __new__(cls) -> Self:
+        # One instance per concrete registry class. cls.__dict__ rather than
+        # cls._instance: plain attribute lookup walks the MRO and would hand a
+        # subclass whatever instance the base class happens to hold.
+        instance = cls.__dict__.get("_instance")
+        if instance is None:
+            instance = super().__new__(cls)
+            cls._instance = instance
+        return instance
 
     def __init__(self):
-        # Ensures that the registry is a singleton and only initialized once.
+        # __new__ returns the same object every time, so this guard makes the
+        # (re-)initialization a no-op after the first construction.
         if self.initialized:
             return
         self.initialized = True
@@ -54,6 +66,10 @@ class BaseModelRegistry(Generic[C]):
         super().__init_subclass__(**kwargs)
         cls.prefix = prefix
         cls.base_path = Path(__file__).parent / prefix
+        # Fresh per subclass: a dict on the base class would be shared by every
+        # registry, so an external HSSM model would leak into the RLSSM one.
+        cls.external_models = {}
+        cls._instance = None
 
     def is_internal(self, name: str) -> bool:
         """Check if a model is supported by the registry.
@@ -147,3 +163,7 @@ class RLSSMRegistry(BaseModelRegistry[RLSSMConfigSchema], prefix="rlssm"):
 
     model_schema = RLSSMConfigSchema
     internal_models = RLSSM_INTERNAL_MODELS
+
+
+hssm_registry = HSSMRegistry()
+rlssm_registry = RLSSMRegistry()
