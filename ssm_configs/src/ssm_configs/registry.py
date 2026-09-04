@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, ClassVar, Generic, Self, TypeVar
 
+from ._plugins import load_plugins
 from .schema import BaseConfigSchema, HSSMConfigSchema, RLSSMConfigSchema
 
 C = TypeVar("C", bound=BaseConfigSchema)
@@ -42,8 +43,11 @@ class BaseModelRegistry(Generic[C]):
     base_path: ClassVar[Path]
     model_schema: type[C]
     internal_models: ClassVar[list[str]]
-    external_models: ClassVar[dict[str, str | Path]]
+    _external_models: ClassVar[dict[str, str | Path]]
     _instance: ClassVar["BaseModelRegistry[Any] | None"] = None
+    # Every concrete registry, keyed by its prefix, so that plugin discovery can
+    # route a distribution named '<prefix>-<model>' to the right one.
+    registries_by_prefix: ClassVar[dict[str, type["BaseModelRegistry[Any]"]]] = {}
 
     def __new__(cls) -> Self:
         # One instance per concrete registry class. cls.__dict__ rather than
@@ -68,8 +72,24 @@ class BaseModelRegistry(Generic[C]):
         cls.base_path = Path(__file__).parent / prefix
         # Fresh per subclass: a dict on the base class would be shared by every
         # registry, so an external HSSM model would leak into the RLSSM one.
-        cls.external_models = {}
+        cls._external_models = {}
         cls._instance = None
+        BaseModelRegistry.registries_by_prefix[prefix] = cls
+
+    @property
+    def external_models(self) -> dict[str, str | Path]:
+        """Models contributed by installed plugins, keyed by model name.
+
+        Reading this triggers plugin discovery the first time, so nothing is
+        scanned until a registry is actually used.
+
+        Returns
+        -------
+        dict[str, str | Path]
+            Mapping of model name to the path of its JSON configuration file.
+        """
+        load_plugins()
+        return type(self)._external_models
 
     def is_internal(self, name: str) -> bool:
         """Check if a model is supported by the registry.
