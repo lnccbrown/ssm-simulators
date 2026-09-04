@@ -1,17 +1,44 @@
 from pathlib import Path
-from typing import TypeVar
+from typing import Generic, TypeVar
 
-from .schema import BaseConfigSchema
+from .schema import BaseConfigSchema, HSSMConfigSchema, RLSSMConfigSchema
 
-ConfigType = TypeVar("ConfigType", bound=BaseConfigSchema)
+C = TypeVar("C", bound=BaseConfigSchema)
 
-class BaseModelRegistry:
+HSSM_INTERNAL_MODELS = [
+    "ddm",
+    "ddm_sdv",
+    "full_ddm",
+    "angle",
+    "levy",
+    "ornstein",
+    "weibull",
+    "race_no_bias_angle_4",
+    "ddm_seq2_no_bias",
+    "gamma_drift",
+    "lba3",
+    "lba4",
+    "lba2",
+    "racing_diffusion_3",
+    "poisson_race",
+    "softmax_inv_temperature_2",
+    "softmax_inv_temperature_3",
+]
+
+# TODO: Add RLSSM supported models to the registry once they are implemented.
+RLSSM_INTERNAL_MODELS = [
+    "rlddm",
+    "rlwm",
+]
+
+
+class BaseModelRegistry(Generic[C]):
     """
     A registry for storing and retrieving SSM configuration schemas.
     """
 
     initialized: bool = False
-    model_schema: type[BaseConfigSchema]
+    model_schema: C
     internal_models: list[str]
     external_models = {}
 
@@ -71,7 +98,7 @@ class BaseModelRegistry:
         """
         return self.is_internal(name) or self.is_external(name)
 
-    def load_config(self, name: str) -> BaseConfigSchema:
+    def load_config(self, name: str) -> C:
         """Load a JSON configuration file from disk.
 
         Parameters
@@ -81,8 +108,8 @@ class BaseModelRegistry:
 
         Returns
         -------
-        dict
-            The loaded JSON configuration as Pydantic model instance.
+        C
+            The loaded configuration schema object.
         """
         if self.is_internal(name):
             file_path = self.base_path / f"{name}.json"
@@ -92,7 +119,29 @@ class BaseModelRegistry:
             raise ValueError(f"Model '{name}' is not supported by the registry.")
 
         if not file_path.exists():
-            raise FileNotFoundError(f"Configuration file for model '{name}' not found at {file_path}")
+            raise FileNotFoundError(
+                f"Configuration file for model '{name}' not found at {file_path}"
+            )
 
         # Fast JSON parsing and validation using Pydantic's model_validate_json method
-        return self.model_schema.model_validate_json(file_path.read_text(encoding="utf-8"))
+        return self.model_schema.model_validate_json(
+            file_path.read_text(encoding="utf-8")
+        )
+
+
+class HSSMRegistry(BaseModelRegistry[HSSMConfigSchema], prefix="hssm"):
+    """
+    A registry for storing and retrieving HSSM configuration schemas.
+    """
+
+    model_schema = HSSMConfigSchema
+    internal_models = HSSM_INTERNAL_MODELS
+
+
+class RLSSMRegistry(BaseModelRegistry[RLSSMConfigSchema], prefix="rlssm"):
+    """
+    A registry for storing and retrieving RLSSM configuration schemas.
+    """
+
+    model_schema = RLSSMConfigSchema
+    internal_models = RLSSM_INTERNAL_MODELS
