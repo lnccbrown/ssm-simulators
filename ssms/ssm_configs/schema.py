@@ -17,3 +17,18 @@ class BaseConfigSchema(BaseModel):
 
     list_params: dict[str, list] | None = None
     bounds: dict[str, tuple[float, float]] = field(default_factory=dict)
+
+    # TODO: Add any additional common parameters for all models here
+
+
+class HSSMConfigSchema(BaseConfigSchema):
+    """Configuration schema for HSSM models."""
+
+    # TODO: Add any HSSM-specific parameters here
+    pass
+
+class RLSSMConfigSchema(BaseConfigSchema):
+    """Configuration schema for RLSSM models."""
+
+    # TODO: Add any RLSSM-specific parameters here
+    pass
