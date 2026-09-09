@@ -3,6 +3,7 @@
 import logging
 import os
 import pickle
+import uuid
 from collections import namedtuple
 from importlib.resources import files, as_file
 from pathlib import Path
@@ -463,7 +464,99 @@ def generate_data(  # pragma: no cover
 
 # Tags the schema owns; user tags must not overwrite them or downstream
 # consumers filtering on them would silently miss the run.
-RESERVED_MLFLOW_TAGS = frozenset({"schema_version", "phase"})
+RESERVED_MLFLOW_TAGS = frozenset({"schema_version", "phase", "lineage_id"})
+
+# Version of the MLflow run schema this CLI emits. Documented in HSSMSpine
+# ``_docs/mlflow-schema.md``; bump together with LANfactory's emitters.
+MLFLOW_SCHEMA_VERSION = "2"
+
+# Key under which the lineage id travels inside ``data_config`` and, because
+# TrainingDataGenerator deep-copies its config into every pickle's
+# ``generator_config``, inside each training-data file.
+LINEAGE_ID_KEY = "lineage_id"
+
+
+def resolve_lineage_id(value: str | None) -> str:
+    """Return the lineage id to stamp on this run, minting one when absent.
+
+    A lineage id is one identifier that follows a dataset through training
+    (LANfactory) and inference (HSSM). Distributed datagen batches for the
+    same dataset must share it, so an orchestrator passes ``--lineage-id``
+    explicitly; a standalone invocation gets a fresh UUID4 hex.
+    """
+    if value is None:
+        return uuid.uuid4().hex
+    value = value.strip()
+    if not value:
+        raise typer.BadParameter(
+            "--lineage-id must not be empty", param_hint="--lineage-id"
+        )
+    return value
+
+
+def _git_sha() -> str | None:
+    """Best-effort commit sha when ssms runs from a git checkout, else None."""
+    import subprocess
+
+    repo_dir = Path(__file__).resolve().parent
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    sha = result.stdout.strip()
+    return sha if result.returncode == 0 and sha else None
+
+
+def common_run_tags(lineage_id: str) -> dict[str, str]:
+    """Tags every phase of the schema carries (v2 "common" block)."""
+    import getpass
+    import socket
+
+    tags = {
+        "schema_version": MLFLOW_SCHEMA_VERSION,
+        "lineage_id": lineage_id,
+        "hostname": socket.gethostname(),
+    }
+    try:
+        tags["user"] = getpass.getuser()
+    except (KeyError, OSError):  # no passwd entry in some containers
+        pass
+    if sha := _git_sha():
+        tags["git_sha"] = sha
+    return tags
+
+
+def build_file_inventory(files: list[Path], output_folder: Path) -> dict[str, Any]:
+    """Describe generated files for the ``generated_files_inventory.json`` artifact.
+
+    Each entry carries a sha256 so a consumer can verify that the file it
+    later reads is the one this run produced, not a same-named replacement.
+    """
+    import hashlib
+
+    entries: list[dict[str, Any]] = []
+    for f in files:
+        size = f.stat().st_size
+        entries.append(
+            {
+                "filename": f.name,
+                "relative_path": str(output_folder / f.name),
+                "size_bytes": size,
+                "size_mb": round(size / (1024 * 1024), 2),
+                "sha256": hashlib.sha256(f.read_bytes()).hexdigest(),
+            }
+        )
+    return {
+        "num_files": len(entries),
+        "total_size_mb": round(sum(e["size_mb"] for e in entries), 2),
+        "files": entries,
+    }
 
 
 def parse_mlflow_tags(raw_tags: list[str]) -> dict[str, str]:
@@ -497,6 +590,7 @@ def log_run_identity(  # pragma: no cover
     dry_run: bool,
     extra_tags: dict[str, str],
     logger: logging.Logger,
+    lineage_id: str | None = None,
 ) -> None:
     """Make the MLflow run self-describing.
 
@@ -507,6 +601,10 @@ def log_run_identity(  # pragma: no cover
 
     Dry runs are tagged ``phase=datagen_dry_run`` so schema-filtered consumers
     (``tags.phase = 'datagen'``) never select a run that produced no data.
+
+    ``lineage_id`` defaults to ``data_config["lineage_id"]`` (stamped by
+    ``main`` so it also reaches the pickles); a fresh one is minted if neither
+    is present, so the tag is never absent.
     """
     from importlib.metadata import PackageNotFoundError, version
 
@@ -529,10 +627,9 @@ def log_run_identity(  # pragma: no cover
 
     mlflow.log_params(params)
 
-    tags = {
-        "schema_version": "1",
-        "phase": "datagen_dry_run" if dry_run else "datagen",
-    }
+    lineage_id = resolve_lineage_id(lineage_id or data_config.get(LINEAGE_ID_KEY))
+    tags = common_run_tags(lineage_id)
+    tags["phase"] = "datagen_dry_run" if dry_run else "datagen"
     for env_key, tag in (
         ("SLURM_JOB_ID", "slurm_job_id"),
         ("SLURM_ARRAY_JOB_ID", "slurm_array_job_id"),
@@ -567,38 +664,24 @@ def log_to_mlflow(  # pragma: no cover
     # Log the output folder path
     mlflow.log_param("data_output_folder", str(output_folder))
 
-    # Capture the list of generated files
-    generated_files: list[dict[str, Any]] = []
+    # Capture the list of generated files (with per-file sha256)
     if output_folder.exists():
-        # Get all pickle files in the training data directory
-        generated_files = [
-            {
-                "filename": f.name,
-                "relative_path": str(output_folder / str(f.name)),
-                "size_bytes": f.stat().st_size,
-                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
-            }
-            for f in newly_generated_files
-        ]
+        file_inventory = build_file_inventory(newly_generated_files, output_folder)
     else:
         logger.warning("No generated files found in output folder: %s", output_folder)
+        file_inventory = build_file_inventory([], output_folder)
 
     # Log file inventory as a JSON artifact
-    file_inventory = {
-        "num_files": len(generated_files),
-        "total_size_mb": round(sum(f["size_mb"] for f in generated_files), 2),
-        "files": generated_files,
-    }
     mlflow.log_dict(file_inventory, "generated_files_inventory.json")
 
     # Log summary metrics
-    mlflow.log_metric("num_files_generated", len(generated_files))
+    mlflow.log_metric("num_files_generated", file_inventory["num_files"])
     mlflow.log_metric("total_data_size_mb", file_inventory["total_size_mb"])
 
     # Log configuration files for reproducibility
     mlflow.log_dict(config_dict["data_config"], "data_config.json")
     mlflow.log_dict(config_dict["model_config"], "model_config.json")
-    logger.info("Logged %d files to MLflow inventory", len(generated_files))
+    logger.info("Logged %d files to MLflow inventory", file_inventory["num_files"])
 
 
 @app.command(epilog=epilog)
@@ -660,6 +743,14 @@ def main(  # pragma: no cover
         help="Extra MLflow tag as KEY=VALUE. Repeatable. Lets an orchestrator "
         "stamp e.g. generation_batch_id without this CLI knowing about it.",
     ),
+    lineage_id: str = typer.Option(
+        None,
+        "--lineage-id",
+        help="Identifier that follows this dataset through LANfactory training "
+        "and HSSM inference (MLflow tag `lineage_id`; also stored in every "
+        "pickle's generator_config). Distributed runs for one dataset must "
+        "share it. Defaults to a fresh UUID.",
+    ),
     estimator_type: str = typer.Option(
         None,
         "--estimator-type",
@@ -692,6 +783,7 @@ def main(  # pragma: no cover
     # fast without leaving a junk empty run in the tracking store.
     extra_tags = parse_mlflow_tags(mlflow_tag)
     resolved_n_cpus = parse_n_cpus(n_cpus)
+    lineage_id = resolve_lineage_id(lineage_id)
 
     # Setup MLflow
     mlflow_active = setup_mlflow(
@@ -707,12 +799,24 @@ def main(  # pragma: no cover
         config_path, output, estimator_type, logger, n_cpus=resolved_n_cpus
     )
 
+    # Stamp the lineage id into data_config regardless of MLflow: the generator
+    # deep-copies this dict into every pickle's ``generator_config``, which is
+    # how LANfactory recovers the id from the data alone.
+    config_dict["data_config"][LINEAGE_ID_KEY] = lineage_id
+    logger.info("Lineage id: %s", lineage_id)
+
     # Log initial config to MLflow
     if mlflow_active:
         import mlflow
 
         log_run_identity(
-            config_dict, config_sha256, n_files, dry_run, extra_tags, logger
+            config_dict,
+            config_sha256,
+            n_files,
+            dry_run,
+            extra_tags,
+            logger,
+            lineage_id=lineage_id,
         )
         mlflow.log_params(
             {f"data_{k}": v for k, v in config_dict["data_config"].items()}
