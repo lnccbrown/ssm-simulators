@@ -82,6 +82,16 @@ _LBA_ANGLE_3_SIMULATION_TRANSFORMS = [
     _SET_ZERO_T,
 ]
 
+# LBA 3-choice with angle and *relative* start-point range simulation transforms.
+# Shape-identical to the list above: the relative-z reparameterization lives in the
+# simulator (cssm.dev_lba_angle_v2), not in the transform pipeline, so that the
+# reported parameters stay in the units the model was fit in.
+_DEV_LBA_ANGLE_3_V2_SIMULATION_TRANSFORMS = [
+    ColumnStackParameters(["v0", "v1", "v2"], "v", delete_sources=False),
+    ExpandDimension(["a", "z", "theta"]),
+    _SET_ZERO_T,
+]
+
 
 # ============================================================================
 # Model configuration functions
@@ -218,5 +228,96 @@ def get_lba_angle_3_config():
                 SwapIfLessConstraint("a", "z"),
             ],
             "simulation": _LBA_ANGLE_3_SIMULATION_TRANSFORMS,
+        },
+    }
+
+
+def get_dev_lba_angle_3_v2_config():
+    """Get configuration for the 3-choice angle-LBA with a relative start point.
+
+    Description
+    -----------
+    Angle-LBA over three accumulators, identical to ``lba_angle_3`` except that
+    the start-point parameter ``z`` is **relative**: it gives the width of the
+    uniform start-point distribution as a fraction of the threshold ``a``, so
+    start points are drawn from ``U(0, z * a)`` rather than ``U(0, z)``.
+
+    Making ``z`` relative decouples it from ``a``. Any ``z`` in ``[0, 1]`` keeps
+    start points below threshold for every ``a``, which is why this model can use
+    a much wider threshold range than ``lba_angle_3`` (``a`` up to 3.0 rather than
+    1.1, ``z`` up to 0.9 rather than 0.5) and why it needs no ``a``/``z`` swap
+    constraint during parameter sampling.
+
+    Parameters
+    ----------
+    v0, v1, v2 : float
+        Mean drift rate of each accumulator. Valid range: [0.0, 6.0].
+        Unconstrained -- unlike ``lba_angle_3_vs_constraint``, the drift rates are
+        not required to sum to 1.
+    a : float
+        Decision threshold. Valid range: [0.1, 3.0].
+    z : float
+        Start-point range as a fraction of ``a``. Valid range: [0.0, 0.9].
+        ``z = 0`` means every accumulator starts at 0; ``z = 0.9`` means start
+        points are uniform on 90% of the distance to threshold.
+    theta : float
+        Angle of the collapsing boundary, in radians. Valid range: [0.0, 1.3].
+        Enters the finishing time as ``tan(theta)`` added to the drift rate.
+
+    Model Characteristics
+    ---------------------
+    - Number of choices: 3
+    - Boundary type: constant (the collapse is applied inside the simulator via
+      the ``tan(theta)`` term, as for all angle-LBA models)
+    - Drift type: constant, drawn per accumulator as ``|N(v, sd)|``
+    - Key assumptions: no within-trial noise; the start point is a *fraction* of
+      the threshold; no non-decision time (``t`` is forced to 0)
+
+    Notes
+    -----
+    Ported from the ``origin/dev_lba_angle_3_v2`` development branch of
+    ``ssm-simulators`` (commits 97e1e45/10b288c), which predates the
+    modularization of ``config.py``. ``param_bounds`` and ``default_params`` are
+    reproduced from that branch unchanged: trained likelihood-approximation
+    networks for this model exist and were trained inside this box, so widening
+    or shifting the bounds would invalidate them.
+
+    Examples
+    --------
+    >>> from ssms import Simulator
+    >>> sim = Simulator("dev_lba_angle_3_v2")
+    >>> out = sim.simulate(
+    ...     theta={"v0": 0.5, "v1": 0.3, "v2": 0.2, "a": 0.5, "z": 0.2, "theta": 0.0},
+    ...     n_samples=1000,
+    ... )
+    >>> out["rts"].shape
+    (1000, 1)
+
+    See Also
+    --------
+    get_lba_angle_3_config : same model with an absolute start-point range.
+    get_lba_angle_3_vs_constraint_config : absolute ``z``, drift rates summing to 1.
+    """
+    return {
+        # angle LBA without constraints on vs, start point relative to threshold
+        "name": "dev_lba_angle_3_v2",
+        "params": ["v0", "v1", "v2", "a", "z", "theta"],
+        "param_bounds": [
+            [0.0, 0.0, 0.0, 0.1, 0.0, 0.0],
+            [6.0, 6.0, 6.0, 3.0, 0.9, 1.3],
+        ],
+        "boundary_name": "constant",
+        "boundary": bf.constant,
+        "n_params": 6,
+        "default_params": [0.5, 0.3, 0.2, 0.5, 0.2, 0.0],
+        "nchoices": 3,
+        "choices": [0, 1, 2],
+        "n_particles": 3,
+        "simulator": cssm.dev_lba_angle_v2,
+        "parameter_transforms": {
+            # No SwapIfLessConstraint("a", "z") here, unlike lba_angle_3: z is a
+            # fraction of a, so it is consistent with any a by construction.
+            "sampling": [],
+            "simulation": _DEV_LBA_ANGLE_3_V2_SIMULATION_TRANSFORMS,
         },
     }

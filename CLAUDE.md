@@ -11,7 +11,7 @@ ssms/                          # Main package
   basic_simulators/            # Core API: simulator() function + Simulator class
   cli/                         # Typer CLI: `generate` command for batch data generation
   config/                      # Registry-based config system (models, boundaries, drifts)
-    _modelconfig/              # Per-model config definitions (113 registered configs)
+    _modelconfig/              # Per-model config definitions (115 registered configs)
     generator_config/          # Data generation pipeline configs
   dataset_generators/          # Training data generation for LANfactory (protocols, pipelines, strategies)
   external_simulators/         # PyDDM integration (optional)
@@ -72,7 +72,7 @@ Models, boundary functions, and drift functions are registered in a registry sys
 - `ssms.config.get_model_registry()` — all registered model simulators
 - `ssms.config.get_boundary_registry()` — boundary function builders
 - `ssms.config.get_drift_registry()` — drift function builders
-- `ssms.config.model_config` — CopyOnAccessDict of all 113 model configs (safe to modify)
+- `ssms.config.model_config` — CopyOnAccessDict of all 115 model configs (safe to modify)
 - `ModelConfigBuilder.from_model(name, **overrides)` — get/customize a model config
 
 Every entry above is a **consumer** API — how to *read* a config. Authoring one
@@ -121,7 +121,7 @@ Changing this interface requires coordinating with HSSM.
 - **Multiprocessing:** uses `spawn` method by default (required for OpenMP safety)
 - **Deadline models:** any model supports a `_deadline` suffix (e.g., `ddm_deadline`)
 - **Max threads:** 256 (compile-time limit for per-thread RNG state arrays)
-- **113 registered model configs** across DDM, Angle, Weibull, Levy, Ornstein, LBA, LCA, Race, Racing Diffusion, Poisson Race, MIC2, Conflict, shrink-spotlight, tradeoff, and RLWM/softmax choice-only families (`_deadline` variants derived at runtime)
+- **115 registered model configs** across DDM, Angle, Weibull, Levy, Ornstein, LBA, LCA, Race, Racing Diffusion, Poisson Race, MIC2, Conflict, shrink-spotlight, tradeoff, and RLWM/softmax choice-only families (`_deadline` variants derived at runtime)
 
 ## Skills
 

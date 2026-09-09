@@ -77,6 +77,7 @@ from .inv_temp_softmax import (
     get_inv_temp_softmax_4_config,
 )
 from .lba import (
+    get_dev_lba_angle_3_v2_config,
     get_lba2_config,
     get_lba3_config,
     get_lba4_config,
@@ -288,6 +289,7 @@ def get_model_config():
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),
+        "dev_lba_angle_3_v2": get_dev_lba_angle_3_v2_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
@@ -356,6 +358,7 @@ __all__ = [
     "get_inv_temp_softmax_2_config",
     "get_inv_temp_softmax_3_config",
     "get_inv_temp_softmax_4_config",
+    "get_dev_lba_angle_3_v2_config",
 ]
 
 # Validate

@@ -29,7 +29,13 @@ from .addm_models import addm
 
 from .race_models import race_model, lca, racing_diffusion_model
 from .poisson_race_models import poisson_race
-from .lba_models import lba_vanilla, lba_angle, rlwm_lba_pw_v1, rlwm_lba_race
+from .lba_models import (
+    lba_vanilla,
+    lba_angle,
+    dev_lba_angle_v2,
+    rlwm_lba_pw_v1,
+    rlwm_lba_race,
+)
 
 from .sequential_models import (
     ddm_flexbound_seq2,
@@ -67,6 +73,7 @@ __all__ = [
     # LBA models
     "lba_vanilla",
     "lba_angle",
+    "dev_lba_angle_v2",
     "rlwm_lba_pw_v1",
     "rlwm_lba_race",
     # Sequential models

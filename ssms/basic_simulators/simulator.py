@@ -555,10 +555,33 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
         if np.any(z >= a):
             raise ValueError("Starting point z >= a for at least one trial")
 
+    def check_relative_z(z: np.ndarray) -> None:
+        """
+        Check that a *relative* starting point lies in [0, 1].
+
+        Some LBA variants (e.g. ``dev_lba_angle_3_v2``) parameterize the
+        start-point range as a fraction of the threshold ``a`` rather than as an
+        absolute value. For those models ``check_if_z_gt_a`` does not apply --
+        ``z`` and ``a`` are on different scales -- and the meaningful constraint
+        is that the fraction stays within the unit interval, which keeps start
+        points below threshold for every ``a``.
+
+        Args:
+            z (np.ndarray): Array of relative starting points.
+
+        Raises:
+            ValueError: If z is outside [0, 1] for any trial.
+        """
+        if np.any(z < 0) or np.any(z > 1):
+            raise ValueError(
+                "Relative starting point z must be in [0, 1] for each trial"
+            )
+
     if model in [
         "lba_3_vs_constraint",
         "lba_angle_3_vs_constraint",
         "lba_angle_3",
+        "dev_lba_angle_3_v2",
         "dev_rlwm_lba_race_v1",
         "dev_rlwm_lba_race_v2",
         "dev_rlwm_lba_pw_v1",
@@ -570,6 +593,8 @@ def validate_ssm_parameters(model: str, theta: dict) -> None:
             check_lba_drifts_sum(theta["vRL"])
             check_lba_drifts_sum(theta["vWM"])
             check_if_z_gt_a(theta["z"], theta["a"])
+        elif model in ["dev_lba_angle_3_v2"]:
+            check_relative_z(theta["z"])
         elif model in [
             "lba3",
             "lba2",
