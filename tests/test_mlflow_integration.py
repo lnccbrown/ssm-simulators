@@ -471,8 +471,69 @@ class TestRunIdentity:
         run = self._run_identity(test_mlflow_dir, tmp_path)
         tags = run.data.tags
 
-        assert tags["schema_version"] == "1"
+        assert tags["schema_version"] == "2"
         assert tags["phase"] == "datagen"
+
+    def test_common_v2_tags_logged(self, test_mlflow_dir, tmp_path):
+        """Schema v2 common block: lineage_id, hostname, user on every run."""
+        run = self._run_identity(test_mlflow_dir, tmp_path)
+        tags = run.data.tags
+
+        # minted because neither the call nor data_config supplied one
+        assert len(tags["lineage_id"]) == 32
+        int(tags["lineage_id"], 16)  # uuid4 hex
+        assert tags["hostname"]
+        assert tags["user"]
+
+    def test_lineage_id_from_data_config_wins_over_minting(
+        self, test_mlflow_dir, tmp_path
+    ):
+        """main() stamps data_config['lineage_id']; identity must reuse it."""
+        import logging
+
+        from ssms.cli.generate import LINEAGE_ID_KEY, log_run_identity
+
+        config = make_data_generator_configs(model="ddm", generator_approach="lan")
+        config["data_config"][LINEAGE_ID_KEY] = "batch-2026-09-ddm"
+
+        mlflow.set_experiment("identity-test-lineage")
+        with mlflow.start_run() as run:
+            log_run_identity(
+                config_dict=config,
+                config_sha256=None,
+                n_files=1,
+                dry_run=False,
+                extra_tags={},
+                logger=logging.getLogger("test"),
+            )
+            run_id = run.info.run_id
+
+        tags = mlflow.tracking.MlflowClient().get_run(run_id).data.tags
+        assert tags["lineage_id"] == "batch-2026-09-ddm"
+
+    def test_explicit_lineage_id_argument_is_authoritative(
+        self, test_mlflow_dir, tmp_path
+    ):
+        import logging
+
+        from ssms.cli.generate import log_run_identity
+
+        config = make_data_generator_configs(model="ddm", generator_approach="lan")
+        mlflow.set_experiment("identity-test-lineage-arg")
+        with mlflow.start_run() as run:
+            log_run_identity(
+                config_dict=config,
+                config_sha256=None,
+                n_files=1,
+                dry_run=False,
+                extra_tags={},
+                logger=logging.getLogger("test"),
+                lineage_id="explicit-id",
+            )
+            run_id = run.info.run_id
+
+        tags = mlflow.tracking.MlflowClient().get_run(run_id).data.tags
+        assert tags["lineage_id"] == "explicit-id"
 
     def test_slurm_tags_from_env(self, test_mlflow_dir, tmp_path, monkeypatch):
         monkeypatch.setenv("SLURM_JOB_ID", "12345")
@@ -541,3 +602,64 @@ class TestRunIdentity:
         client = mlflow.tracking.MlflowClient()
         params = client.get_run(run_id).data.params
         assert "config_sha256" not in params
+
+
+class TestLineageIdReachesPickles:
+    """The lineage id must be recoverable from a training-data file alone."""
+
+    def test_generator_config_in_pickle_carries_lineage_id(self, minimal_config):
+        import pickle
+
+        from ssms.cli.generate import LINEAGE_ID_KEY
+
+        minimal_config["data_config"][LINEAGE_ID_KEY] = "pickle-lineage"
+        output_dir = Path(minimal_config["data_config"]["output"]["folder"])
+
+        gen = TrainingDataGenerator(
+            config=minimal_config["data_config"],
+            model_config=minimal_config["model_config"],
+        )
+        gen.generate_data_training(save=True, verbose=False)
+
+        files = sorted(output_dir.rglob("*.pickle"))
+        assert len(files) == 1
+        with files[0].open("rb") as fh:
+            data = pickle.load(fh)
+        assert data["generator_config"][LINEAGE_ID_KEY] == "pickle-lineage"
+
+
+class TestBuildFileInventory:
+    def test_entries_have_sha256_and_totals(self, tmp_path):
+        import hashlib
+
+        from ssms.cli.generate import build_file_inventory
+
+        a = tmp_path / "training_data_a.pickle"
+        b = tmp_path / "training_data_b.pickle"
+        a.write_bytes(b"alpha" * 1000)
+        b.write_bytes(b"beta")
+
+        inventory = build_file_inventory([a, b], tmp_path)
+
+        assert inventory["num_files"] == 2
+        assert [e["filename"] for e in inventory["files"]] == [a.name, b.name]
+        assert (
+            inventory["files"][0]["sha256"]
+            == hashlib.sha256(a.read_bytes()).hexdigest()
+        )
+        assert inventory["files"][1]["size_bytes"] == 4
+        assert inventory["total_size_mb"] == round(
+            sum(e["size_mb"] for e in inventory["files"]), 2
+        )
+        # legacy keys consumers already read are still present
+        for key in ("filename", "relative_path", "size_bytes", "size_mb"):
+            assert key in inventory["files"][0]
+
+    def test_empty(self, tmp_path):
+        from ssms.cli.generate import build_file_inventory
+
+        assert build_file_inventory([], tmp_path) == {
+            "num_files": 0,
+            "total_size_mb": 0.0,
+            "files": [],
+        }
