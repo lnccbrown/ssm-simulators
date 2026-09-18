@@ -129,7 +129,10 @@ class AbstractParameterSampler(ABC):
             ValueError: If a dependency references an undefined parameter
         """
         graph: dict[str, set[str]] = defaultdict(set)
-        all_params = set(self.param_space.keys())
+        # `all_params` must preserve a deterministic order: it seeds the insertion
+        # order of `graph` below, which `_topological_sort` walks. A `set` here made
+        # that order a function of PYTHONHASHSEED, i.e. different in every process.
+        all_params: dict[str, None] = dict.fromkeys(self.param_space.keys())
 
         for param, bounds in self.param_space.items():
             # Extract dependencies from bounds
@@ -148,7 +151,7 @@ class AbstractParameterSampler(ABC):
                 # Add edge: dependency -> param (param depends on dependency)
                 graph[dependency].add(param)
 
-            all_params.update(dependencies)
+            all_params.update(dict.fromkeys(sorted(dependencies)))
 
         # Ensure all parameters are in the graph (even those with no dependents)
         for param in all_params:
@@ -184,15 +187,23 @@ class AbstractParameterSampler(ABC):
 
             temp_marks.add(node)
             # Visit all parameters that depend on this one
-            for neighbor in self._dependency_graph.get(node, set()):
+            # sorted(): the adjacency values are sets, so their iteration order is
+            # also PYTHONHASHSEED-dependent for nodes with more than one dependent.
+            for neighbor in sorted(self._dependency_graph.get(node, set())):
                 visit(neighbor)
             temp_marks.remove(node)
             visited.add(node)
             # Prepend to ensure dependencies come first
             stack.insert(0, node)
 
-        # Visit all nodes
-        for node in self._dependency_graph:
+        # Visit all nodes in a deterministic order: `param_space` insertion order
+        # first, then any dependency-only names, sorted. Topological validity is
+        # unchanged; what changes is that the resulting order -- and therefore the
+        # parameter <-> RNG-draw assignment in `sample()` -- is now identical in
+        # every process, for every PYTHONHASHSEED.
+        for node in list(self.param_space) + sorted(
+            n for n in self._dependency_graph if n not in self.param_space
+        ):
             if node not in visited:
                 visit(node)
 

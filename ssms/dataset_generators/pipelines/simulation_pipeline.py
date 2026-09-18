@@ -7,6 +7,7 @@ from scipy.stats import mode
 
 from ssms.basic_simulators.simulator import _theta_dict_to_array, OMISSION_SENTINEL
 from ssms.basic_simulators.simulator_class import Simulator
+from ssms.config.config_utils import get_parameter_sampler_index_offset
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
     TrainingDataStrategyProtocol,
@@ -100,6 +101,19 @@ class SimulationPipeline:
                 - 'success': Whether generation succeeded
         """
         # Create isolated RNG for parameter sampling (no global state pollution!)
+        #
+        # `parameter_sampling_seed` is the theta INDEX within one call to
+        # `generate_data_training` (0 .. n_parameter_sets - 1). Because it is used
+        # directly as the RNG seed, two runs that use the same indices draw the same
+        # thetas. `parameter_sampler_index_offset` shifts the whole block so that
+        # independently launched runs (e.g. one SLURM array task per output file)
+        # cover disjoint theta indices: set it to task_id * n_parameter_sets. It is
+        # read from the nested `pipeline` section, which is where the CLI puts a
+        # YAML `PIPELINE.PARAMETER_SAMPLER_INDEX_OFFSET`, with the config root as a
+        # fallback for programmatic callers.
+        offset = get_parameter_sampler_index_offset(self.generator_config)
+        if parameter_sampling_seed is not None:
+            parameter_sampling_seed = int(parameter_sampling_seed) + offset
         param_rng = np.random.default_rng(parameter_sampling_seed)
 
         # Keep simulating until we get valid data
