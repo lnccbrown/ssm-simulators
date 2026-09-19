@@ -6,6 +6,8 @@ with preprocessing the output of the simulator function.
 """
 
 from copy import deepcopy
+import functools
+import inspect
 import numbers
 from threading import Lock
 
@@ -60,8 +62,8 @@ def _validate_random_state_for_c_rng(random_state: object) -> None:
 
     The Cython layer casts seeds to ``long``.  On Windows that is 32-bit signed; larger
     values raise ``OverflowError`` inside Cython.  We validate here with a clear
-    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) are skipped;
-    those paths do not use this cast in the same way.
+    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) skip this
+    range check and are rejected by the C-level seeding itself.
     """
     if random_state is None:
         return
@@ -664,7 +666,12 @@ def simulator(
             Integer passed to the C-level RNG seeding.  Must lie in
             ``[-2**31, 2**31 - 1]`` so it fits in a 32-bit signed C ``long`` (required
             on Windows).  ``None`` draws a seed from that range automatically.
-            Non-integer RNG objects may be supported on specific code paths.
+            Non-integer RNG objects (e.g. ``numpy.random.Generator``) are rejected
+            by the C-level seeding.  An integer seed also pins the trial-to-trial
+            variability draws (``sv``/``sz``/``st``), which are taken from a
+            generator derived from it rather than from NumPy's global RNG.  A
+            variability distribution that already binds its own ``random_state``
+            keeps that generator, so its draws follow it rather than the seed.
         return_option: str <default='full'>
             Determines what the function returns. Can be either
             'full' or 'minimal'. If 'full' the function returns
@@ -774,6 +781,25 @@ def simulator(
         theta, model_config_local, n_trials
     )
 
+    # Bind the trial-to-trial variability distributions to an explicit generator:
+    # theta's ``*_dist`` entries are scipy ``rvs`` partials, whose default draw
+    # source is NumPy's global RNG. Binding order is irrelevant - the simulator
+    # fixes the call order. The modulo is load-bearing: the validated seed range
+    # admits negative integers while ``default_rng`` takes only ``[0, 2**32)``,
+    # and the map is injective over that range.
+    if isinstance(random_state, numbers.Integral):
+        dist_rng = default_rng(int(random_state) % (2**32))
+        for key in set(model_config_local.get("simulator_param_mappings", {})) | set(
+            model_config_local.get("simulator_fixed_params", {})
+        ):
+            entry = theta.get(key)
+            if (
+                callable(entry)
+                and _accepts_random_state(entry)
+                and "random_state" not in getattr(entry, "keywords", {})
+            ):
+                theta[key] = functools.partial(entry, random_state=dist_rng)
+
     # Make boundary dictionary
     boundary_dict = make_boundary_dict(model_config_local, theta)
     # Make drift dictionary
@@ -862,3 +888,22 @@ def simulator(
         bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
     )
     return x
+
+
+def _accepts_random_state(func) -> bool:
+    """Report whether ``func`` takes a ``random_state`` keyword.
+
+    A model configuration may map a parameter to any callable, and only those
+    that accept ``random_state`` can be bound to an explicit generator. scipy's
+    ``rvs`` takes it through ``**kwds``, so a variadic keyword also qualifies.
+    """
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    declared = params.get("random_state")
+    if declared is not None:
+        # A positional-only parameter cannot be filled by keyword: the value
+        # would land in **kwargs while the parameter kept its default, or raise.
+        return declared.kind is not inspect.Parameter.POSITIONAL_ONLY
+    return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
