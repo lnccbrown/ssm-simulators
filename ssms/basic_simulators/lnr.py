@@ -52,8 +52,6 @@ def _broadcast_param(value: Any, n_trials: int, name: str) -> np.ndarray:
         return np.full(n_trials, float(arr), dtype=np.float64)
     if arr.ndim == 1 and arr.shape[0] == n_trials:
         return arr.astype(np.float64)
-    if arr.ndim == 2 and arr.shape[0] == n_trials and arr.shape[1] == 1:
-        return arr[:, 0].astype(np.float64)
     raise ValueError(
         f"Parameter {name!r} must be scalar or length n_trials={n_trials}. "
         f"Got shape {arr.shape}."

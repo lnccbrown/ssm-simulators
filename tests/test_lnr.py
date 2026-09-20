@@ -25,6 +25,7 @@ from ssms import OMISSION_SENTINEL, Simulator
 from ssms.basic_simulators.lnr import lognormal_race
 from ssms.basic_simulators.simulator import simulator
 from ssms.config import ModelConfigBuilder, get_model_registry
+from ssms.config._modelconfig.lnr import _get_lnr_config
 
 LNR_MODELS = ["lnr2", "lnr3", "lnr4", "lnr2_corr"]
 
@@ -455,8 +456,8 @@ def test_invalid_parameters_raise():
 
     ``sigma`` is a standard deviation, so it must be positive; ``rho`` is a
     correlation, so it must lie inside (-1, 1); the correlated race is derived
-    only for two accumulators (Eqs. 8-10); and every accumulator needs a
-    matching ``mu``/``sigma`` pair.
+    only for two accumulators (Eqs. 8-10); every accumulator needs a matching
+    ``mu``/``sigma`` pair; and there must be at least one accumulator.
     """
     with pytest.raises(ValueError, match="sigma parameters must be strictly positive"):
         lognormal_race(mu0=-1.0, mu1=-0.5, sigma0=0.0, sigma1=0.5, n_samples=10)
@@ -490,6 +491,15 @@ def test_invalid_parameters_raise():
             n_trials=2,
             n_samples=10,
         )
+
+    with pytest.raises(ValueError, match="At least one accumulator"):
+        lognormal_race(mu0=None, sigma0=None, n_samples=10)
+
+
+def test_correlated_config_is_two_choice_only():
+    """The correlated race (Eqs. 8-10) is defined for two accumulators only."""
+    with pytest.raises(ValueError, match="only defined for two accumulators"):
+        _get_lnr_config(n_choices=3, correlated=True)
 
 
 def test_lan_training_data_pipeline():
