@@ -84,6 +84,12 @@ from .lba import (
     get_lba_angle_3_config,
     get_lba_angle_3_vs_constraint_config,
 )
+from .lnr import (
+    get_lnr2_config,
+    get_lnr2_corr_config,
+    get_lnr3_config,
+    get_lnr4_config,
+)
 from .mic2 import (
     get_ddm_mic2_adj_angle_no_bias_config,
     get_ddm_mic2_adj_config,
@@ -288,6 +294,10 @@ def get_model_config():
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),
+        "lnr2": get_lnr2_config(),
+        "lnr3": get_lnr3_config(),
+        "lnr4": get_lnr4_config(),
+        "lnr2_corr": get_lnr2_corr_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
@@ -356,6 +366,10 @@ __all__ = [
     "get_inv_temp_softmax_2_config",
     "get_inv_temp_softmax_3_config",
     "get_inv_temp_softmax_4_config",
+    "get_lnr2_config",
+    "get_lnr3_config",
+    "get_lnr4_config",
+    "get_lnr2_corr_config",
 ]
 
 # Validate
