@@ -1,5 +1,5 @@
 # KDE GENERATORS
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 
 import numpy as np
@@ -62,12 +62,19 @@ class LogKDE:
                 Defaults to 'silverman'.
             auto_bandwidth: Whether to automatically compute bandwidths based on the data.
                 If False, bandwidths must be set manually. Defaults to True.
-            displace_t: Whether to shift RTs by the t parameter from metadata.
-                Only works if all trials have the same t value. Defaults to False.
+            displace_t: Whether to shift RTs by the admissibility boundary that
+                `_recover_admissibility_boundary` recovers from metadata: t - st
+                for a uniform st kernel, t + loc - 3*scale for an unbounded
+                Normal kernel, and t when the model carries no non-decision-time
+                variability. Only works if all trials share a single value of
+                each metadata entry the helper reads. Defaults to False.
 
         Raises:
         -------
-            AssertionError: If displace_t is True but metadata contains multiple t values.
+            ValueError: If displace_t is True and the metadata carries multiple t
+                values, or carries ndt variability metadata that is ambiguous
+                (multiple st values, a vector-valued t_dist loc), non-finite, or
+                malformed.
         """
         self.simulator_info = simulator_data["metadata"]
         self.displace_t: bool = displace_t
@@ -76,7 +83,16 @@ class LogKDE:
             t_vals = np.unique(simulator_data["metadata"]["t"])
             if t_vals.shape[0] != 1:
                 raise ValueError("Multiple t values in simulator data. Can't shift.")
-            self.displace_t_val: float = t_vals[0]
+            # Displace by the model's admissibility boundary. A uniform st
+            # kernel has support [t - st, t + st], so RTs are admissible from
+            # t - st upward; displacing by t put the cutoff inside that support
+            # and floored the band [t - st, t]. Models carrying neither 'st'
+            # nor a 't_dist' have their boundary at t, and the helper returns t
+            # for them. Ambiguous or malformed variability metadata raises
+            # instead of falling back to t, which would be the wrong boundary.
+            self.displace_t_val: float = _recover_admissibility_boundary(
+                simulator_data["metadata"]
+            )
 
         self._attach_data_from_simulator(simulator_data)
         self._generate_base_kdes(
@@ -551,3 +567,86 @@ def bandwidth_silverman(
 
     result: np.float64 = np.power((4 / (3 * n)), 1 / 5) * std
     return result
+
+
+def _unique_variability_value(values, name: str) -> float:
+    """Reduce per-trial variability metadata to the single value it carries."""
+    try:
+        unique_vals = np.unique(np.asarray(values, dtype=float))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Malformed {name} in simulator data. Can't shift.") from exc
+    if not np.all(np.isfinite(unique_vals)):
+        raise ValueError(f"Non-finite {name} values in simulator data. Can't shift.")
+    if unique_vals.size > 1:
+        raise ValueError(f"Multiple {name} values in simulator data. Can't shift.")
+    if unique_vals.size == 0:
+        raise ValueError(f"No {name} value in simulator data. Can't shift.")
+    return float(unique_vals[0])
+
+
+def _recover_admissibility_boundary(metadata: dict) -> float:
+    """Recover the RT displacement boundary of a model with variable ndt.
+
+    The boundary is the lowest RT the model's non-decision-time kernel admits,
+    which is what displace_t shifts RTs by. It is read from whichever metadata
+    shape the model uses:
+
+    * a plain numeric 'st' entry (full_ddm, full_ddm2): the boundary is t - st.
+    * a functools.partial 't_dist' over a bounded kernel (ddm_st: uniform.rvs
+      with loc=-st, scale=2*st, so ndt is Uniform(t - st, t + st)): loc is the
+      kernel's lower support edge, so the boundary is t + loc = t - st.
+    * a functools.partial 't_dist' over a Normal kernel (ddm_normal_st, ddm_sdv):
+      ndt is Normal(t + loc, scale), whose support is unbounded, so there is no
+      support edge to recover. The boundary is the practical t + loc - 3*scale
+      floor, below which ~0.13% of the kernel's mass lies - a numerical-safety
+      convention, not a claim about the model's support.
+
+    Metadata carrying neither 'st' nor 't_dist' comes from a model with no ndt
+    variability, whose boundary is t, and t is returned.
+
+    Raises ValueError when the boundary is ambiguous (multiple t values,
+    multiple st values, a t_dist loc or Normal scale holding more than one
+    value), when the variability metadata is malformed, or when any of it is
+    non-finite, which would make the boundary NaN or infinite and shift every
+    RT by garbage. A per-trial st, loc or scale broadcast to one repeated value
+    is not ambiguous and is accepted.
+    """
+    t = _unique_variability_value(metadata["t"], "t")
+
+    # Two metadata shapes carry st, depending on the model:
+    #  * ddm_st / ddm_sz_st fold st INTO metadata['t_dist'] (a functools.partial of
+    #    uniform.rvs with loc=-st, scale=2*st), and st itself is absent.
+    #  * full_ddm / full_ddm2 keep 'st' as a plain numeric metadata entry and emit
+    #    no t_dist at all.
+    # Reading only t_dist is why full_ddm was previously recorded as unfixable.
+    if "st" in metadata:
+        return t - _unique_variability_value(metadata["st"], "st")
+
+    t_dist = metadata.get("t_dist", None)
+    if t_dist is None:
+        # No ndt variability metadata at all, so the boundary is t itself.
+        return t
+    keywords = getattr(t_dist, "keywords", None)
+    if not isinstance(keywords, Mapping):
+        raise ValueError(
+            "metadata['t_dist'] is not a functools.partial carrying keywords - "
+            "boundary recovery only supports models carrying st."
+        )
+
+    # loc places the kernel relative to t in both shapes below: it is the lower
+    # support edge of a bounded kernel and the center of an unbounded one.
+    loc = keywords.get("loc", None)
+    if loc is None:
+        raise ValueError("metadata['t_dist'] has no 'loc' keyword.")
+    loc = _unique_variability_value(loc, "t_dist loc")
+
+    # A Normal t_dist has no finite lower support edge, so its boundary is the
+    # practical 3*scale floor below the kernel's center rather than an edge of
+    # the kernel: ~0.13% of the ndt mass falls below it.
+    dist_obj = getattr(t_dist.func, "__self__", None)
+    if getattr(dist_obj, "name", None) == "norm":
+        scale = keywords.get("scale", None)
+        if scale is None:
+            raise ValueError("metadata['t_dist'] (Normal) has no 'scale' keyword.")
+        return t + loc - 3.0 * _unique_variability_value(scale, "t_dist scale")
+    return t + loc
