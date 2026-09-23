@@ -62,3 +62,28 @@ def has_nested_structure(config: dict) -> bool:
     """
     nested_sections = {"pipeline", "estimator", "training", "simulator", "output"}
     return any(section in config for section in nested_sections)
+
+
+def get_parameter_sampler_index_offset(config: dict) -> int:
+    """Read the theta-index offset, preferring the nested pipeline section.
+
+    A YAML `PIPELINE.PARAMETER_SAMPLER_INDEX_OFFSET` reaches the generator as
+    `config["pipeline"]["parameter_sampler_index_offset"]`: the CLI forwards the
+    whole PIPELINE section (ssms/cli/generate.py), and a root-level YAML key is
+    dropped entirely. The root lookup is kept as a fallback for programmatic
+    callers that build the config by hand.
+
+    Args:
+        config: Generator configuration dictionary
+
+    Returns:
+        The offset to add to every theta index, 0 when unset
+    """
+    return int(
+        get_nested_config(
+            config,
+            "pipeline",
+            "parameter_sampler_index_offset",
+            default=config.get("parameter_sampler_index_offset", 0),
+        )
+    )
