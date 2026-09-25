@@ -60,8 +60,8 @@ class Simulator:
     Fully custom simulator:
 
     >>> def my_sim(v, a, z, t, max_t=20, n_samples=1000, **kwargs):
-    ...     rts = np.random.exponential(1/abs(v), n_samples) + t
-    ...     choices = np.where(np.random.random(n_samples) < z, 1, -1)
+    ...     rts = (np.random.exponential(1/abs(v), n_samples) + t).reshape(-1, 1)
+    ...     choices = np.where(np.random.random(n_samples) < z, 1, -1).reshape(-1, 1)
     ...     return {'rts': rts, 'choices': choices,
     ...             'metadata': {'model': 'custom', 'n_samples': n_samples}}
     >>> sim = Simulator(simulator_function=my_sim, params=["v", "a", "z", "t"],
