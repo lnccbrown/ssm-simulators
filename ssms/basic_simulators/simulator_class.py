@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ssms.basic_simulators.simulator import (
+    _bind_variability_rng,
     _get_unique_seed,
     _preprocess_theta_deadline,
     _preprocess_theta_generic,
@@ -550,7 +551,8 @@ class Simulator:
         random_state : int or None
             Integer seed for the C-level RNG. Must lie in ``[-2**31, 2**31 - 1]`` (fits
             a 32-bit signed C ``long``, required on Windows). ``None`` picks a seed in
-            ``[0, 2**31 - 1]`` automatically.
+            ``[0, 2**31 - 1]`` automatically. The seed also pins the trial-to-trial
+            variability draws (``sv``/``sz``/``st``), as in ``simulator()``.
         return_option : str, default="full"
             Output format: "full" or "minimal"
         n_threads : int, default=1
@@ -643,6 +645,9 @@ class Simulator:
         ):
             for adaptation in self._custom_adaptations:
                 theta = adaptation.apply(theta, model_config_local, n_trials)
+
+        # Pin the trial-to-trial variability draws to random_state
+        _bind_variability_rng(theta, model_config_local, random_state)
 
         # Make boundary and drift dictionaries (if applicable)
         boundary_dict = {}

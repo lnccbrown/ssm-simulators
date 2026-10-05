@@ -781,27 +781,8 @@ def simulator(
         theta, model_config_local, n_trials
     )
 
-    # Bind the trial-to-trial variability distributions to an explicit generator:
-    # theta's ``*_dist`` entries are scipy ``rvs`` partials, whose default draw
-    # source is NumPy's global RNG. Binding order is irrelevant - the simulator
-    # fixes the call order. The generator is a spawned child of the seed, so its
-    # stream is independent of the C-level generator, which is seeded with the
-    # same integer: ``default_rng(seed)`` here would replay that stream. The
-    # modulo only maps the validated negative seeds into ``SeedSequence``'s domain.
-    if isinstance(random_state, numbers.Integral):
-        dist_rng = default_rng(
-            np.random.SeedSequence(int(random_state) % (2**32)).spawn(1)[0]
-        )
-        for key in set(model_config_local.get("simulator_param_mappings", {})) | set(
-            model_config_local.get("simulator_fixed_params", {})
-        ):
-            entry = theta.get(key)
-            if (
-                callable(entry)
-                and _accepts_random_state(entry)
-                and "random_state" not in getattr(entry, "keywords", {})
-            ):
-                theta[key] = functools.partial(entry, random_state=dist_rng)
+    # Pin the trial-to-trial variability draws to random_state
+    _bind_variability_rng(theta, model_config_local, random_state)
 
     # Make boundary dictionary
     boundary_dict = make_boundary_dict(model_config_local, theta)
@@ -891,6 +872,37 @@ def simulator(
         bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
     )
     return x
+
+
+def _bind_variability_rng(
+    theta: dict, model_config: dict, random_state: object
+) -> None:
+    """Bind theta's trial-to-trial variability distributions to a seeded generator.
+
+    theta's ``*_dist`` entries are scipy ``rvs`` partials, whose default draw
+    source is NumPy's global RNG. Binding order is irrelevant - the simulator
+    fixes the call order. Shared by ``simulator()`` and ``Simulator.simulate``,
+    which call it once theta is final, i.e. after all parameter adaptations.
+    ``theta`` is modified in place.
+    """
+    # The generator is a spawned child of the seed, so its stream is independent
+    # of the C-level generator, which is seeded with the same integer:
+    # ``default_rng(seed)`` here would replay that stream. The modulo only maps
+    # the validated negative seeds into ``SeedSequence``'s domain.
+    if isinstance(random_state, numbers.Integral):
+        dist_rng = default_rng(
+            np.random.SeedSequence(int(random_state) % (2**32)).spawn(1)[0]
+        )
+        for key in set(model_config.get("simulator_param_mappings", {})) | set(
+            model_config.get("simulator_fixed_params", {})
+        ):
+            entry = theta.get(key)
+            if (
+                callable(entry)
+                and _accepts_random_state(entry)
+                and "random_state" not in getattr(entry, "keywords", {})
+            ):
+                theta[key] = functools.partial(entry, random_state=dist_rng)
 
 
 def _accepts_random_state(func) -> bool:
