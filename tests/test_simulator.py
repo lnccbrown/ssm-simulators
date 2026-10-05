@@ -368,6 +368,43 @@ def test_random_state_pins_variability_draws(sim_input_data, model):
 
 
 @pytest.mark.rng_validation
+def test_variability_draws_do_not_replay_c_level_stream():
+    """The variability generator is not ``default_rng(random_state)`` itself.
+
+    The Cython layer seeds its own generator with that call, so drawing sv/sz/st
+    from an identical one would reuse the words behind the diffusion noise.
+    """
+    from ssms.config import ModelConfigBuilder
+
+    seed, sv = 7, 0.5
+    config = ModelConfigBuilder.from_model("ddm_sdv")
+    make_v_dist = config["simulator_param_mappings"]["v_dist"]
+    drawn = []
+
+    def recording_v_dist(*args):
+        v_dist = make_v_dist(*args)
+
+        def draw(**kwargs):
+            drawn.append(v_dist(**kwargs))
+            return drawn[-1]
+
+        return draw
+
+    config["simulator_param_mappings"]["v_dist"] = recording_v_dist
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=config):
+        simulator(
+            model="ddm_sdv",
+            theta={"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "sv": sv},
+            n_samples=500,
+            random_state=seed,
+        )
+
+    (v_draws,) = drawn
+    replayed = sv * np.random.default_rng(seed).standard_normal(v_draws.shape)
+    assert not np.allclose(v_draws, replayed)
+
+
+@pytest.mark.rng_validation
 def test_accepts_random_state_rejects_positional_only():
     """A positional-only ``random_state`` cannot be filled by keyword.
 
