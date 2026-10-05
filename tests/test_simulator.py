@@ -439,6 +439,18 @@ def test_accepts_random_state_rejects_positional_only():
 
 
 @pytest.mark.rng_validation
+def test_accepts_random_state_rejects_unreadable_signature():
+    """A callable whose signature cannot be inspected is left unbound."""
+
+    def unreadable(**kwargs):
+        """Would qualify through **kwargs if its signature could be read."""
+
+    # anything but a Signature here makes inspect.signature raise TypeError
+    unreadable.__signature__ = object()
+    assert not _accepts_random_state(unreadable)
+
+
+@pytest.mark.rng_validation
 def test_bound_random_state_is_not_overridden():
     """A distribution that already carries its own random_state keeps it."""
     from ssms.config import ModelConfigBuilder
