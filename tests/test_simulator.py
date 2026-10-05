@@ -441,9 +441,23 @@ def test_accepts_random_state_rejects_positional_only():
 @pytest.mark.rng_validation
 def test_bound_random_state_is_not_overridden():
     """A distribution that already carries its own random_state keeps it."""
+    from ssms.config import ModelConfigBuilder
+
     own = np.random.default_rng(123)
+    unused = own.bit_generator.state
     dist = functools.partial(sps.uniform.rvs, loc=0.0, scale=1.0, random_state=own)
     # accepted by the predicate, but already bound, so the simulator leaves it
     assert _accepts_random_state(dist)
-    assert "random_state" in dist.keywords
-    assert dist.keywords["random_state"] is own
+
+    config = ModelConfigBuilder.from_model("ddm_st")
+    config["simulator_param_mappings"]["t_dist"] = lambda st: dist
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=config):
+        simulator(
+            model="ddm_st",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "st": 0.1},
+            n_samples=50,
+            random_state=7,
+        )
+
+    # the st draws came from the caller's generator, not one derived from the seed
+    assert own.bit_generator.state != unused
