@@ -22,6 +22,8 @@ class LogKDE:
     simulator output for models whose non-decision-time kernel has unbounded
     support (a ``Normal(t, st)`` kernel, say). ``data['choice_proportions']`` is
     computed before this filter, so it still counts the dropped samples.
+    That is intentional and consistent with omissions, which also count towards
+    their choice's proportion while contributing no RT to its density.
 
     Known limitation: a choice left with exactly one retained sample falls through
     to ``bandwidth_silverman``'s ``std_n_1`` default, yielding a bandwidth of about
