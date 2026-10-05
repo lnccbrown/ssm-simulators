@@ -784,11 +784,14 @@ def simulator(
     # Bind the trial-to-trial variability distributions to an explicit generator:
     # theta's ``*_dist`` entries are scipy ``rvs`` partials, whose default draw
     # source is NumPy's global RNG. Binding order is irrelevant - the simulator
-    # fixes the call order. The modulo is load-bearing: the validated seed range
-    # admits negative integers while ``default_rng`` takes only ``[0, 2**32)``,
-    # and the map is injective over that range.
+    # fixes the call order. The generator is a spawned child of the seed, so its
+    # stream is independent of the C-level generator, which is seeded with the
+    # same integer: ``default_rng(seed)`` here would replay that stream. The
+    # modulo only maps the validated negative seeds into ``SeedSequence``'s domain.
     if isinstance(random_state, numbers.Integral):
-        dist_rng = default_rng(int(random_state) % (2**32))
+        dist_rng = default_rng(
+            np.random.SeedSequence(int(random_state) % (2**32)).spawn(1)[0]
+        )
         for key in set(model_config_local.get("simulator_param_mappings", {})) | set(
             model_config_local.get("simulator_fixed_params", {})
         ):
