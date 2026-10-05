@@ -114,8 +114,10 @@ def lognormal_race(
     -------
     dict
         ``{'rts': (n_samples, n_trials, 1), 'choices': (n_samples, n_trials, 1),
-        'metadata': {...}}`` following the ``ssms`` simulator contract. Omitted
-        responses carry ``OMISSION_SENTINEL`` in both ``rts`` and ``choices``.
+        'metadata': {...}}`` following the ``ssms`` simulator contract. An
+        omitted response carries ``OMISSION_SENTINEL`` in ``rts`` only; the
+        latent winner is kept in ``choices``, so omissions are identified by
+        ``rts == OMISSION_SENTINEL``.
 
     Notes
     -----
@@ -126,7 +128,8 @@ def lognormal_race(
        Cholesky factor of ``[[1, rho], [rho, 1]]`` (Eq. 8).
     3. Map to finishing times ``T_i = exp(mu_i + sigma_i * eps_i)`` (Eq. 5).
     4. The winner is ``argmin_i T_i``; the RT is ``t + min_i T_i``.
-    5. RTs beyond ``max_t`` (or ``deadline``) become omissions.
+    5. RTs beyond ``max_t`` (or ``deadline``) are censored to
+       ``OMISSION_SENTINEL``; the latent winner is still reported.
 
     Step 1 draws the deviates before any correlation is applied, so ``rho = 0``
     reproduces the independent race sample for sample at a given seed.
@@ -219,7 +222,12 @@ def lognormal_race(
     omitted = rts > censor[None, :]
 
     rts_out = np.where(omitted, OMISSION_SENTINEL, rts).astype(np.float32)
-    choices_out = np.where(omitted, OMISSION_SENTINEL, winners).astype(np.int64)
+    # Only ``rts`` is censored. The winner of the race is determined before the
+    # deadline is applied, so it stays a valid accumulator index on an omitted
+    # trial, as in ``race_models``/``lba_models``. Writing the sentinel here
+    # instead would drop those samples out of every ``possible_choices`` bin and
+    # leave ``choice_p`` summing to ``1 - omission_p`` rather than to one.
+    choices_out = winners.astype(np.int64)
 
     metadata: dict[str, Any] = {
         "simulator": "lognormal_race",

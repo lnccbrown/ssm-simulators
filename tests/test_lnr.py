@@ -208,18 +208,76 @@ def test_trial_wise_parameters():
 
 
 def test_omissions_are_flagged():
-    """RTs past ``max_t`` are sentinel-coded in both ``rts`` and ``choices``."""
+    """``rts`` past ``max_t`` are censored; the latent winner is preserved.
+
+    The sentinel belongs in ``rts`` only. The race is decided before the
+    deadline is applied, so an omitted trial still has a winning accumulator,
+    and every returned sample must therefore fall in a ``possible_choices``
+    bin -- otherwise ``choice_p`` silently stops being a probability vector
+    (see ``test_omitted_choices_keep_choice_p_normalized``).
+    """
+    n_samples = 2000
     out = simulator(
         model="lnr2",
         theta={"mu0": 1.5, "mu1": 1.5, "sigma0": 1.0, "sigma1": 1.0, "t": 0.2},
-        n_samples=2000,
+        n_samples=n_samples,
         max_t=2.0,
         random_state=5,
     )
     omitted = out["rts"] == OMISSION_SENTINEL
     assert omitted.any()
-    assert np.all(out["choices"][omitted] == OMISSION_SENTINEL)
     assert np.all(out["rts"][~omitted] <= 2.0)
+
+    # Omitted trials keep a valid latent choice; the sentinel never reaches
+    # ``choices``.
+    possible = out["metadata"]["possible_choices"]
+    assert np.all(np.isin(out["choices"][omitted], possible))
+    assert not np.any(out["choices"] == OMISSION_SENTINEL)
+    # Both latent winners are actually observed among the omissions, so the
+    # assertion above is not vacuously true on a degenerate draw.
+    assert set(np.unique(out["choices"][omitted])) == set(possible)
+
+
+def test_omitted_choices_keep_choice_p_normalized():
+    """``choice_p`` stays finite, normalized and equal to the choice counts.
+
+    With omissions present, ``choice_p`` divides by *all* samples while
+    ``choice_p_no_omission`` divides by the uncensored ones. Both only hold
+    together if censoring leaves ``choices`` untouched.
+    """
+    n_samples = 4000
+    out = simulator(
+        model="lnr2",
+        theta={"mu0": 0.9, "mu1": 1.2, "sigma0": 0.6, "sigma1": 0.6, "t": 0.3},
+        n_samples=n_samples,
+        max_t=3.0,
+        random_state=0,
+    )
+    omitted = out["rts"] == OMISSION_SENTINEL
+    assert omitted.any(), "test needs censored trials to be meaningful"
+
+    choice_p = out["choice_p"]
+    choice_p_no_omission = out["choice_p_no_omission"]
+    possible = out["metadata"]["possible_choices"]
+
+    assert np.all(np.isfinite(choice_p))
+    assert np.all(np.isfinite(choice_p_no_omission))
+    assert np.all(choice_p >= 0.0)
+    np.testing.assert_allclose(choice_p.sum(axis=1), 1.0, atol=1e-12)
+    np.testing.assert_allclose(choice_p_no_omission.sum(axis=1), 1.0, atol=1e-6)
+
+    # Every returned choice count is accounted for, censored samples included.
+    for n, choice in enumerate(possible):
+        count = int((out["choices"] == choice).sum())
+        np.testing.assert_allclose(choice_p[0, n], count / n_samples, atol=1e-12)
+        kept = int((out["choices"][~omitted] == choice).sum())
+        np.testing.assert_allclose(
+            choice_p_no_omission[0, n], kept / int((~omitted).sum()), rtol=1e-6
+        )
+    assert sum(int((out["choices"] == c).sum()) for c in possible) == n_samples
+
+    # The omission rate is reported in ``omission_p``, not hidden as choice mass.
+    np.testing.assert_allclose(out["omission_p"][0, 0], omitted.mean(), atol=1e-12)
 
 
 def test_deadline_variant(fig2_theta):
