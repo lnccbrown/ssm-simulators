@@ -118,20 +118,31 @@ def test_invalid_data_kde_eval(sample_ddm_data):
         kde.kde_eval({"invalid_key": np.array([0.6])})
 
 
-def test_non_positive_rt_does_not_collapse_choice_group():
-    """Test that a non-positive RT is dropped without discarding its choice group."""
+@pytest.mark.parametrize("rt_key", ["rts", "log_rts"])
+@pytest.mark.parametrize("displace_t", [False, True])
+@pytest.mark.parametrize("bad_rt", [-0.5, 0.0, np.inf])
+def test_unusable_rt_does_not_collapse_choice_group(bad_rt, displace_t, rt_key):
+    """Test that an unusable RT is dropped without discarding its choice group.
+
+    With ``displace_t``, the RTs at or below ``t`` are strictly positive on input
+    and become non-positive only after the shift, so they have to be dropped too.
+    """
     rng = np.random.default_rng(7)
     n = 200
+    t = 0.4  # in the lower tail of the RTs drawn below
     rts = rng.lognormal(mean=-0.3, sigma=0.4, size=n)
     choices = np.where(rng.uniform(size=n) < 0.7, 1.0, -1.0)
-    rts[0], choices[0] = -0.5, 1.0  # legitimate for an unbounded t-kernel
+    rts[0], choices[0] = bad_rt, 1.0  # negative: legitimate for an unbounded t-kernel
+    n_usable = np.sum(rts[1:] > t) if displace_t else n - 1
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rt_values = rts if rt_key == "rts" else np.log(rts)
     data = {
-        "rts": rts.reshape(-1, 1),
+        rt_key: rt_values.reshape(-1, 1),
         "choices": choices.reshape(-1, 1),
-        "metadata": {"max_t": 20.0, "possible_choices": [-1, 1]},
+        "metadata": {"max_t": 20.0, "possible_choices": [-1, 1], "t": np.array([t])},
     }
 
-    kde = LogKDE(simulator_data=data)
+    kde = LogKDE(simulator_data=data, displace_t=displace_t)
 
     assert len(kde.bandwidths) == 2
     for bw in kde.bandwidths:
@@ -141,6 +152,7 @@ def test_non_positive_rt_does_not_collapse_choice_group():
         assert np.all(arr > 0)
     for arr in kde.data["log_rts"]:
         assert np.all(np.isfinite(arr))
+    assert sum(arr.shape[0] for arr in kde.data["rts"]) == n_usable
 
 
 def test_clean_data_unchanged_by_filter():
