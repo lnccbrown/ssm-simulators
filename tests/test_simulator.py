@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from ssms.basic_simulators.simulator import _accepts_random_state, simulator
+from ssms.basic_simulators.simulator_class import Simulator
 from ssms.config import model_config
 
 logger = logging.getLogger(__name__)
@@ -336,11 +337,17 @@ def test_random_state_boundary_max_ok():
 
 
 @pytest.mark.rng_validation
+@pytest.mark.parametrize("entry_point", ["simulator", "Simulator.simulate"])
 @pytest.mark.parametrize("model", ["ddm", "ddm_st", "full_ddm_rv", "ddm_sdv"])
-def test_random_state_pins_variability_draws(sim_input_data, model):
+def test_random_state_pins_variability_draws(sim_input_data, model, entry_point):
     """A repeated integer random_state reproduces the trial-to-trial variability
     draws (sv/sz/st), not just the diffusion path, and is unaffected by unrelated
-    consumption of NumPy's global RNG between calls."""
+    consumption of NumPy's global RNG between calls. Both entry points bind the
+    draws, so it holds for ``simulator()`` and for ``Simulator.simulate``."""
+    if entry_point == "simulator":
+        run = functools.partial(simulator, model=model)
+    else:
+        run = Simulator(model).simulate
     theta = dict(sim_input_data[model]["theta_dict_all_scalars"])
     # The registry defaults put sv/sz/st at 1e-3, below what a float32 RT
     # resolves; raise them so a differing draw shows up in the output.
@@ -350,7 +357,7 @@ def test_random_state_pins_variability_draws(sim_input_data, model):
 
     state = np.random.get_state()
     try:
-        first = simulator(model=model, theta=theta, n_samples=500, random_state=7)
+        first = run(theta=theta, n_samples=500, random_state=7)
         # The variability draws come from a generator derived from the seed, so
         # the call leaves the process-global RNG exactly where it found it. A
         # global reseed or a global draw would move it.
@@ -359,7 +366,7 @@ def test_random_state_pins_variability_draws(sim_input_data, model):
         assert after_first[2] == state[2]
         # unrelated consumption of the global RNG must not affect the draws
         np.random.uniform(size=1234)
-        second = simulator(model=model, theta=theta, n_samples=500, random_state=7)
+        second = run(theta=theta, n_samples=500, random_state=7)
     finally:
         np.random.set_state(state)
 
