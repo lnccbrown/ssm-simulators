@@ -17,6 +17,7 @@ from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+from ssms.support_utils.kde_class import LogKDE
 
 # Every non-positive-RT rate below is a Monte Carlo estimate: the rate is a
 # property of an unbounded kernel, and `random_state` does not pin the ndt
@@ -128,3 +129,30 @@ def test_generator_refuses_displace_t_for_ddm_normal_st():
         )
 
     assert generator.generator_config["estimator"]["displace_t"] is False
+
+
+def test_logkde_keeps_both_choice_groups_at_the_box_corner():
+    """LogKDE drops the non-positive RTs here and keeps both choice groups.
+
+    Unfiltered, one such RT makes its choice's bandwidth NaN, the choice
+    "no_base_data", and every label for that choice the same constant whatever
+    the rt. `displace_t=False` is the path the generator takes for this model.
+    """
+    sim = simulator(model="ddm_normal_st", theta=BOX_CORNER, n_samples=2_000)
+    for choice in (-1, 1):
+        assert np.any(sim["rts"][sim["choices"] == choice] <= 0)
+
+    kde = LogKDE(simulator_data=sim, displace_t=False)
+
+    assert len(kde.bandwidths) == 2
+    for bandwidth in kde.bandwidths:
+        assert bandwidth != "no_base_data"
+        assert np.isfinite(bandwidth) and bandwidth > 0
+
+    # The label LogKDE gives every rt of a choice it has no base data for.
+    no_base_data_label = -np.log(kde.data["n_trials"] * sim["metadata"]["max_t"])
+    rts = np.array([0.1, 0.3, 0.6])
+    for choice in (-1, 1):
+        labels = kde.kde_eval({"rts": rts, "choices": np.full(rts.shape, choice)})
+        assert np.all(np.isfinite(labels))
+        assert not np.any(np.isclose(labels, no_base_data_label))
