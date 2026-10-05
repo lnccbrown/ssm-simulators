@@ -375,6 +375,25 @@ def test_random_state_pins_variability_draws(sim_input_data, model, entry_point)
 
 
 @pytest.mark.rng_validation
+def test_random_state_pins_draws_set_by_custom_adaptation():
+    """``Simulator.simulate`` binds once theta is final, so a distribution that a
+    custom adaptation puts into theta is pinned as well."""
+    from ssms.transforms import LambdaAdaptation
+
+    def widen_v_dist(theta, model_config, n_trials):
+        theta["v_dist"] = functools.partial(sps.norm.rvs, loc=0, scale=2.0)
+        return theta
+
+    sim = Simulator("ddm_sdv", parameter_adaptations=[LambdaAdaptation(widen_v_dist)])
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "sv": 0.5}
+    first = sim.simulate(theta=theta, n_samples=500, random_state=7)
+    second = sim.simulate(theta=theta, n_samples=500, random_state=7)
+
+    np.testing.assert_array_equal(first["rts"], second["rts"])
+    np.testing.assert_array_equal(first["choices"], second["choices"])
+
+
+@pytest.mark.rng_validation
 def test_variability_draws_do_not_replay_c_level_stream():
     """The variability generator is not ``default_rng(random_state)`` itself.
 
