@@ -50,6 +50,7 @@ from .ddm_par2 import (
     get_ddm_par2_weibull_no_bias_config,
 )
 from .ddm_random import (
+    get_ddm_normal_st_config,
     get_ddm_rayleight_config,
     get_ddm_sdv_config,
     get_ddm_st_config,
@@ -193,6 +194,7 @@ def get_model_config():
     configs = {
         "ddm": get_ddm_config(),
         "ddm_st": get_ddm_st_config(),
+        "ddm_normal_st": get_ddm_normal_st_config(),
         "ddm_truncnormt": get_ddm_truncnormt_config(),
         "ddm_rayleight": get_ddm_rayleight_config(),
         "ddm_sdv": get_ddm_sdv_config(),
@@ -319,6 +321,7 @@ __all__ = [
     "get_weibull_config",
     "get_full_ddm_config",
     "get_ddm_st_config",
+    "get_ddm_normal_st_config",
     "get_ddm_truncnormt_config",
     "get_ddm_rayleight_config",
     "get_ddm_sdv_config",
