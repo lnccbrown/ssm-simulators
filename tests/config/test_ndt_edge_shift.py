@@ -12,7 +12,7 @@ import pytest
 
 from ssms.basic_simulators.simulator import OMISSION_SENTINEL, simulator
 from ssms.config import KDE_NO_DISPLACE_T, ModelConfigBuilder, model_config
-from ssms.config._modelconfig import get_model_config
+from ssms.config._modelconfig import _validate_configs, get_model_config
 from ssms.config._modelconfig.validation import get_invalid_ndt_edge_shift_configs
 
 N_SAMPLES = 3000
@@ -277,3 +277,20 @@ class TestImportTimeValidator:
     def test_registry_is_clean(self):
         """Every shipped config passes the import-time check."""
         assert get_invalid_ndt_edge_shift_configs(get_model_config()) == []
+
+    def test_validate_configs_raises_on_malformed_registry(self, monkeypatch):
+        """_validate_configs runs the check on the registry it loads.
+
+        It reads get_model_config from its module at call time, so patching
+        the module attribute swaps in a registry whose parameter names pass
+        the first check and whose only problem is the declaration.
+        """
+        bad = ModelConfigBuilder.from_model(
+            "ddm_st", ndt_edge_shift={"param": "st", "scale": -1.0}
+        )
+        monkeypatch.setattr(
+            "ssms.config._modelconfig.get_model_config", lambda: {"bad": bad}
+        )
+
+        with pytest.raises(ValueError, match="ndt_edge_shift.*\\['bad'\\]"):
+            _validate_configs()
