@@ -18,6 +18,7 @@ Run through every item. All must pass before the model is considered complete.
 - [ ] If custom drift: `"drift_params"` are all names that appear in `"params"`
 - [ ] `"choices"` has length == `"nchoices"`
 - [ ] `"simulator"` is a valid Cython function from `cssm`
+- [ ] If the non-decision time varies per trial with a hard lower edge (e.g. `t + U(-st, st)`): `"ndt_edge_shift": {"param": ..., "scale": ...}` declares it (RTs start at `t - scale * param`); omit it when RTs start at `t`
 
 ## Registration
 
