@@ -141,7 +141,7 @@ from .shrink import (
 )
 
 from .addm import get_addm_config
-from .validation import get_invalid_configs
+from .validation import get_invalid_configs, get_invalid_ndt_edge_shift_configs
 
 
 def _normalize_param_bounds(config: dict) -> dict:
@@ -379,6 +379,13 @@ def _validate_configs():
     }
     if any(invalid_configs.values()):
         raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
+    invalid_ndt_edge_shifts = get_invalid_ndt_edge_shift_configs(
+        _ALL_CONFIGS["model_configs"]
+    )
+    if invalid_ndt_edge_shifts:
+        raise ValueError(
+            f"Invalid ndt_edge_shift declarations detected: {invalid_ndt_edge_shifts}"
+        )
 
 
 _validate_configs()
