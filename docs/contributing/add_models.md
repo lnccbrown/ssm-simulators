@@ -329,6 +329,7 @@ def get_collapsing_ddm_config():
 - We're reusing `cssm.ddm_flexbound`—no new simulation code needed!
 - The `parameter_transforms` field is where you define any parameter processing logic
 - For simple models like this, both lists can be empty
+- If non-decision-time variability lets RTs fall below `t` (as in `ddm_st` and `full_ddm`, where it is `t + U(-st, st)`), declare the support edge with `"ndt_edge_shift": {"param": "st", "scale": 1.0}` — RTs then start at `t - scale * param`. Without the key, RTs start at `t`.
 
 ### Step 4: Register Your Model
 
