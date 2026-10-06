@@ -22,6 +22,8 @@ def get_ddm_st_config():
         "boundary": bf.constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
+        # non-decision time is t + U(-st, st), so RTs start at t - st
+        "ndt_edge_shift": {"param": "st", "scale": 1.0},
         "nchoices": 2,
         "choices": [-1, 1],
         "n_particles": 1,
