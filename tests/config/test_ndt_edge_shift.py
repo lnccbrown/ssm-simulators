@@ -19,6 +19,8 @@ N_SAMPLES = 3000
 RANDOM_STATE = 7
 TOL = 1e-9
 
+# The one declaration shipped today: non-decision time t + U(-st, st).
+UNIFORM_ST_DECLARATION = {"param": "st", "scale": 1.0}
 DECLARING_MODELS = sorted(
     name for name, cfg in get_model_config().items() if "ndt_edge_shift" in cfg
 )
@@ -45,6 +47,7 @@ EDGE_PARAMETER_SETS = [
     {"t": 0.0, "st": 1.0, "a": 0.0},
 ]
 CORNER_PARAMETER_SETS = EDGE_PARAMETER_SETS[2:]
+A_LOWER_CORNER = EDGE_PARAMETER_SETS[3]
 
 
 def _resolve(bound, theta):
@@ -83,6 +86,11 @@ class TestDeclaredEdge:
         assert DECLARING_MODELS == ["ddm_st", "full_ddm", "full_ddm2", "full_ddm_rv"]
 
     @pytest.mark.parametrize("model", DECLARING_MODELS)
+    def test_declaration_is_t_minus_st(self, model):
+        """Each declaring model pins the edge to exactly t - st."""
+        assert model_config[model]["ndt_edge_shift"] == UNIFORM_ST_DECLARATION
+
+    @pytest.mark.parametrize("model", DECLARING_MODELS)
     def test_rts_never_fall_below_declared_edge(self, model):
         """min(rt) >= t - scale * param for every parameter set, corner included."""
         cfg = model_config[model]
@@ -99,6 +107,21 @@ class TestDeclaredEdge:
         for positions in CORNER_PARAMETER_SETS:
             theta = _theta_in_box(cfg, **positions)
             assert _valid_rts(model, theta).min() < theta["t"], positions
+
+    @pytest.mark.parametrize("model", DECLARING_MODELS)
+    def test_corner_rts_fall_below_half_the_declared_shift(self, model):
+        """The declared scale is tight, not merely a safe lower bound.
+
+        At the a-lower corner the fastest RTs land within a few hundredths of
+        t - st, so they fall below t - scale * param / 2 only if the scale is
+        right: a scale twice too large passes the lower-bound check but puts
+        this bar at t - st, which the simulator never crosses.
+        """
+        cfg = model_config[model]
+        shift = cfg["ndt_edge_shift"]
+        theta = _theta_in_box(cfg, **A_LOWER_CORNER)
+        half_shift = 0.5 * shift["scale"] * theta[shift["param"]]
+        assert _valid_rts(model, theta).min() < theta["t"] - half_shift
 
 
 class TestUndeclaredSupportStartsAtT:
@@ -125,7 +148,7 @@ class TestKdeConsistency:
 class TestBuilderPlumbing:
     """ModelConfigBuilder carries and validates the key."""
 
-    EXPECTED = {"param": "st", "scale": 1.0}
+    EXPECTED = UNIFORM_ST_DECLARATION
 
     def test_full_ddm2_alias_inherits_declaration(self):
         """full_ddm2 shares get_full_ddm_config and so carries the key."""
