@@ -334,7 +334,8 @@ class TrainingDataGenerator:  # noqa: N801
         round-trips through YAML, JSON, MLflow params and int64 arrays unchanged.
         `np.random.default_rng` accepts any non-negative integer seed, so the
         index arithmetic in `_generate_mlp_data_via_strategy` is valid anywhere
-        in that range.
+        in that range; the one legacy `np.random.seed` call on the PyDDM path
+        reduces the index modulo 2**32 itself.
         """
         from ssms.config.config_utils import get_parameter_sampler_index_offset
 

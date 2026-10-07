@@ -540,6 +540,19 @@ def test_pipelines_use_the_index_as_given(tmp_path):
     )
 
 
+def test_pipelines_accept_entropy_sized_indices(tmp_path):
+    """An index above an entropy-drawn base is a 62-bit number; both paths take it.
+
+    `np.random.default_rng` accepts any non-negative integer, but the legacy
+    `np.random.seed` the PyDDM path still calls stops at 2**32 - 1, which made
+    every PyDDM run crash once the generator drew its base from entropy.
+    """
+    mc = ModelConfigBuilder.from_model("full_ddm")
+    gc = _fast_config("full_ddm", 4, tmp_path)
+    index = 2**62 - 1
+    assert _pyddm_theta(gc, mc, index) == _simulation_theta(gc, mc, index)
+
+
 def test_cli_yaml_offset_lands_in_the_pipeline_section(tmp_path):
     """The premise of the nested lookup: the CLI files the YAML key under 'pipeline'.
 
