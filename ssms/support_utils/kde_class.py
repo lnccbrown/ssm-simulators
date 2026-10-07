@@ -6,10 +6,50 @@ import numpy as np
 from sklearn.neighbors import KernelDensity
 
 from ssms.basic_simulators.simulator import OMISSION_SENTINEL
+from ssms.config import KDE_NO_DISPLACE_T, model_config
 
 """
     This module contains a class for generating kdes from data.
 """
+
+
+def _check_displace_t_supported(metadata: dict) -> None:
+    """Raise when shifting RTs by ``t`` would put the cutoff inside the support.
+
+    Displacing by ``t`` assumes no response time falls below ``t``. A model
+    whose non-decision time varies from trial to trial breaks that: with a
+    uniform kernel the support starts at ``t - st`` (declared as
+    ``ndt_edge_shift`` in its config), and the kernels in ``KDE_NO_DISPLACE_T``
+    have no lower edge at ``t`` at all. Shifting by ``t`` would floor every
+    label in the band below ``t``, so those models are refused here.
+    ``TrainingDataGenerator`` already overrides ``displace_t`` for them before
+    building a LogKDE; this guard catches direct callers.
+
+    The model is read from ``metadata["model"]`` with a ``_deadline`` suffix
+    stripped, as the generator does. A name that is not registered in
+    ``ssms.config.model_config`` is refused when the metadata carries a
+    non-zero ``st``.
+    """
+    model = metadata.get("model")
+    label = f"model '{model}'" if model is not None else "an unnamed model"
+    base = str(model).removesuffix("_deadline") if model is not None else None
+
+    if base in model_config:
+        config = model_config[base]
+        if "ndt_edge_shift" in config:
+            reason = "its response times start below t"
+        elif config["name"] in KDE_NO_DISPLACE_T:
+            reason = "its non-decision-time kernel has no lower edge at t"
+        else:
+            return
+    elif np.any(np.asarray(metadata.get("st", 0.0), dtype=float) != 0):
+        reason = "its response times start below t (metadata carries a non-zero st)"
+    else:
+        return
+
+    raise ValueError(
+        f"displace_t=True is not supported for {label}: {reason}. Use displace_t=False."
+    )
 
 
 class LogKDE:
@@ -77,16 +117,20 @@ class LogKDE:
             auto_bandwidth: Whether to automatically compute bandwidths based on the data.
                 If False, bandwidths must be set manually. Defaults to True.
             displace_t: Whether to shift RTs by the t parameter from metadata.
-                Only works if all trials have the same t value. Defaults to False.
+                Only works if all trials have the same t value and the model's
+                response times cannot fall below t (see ``KDE_NO_DISPLACE_T``
+                and the ``ndt_edge_shift`` config key). Defaults to False.
 
         Raises:
         -------
-            AssertionError: If displace_t is True but metadata contains multiple t values.
+            ValueError: If displace_t is True but metadata contains multiple t
+                values, or names a model whose response times start below t.
         """
         self.simulator_info = simulator_data["metadata"]
         self.displace_t: bool = displace_t
 
         if self.displace_t:
+            _check_displace_t_supported(simulator_data["metadata"])
             t_vals = np.unique(simulator_data["metadata"]["t"])
             if t_vals.shape[0] != 1:
                 raise ValueError("Multiple t values in simulator data. Can't shift.")
