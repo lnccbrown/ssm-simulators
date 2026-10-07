@@ -117,9 +117,13 @@ class PyDDMPipeline:
         # ignores the legacy global state. PyDDM thetas were therefore irreproducible
         # and the theta index bought nothing. Pass the RNG explicitly, as
         # `SimulationPipeline` does. The global seed stays for any downstream code
-        # that still draws from it.
+        # that still draws from it, reduced to the legacy seeder's 32-bit range:
+        # `default_rng` takes any non-negative integer, `np.random.seed` does not,
+        # and a theta index above an entropy-drawn base is a 62-bit number.
         param_rng = np.random.default_rng(parameter_sampling_seed)
-        np.random.seed(parameter_sampling_seed)
+        np.random.seed(
+            None if parameter_sampling_seed is None else parameter_sampling_seed % 2**32
+        )
 
         # Keep trying until we get valid parameters
         # (PyDDM may reject parameters with high P(undecided))
