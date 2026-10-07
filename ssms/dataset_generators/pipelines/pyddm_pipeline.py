@@ -4,7 +4,6 @@ import numpy as np
 from typing import Any
 
 from ssms.basic_simulators.simulator import _theta_dict_to_array
-from ssms.config.config_utils import get_parameter_sampler_index_offset
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
     TrainingDataStrategyProtocol,
@@ -90,7 +89,9 @@ class PyDDMPipeline:
         4. Generate training data
 
         Args:
-            parameter_sampling_seed: Index for parameter sampling (used as seed)
+            parameter_sampling_seed: Theta index, used directly as the parameter-RNG
+                seed. Final as given: `TrainingDataGenerator` has already added its
+                base and cursor, so no offset is applied here.
             random_seed: Random seed (accepted for API compatibility,
                 may not be used as analytical solutions are deterministic)
 
@@ -106,21 +107,17 @@ class PyDDMPipeline:
             analytically without simulations. Only binned RT histograms require
             trajectory data and are set to None.
         """
-        # Use parameter_sampling_seed as random seed for parameter sampling.
+        # Use parameter_sampling_seed as random seed for parameter sampling. The
+        # index is final: the generator applied its base and cursor, and the KDE
+        # path seeds from the identical value, so the two pipelines index theta
+        # the same way.
         #
-        # The offset is applied here rather than at the caller: `TrainingDataGenerator`
-        # hands the identical theta index to whichever pipeline the estimator type
-        # selected, so shifting the index upstream would double-offset the KDE path.
-        offset = get_parameter_sampler_index_offset(self.generator_config)
-        if parameter_sampling_seed is not None:
-            parameter_sampling_seed = int(parameter_sampling_seed) + offset
-
         # `np.random.seed` alone did not reach the parameter draws: `sample()` falls
         # back to `np.random.default_rng()`, which seeds itself from OS entropy and
         # ignores the legacy global state. PyDDM thetas were therefore irreproducible
         # and the theta index bought nothing. Pass the RNG explicitly, as
-        # `SimulationPipeline` does, so the two pipelines index theta the same way.
-        # The global seed stays for any downstream code that still draws from it.
+        # `SimulationPipeline` does. The global seed stays for any downstream code
+        # that still draws from it.
         param_rng = np.random.default_rng(parameter_sampling_seed)
         np.random.seed(parameter_sampling_seed)
 
