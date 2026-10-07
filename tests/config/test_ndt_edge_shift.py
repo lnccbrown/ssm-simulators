@@ -1,8 +1,10 @@
 """Tests for the ``ndt_edge_shift`` model-config declaration.
 
 ``"ndt_edge_shift": {"param": p, "scale": s}`` declares that a model's
-response-time support starts at ``t - s * p``; a config without the key has a
-support that starts at ``t``. These tests check the declarations against the
+response-time support starts at ``t - s * p``; a config without the key
+declares no finite edge below ``t`` (its support starts at ``t`` unless the
+kernel has no lower edge, as ``KDE_NO_DISPLACE_T`` records). These tests
+check the declarations against the
 simulators, and that the builder and validators carry and police the key.
 """
 
@@ -126,7 +128,7 @@ class TestDeclaredEdge:
 
 
 class TestUndeclaredSupportStartsAtT:
-    """A config without the key has RTs that start at t."""
+    """Plain models (no key, bounded kernel) have RTs that start at t."""
 
     @pytest.mark.parametrize("model", PLAIN_MODELS)
     def test_plain_model_rts_start_at_t(self, model):
