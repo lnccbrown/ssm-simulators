@@ -18,7 +18,7 @@ Run through every item. All must pass before the model is considered complete.
 - [ ] If custom drift: `"drift_params"` are all names that appear in `"params"`
 - [ ] `"choices"` has length == `"nchoices"`
 - [ ] `"simulator"` is a valid Cython function from `cssm`
-- [ ] If the non-decision time varies per trial with a hard lower edge (e.g. `t + U(-st, st)`): `"ndt_edge_shift": {"param": ..., "scale": ...}` declares it (RTs start at `t - scale * param`); omit it when RTs start at `t`
+- [ ] If the non-decision time varies per trial with a hard lower edge (e.g. `t + U(-st, st)`): `"ndt_edge_shift": {"param": ..., "scale": ...}` declares it (RTs start at `t - scale * param`). Omit it when the model has no `t` parameter, when the kernel has no finite lower edge (`ddm_normal_st`), or when the edge is not `t - scale * param`
 
 ## Registration
 
@@ -26,6 +26,7 @@ Run through every item. All must pass before the model is considered complete.
 - [ ] Entry added to `get_model_config()` dict
 - [ ] Entry added to `__all__` list
 - [ ] Module-level `_validate_configs()` passes (runs on import)
+- [ ] If `ndt_edge_shift` is declared, or the kernel has no lower edge: config name added to `KDE_NO_DISPLACE_T` in `ssms/config/kde_constants.py`
 
 ## Simulator Execution
 

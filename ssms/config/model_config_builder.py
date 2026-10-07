@@ -86,7 +86,8 @@ class ModelConfigBuilder:
             - nchoices : int - Number of choices
             - choices : list - Possible choice values
             - ndt_edge_shift : dict - {"param": str, "scale": float}; declares
-              that RTs start at t - scale * param (absent: RTs start at t)
+              that RTs start at t - scale * param (absent: no finite edge below
+              t is declared)
 
         Returns
         -------
@@ -179,7 +180,8 @@ class ModelConfigBuilder:
             - drift_name : str - Drift name
             - drift_params : list[str] - Drift parameter names
             - ndt_edge_shift : dict - {"param": str, "scale": float}; declares
-              that RTs start at t - scale * param (absent: RTs start at t)
+              that RTs start at t - scale * param (absent: no finite edge below
+              t is declared)
 
         Returns
         -------
