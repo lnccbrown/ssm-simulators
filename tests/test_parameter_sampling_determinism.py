@@ -295,6 +295,27 @@ def test_sampling_order_respects_dependencies(name):
         )
 
 
+# Where the declared order is not already topologically valid, the order the
+# sampler must produce: a dependency is pulled ahead of the first parameter that
+# needs it, and nothing else moves.
+EXPECTED_ORDERS = {"multi_dependent": ["a", "b", "c", "d"]}
+
+
+@pytest.mark.parametrize("name", list(DEPENDENCY_EDGES))
+def test_sampling_order_is_the_declared_order_with_dependencies_first(name):
+    """The pinned order is the declared one, not an artefact of the traversal.
+
+    Every registered model declares its bounds in `params` order with each
+    dependency ahead of its dependent, so its sampling order is the declaration
+    itself; a stored training set's parameter <-> draw assignment is then
+    readable from the model config alone. Fails on the first version of the
+    fix, whose depth-first prepending produced the exact reverse.
+    """
+    space = _spaces()[name]
+    order = UniformParameterSampler(param_space=space)._sampling_order
+    assert order == EXPECTED_ORDERS.get(name, list(space)), f"{name}: {order}"
+
+
 # --------------------------------------------------------------------------- #
 # Defect 2: the theta-index blocks.
 # --------------------------------------------------------------------------- #
