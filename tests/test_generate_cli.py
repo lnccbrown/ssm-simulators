@@ -216,9 +216,42 @@ class TestParseMlflowTags:
 
         from ssms.cli.generate import parse_mlflow_tags
 
-        for reserved in ("schema_version=2", "phase=custom"):
+        for reserved in ("schema_version=2", "phase=custom", "lineage_id=x"):
             with pytest.raises(typer.BadParameter):
                 parse_mlflow_tags([reserved])
+
+
+class TestResolveLineageId:
+    def test_none_mints_uuid4_hex(self):
+        from ssms.cli.generate import resolve_lineage_id
+
+        a, b = resolve_lineage_id(None), resolve_lineage_id(None)
+        assert len(a) == 32 and int(a, 16) >= 0
+        assert a != b
+
+    def test_value_passes_through_stripped(self):
+        from ssms.cli.generate import resolve_lineage_id
+
+        assert resolve_lineage_id("  batch-7 ") == "batch-7"
+
+    def test_blank_rejected(self):
+        import typer
+
+        from ssms.cli.generate import resolve_lineage_id
+
+        with pytest.raises(typer.BadParameter):
+            resolve_lineage_id("   ")
+
+
+def test_common_run_tags_shape():
+    from ssms.cli.generate import MLFLOW_SCHEMA_VERSION, common_run_tags
+
+    tags = common_run_tags("lin-1")
+    assert tags["schema_version"] == MLFLOW_SCHEMA_VERSION == "2"
+    assert tags["lineage_id"] == "lin-1"
+    assert tags["hostname"]
+    # git_sha is best-effort: present only in a checkout, but never empty
+    assert tags.get("git_sha", "x")
 
 
 # n_cpus: the pipeline section used to be forwarded key-by-key, which silently
