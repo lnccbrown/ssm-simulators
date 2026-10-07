@@ -82,15 +82,23 @@ print(
 )
 """
 
-# argv: a generator_config as JSON, as recorded in an output file. Builds a
-# generator from it -- the real entry point, not a re-derivation of what it
-# does -- and prints the thetas it draws.
+# argv: a JSON list of generator configs, e.g. one as recorded in an output
+# file. Builds a generator from each -- the real entry point, not a
+# re-derivation of what it does -- and prints the thetas each one draws.
 _REGENERATE_WORKER = r"""
 import json, sys
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
-generator = TrainingDataGenerator(config=json.loads(sys.argv[1]))
-print(json.dumps({"thetas": generator.generate_data_training()["theta"].tolist()}))
+print(
+    json.dumps(
+        {
+            "thetas": [
+                TrainingDataGenerator(config=gc).generate_data_training()["theta"].tolist()
+                for gc in json.loads(sys.argv[1])
+            ]
+        }
+    )
+)
 """
 
 
@@ -322,15 +330,19 @@ def test_recorded_config_regenerates_the_file_in_another_process(tmp_path):
     makes this the reproducibility half of defect 1 as well -- the theta
     *values* would survive a permuted sampling order, the rows would not.
     """
-    produced = TrainingDataGenerator(
-        config=_fast_config("full_ddm", 4, tmp_path)
-    ).generate_data_training()
+    offset_free = _fast_config("full_ddm", 4, tmp_path)
+    produced = TrainingDataGenerator(config=offset_free).generate_data_training()
 
-    regenerated = _run(
-        _REGENERATE_WORKER, [json.dumps(produced["generator_config"])], "12345"
-    )
-    assert regenerated["thetas"] == produced["theta"].tolist(), (
+    # The recorded config, and the offset-free config it came from: only the
+    # first may reproduce the file, or the recorded value is not what makes it
+    # reproducible (a fixed default offset would pass the first check alone).
+    configs = [produced["generator_config"], offset_free]
+    recorded, fresh = _run(_REGENERATE_WORKER, [json.dumps(configs)], "12345")["thetas"]
+    assert recorded == produced["theta"].tolist(), (
         f"recorded offset {_recorded_offset(produced)} did not reproduce the file"
+    )
+    assert fresh != produced["theta"].tolist(), (
+        "an offset-free config reproduced the file: no base was drawn"
     )
 
 
