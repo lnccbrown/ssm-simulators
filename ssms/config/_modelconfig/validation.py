@@ -61,8 +61,11 @@ def get_ndt_edge_shift_errors(config: dict) -> List[str]:
     """Validate the optional ``ndt_edge_shift`` entry of ``config``.
 
     ``{"param": <name>, "scale": s}`` declares that the model's response-time
-    support starts at ``t - s * <name>`` rather than at ``t`` (absent means the
-    support starts at ``t``). When present it must be a dict with exactly those
+    support starts at ``t - s * <name>`` rather than at ``t``. Absent means no
+    finite edge below ``t`` is declared: every shipped model then starts at
+    ``t``, except kernels with no lower edge (``ddm_normal_st``), which this key
+    cannot express and which are listed in ``KDE_NO_DISPLACE_T`` instead. When
+    present it must be a dict with exactly those
     two keys, both ``<name>`` and ``"t"`` must be in ``config["params"]``, and
     ``s`` must be a finite non-negative number (bools are rejected).
 
