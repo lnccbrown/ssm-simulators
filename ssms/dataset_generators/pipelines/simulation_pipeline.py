@@ -7,7 +7,6 @@ from scipy.stats import mode
 
 from ssms.basic_simulators.simulator import _theta_dict_to_array, OMISSION_SENTINEL
 from ssms.basic_simulators.simulator_class import Simulator
-from ssms.config.config_utils import get_parameter_sampler_index_offset
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
     TrainingDataStrategyProtocol,
@@ -91,7 +90,10 @@ class SimulationPipeline:
         5. Generate training data
 
         Args:
-            parameter_sampling_seed: Seed for parameter sampling (ensures different workers sample different θ)
+            parameter_sampling_seed: Theta index, used directly as the parameter-RNG
+                seed. Final as given: `TrainingDataGenerator` has already added its
+                base (explicit `parameter_sampler_index_offset` or an entropy draw)
+                and cursor, so no offset is applied here.
             simulator_seed: Random seed for simulations (controls RT/choice variability)
 
         Returns:
@@ -102,18 +104,10 @@ class SimulationPipeline:
         """
         # Create isolated RNG for parameter sampling (no global state pollution!)
         #
-        # `parameter_sampling_seed` is the theta INDEX within one call to
-        # `generate_data_training` (0 .. n_parameter_sets - 1). Because it is used
-        # directly as the RNG seed, two runs that use the same indices draw the same
-        # thetas. `parameter_sampler_index_offset` shifts the whole block so that
-        # independently launched runs (e.g. one SLURM array task per output file)
-        # cover disjoint theta indices: set it to task_id * n_parameter_sets. It is
-        # read from the nested `pipeline` section, which is where the CLI puts a
-        # YAML `PIPELINE.PARAMETER_SAMPLER_INDEX_OFFSET`, with the config root as a
-        # fallback for programmatic callers.
-        offset = get_parameter_sampler_index_offset(self.generator_config)
-        if parameter_sampling_seed is not None:
-            parameter_sampling_seed = int(parameter_sampling_seed) + offset
+        # The theta index is the seed, so two runs that use the same indices draw
+        # the same thetas. Keeping runs apart is the generator's job (base + cursor,
+        # applied once before the index gets here); this pipeline must not shift
+        # the index again.
         param_rng = np.random.default_rng(parameter_sampling_seed)
 
         # Keep simulating until we get valid data
