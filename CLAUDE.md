@@ -28,7 +28,7 @@ benchmarks/                    # Performance benchmarks
 ## Build & Tooling
 
 - **Build system:** setuptools + Cython (C extensions compiled from `src/cssm/*.pyx`)
-- **Package manager:** uv (with `uv.lock`)
+- **Package manager:** uv (no tracked lockfile; `uv sync` resolves from `pyproject.toml`)
 - **Python:** >=3.12, <3.15 (classifiers target 3.12, 3.13, 3.14)
 - **System dependencies (required for C extensions):**
   - C compiler (Xcode CLI tools on macOS, build-essential on Linux)
