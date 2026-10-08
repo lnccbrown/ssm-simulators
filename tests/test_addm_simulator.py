@@ -13,6 +13,8 @@ one engine. These tests pin:
   **omission** sentinel.
 """
 
+import hashlib
+
 import numpy as np
 import pytest
 
@@ -567,3 +569,26 @@ def test_fixation_continuation_resolvers_and_require_dist():
     # ... and a non-str / non-callable is rejected loudly.
     with pytest.raises(TypeError):
         fc.resolve_continuation_mode(123)
+
+
+# --------------------------------------------------------------------------- #
+# Fixed-seed stream pin
+# --------------------------------------------------------------------------- #
+def test_addm_fixed_seed_output_is_pinned():
+    """Pin the engine's random stream through the public output.
+
+    Recorded on main before the generator moved into ``_xoshiro_rng.pxi``. A
+    change here means the stream changed, which also breaks the efficient_fpt
+    parity oracle. Only RTs and choices are pinned: they depend on the step at
+    which a boundary is crossed, not on the last bits of the accumulated path,
+    so they are stable across platforms and libm builds.
+    """
+    out = _run_mode2()
+    rts = np.asarray(out["rts"])
+    choices = np.asarray(out["choices"])
+    np.testing.assert_allclose(
+        rts[:5, 0, 0], [0.5375, 0.7415, 0.4185, 0.6865, 1.3115], rtol=0, atol=1e-6
+    )
+    assert choices[:5, 0, 0].tolist() == [-1, -1, -1, -1, 1]
+    digest = hashlib.sha256(rts.tobytes() + choices.tobytes()).hexdigest()
+    assert digest == "a25600dc00ed7f2a6b0ab6dbe9e7086211b2f6646847b4682264042772897774"
