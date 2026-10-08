@@ -1,6 +1,7 @@
 """Tests for the Efficient-FPT-style multi-stage race simulator."""
 
 import numpy as np
+import pytest
 
 import cssm
 
@@ -76,3 +77,61 @@ def test_seeded_output_is_thread_count_independent():
     four = cssm.race_multistage(**common, n_threads=4)
     np.testing.assert_array_equal(one["rts"], four["rts"])
     np.testing.assert_array_equal(one["choices"], four["choices"])
+
+
+def test_negative_nondecision_time_is_rejected():
+    """Negative nondecision_time must be rejected."""
+    with pytest.raises(ValueError, match="nondecision_time must be non-negative"):
+        cssm.race_multistage(
+            mu_array=np.ones((1, 1, 1)),
+            sigma_array=np.ones((1, 1, 1)),
+            node_array=np.zeros((1, 1, 1)),
+            d_array=np.ones((1, 1), dtype=np.int32),
+            upper_intercept_array=np.ones((1, 1, 1)),
+            upper_slope_array=np.zeros((1, 1, 1)),
+            x0_array=np.zeros((1, 1)),
+            nondecision_time=-0.5,
+            n_samples=1,
+            delta_t=0.1,
+            max_t=1.0,
+            random_state=3,
+        )
+
+
+def test_negative_deadline_is_rejected():
+    """Negative deadline must be rejected."""
+    with pytest.raises(ValueError, match="deadline must be non-negative"):
+        cssm.race_multistage(
+            mu_array=np.ones((1, 1, 1)),
+            sigma_array=np.ones((1, 1, 1)),
+            node_array=np.zeros((1, 1, 1)),
+            d_array=np.ones((1, 1), dtype=np.int32),
+            upper_intercept_array=np.ones((1, 1, 1)),
+            upper_slope_array=np.zeros((1, 1, 1)),
+            x0_array=np.zeros((1, 1)),
+            deadline=-1.0,
+            n_samples=1,
+            delta_t=0.1,
+            max_t=1.0,
+            random_state=3,
+        )
+
+
+def test_deadline_less_than_nondecision_time_is_rejected():
+    """deadline must be >= nondecision_time."""
+    with pytest.raises(ValueError, match="deadline must be >= nondecision_time"):
+        cssm.race_multistage(
+            mu_array=np.ones((1, 1, 1)),
+            sigma_array=np.ones((1, 1, 1)),
+            node_array=np.zeros((1, 1, 1)),
+            d_array=np.ones((1, 1), dtype=np.int32),
+            upper_intercept_array=np.ones((1, 1, 1)),
+            upper_slope_array=np.zeros((1, 1, 1)),
+            x0_array=np.zeros((1, 1)),
+            nondecision_time=0.5,
+            deadline=0.2,
+            n_samples=1,
+            delta_t=0.1,
+            max_t=1.0,
+            random_state=3,
+        )
