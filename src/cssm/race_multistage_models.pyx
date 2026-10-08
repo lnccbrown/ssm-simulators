@@ -498,6 +498,12 @@ def race_multistage(
         raise ValueError("nondecision_time must be a scalar or have length n_trials")
     if ddl.size != n_trials:
         raise ValueError("deadline must be a scalar or have length n_trials")
+    if np.any(ndt < 0.0):
+        raise ValueError("nondecision_time must be non-negative")
+    if np.any(ddl < 0.0):
+        raise ValueError("deadline must be non-negative")
+    if np.any(ddl < ndt):
+        raise ValueError("deadline must be >= nondecision_time")
     ndt_rows = np.tile(ndt, n_samples)
     ddl_rows = np.tile(ddl, n_samples)
     shifted_rt = rt + ndt_rows
