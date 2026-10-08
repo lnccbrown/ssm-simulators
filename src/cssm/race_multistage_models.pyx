@@ -6,16 +6,25 @@
 
 """Forward simulator for independent, multi-stage race models.
 
-This module implements the Monte Carlo model in ``race_model.pdf``: every
-accumulator has an independent Brownian motion, a native stage partition,
-piecewise-constant drift/diffusion, and a piecewise-linear *upper* boundary.
-The race ends at the first upper-boundary crossing.  It intentionally has no
-lower decision boundary and does not clip paths at zero.
+Every accumulator has an independent Brownian motion, a native stage
+partition, piecewise-constant drift/diffusion, and a piecewise-linear *upper*
+boundary.  The race ends at the first upper-boundary crossing.  It
+intentionally has no lower decision boundary and does not clip paths at zero.
+The numerical reference this simulator is validated against (the multi-stage
+Volterra solver in ``notebooks/volterra_accuracy``) follows Appendix B of
+Lüken, Radev, Waldorp & Heathcote (2026), *Neural Racing Accumulator Model
+Estimation With Lightweight Monotonic Flows*,
+https://doi.org/10.31234/osf.io/bfsgr_v1.
 
 The random-number implementation follows ``addm_models.pyx``.  One xoshiro
 state is seeded for every (sample, trial) pair before the OpenMP loop, making
 results reproducible for a fixed ``random_state`` independently of scheduling
-or ``n_threads``.
+or ``n_threads``, and it needs no GSL.  The shared GSL generator in
+``_rng_wrappers.pxi`` is deliberately not used: it is only live on GSL builds
+and only in the parallel path (PyPI wheels build without GSL, and the stub
+returns 0.0), so the other kernels keep a second, sequential NumPy path for
+that case.  Consolidating the aDDM and race kernels on one generator is
+tracked in https://github.com/lnccbrown/ssm-simulators/issues/376.
 """
 
 import numpy as np
@@ -51,9 +60,10 @@ cdef struct TrialResult:
     int choice
 
 
-# Inline xoshiro256++ / Box-Muller RNG, matching the Efficient-FPT-derived
-# aDDM engine.  Keep this local for now; a future shared RNG module can remove
-# the duplication once the race simulator interface has settled.
+# Inline xoshiro256++ / Box-Muller RNG, duplicated from the Efficient-FPT-derived
+# aDDM engine (``addm_models.pyx``) because that engine is vendored and must not
+# be edited in place.  See the module docstring for why the shared GSL RNG is
+# not an option here; issue #376 tracks removing the duplication.
 cdef struct Xoshiro256State:
     uint64_t s0
     uint64_t s1
