@@ -6,15 +6,69 @@ import numpy as np
 from sklearn.neighbors import KernelDensity
 
 from ssms.basic_simulators.simulator import OMISSION_SENTINEL
+from ssms.config import KDE_NO_DISPLACE_T, model_config
 
 """
     This module contains a class for generating kdes from data.
 """
 
 
+def _check_displace_t_supported(metadata: dict) -> None:
+    """Raise when shifting RTs by ``t`` would put the cutoff inside the support.
+
+    Displacing by ``t`` assumes no response time falls below ``t``. A model
+    whose non-decision time varies from trial to trial breaks that: with a
+    uniform kernel the support starts at ``t - st`` (declared as
+    ``ndt_edge_shift`` in its config), and the kernels in ``KDE_NO_DISPLACE_T``
+    have no lower edge at ``t`` at all. Shifting by ``t`` would floor every
+    label in the band below ``t``, so those models are refused here.
+    ``TrainingDataGenerator`` already overrides ``displace_t`` for them before
+    building a LogKDE; this guard catches direct callers.
+
+    The model is read from ``metadata["model"]`` with a ``_deadline`` suffix
+    stripped, as the generator does. A name that is not registered in
+    ``ssms.config.model_config`` is refused when the metadata carries a
+    non-zero ``st``.
+    """
+    model = metadata.get("model")
+    label = f"model '{model}'" if model is not None else "an unnamed model"
+    base = str(model).removesuffix("_deadline") if model is not None else None
+
+    if base in model_config:
+        config = model_config[base]
+        if "ndt_edge_shift" in config:
+            reason = "its response times start below t"
+        elif config["name"] in KDE_NO_DISPLACE_T:
+            reason = "its non-decision-time kernel has no lower edge at t"
+        else:
+            return
+    elif np.any(np.asarray(metadata.get("st", 0.0), dtype=float) != 0):
+        reason = "its response times start below t (metadata carries a non-zero st)"
+    else:
+        return
+
+    raise ValueError(
+        f"displace_t=True is not supported for {label}: {reason}. Use displace_t=False."
+    )
+
+
 class LogKDE:
     """
     Class for generating kdes from (rt, choice) data. Works for any number of choices.
+
+    Only samples usable as log-RT KDE input are retained per choice: omission
+    sentinels, non-positive RTs and non-finite log-RTs are dropped from
+    ``data['rts']`` and ``data['log_rts']``. Non-positive RTs are legitimate
+    simulator output for models whose non-decision-time kernel has unbounded
+    support (a ``Normal(t, st)`` kernel, say). ``data['choice_proportions']`` is
+    computed before this filter, so it still counts the dropped samples.
+    That is intentional and consistent with omissions, which also count towards
+    their choice's proportion while contributing no RT to its density.
+
+    Known limitation: a choice left with exactly one retained sample falls through
+    to ``bandwidth_silverman``'s ``std_n_1`` default, yielding a bandwidth of about
+    10.59 that passes the ``bandwidth > 0`` check. That choice's density estimate
+    is not meaningful.
 
     Attributes
     ----------
@@ -63,16 +117,20 @@ class LogKDE:
             auto_bandwidth: Whether to automatically compute bandwidths based on the data.
                 If False, bandwidths must be set manually. Defaults to True.
             displace_t: Whether to shift RTs by the t parameter from metadata.
-                Only works if all trials have the same t value. Defaults to False.
+                Only works if all trials have the same t value and the model's
+                response times cannot fall below t (see ``KDE_NO_DISPLACE_T``
+                and the ``ndt_edge_shift`` config key). Defaults to False.
 
         Raises:
         -------
-            AssertionError: If displace_t is True but metadata contains multiple t values.
+            ValueError: If displace_t is True but metadata contains multiple t
+                values, or names a model whose response times start below t.
         """
         self.simulator_info = simulator_data["metadata"]
         self.displace_t: bool = displace_t
 
         if self.displace_t:
+            _check_displace_t_supported(simulator_data["metadata"])
             t_vals = np.unique(simulator_data["metadata"]["t"])
             if t_vals.shape[0] != 1:
                 raise ValueError("Multiple t values in simulator data. Can't shift.")
@@ -117,6 +175,16 @@ class LogKDE:
         return bandwidths_
 
     def _compute_bandwidth_for_choice(self, log_rts):
+        """Compute one choice's Silverman bandwidth.
+
+        Args:
+            log_rts: Log response times retained for one choice after the
+                non-positive and non-finite filter.
+
+        Returns:
+            The Silverman bandwidth for that choice, or the string
+            ``"no_base_data"`` when no sample survived the filter.
+        """
         if len(log_rts) == 0:
             return "no_base_data"
         else:
@@ -450,6 +518,8 @@ class LogKDE:
             Value to filter rts by, default is OMISSION_SENTINEL (-999).
             This is the sentinel value returned by simulators when a trial
             exceeds max_t or deadline (i.e., an omission).
+            Only rts that differ from this value, are strictly positive and have
+            a finite log are retained per choice.
         """
 
         simulator_data = deepcopy(simulator_data)
@@ -493,12 +563,17 @@ class LogKDE:
             prop_tmp = len(rts_tmp) / n
             self.data["choices"].append(c)
 
-            self.data["log_rts"].append(
-                np.expand_dims(log_rts_tmp[log_rts_tmp != filter_rts], axis=1)
-            )
-            self.data["rts"].append(
-                np.expand_dims(rts_tmp[rts_tmp != filter_rts], axis=1)
-            )
+            # Retain only samples usable as log-RT KDE input: not the omission
+            # sentinel, strictly positive rt, and a finite log-rt. Applied to the
+            # final (possibly displace_t-shifted) values. `rts` and `log_rts` are
+            # maintained as two independent arrays, so the last two terms cover
+            # different samples: `> 0` alone admits rt = +inf, and on the
+            # displace_t boundary float rounding makes `rt - t` and
+            # `exp(log(rt)) - t` disagree in sign in both directions.
+            valid = (rts_tmp != filter_rts) & (rts_tmp > 0) & np.isfinite(log_rts_tmp)
+
+            self.data["log_rts"].append(np.expand_dims(log_rts_tmp[valid], axis=1))
+            self.data["rts"].append(np.expand_dims(rts_tmp[valid], axis=1))
             self.data["choice_proportions"].append(prop_tmp)
 
         self.data["n_trials"] = simulator_data["choices"].shape[0]

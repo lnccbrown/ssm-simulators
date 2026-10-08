@@ -10,6 +10,7 @@ Note: Multiprocessing start method is configured in ssms/__init__.py
 
 import logging
 import os
+import secrets
 import uuid
 import warnings
 from copy import deepcopy
@@ -268,6 +269,17 @@ class TrainingDataGenerator:  # noqa: N801
                 model_config=self.model_config,
             )
 
+        # Theta-index bookkeeping. A theta index is used directly as the seed of the
+        # parameter RNG (see the pipelines' generate_for_parameter_set), so two runs
+        # that consume the same indices draw the same parameter sets. The base is
+        # what keeps independently launched runs apart; the cursor counts the
+        # indices this instance has consumed, so repeated calls in one process
+        # (`ssms generate --n-files 10`) take disjoint blocks instead of writing
+        # ten identical theta sets. Both are applied here, once, so every pipeline
+        # -- including a custom one -- receives final indices.
+        self._theta_index_base = self._resolve_theta_index_base()
+        self._theta_index_cursor = 0
+
         # Make output folder if not already present (only if we have generator_config)
         if self.generator_config is not None:
             output_folder = Path(self.generator_config["output"]["folder"])
@@ -304,6 +316,43 @@ class TrainingDataGenerator:  # noqa: N801
             from ssms.config import ModelConfigBuilder
 
             self.model_config = ModelConfigBuilder.with_deadline(self.model_config)
+
+    def _resolve_theta_index_base(self) -> int:
+        """Return the first theta index this generator consumes.
+
+        An explicit `parameter_sampler_index_offset` in the generator config is
+        used as given. Without one, a base is drawn from OS entropy, so every
+        SLURM array task that runs the same YAML gets its own theta block with no
+        orchestration; the value in use is recorded in each output file's
+        `generator_config` under that same key, so the file can be regenerated
+        by passing it back explicitly.
+
+        The entropy draw takes 62 bits. That is wide enough that two
+        independently drawn blocks of any realistic size do not overlap
+        (P ~ 2 * block / 2**62, about 4e-13 for a block of 10**6 thetas) and
+        narrow enough that base + block stays below 2**63, so the recorded value
+        round-trips through YAML, JSON, MLflow params and int64 arrays unchanged.
+        `np.random.default_rng` accepts any non-negative integer seed, so the
+        index arithmetic in `_generate_mlp_data_via_strategy` is valid anywhere
+        in that range; the one legacy `np.random.seed` call on the PyDDM path
+        reduces the index modulo 2**32 itself.
+        """
+        from ssms.config.config_utils import get_parameter_sampler_index_offset
+
+        if self.generator_config is not None:
+            offset = get_parameter_sampler_index_offset(self.generator_config)
+            if offset is not None:
+                logger.info("Theta index base %d taken from the config.", offset)
+                return offset
+
+        base = secrets.randbits(62)
+        logger.info(
+            "No parameter_sampler_index_offset in the config; theta index base %d "
+            "drawn from entropy (recorded in the output as "
+            "generator_config['pipeline']['parameter_sampler_index_offset']).",
+            base,
+        )
+        return base
 
     def _get_ncpus(self):
         """Get the number cpus to use for parallelization."""
@@ -417,6 +466,12 @@ class TrainingDataGenerator:  # noqa: N801
             parameter sampling to training data generation. This eliminates
             wasteful simulations for analytical methods (PyDDM) and provides
             a clean, modular architecture.
+
+            The generator is stateful across calls: each call consumes the next
+            block of `n_parameter_sets` theta indices, starting at the explicit
+            `parameter_sampler_index_offset` of the config or, without one, at a
+            base drawn from entropy when the generator was built. The returned
+            `generator_config` records the block's first index under that key.
         """
         # Phase 4: Always use generation pipeline
         return self._generate_mlp_data_via_strategy(save, verbose)
@@ -449,24 +504,38 @@ class TrainingDataGenerator:  # noqa: N801
             400000000, size=self.generator_config["pipeline"]["n_parameter_sets"]
         )
 
+        # Theta indices for this file start at the generator's base and continue
+        # where the previous file stopped, so a second call does not re-draw the
+        # same parameter sets. `seeds_2` stays 0-indexed; only the theta index is
+        # shifted.
+        theta_base = self._theta_index_base + self._theta_index_cursor
+
         # Inits
-        subrun_n = (
-            self.generator_config["pipeline"]["n_parameter_sets"]
-            // self.generator_config["pipeline"]["n_subruns"]
-        )
+        #
+        # divmod, not floor division alone: with n_parameter_sets=5 and n_subruns=2
+        # the floor gives subrun_n=2, so only indices 0..3 are ever generated -- the
+        # run produces fewer parameter sets than configured, and the cursor below
+        # (which advances by the configured n_parameter_sets, so that the documented
+        # offset arithmetic task_id * n_files * n_parameter_sets stays valid) leaves
+        # index 4 unused for good. The remainder is spread one extra index per
+        # subrun over the first `remainder` subruns. Nothing changes when the
+        # division is exact.
+        n_parameter_sets = self.generator_config["pipeline"]["n_parameter_sets"]
+        n_subruns = self.generator_config["pipeline"]["n_subruns"]
+        subrun_n, remainder = divmod(n_parameter_sets, n_subruns)
+
+        # More subruns than parameter sets would otherwise mean empty rounds, each
+        # still paying for a process pool.
+        n_rounds = min(n_subruns, n_parameter_sets)
 
         # Common parallelization wrapper (works for all strategies)
         out_list = []
-        for i in range(self.generator_config["pipeline"]["n_subruns"]):
+        for i in range(n_rounds):
             if verbose:
-                logger.debug(
-                    "generation round: %d of %d",
-                    i + 1,
-                    self.generator_config["pipeline"]["n_subruns"],
-                )
+                logger.debug("generation round: %d of %d", i + 1, n_rounds)
 
-            start_idx = i * subrun_n
-            end_idx = (i + 1) * subrun_n
+            start_idx = i * subrun_n + min(i, remainder)
+            end_idx = start_idx + subrun_n + (1 if i < remainder else 0)
 
             # One worker per allowed CPU, not n_cpus - 1.
             #
@@ -494,7 +563,7 @@ class TrainingDataGenerator:  # noqa: N801
                     # Map strategy.generate_for_parameter_set over parameter indices
                     results = pool.map(
                         self._generation_pipeline.generate_for_parameter_set,
-                        list(range(start_idx, end_idx)),
+                        list(range(theta_base + start_idx, theta_base + end_idx)),
                         list(seeds_2[start_idx:end_idx]),
                     )
                     out_list += results
@@ -502,12 +571,15 @@ class TrainingDataGenerator:  # noqa: N801
                 if verbose:
                     logger.info("No Multiprocessing, since only one cpu requested!")
                 for parameter_sampling_seed, seed in zip(
-                    range(start_idx, end_idx), seeds_2[start_idx:end_idx]
+                    range(theta_base + start_idx, theta_base + end_idx),
+                    seeds_2[start_idx:end_idx],
                 ):
                     result = self._generation_pipeline.generate_for_parameter_set(
                         parameter_sampling_seed, seed
                     )
                     out_list.append(result)
+
+        self._theta_index_cursor += n_parameter_sets
 
         # Filter successful results
         successful_results = [r for r in out_list if r["success"]]
@@ -548,10 +620,20 @@ class TrainingDataGenerator:  # noqa: N801
         for key in all_keys:
             data[key] = safe_concatenate(key)
 
-        # Add metadata
+        # Add metadata. The recorded config names this file's first theta index
+        # under the key the generator reads it from, so it is self-describing: the
+        # file holds indices [offset, offset + n_parameter_sets), and a generator
+        # built from the recorded config reproduces exactly this file. Copied, not
+        # mutated: `self.generator_config` may be a custom pipeline's own dict,
+        # and a second generator on it must still see no explicit offset.
+        generator_config = dict(self.generator_config)
+        generator_config["pipeline"] = {
+            **generator_config["pipeline"],
+            "parameter_sampler_index_offset": theta_base,
+        }
         data.update(
             {
-                "generator_config": self.generator_config,
+                "generator_config": generator_config,
                 "model_config": self.model_config,
             }
         )

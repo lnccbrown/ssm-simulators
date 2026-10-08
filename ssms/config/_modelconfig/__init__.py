@@ -40,7 +40,7 @@ from .tradeoff import (
     get_tradeoff_weibull_no_bias_config,
 )
 
-from .angle import get_angle_config
+from .angle import get_angle_config, get_angle_extended_config
 from .weibull import get_weibull_config
 from .ddm_par2 import (
     get_ddm_par2_angle_no_bias_config,
@@ -50,6 +50,7 @@ from .ddm_par2 import (
     get_ddm_par2_weibull_no_bias_config,
 )
 from .ddm_random import (
+    get_ddm_normal_st_config,
     get_ddm_rayleight_config,
     get_ddm_sdv_config,
     get_ddm_st_config,
@@ -140,7 +141,7 @@ from .shrink import (
 )
 
 from .addm import get_addm_config
-from .validation import get_invalid_configs
+from .validation import get_invalid_configs, get_invalid_ndt_edge_shift_configs
 
 
 def _normalize_param_bounds(config: dict) -> dict:
@@ -193,6 +194,7 @@ def get_model_config():
     configs = {
         "ddm": get_ddm_config(),
         "ddm_st": get_ddm_st_config(),
+        "ddm_normal_st": get_ddm_normal_st_config(),
         "ddm_truncnormt": get_ddm_truncnormt_config(),
         "ddm_rayleight": get_ddm_rayleight_config(),
         "ddm_sdv": get_ddm_sdv_config(),
@@ -239,6 +241,7 @@ def get_model_config():
         "levy": get_levy_config(),
         "levy_angle": get_levy_angle_config(),
         "angle": get_angle_config(),
+        "angle_extended": get_angle_extended_config(),
         "weibull": get_weibull_config(),
         "gamma_drift": get_gamma_drift_config(),
         "inv_temp_softmax_2": get_inv_temp_softmax_2_config(),
@@ -314,9 +317,11 @@ __all__ = [
     "get_model_config",
     "get_ddm_config",
     "get_angle_config",
+    "get_angle_extended_config",
     "get_weibull_config",
     "get_full_ddm_config",
     "get_ddm_st_config",
+    "get_ddm_normal_st_config",
     "get_ddm_truncnormt_config",
     "get_ddm_rayleight_config",
     "get_ddm_sdv_config",
@@ -374,6 +379,13 @@ def _validate_configs():
     }
     if any(invalid_configs.values()):
         raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
+    invalid_ndt_edge_shifts = get_invalid_ndt_edge_shift_configs(
+        _ALL_CONFIGS["model_configs"]
+    )
+    if invalid_ndt_edge_shifts:
+        raise ValueError(
+            f"Invalid ndt_edge_shift declarations detected: {invalid_ndt_edge_shifts}"
+        )
 
 
 _validate_configs()

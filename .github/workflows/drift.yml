@@ -1,9 +1,9 @@
 name: Drift
 
 # Scheduled drift detection: re-run the full test workflow (unit matrix,
-# GSL/OpenMP multithreading, notebooks) against a fresh dependency resolve of
-# an unchanged main. No lockfile is committed, so a red run here means an
-# upstream or toolchain release broke us — before any PR trips over it.
+# GSL/OpenMP multithreading, notebooks) against the committed lockfile on an
+# unchanged main. A red run here signals runner, action, or system-toolchain
+# drift — before any PR trips over it.
 # Failures file ONE deduped `drift`-labeled issue; green runs close it.
 on:
   schedule:
@@ -20,8 +20,8 @@ permissions:
 
 jobs:
   tests:
-    # Only `report` needs issue-write; the token that runs freshly-resolved
-    # third-party test code should not carry it.
+    # Only `report` needs issue-write; the token that runs third-party code
+    # installed from the committed lockfile should not carry it.
     permissions:
       contents: read
     uses: ./.github/workflows/run_tests.yml
@@ -91,7 +91,7 @@ jobs:
               "Scheduled drift run failed in:${FAILED_JOBS}" \
               "Run: $RUN_URL" \
               "" \
-              "This re-runs the existing test workflow against a fresh dependency resolve of an unchanged main — a failure usually means an upstream or toolchain release, not a code change." \
+              "This re-runs the existing test workflow against the committed lockfile on an unchanged main — a failure usually means runner, action, or system-toolchain drift, not a code change." \
               "Triage via the spine's audit-drift skill.")
             gh issue create --repo "$GITHUB_REPOSITORY" --label drift \
               --title "$TITLE" --body "$BODY"

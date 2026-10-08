@@ -1,134 +1,89 @@
-# RLSSM simulation (`ssms.rl`)
+# RLSSM API (`ssms.rl`)
 
-The `ssms.rl` namespace provides a compositional framework for simulating
-reinforcement-learning sequential sampling models (RLSSMs). Combine a learning
-process, SSM decision process, and task environment; simulate balanced panels
-compatible with HSSM inference.
+<span id="rlssm-simulation-ssmsrl" aria-hidden="true"></span>
 
-An RLSSM links two time scales:
+The `ssms.rl` namespace is the simulator-side API for reinforcement-learning
+sequential sampling models. It defines model structure, task environments,
+learning processes, simulation, validation, and the neutral assembled-model
+contract consumed by inference packages.
 
-- within a trial, a decision process generates a response, and sometimes an RT;
-- across trials, a learning process updates latent states such as Q-values from
-  choices, feedback, rewards, or other task context.
+<span id="quick-start" aria-hidden="true"></span>
 
-The same ssms-defined learning rule can therefore serve three workflows:
+This page is a reference roll-up. For procedures, start with
+[Simulate your first RLSSM](../core_tutorials/rlssm_tutorial.ipynb), then use the
+[advanced component guide](../core_tutorials/rlssm_advanced_tutorial.ipynb),
+[choice-only guide](../core_tutorials/choice_only_rl_models.ipynb), or
+[HSSM handoff guide](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb).
 
-1. synthetic data generation in `ssms.rl.Simulator`;
-2. RLSSM likelihood construction in HSSM through
-   `hssm.rl.RLSSMConfig.from_ssms_model(...)`;
-3. posterior predictive simulation by conditioning learning on observed trial
-   histories and resimulating responses with posterior parameter draws.
+<span id="public-api" aria-hidden="true"></span>
 
-## Quick start
+## Namespace exports
 
-```python
-import ssms.rl as rl
+Use `import ssms.rl as rl`. The root namespace exports:
 
-print(rl.preset.info("2AB_RW_Angle"))
-config = rl.preset.get("2AB_RW_Angle")
-sim = rl.Simulator(config)
-data = sim.simulate(
-    theta={
-        "rl_alpha": 0.2,
-        "scaler": 2.0,
-        "a": 1.5,
-        "z": 0.5,
-        "t": 0.3,
-        "theta": 0.2,
-    },
-    n_trials=200,
-    n_participants=20,
-    random_state=42,
-)
-```
-
-See the [RLSSM tutorial](../core_tutorials/rlssm_tutorial.ipynb)
-for presets, building a model, simulating participants, validation, and plots.
-For focused examples, see
-[RLSSM simulation and HSSM handoff](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb)
-and [choice-only RL models](../core_tutorials/choice_only_rl_models.ipynb).
-
-## Public API
-
-| Export | Role |
-|--------|------|
-| `ModelConfig` | Structural model specification (no concrete `theta` values) |
-| `Simulator` | Trial-wise generative simulation loop |
-| `AssembledModel` | Validated executable form of a config (inference-oriented) |
-| `resolve_model` | Resolve preset name or validate a `ModelConfig` |
-| `env` | Task environments (`Bandit`, `TaskConfig`, …) |
-| `learning` | Learning processes (`RescorlaWagnerDrift`, `RescorlaWagnerSoftmax`, …) |
+| Export | Contract |
+| --- | --- |
+| `Simulator` | Trial-wise generative and observed-history-conditioned simulation |
+| `ModelConfig` | Structural model specification; concrete parameter values are passed separately |
+| `AssembledModel` | Validated, backend-resolved participant-function contract |
+| `resolve_model` | Resolve a preset name or validate a `ModelConfig` |
+| `env` | Task-environment protocols, implementations, and registry |
+| `learning` | Learning-process protocol and built-in implementations |
 | `preset` | Preset registry (`get`, `list`, `info`, `register`) |
-| `validation` | Data-validation module; `ssms.rl.validation.validate_rlssm_data` is the standalone helper behind `ModelConfig.validate_data()` (not re-exported at the `rl` namespace) |
 
-Import style: `import ssms.rl as rl`.
+<span id="model-configuration" aria-hidden="true"></span>
+<span id="derived-decision-process-config-_ssm_config" aria-hidden="true"></span>
 
-Most users should start from `rl.preset.get(...)` and `rl.Simulator(...)`. Use
-`ModelConfig` directly when you need a custom task environment, response mapping,
-or learning process. Use `assemble(backend="jax")` only when integrating with an
-inference package or inspecting the participant-wise computed-parameter contract.
+## Model configuration contract
 
-## Model configuration
+`ModelConfig` describes structure, not participant parameter values. Its main
+fields are:
 
-`ModelConfig` describes model **structure**, not parameter values. Pass concrete
-values as `theta` to `Simulator.simulate()`.
+| Field | Meaning |
+| --- | --- |
+| `decision_process` | Registered SSM name such as `angle` or `ddm` |
+| `learning_process` | Object satisfying `LearningProcess` |
+| `task_environment` | Environment object or `TaskConfig` shorthand |
+| `response_to_choice` | Mapping from SSM response labels to zero-based learning choices |
+| `learning_backend`, `gradient` | Backend and differentiability policy |
+| `context_fields` | Observable trial-context columns such as `feedback` |
+| `include_choice` | Whether simulator output includes the derived zero-based choice |
 
-Important fields:
+The private derived `_ssm_config` is built from the registered decision process
+and is not a constructor input. Public `ModelConfig` integration fields include
+`list_params`, `bounds`, `params_default`, `required_params`, and
+`response_to_choice`. After assembly, `AssembledModel.computed_params` exposes
+the ordered decision-process parameters supplied by the learning process.
 
-- `decision_process` — SSM name (`"angle"`, `"ddm"`, …)
-- `learning_process` — instance satisfying the `LearningProcess` protocol
-- `task_environment` — bandit or other task environment (or `TaskConfig` shorthand)
-- `response_to_choice` — map SSM response labels to zero-based learning choices
-- `learning_backend` / `gradient` — backend policy for simulation and HSSM export
-- `context_fields` — observable per-trial context columns such as `"feedback"`,
-  `"condition"`, `"block"`, or `"stimulus_id"`
-- `include_choice` — optionally include the derived zero-based `choice` column in
-  simulator output
+<span id="built-in-rescorla-wagner-learning-processes" aria-hidden="true"></span>
 
-### Derived decision-process config (`_ssm_config`)
+## Built-in learning processes
 
-`ModelConfig` builds an internal decision-process configuration in
-`__post_init__` via `ModelConfigBuilder.from_model(decision_process)`. Users
-never construct or pass this layer directly.
+| Class | Computed output | Action count |
+| --- | --- | --- |
+| `RescorlaWagnerDeltaRule` | State/update only | 2 or more |
+| `RescorlaWagnerDrift` | `v` | exactly 2 |
+| `RescorlaWagnerSoftmax` | `q0`, `q1`, ... | 2 or more |
+| `RescorlaWagnerRaceDrifts` | `v0`, `v1`, ... | 2 or more |
+| `RescorlaWagnerDualAlphaRule` | State/update only | 2 or more |
+| `RescorlaWagnerDualAlphaDrift` | `v` | exactly 2 |
+| `RescorlaWagnerDualAlphaSoftmax` | `q0`, `q1`, ... | 2 or more |
 
-It supplies SSM parameter names, default bounds, default values, and choice
-labels used to validate `choices`, derive `list_params` / `bounds`, and resolve
-which SSM parameters are computed by the learning process versus fixed in
-simulator `theta`. The assembled model and HSSM bridge consume the *derived*
-public fields (`list_params`, `computed_params`, `response_to_choice`, …), not
-`_ssm_config` itself.
+Drift learners compute trial-wise drift from learned value differences.
+Softmax learners expose Q-values and leave inverse-temperature application to
+the decision process. The dual-alpha variants distinguish positive and
+negative prediction errors.
 
-## Built-in Rescorla-Wagner learning processes
+<span id="built-in-presets" aria-hidden="true"></span>
 
-The built-in Rescorla-Wagner classes separate the Q-value update rule from the
-decision-process parameters emitted on each trial:
+## Preset registry
 
-| Class | Emits | Actions | Use case |
-|-------|-------|---------|----------|
-| `RescorlaWagnerDeltaRule` | none | `n_actions >= 2` | Core single-alpha Q-value state/update class for custom adapters |
-| `RescorlaWagnerDrift` | `v` | `n_actions == 2` | Two-action SSMs that need trial-wise drift, such as `angle` |
-| `RescorlaWagnerSoftmax` | `q0`, `q1`, ... | `n_actions >= 2` | Choice-only inverse-temperature softmax decision processes |
-| `RescorlaWagnerDualAlphaRule` | none | `n_actions >= 2` | Core dual-alpha Q-value state/update class |
-| `RescorlaWagnerDualAlphaDrift` | `v` | `n_actions == 2` | Two-action drift models with separate positive/negative learning rates |
-| `RescorlaWagnerDualAlphaSoftmax` | `q0`, `q1`, ... | `n_actions >= 2` | Choice-only softmax models with separate positive/negative learning rates |
-| `RescorlaWagnerRaceDrifts` | `v0`, `v1`, ... | `n_actions >= 2` | Per-accumulator drifts for race SSMs (e.g. `4AB_RW_RaceNoBiasAngle`) |
-
-Use `RescorlaWagnerDeltaRule` and `RescorlaWagnerDualAlphaRule` when you need
-the update rule but want to write a custom decision-facing adapter. Use the
-concrete drift or softmax classes directly for standard presets and HSSM handoff.
-
-For drift models, the learner computes `v = (Q[1] - Q[0]) * scaler`, so `scaler`
-is a free learning-process parameter. For softmax models, the learner emits the
-raw `q0..qN` values and the decision process uses the fixed SSM parameter `beta`
-as the inverse temperature.
-
-## Built-in presets
-
-Built-in presets are registered under `ssms.rl.preset` and are the canonical
-source of truth for HSSM handoff. Current public presets include:
+`ssms.rl.preset` is the source of truth for built-in RLSSM structures. Query the
+runtime registry with `preset.list()` and inspect a resolved contract with
+`preset.info(name)`.
 
 | Preset | Decision process | Learning process | Response |
-|--------|------------------|------------------|----------|
+| --- | --- | --- | --- |
 | `2AB_RW_DDM` | `ddm` | `RescorlaWagnerDrift` | `rt`, `response` |
 | `2AB_RW_Angle` | `angle` | `RescorlaWagnerDrift` | `rt`, `response` |
 | `2AB_RW_Weibull` | `weibull` | `RescorlaWagnerDrift` | `rt`, `response` |
@@ -139,264 +94,98 @@ source of truth for HSSM handoff. Current public presets include:
 | `4AB_RW_InvTempSoftmax` | `inv_temp_softmax_4` | `RescorlaWagnerSoftmax` | `response` |
 | `4AB_RW_RaceNoBiasAngle` | `race_no_bias_angle_4` | `RescorlaWagnerRaceDrifts` | `rt`, `response` |
 
-Use `rl.preset.list()` for the runtime list and `rl.preset.info(name)` for the
-full model contract, including required parameters, choices, response mapping,
-computed SSM parameters, and HSSM compatibility metadata.
+<span id="participant-wise-parameters" aria-hidden="true"></span>
+<span id="simulation-modes" aria-hidden="true"></span>
 
-`4AB_RW_RaceNoBiasAngle` uses the four-choice `race_no_bias_angle_4` LAN. Its
-learning process computes the race drift rates from pre-update RW values with
-the explicit scaling contract `v_i = scaler * q_i` for `i=0..3`.
+## Simulator contract
 
-## Task environment protocols
+`Simulator.simulate()` accepts scalar parameter values shared by all
+participants or one-dimensional participant-wise values. All participant-wise
+arrays must have the same length; an explicit `n_participants` must match it.
 
-`TaskEnvironment` is the base protocol for per-trial context and post-decision
-signals. Models that map SSM response labels to learning choices require a
-`DiscreteChoiceEnvironment` (adds `n_choices` and `response_labels`). Built-in
-bandits implement `DiscreteChoiceEnvironment`; `Bandit.n_arms` is an alias for
+The supported modes are:
+
+| Mode | Contract |
+| --- | --- |
+| `generative` | Sample task context, response, and learning updates end to end |
+| `ppc` | Condition learning on observed history while resimulating responses |
+
+PPC input must satisfy the same panel contract as inference validation. The
+observed response history conditions learning; returned responses are newly
+simulated.
+
+<span id="choice-only-inverse-temperature-softmax-presets" aria-hidden="true"></span>
+
+## Choice-only contract
+
+The inverse-temperature softmax presets declare `response=["response"]` and do
+not define an RT likelihood. Generative output retains `rt=-1.0` only as a
+compatibility placeholder. That value is distinct from
+`OMISSION_SENTINEL == -999.0`.
+
+Validation, PPC, and HSSM handoff use a response-only table with the placeholder
+column removed. Custom tasks may pair an `inv_temp_softmax_N` decision process
+with a compatible learning process and environment.
+
+<span id="task-environment-protocols" aria-hidden="true"></span>
+<span id="context-fields" aria-hidden="true"></span>
+
+## Task environments and registry
+
+`TaskEnvironment` defines per-trial context and post-decision signals.
+`DiscreteChoiceEnvironment` adds `n_choices` and ordered `response_labels`.
+Built-in bandits satisfy the discrete protocol; `Bandit.n_arms` aliases
 `n_choices`.
 
-## Participant-wise parameters
+`TaskEnvironmentBuilder` is the callable type stored by the task registry.
+`register_task()` adds a builder, `registered_tasks()` lists available names,
+and `TaskConfig.build_environment()` resolves one. The built-in `bandit` task
+supports Bernoulli and Gaussian rewards.
 
-`Simulator.simulate()` accepts scalar theta values shared by all participants
-and one-dimensional participant-wise values. When any theta value is
-participant-wise, all participant-wise values must have the same length. If
-`n_participants` is omitted, that length is used as the participant count:
+<span id="data-validation" aria-hidden="true"></span>
 
-```python
-data = sim.simulate(
-    theta={
-        "rl_alpha": [0.15, 0.25, 0.35],
-        "scaler": 2.0,
-        "a": [1.1, 1.4, 1.7],
-        "z": 0.5,
-        "t": 0.3,
-        "theta": 0.2,
-    },
-    n_trials=200,
-    random_state=42,
-)
-```
+## Data-validation contract
 
-Passing `n_participants` explicitly is allowed, but it must match the
-participant-wise theta length.
+`ModelConfig.validate_data()` and `validate_rlssm_data()` return a
+`DataValidationReport` containing zero or more `DataValidationIssue` values.
+Call `raise_for_errors()` when invalid panels must fail fast.
 
-## Simulation modes
+Required columns are derived from the model:
 
-`Simulator.simulate()` supports two modes:
+- `participant_id`;
+- every configured response column;
+- every observable `context_fields` entry.
 
-- `mode="generative"` — the default unconstrained simulation loop. The simulator
-  samples responses, task context, and learning updates end to end.
-- `mode="ppc"` — observed-history-conditioned posterior predictive simulation.
-  Learning state is conditioned on observed trial history; RT/response are
-  resimulated and observed context fields are copied into output. After HSSM
-  inference, posterior draws can be routed through the same simulator contract
-  to check whether inferred learning and decision parameters reproduce behavior.
+Validation checks balanced panels, contiguous participant blocks, response
+labels and mappings, missing values, RT validity, and omission sentinels. Rows
+within each participant are processed in their existing order. `trial_id` is an
+ordinary column, not a reserved ordering instruction.
 
-PPC mode uses the same data contract as inference validation (see below). The
-observed panel must include `participant_id`, all `config.response` columns
-(default `rt` and `response`), and every configured context field (default
-`feedback` for the built-in bandit):
+<span id="assembled-model-inference-integration" aria-hidden="true"></span>
+<span id="hssm-bridge" aria-hidden="true"></span>
 
-## Data validation
+## Assembled-model and HSSM contracts
 
-``ModelConfig.validate_data()`` validates **external** trial panels — empirical
-data or simulated panels you plan to pass to PPC mode or HSSM. Generative
-simulation does not self-validate its output; only ``mode="ppc"`` validates
-user-supplied ``observed_data`` before conditioning on it.
+`ModelConfig.assemble()` returns an `AssembledModel` with backend-resolved
+participant input fields and computed-parameter functions. Runtime choice is
+derived from `response_to_choice`; observable context comes from
+`context_fields`.
 
-Validate empirical or simulated panels before PPC or HSSM handoff:
+HSSM owns inference and exposes `hssm.RLSSM(data, model=...)` as the normal
+entry point for named ssms presets. An in-memory custom `ModelConfig` can use
+the advanced `hssm.rl.RLSSMConfig.from_ssms_model(...)` path. The
+[HSSM handoff guide](../core_tutorials/rlssm_simulation_hssm_handoff.ipynb)
+owns that procedure, and HSSM's rendered
+[RLSSM reference](https://lnccbrown.github.io/HSSM/api/rl/) owns inference-side
+options.
 
-```python
-report = config.validate_data(data)
-report.print()
-report.raise_for_errors()
-```
+`ModelConfig.to_hssm_config_dict()` remains an inspection and compatibility
+surface. Its inference placeholders are not a complete HSSM model and should
+not be assembled manually.
 
-Required columns are derived from the model config:
+<span id="module-reference" aria-hidden="true"></span>
 
-- `participant_id`
-- every name in `config.response` (default `rt`, `response`)
-- every name in `config.context_fields` (default `feedback` for the built-in bandit)
-
-The validator checks balanced panels, contiguous participant blocks, response labels
-compatible with `config.choices` and `response_to_choice`, missing values, and
-omission sentinels. Within each participant, rows are processed in their existing
-order. `trial_id` is an ordinary data/context column, not a reserved reset or ordering
-field. Errors include repair hints, for example renaming a reward column or adding it
-to `ModelConfig(context_fields=[...])`.
-
-PPC mode example (observed data must satisfy the same contract):
-
-```python
-observed = sim.simulate(
-    theta={
-        "rl_alpha": 0.2,
-        "scaler": 2.0,
-        "a": 1.5,
-        "z": 0.5,
-        "t": 0.3,
-        "theta": 0.2,
-    },
-    n_trials=200,
-    n_participants=20,
-    random_state=1,
-)
-
-ppc = sim.simulate(
-    theta={
-        "rl_alpha": 0.2,
-        "scaler": 2.0,
-        "a": 1.5,
-        "z": 0.5,
-        "t": 0.3,
-        "theta": 0.2,
-    },
-    mode="ppc",
-    observed_data=observed,
-    random_state=2,
-)
-```
-
-The observed response history is used only to condition learning state; PPC output
-responses are newly simulated.
-
-## Choice-only inverse-temperature softmax presets
-
-`2AB_RW_InvTempSoftmax`, `3AB_RW_InvTempSoftmax`, `4AB_RW_InvTempSoftmax`, and
-`2AB_RW_DualAlpha_InvTempSoftmax` are response-only RL presets. They use
-`RescorlaWagnerSoftmax` or `RescorlaWagnerDualAlphaSoftmax` to emit `q0..qN`,
-and the `inv_temp_softmax_N` decision process uses `beta` as the inverse
-temperature for choice probabilities.
-
-These presets declare `response=["response"]` because the softmax decision
-process has no response-time likelihood. The low-level softmax simulator still
-returns an `rt` array for compatibility with the generic simulator interface,
-but every value is `-1.0` and should be treated only as a non-omission
-placeholder. It is not a response time, and it is intentionally distinct from
-`OMISSION_SENTINEL == -999.0`, which ssms and HSSM use for omissions,
-deadline/no-response trials, and missing RT handling.
-
-For validation and HSSM handoff, omit the placeholder column:
-
-```python
-config = rl.preset.get("2AB_RW_InvTempSoftmax")
-data = rl.Simulator(config).simulate(theta=theta, n_trials=200)
-
-report = config.validate_data(data.drop(columns=["rt"]))
-report.raise_for_errors()
-```
-
-Choice-only PPC uses the same response-only contract. Empirical `observed_data`
-must not contain an `rt` column for these presets, and PPC output omits `rt`:
-
-```python
-response_only = data.drop(columns=["rt"])
-ppc = rl.Simulator(config).simulate(
-    theta={"rl_alpha": 0.2, "beta": 2.0},
-    mode="ppc",
-    observed_data=response_only,
-    random_state=13,
-)
-```
-
-The built-in `4AB_RW_InvTempSoftmax` preset covers four-choice softmax
-simulation. Custom `ModelConfig` objects can still pair
-`RescorlaWagnerSoftmax(n_actions=4)` with `decision_process="inv_temp_softmax_4"`
-when a task needs different environment labels, rewards, or priors.
-
-### Context fields
-
-Outcome-like values are ordinary context fields. By default, built-in bandits emit a
-`"feedback"` column and built-in Rescorla-Wagner learners require `context["feedback"]`
-for updates. Use a custom feedback field by configuring both the learner and the model
-context:
-
-```python
-config = rl.ModelConfig(
-    ...,
-    learning_process=rl.learning.RescorlaWagnerDrift(feedback_field="reward"),
-    context_fields=["reward"],
-)
-```
-
-For learning processes that update from choices only, declare `required_context_fields`
-with runtime fields such as `"choice"` and use no observable context fields:
-
-```python
-config = rl.ModelConfig(
-    ...,
-    learning_process=choice_only_learning,
-    context_fields=[],
-)
-```
-
-## Assembled model (inference integration)
-
-Assemble a config when you need validated metadata or participant-wise computed
-parameter functions for downstream packages (for example HSSM):
-
-```python
-assembled = config.assemble(backend="jax")
-
-# Derived from config — no manual field lists for standard models
-fields = assembled.get_participant_input_fields()
-compute_params = assembled.assemble_participant_fn()
-```
-
-`assemble_participant_fn()` accepts optional overrides (`input_fields`,
-`response_field`) for non-standard layouts. Runtime context fields such as `choice`
-are derived internally from `response_to_choice`; observable context fields such as
-`feedback` come from `config.context_fields`.
-
-Advanced resolution:
-
-```python
-config = rl.resolve_model("2AB_RW_Angle")  # str or ModelConfig
-assembled = config.assemble(backend="auto")
-```
-
-## HSSM bridge
-
-The active HSSM handoff path is HSSM's bridge factory:
-
-```python
-import hssm
-import ssms.rl as rl
-
-ssms_config = rl.preset.get("2AB_RW_Angle")
-hssm_config = hssm.rl.RLSSMConfig.from_ssms_model(ssms_config)
-model = hssm.RLSSM(data=data, model_config=hssm_config)
-```
-
-`RLSSMConfig.from_ssms_model(...)` resolves the `ssms.rl` model, assembles it
-with the JAX backend, checks gradient support, and wraps
-`AssembledModel.assemble_participant_fn(output="dict")` for HSSM's annotated
-computed-parameter contract.
-
-This bridge is what lets HSSM evaluate RLSSM likelihoods while keeping the
-learning rule, response-to-choice mapping, and task context source of truth in
-ssms. For choice-only RL models, pass response-only data to HSSM, not the
-generative simulator's placeholder `rt` column.
-
-HSSM's bridge factory (`hssm.rl.RLSSMConfig.from_ssms_model`) consumes the
-`assemble(backend=...)` API and requires an available gradient for JAX-based
-sampling.
-
-`ModelConfig.to_hssm_config_dict()` remains useful for structural inspection
-and compatibility with lower-level HSSM config workflows. It exports shared
-structural fields, plus:
-
-- `learning_backend`, `gradient`, `learning_process_kind`
-- `participant_contract` — derived trial input layout (`trial_params`,
-  `response_field`, `context_fields`, `input_fields`). Users never construct
-  this directly; it is exported for bridge metadata and debugging.
-
-Inference-only placeholders in `to_hssm_config_dict()` (`ssm_logp_func`,
-`learning_process`) are not a complete model by themselves. A higher-level
-`hssm.RLSSM(data, model=...)` wrapper that consumes `ssms.rl` directly is
-planned separately in HSSM.
-
-## Module reference
+## Core objects
 
 ::: ssms.rl.config.ModelConfig
 
@@ -406,6 +195,8 @@ planned separately in HSSM.
 
 ::: ssms.rl.assembled.resolve_model
 
+## Preset functions
+
 ::: ssms.rl.preset.get
 
 ::: ssms.rl.preset.list
@@ -414,7 +205,31 @@ planned separately in HSSM.
 
 ::: ssms.rl.preset.register
 
+## Environment objects
+
+::: ssms.rl.env.TaskEnvironment
+
+::: ssms.rl.env.DiscreteChoiceEnvironment
+
+::: ssms.rl.env.TaskEnvironmentBuilder
+
+::: ssms.rl.env.Bandit
+
+::: ssms.rl.env.TaskConfig
+
+::: ssms.rl.env.register_task
+
+::: ssms.rl.env.registered_tasks
+
+## Validation objects
+
+::: ssms.rl.validation.DataValidationIssue
+
+::: ssms.rl.validation.DataValidationReport
+
 ::: ssms.rl.validation.validate_rlssm_data
+
+## Learning-process objects
 
 ::: ssms.rl.learning.LearningProcess
 
@@ -424,10 +239,10 @@ planned separately in HSSM.
 
 ::: ssms.rl.learning.RescorlaWagnerSoftmax
 
+::: ssms.rl.learning.RescorlaWagnerRaceDrifts
+
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaRule
 
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaDrift
 
 ::: ssms.rl.learning.RescorlaWagnerDualAlphaSoftmax
-
-::: ssms.rl.learning.RescorlaWagnerRaceDrifts

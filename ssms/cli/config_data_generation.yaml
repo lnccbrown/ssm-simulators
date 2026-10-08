@@ -4,6 +4,11 @@ GENERATOR_APPROACH: 'lan'
 PIPELINE:
   N_PARAMETER_SETS: 100
   N_SUBRUNS: 20
+  # First theta index of the run. Omit it (the default) and each run draws one
+  # from entropy and records it in the output's generator_config, so SLURM array
+  # tasks sharing this file get distinct parameter sets; set it to regenerate a
+  # file exactly. From an array task id use task_id * --n-files * N_PARAMETER_SETS.
+  # PARAMETER_SAMPLER_INDEX_OFFSET: 0
 
 SIMULATOR:
   N_SAMPLES: 2000
