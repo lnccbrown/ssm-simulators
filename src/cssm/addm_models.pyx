@@ -6,9 +6,9 @@
 
 """Attentional Drift Diffusion Model (aDDM) simulator.
 
-The simulation engine (inline xoshiro256++/Box-Muller PRNG + the stage-indexed
-``_run_heterog_trial`` / ``_simulate_heterog_multistage`` kernel) is **vendored
-verbatim from efficient-fpt** (efpt) @ commit ``d97a451``, MIT (c) 2025 Sicheng
+The simulation engine (the xoshiro256++/Box-Muller PRNG, now shared through
+``_xoshiro_rng.pxi``, + the stage-indexed ``_run_heterog_trial`` /
+``_simulate_heterog_multistage`` kernel) is **vendored verbatim from efficient-fpt** (efpt) @ commit ``d97a451``, MIT (c) 2025 Sicheng
 Liu — the same in-house source as HSSM's JAX aDDM likelihood, so simulator and
 likelihood share one engine (tight sim<->likelihood parity). efpt is an in-house
 ecosystem project; the intended end-state is to absorb & relicense it under the
@@ -56,72 +56,10 @@ from cssm._utils import (
 cdef double OMISSION = -999.0
 
 
-# ===========================================================================
-# Vendored from efficient-fpt @ d97a451 (src/efficient_fpt/cython/simulator.pyx)
-# xoshiro256++ seeded per trial via SplitMix64 + Box-Muller Gaussian transform.
-# Do not edit in place — re-vendor.
-# ===========================================================================
-cdef struct Xoshiro256State:
-    uint64_t s0
-    uint64_t s1
-    uint64_t s2
-    uint64_t s3
-
-
-cdef inline uint64_t _rotl(uint64_t x, int k) noexcept nogil:
-    return (x << k) | (x >> (64 - k))
-
-
-cdef inline uint64_t xoshiro256pp_next(Xoshiro256State *state) noexcept nogil:
-    cdef uint64_t result = _rotl(state.s0 + state.s3, 23) + state.s0
-    cdef uint64_t t = state.s1 << 17
-    state.s2 ^= state.s0
-    state.s3 ^= state.s1
-    state.s1 ^= state.s2
-    state.s0 ^= state.s3
-    state.s2 ^= t
-    state.s3 = _rotl(state.s3, 45)
-    return result
-
-
-cdef inline uint64_t splitmix64_next(uint64_t *state) noexcept nogil:
-    state[0] += <uint64_t>0x9e3779b97f4a7c15
-    cdef uint64_t z = state[0]
-    z = (z ^ (z >> 30)) * <uint64_t>0xbf58476d1ce4e5b9
-    z = (z ^ (z >> 27)) * <uint64_t>0x94d049bb133111eb
-    return z ^ (z >> 31)
-
-
-cdef inline void seed_xoshiro256(Xoshiro256State *state, uint64_t seed) noexcept nogil:
-    cdef uint64_t sm_state = seed
-    state.s0 = splitmix64_next(&sm_state)
-    state.s1 = splitmix64_next(&sm_state)
-    state.s2 = splitmix64_next(&sm_state)
-    state.s3 = splitmix64_next(&sm_state)
-
-
-cdef inline double uint64_to_double(uint64_t x) noexcept nogil:
-    return <double>(x >> 11) * (1.0 / 9007199254740992.0)  # 2^53
-
-
-cdef struct BoxMullerState:
-    double spare
-    int has_spare
-
-
-cdef inline double box_muller_next(Xoshiro256State *rng_state, BoxMullerState *bm_state) noexcept nogil:
-    cdef double u1, u2, mag
-    if bm_state.has_spare:
-        bm_state.has_spare = 0
-        return bm_state.spare
-    u1 = uint64_to_double(xoshiro256pp_next(rng_state))
-    u2 = uint64_to_double(xoshiro256pp_next(rng_state))
-    if u1 < 1e-300:
-        u1 = 1e-300
-    mag = sqrt(-2.0 * log(u1))
-    bm_state.spare = mag * sin(2.0 * M_PI * u2)
-    bm_state.has_spare = 1
-    return mag * cos(2.0 * M_PI * u2)
+# The xoshiro256++ / Box-Muller generator vendored with this engine lives in
+# _xoshiro_rng.pxi so other prange kernels can share it. The arithmetic and
+# therefore the stream are unchanged (pinned in tests/test_addm_simulator.py).
+include "_xoshiro_rng.pxi"
 
 
 cdef void _run_heterog_trial(
