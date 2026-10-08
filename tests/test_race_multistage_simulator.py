@@ -135,3 +135,128 @@ def test_deadline_less_than_nondecision_time_is_rejected():
             max_t=1.0,
             random_state=3,
         )
+
+
+def _run(inputs, **overrides):
+    kwargs = dict(n_samples=2, delta_t=0.1, max_t=0.5, random_state=5)
+    kwargs.update(overrides)
+    return cssm.race_multistage(**inputs, **kwargs)
+
+
+def test_minimal_return_option_omits_x_final():
+    out = _run(_inputs(n_trials=2, n_accumulators=3), return_option="minimal")
+    assert "x_final" not in out["metadata"]
+    assert out["metadata"]["possible_choices"] == [0, 1, 2]
+
+
+def test_full_return_option_reports_x_final_per_sample_trial_accumulator():
+    out = _run(_inputs(n_trials=2, n_accumulators=3), n_samples=4)
+    assert out["metadata"]["x_final"].shape == (4, 2, 3)
+
+
+def test_invalid_return_option_is_rejected():
+    with pytest.raises(ValueError, match="return_option"):
+        _run(_inputs(), return_option="bogus")
+
+
+def _sigma_shape_mismatch():
+    inputs = _inputs()
+    inputs["sigma_array"] = np.zeros((1, 2, 2))
+    return inputs, {}
+
+
+def _d_entry_zero():
+    inputs = _inputs()
+    inputs["d_array"][:] = 0
+    return inputs, {}
+
+
+def _d_entry_above_padding():
+    inputs = _inputs()
+    inputs["d_array"][:] = 2
+    return inputs, {}
+
+
+def _d_wrong_shape():
+    inputs = _inputs()
+    inputs["d_array"] = np.ones((1, 3), dtype=np.int32)
+    return inputs, {}
+
+
+def _decreasing_active_nodes():
+    inputs = _inputs(n_stages=3)
+    inputs["node_array"][0, 0] = [0.0, 0.5, 0.2]
+    return inputs, {}
+
+
+def _x0_wrong_shape():
+    inputs = _inputs()
+    inputs["x0_array"] = np.zeros((1, 3))
+    return inputs, {}
+
+
+def _too_many_accumulators():
+    return _inputs(n_accumulators=33), {}
+
+
+def _mu_not_three_dimensional():
+    inputs = _inputs()
+    inputs["mu_array"] = np.zeros((1, 2))
+    return inputs, {}
+
+
+def _zero_samples():
+    return _inputs(), {"n_samples": 0}
+
+
+def _nondecision_time_wrong_length():
+    return _inputs(), {"nondecision_time": [0.1, 0.2]}
+
+
+def _deadline_wrong_length():
+    return _inputs(), {"deadline": [1.0, 2.0]}
+
+
+@pytest.mark.parametrize(
+    ("make_violation", "match"),
+    [
+        pytest.param(
+            _sigma_shape_mismatch, "sigma must have the same", id="sigma-shape"
+        ),
+        pytest.param(_d_entry_zero, "d_array entry must lie between", id="d-zero"),
+        pytest.param(
+            _d_entry_above_padding, "d_array entry must lie between", id="d-too-large"
+        ),
+        pytest.param(_d_wrong_shape, "d_array must have shape", id="d-shape"),
+        pytest.param(_decreasing_active_nodes, "nondecreasing", id="decreasing-nodes"),
+        pytest.param(_x0_wrong_shape, "x0 must have shape", id="x0-shape"),
+        pytest.param(
+            _too_many_accumulators,
+            "at most 32 accumulators",
+            id="too-many-accumulators",
+        ),
+        pytest.param(
+            _mu_not_three_dimensional, "mu_array must have shape", id="mu-ndim"
+        ),
+        pytest.param(_zero_samples, "n_samples must be positive", id="zero-samples"),
+        pytest.param(
+            _nondecision_time_wrong_length,
+            "nondecision_time must be a scalar",
+            id="ndt-length",
+        ),
+        pytest.param(
+            _deadline_wrong_length, "deadline must be a scalar", id="deadline-length"
+        ),
+    ],
+)
+def test_input_contract_violations_are_rejected(make_violation, match):
+    inputs, overrides = make_violation()
+    with pytest.raises(ValueError, match=match):
+        _run(inputs, **overrides)
+
+
+def test_decreasing_nodes_in_padded_stages_are_ignored():
+    inputs = _inputs(n_stages=3)
+    inputs["node_array"][0, 0] = [0.0, 0.5, 0.2]
+    inputs["d_array"][:] = 2
+    assert _run(inputs)["rts"].shape == (2, 1, 1)
