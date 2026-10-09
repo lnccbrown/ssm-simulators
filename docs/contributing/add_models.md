@@ -1,6 +1,16 @@
 # Contributing New Models to SSM-Simulators
 
-This guide helps academic researchers contribute new sequential sampling models to the `ssm-simulators` codebase. Whether you're a graduate student prototyping a novel model or an established researcher contributing a validated implementation, this tutorial will walk you through the process.
+This guide is for adding a model that will ship in the `ssm-simulators`
+package. It owns source placement, Python/Cython implementation, package tests,
+documentation, and pull-request requirements.
+
+If you only need a model in your own process, use
+[Create a custom model](../core_tutorials/tutorial_custom_models.ipynb) instead;
+that guide owns runtime boundary/drift registration and model composition. For
+selecting or overriding an existing configuration, start with
+[Configure models and data generation](../core_tutorials/tutorial_configs.ipynb).
+Reusable parameter-processing contributions have their own
+[custom parameter transform guide](add_parameter_adapters.md).
 
 ## Table of Contents
 
@@ -65,7 +75,7 @@ START: What do you want to contribute?
 **Optional**:
 - Cython knowledge (Level 3 only)
 - Experience with numerical computing
-- Familiarity with the package (see the [package overview tutorial](../core_tutorials/tutorial_capabilities.ipynb))
+- Familiarity with the package (see [Simulator and data-generation capabilities](../explanations/capabilities.md))
 
 ### Development Setup
 
@@ -319,6 +329,7 @@ def get_collapsing_ddm_config():
 - We're reusing `cssm.ddm_flexbound`—no new simulation code needed!
 - The `parameter_transforms` field is where you define any parameter processing logic
 - For simple models like this, both lists can be empty
+- If non-decision-time variability lets RTs fall below `t` (as in `ddm_st` and `full_ddm`, where it is `t + U(-st, st)`), declare the support edge with `"ndt_edge_shift": {"param": "st", "scale": 1.0}` — RTs then start at `t - scale * param`. Leave the key out when the model has no `t` parameter or when the kernel has no finite lower edge (as in `ddm_normal_st`); in both cases, and whenever you declare the key, also add the model to `KDE_NO_DISPLACE_T` in `ssms/config/kde_constants.py`.
 
 ### Step 4: Register Your Model
 
@@ -1373,7 +1384,7 @@ If you're stuck:
    - Complex: `race.py`, `lca.py`
 
 2. **Read documentation**:
-   - [Core Tutorials](../core_tutorials/tutorial_capabilities.ipynb)
+   - [Simulator and data-generation capabilities](../explanations/capabilities.md)
    - [API Documentation](../api/basic_simulators.md)
 
 3. **GitHub issues**: Search for similar problems

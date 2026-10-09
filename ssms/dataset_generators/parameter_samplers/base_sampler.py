@@ -129,7 +129,10 @@ class AbstractParameterSampler(ABC):
             ValueError: If a dependency references an undefined parameter
         """
         graph: dict[str, set[str]] = defaultdict(set)
-        all_params = set(self.param_space.keys())
+        # `all_params` must preserve a deterministic order: it seeds the insertion
+        # order of `graph` below, which `_topological_sort` walks. A `set` here made
+        # that order a function of PYTHONHASHSEED, i.e. different in every process.
+        all_params: dict[str, None] = dict.fromkeys(self.param_space.keys())
 
         for param, bounds in self.param_space.items():
             # Extract dependencies from bounds
@@ -148,7 +151,7 @@ class AbstractParameterSampler(ABC):
                 # Add edge: dependency -> param (param depends on dependency)
                 graph[dependency].add(param)
 
-            all_params.update(dependencies)
+            all_params.update(dict.fromkeys(sorted(dependencies)))
 
         # Ensure all parameters are in the graph (even those with no dependents)
         for param in all_params:
@@ -158,10 +161,14 @@ class AbstractParameterSampler(ABC):
         return dict(graph)
 
     def _topological_sort(self) -> list[str]:
-        """Perform topological sort to determine sampling order.
+        """Determine the sampling order: declared order, dependencies first.
 
-        Uses depth-first search to create a valid sampling order where all
-        dependencies are sampled before the parameters that depend on them.
+        Parameters are placed in `param_space` insertion order, each one right
+        after the parameters its bounds name, which are pulled ahead of it when
+        they are declared later. For a space without dependent bounds this is
+        exactly the declared order, and in every case it is a function of
+        `param_space` alone -- never of PYTHONHASHSEED -- so the parameter <->
+        RNG-draw assignment in `sample()` is identical in every process.
 
         Returns:
             List of parameter names in sampling order
@@ -169,34 +176,34 @@ class AbstractParameterSampler(ABC):
         Raises:
             ValueError: If circular dependencies are detected
         """
-        visited: set[str] = set()
-        temp_marks: set[str] = set()
-        stack: list[str] = []
+        order: list[str] = []
+        placed: set[str] = set()
+        in_progress: set[str] = set()
 
         def visit(node: str):
-            """DFS helper for topological sort."""
-            if node in temp_marks:
+            """Place `node` after everything its bounds depend on."""
+            if node in in_progress:
                 raise ValueError(
                     f"Circular dependency detected involving parameter '{node}'"
                 )
-            if node in visited:
+            if node in placed:
                 return
 
-            temp_marks.add(node)
-            # Visit all parameters that depend on this one
-            for neighbor in self._dependency_graph.get(node, set()):
-                visit(neighbor)
-            temp_marks.remove(node)
-            visited.add(node)
-            # Prepend to ensure dependencies come first
-            stack.insert(0, node)
+            in_progress.add(node)
+            for dependency in self.param_space[node]:
+                if isinstance(dependency, str):
+                    visit(dependency)
+            in_progress.remove(node)
+            placed.add(node)
+            order.append(node)
 
-        # Visit all nodes
-        for node in self._dependency_graph:
-            if node not in visited:
-                visit(node)
+        # Every name a bound refers to is a key of `param_space`:
+        # `_build_dependency_graph` has already rejected any other reference, so
+        # there are no dependency-only names to visit.
+        for node in self.param_space:
+            visit(node)
 
-        return stack
+        return order
 
     def get_param_space(self) -> dict[str, tuple[Any, Any]]:
         """Get the parameter space bounds.

@@ -2,11 +2,15 @@ from copy import deepcopy
 import logging
 from unittest.mock import patch
 
+import functools
+
 import numpy as np
+import scipy.stats as sps
 import pandas as pd
 import pytest
 
-from ssms.basic_simulators.simulator import simulator
+from ssms.basic_simulators.simulator import _accepts_random_state, simulator
+from ssms.basic_simulators.simulator_class import Simulator
 from ssms.config import model_config
 
 logger = logging.getLogger(__name__)
@@ -330,3 +334,161 @@ def test_random_state_boundary_max_ok():
         random_state=2**31 - 1,
     )
     assert "rts" in out
+
+
+@pytest.mark.rng_validation
+@pytest.mark.parametrize("entry_point", ["simulator", "Simulator.simulate"])
+@pytest.mark.parametrize("model", ["ddm", "ddm_st", "full_ddm_rv", "ddm_sdv"])
+def test_random_state_pins_variability_draws(sim_input_data, model, entry_point):
+    """A repeated integer random_state reproduces the trial-to-trial variability
+    draws (sv/sz/st), not just the diffusion path, and is unaffected by unrelated
+    consumption of NumPy's global RNG between calls. Both entry points bind the
+    draws, so it holds for ``simulator()`` and for ``Simulator.simulate``."""
+    if entry_point == "simulator":
+        run = functools.partial(simulator, model=model)
+    else:
+        run = Simulator(model).simulate
+    theta = dict(sim_input_data[model]["theta_dict_all_scalars"])
+    # The registry defaults put sv/sz/st at 1e-3, below what a float32 RT
+    # resolves; raise them so a differing draw shows up in the output.
+    theta.update(
+        {k: v for k, v in {"sv": 0.5, "sz": 0.1, "st": 0.13}.items() if k in theta}
+    )
+
+    state = np.random.get_state()
+    try:
+        first = run(theta=theta, n_samples=500, random_state=7)
+        # The variability draws come from a generator derived from the seed, so
+        # the call leaves the process-global RNG exactly where it found it. A
+        # global reseed or a global draw would move it.
+        after_first = np.random.get_state()
+        np.testing.assert_array_equal(after_first[1], state[1])
+        assert after_first[2] == state[2]
+        # unrelated consumption of the global RNG must not affect the draws
+        np.random.uniform(size=1234)
+        second = run(theta=theta, n_samples=500, random_state=7)
+    finally:
+        np.random.set_state(state)
+
+    np.testing.assert_array_equal(first["rts"], second["rts"])
+    np.testing.assert_array_equal(first["choices"], second["choices"])
+
+
+@pytest.mark.rng_validation
+def test_random_state_pins_draws_set_by_custom_adaptation():
+    """``Simulator.simulate`` binds once theta is final, so a distribution that a
+    custom adaptation puts into theta is pinned as well."""
+    from ssms.transforms import LambdaAdaptation
+
+    def widen_v_dist(theta, model_config, n_trials):
+        theta["v_dist"] = functools.partial(sps.norm.rvs, loc=0, scale=2.0)
+        return theta
+
+    sim = Simulator("ddm_sdv", parameter_adaptations=[LambdaAdaptation(widen_v_dist)])
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "sv": 0.5}
+    first = sim.simulate(theta=theta, n_samples=500, random_state=7)
+    second = sim.simulate(theta=theta, n_samples=500, random_state=7)
+
+    np.testing.assert_array_equal(first["rts"], second["rts"])
+    np.testing.assert_array_equal(first["choices"], second["choices"])
+
+
+@pytest.mark.rng_validation
+def test_variability_draws_do_not_replay_c_level_stream():
+    """The variability generator is not ``default_rng(random_state)`` itself.
+
+    The Cython layer seeds its own generator with that call, so drawing sv/sz/st
+    from an identical one would reuse the words behind the diffusion noise.
+    """
+    from ssms.config import ModelConfigBuilder
+
+    seed, sv = 7, 0.5
+    config = ModelConfigBuilder.from_model("ddm_sdv")
+    make_v_dist = config["simulator_param_mappings"]["v_dist"]
+    drawn = []
+
+    def recording_v_dist(*args):
+        v_dist = make_v_dist(*args)
+
+        def draw(**kwargs):
+            drawn.append(v_dist(**kwargs))
+            return drawn[-1]
+
+        return draw
+
+    config["simulator_param_mappings"]["v_dist"] = recording_v_dist
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=config):
+        simulator(
+            model="ddm_sdv",
+            theta={"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3, "sv": sv},
+            n_samples=500,
+            random_state=seed,
+        )
+
+    (v_draws,) = drawn
+    replayed = sv * np.random.default_rng(seed).standard_normal(v_draws.shape)
+    assert not np.allclose(v_draws, replayed)
+
+
+@pytest.mark.rng_validation
+def test_accepts_random_state_rejects_positional_only():
+    """A positional-only ``random_state`` cannot be filled by keyword.
+
+    Binding one would either divert the value into ``**kwargs`` while the
+    parameter kept its default, or raise, so such callables are left alone.
+    """
+
+    def positional_only(size=1, random_state=None, /, **kwargs):
+        """Take random_state positionally only; keyword use lands in kwargs."""
+        return random_state
+
+    def keyword_ok(size=1, random_state=None):
+        """Accept random_state by keyword."""
+        return random_state
+
+    def variadic_only(**kwargs):
+        """Accept random_state only through **kwargs, as scipy rvs does."""
+        return kwargs.get("random_state")
+
+    assert not _accepts_random_state(positional_only)
+    assert _accepts_random_state(keyword_ok)
+    assert _accepts_random_state(variadic_only)
+    # the failure mode the exclusion prevents: value diverted, default kept
+    assert functools.partial(positional_only, random_state="RNG")() is None
+
+
+@pytest.mark.rng_validation
+def test_accepts_random_state_rejects_unreadable_signature():
+    """A callable whose signature cannot be inspected is left unbound."""
+
+    def unreadable(**kwargs):
+        """Would qualify through **kwargs if its signature could be read."""
+
+    # anything but a Signature here makes inspect.signature raise TypeError
+    unreadable.__signature__ = object()
+    assert not _accepts_random_state(unreadable)
+
+
+@pytest.mark.rng_validation
+def test_bound_random_state_is_not_overridden():
+    """A distribution that already carries its own random_state keeps it."""
+    from ssms.config import ModelConfigBuilder
+
+    own = np.random.default_rng(123)
+    unused = own.bit_generator.state
+    dist = functools.partial(sps.uniform.rvs, loc=0.0, scale=1.0, random_state=own)
+    # accepted by the predicate, but already bound, so the simulator leaves it
+    assert _accepts_random_state(dist)
+
+    config = ModelConfigBuilder.from_model("ddm_st")
+    config["simulator_param_mappings"]["t_dist"] = lambda st: dist
+    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=config):
+        simulator(
+            model="ddm_st",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "st": 0.1},
+            n_samples=50,
+            random_state=7,
+        )
+
+    # the st draws came from the caller's generator, not one derived from the seed
+    assert own.bit_generator.state != unused

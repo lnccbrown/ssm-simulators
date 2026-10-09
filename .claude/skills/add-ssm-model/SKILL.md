@@ -113,6 +113,20 @@ Optional fields for models with custom drift:
 - `"drift_fun"` — drift function object
 - `"drift_params"` — which params drive the drift
 
+Optional field for models whose non-decision-time variability lets RTs fall
+below `t` (e.g. `ddm_st`, `full_ddm`, where it is `t + U(-st, st)`):
+- `"ndt_edge_shift"` — `{"param": <name>, "scale": s}`: RTs start at
+  `t - s * <name>`; absent means no finite edge below `t` is declared.
+  `scale` follows the simulator's convention: 1.0 when `<name>` is the
+  half-width of a uniform kernel, 0.5 if it were the full width.
+
+Do not declare it when the model has no `t` parameter (`ddm_truncnormt`,
+`ddm_rayleight`: `t` is pinned to 0), when the kernel has no finite lower edge
+(`ddm_normal_st`, `Normal(t, st)`), or when the edge is not of the form
+`t - scale * param`. A declaring model, and a model whose kernel has no lower
+edge, must also be added to `KDE_NO_DISPLACE_T` in `ssms/config/kde_constants.py`
+so the KDE label estimator never displaces its RTs by `t`.
+
 ## Step 5: Register the Model
 
 Edit `ssms/config/_modelconfig/__init__.py`:

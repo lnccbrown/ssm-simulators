@@ -238,6 +238,8 @@ class TestValues:
 
     def test_non_numeric_response_reports_dtype_error(self, config):
         data = _valid_panel()
+        # pandas >= 3 no longer upcasts an int column to object on assignment.
+        data["response"] = data["response"].astype(object)
         data.loc[0, "response"] = "left"
         report = config.validate_data(data)
 
@@ -300,6 +302,7 @@ class TestValues:
 
     def test_non_numeric_rt_reports_dtype_error(self, config):
         data = _valid_panel()
+        data["rt"] = data["rt"].astype(object)
         data.loc[0, "rt"] = "fast"
         report = config.validate_data(data)
 

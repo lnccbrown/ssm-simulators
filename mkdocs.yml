@@ -3,6 +3,10 @@ repo_name: lnccbrown/ssm-simulators
 repo_url: https://github.com/lnccbrown/ssm-simulators
 site_url: https://lnccbrown.github.io/ssm-simulators
 edit_uri: edit/main/docs
+exclude_docs: |
+  overrides/
+  snippets/
+  core_tutorials/tutorial_capabilities.ipynb
 
 nav:
   - Home:
@@ -12,29 +16,36 @@ nav:
       - Simulate and inspect your first SSM: basic_tutorial/basic_tutorial.ipynb
       - Simulate your first RLSSM: core_tutorials/rlssm_tutorial.ipynb
   - How-to guides:
-      - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
-      - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
-      - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
-      - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
-      - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
-      - Hand off simulated RLSSM data to HSSM: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
-      - Write a custom parameter transform: contributing/add_parameter_adapters.md
-      - Track data generation runs with MLflow: core_tutorials/using_mlflow.md
+      - Models and simulation:
+          - Configure models and data generation: core_tutorials/tutorial_configs.ipynb
+          - Create a custom model: core_tutorials/tutorial_custom_models.ipynb
+          - Normalize legacy simulator results: how_to/normalize_simulator_results.md
+          - Estimate a likelihood with the KDE class: core_tutorials/kde_class.ipynb
+          - Simulate choice-only RL models: core_tutorials/choice_only_rl_models.ipynb
+          - Build custom RLSSM components: core_tutorials/rlssm_advanced_tutorial.ipynb
+          - Hand off simulated RLSSM data to HSSM: core_tutorials/rlssm_simulation_hssm_handoff.ipynb
+      - Data generation:
+          - Generate training data for LANs: core_tutorials/tutorial_data_generators.ipynb
+          - Track data generation runs with MLflow: core_tutorials/using_mlflow.md
+      - Contributing:
+          - Write a custom parameter transform: contributing/add_parameter_adapters.md
+          - Contribute to ssm-simulators: contributing/README.md
+          - Add a new model: contributing/add_models.md
   - Explanations:
-      - What ssm-simulators can do: core_tutorials/tutorial_capabilities.ipynb
+      - Simulator and data-generation capabilities: explanations/capabilities.md
       - Simulation vs. analytical solutions (PyDDM): core_tutorials/tutorial_simulators_vs_pyddm.ipynb
+      - Why structured observations exist: explanations/structured_observations.md
   - Reference:
-      - Configuration systems: core_tutorials/tutorial_configs.ipynb
+      - Structured observation results: reference/observation_result_contract.md
       - API:
           - RLSSM (ssms.rl): api/rlssm.md
           - basic simulators: api/basic_simulators.md
-          - config: api/config.md
+          - configuration exports: api/config.md
           - data generators: api/dataset_generators.md
+          - HSSM integration: api/hssm_support.md
+          - external simulators: api/external_simulators.md
+          - parameter transforms: api/parameter_adapters.md
           - support utils: api/support_utils.md
-  - Contributing:
-      - Overview: contributing/README.md
-      - Add a new model: contributing/add_models.md
-
 validation:
   omitted_files: warn
   absolute_links: warn
@@ -47,12 +58,16 @@ plugins:
   - redirects:
       redirect_maps:
         api/ssms.md: api/basic_simulators.md
+        core_tutorials/tutorial_capabilities.md: explanations/capabilities.md
   - mkdocs-jupyter:
       execute: False
   - mkdocstrings:
       default_handler: python
       handlers:
         python:
+          paths:
+            - .
+            - ssms/config/generator_config
           inventories:
             - https://docs.python.org/3/objects.inv
             - https://mkdocstrings.github.io/objects.inv
@@ -127,14 +142,11 @@ theme:
         icon: material/brightness-4
         name: Switch to automatic mode
 
-copyright: >-
-  Copyright &copy; Brown University —
-  <a href="https://lnccbrown.github.io/HSSM/">HSSM</a> ·
-  <a href="https://lnccbrown.github.io/ssm-simulators/">ssm-simulators</a> ·
-  <a href="https://lnccbrown.github.io/LANfactory/">LANfactory</a>
+copyright: Copyright © 2021 Alexander Fengler. MIT License.
 
 extra:
   homepage: "https://lnccbrown.github.io/ssm-simulators/"
+  release_announcement: true
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/lnccbrown/ssm-simulators

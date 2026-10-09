@@ -1,11 +1,39 @@
 import pytest
 import numpy as np
+from ssms.support_utils import kde_class
 from ssms.support_utils.kde_class import LogKDE, bandwidth_silverman
 from ssms.basic_simulators.simulator import simulator
+from ssms.config import KDE_NO_DISPLACE_T, ModelConfigBuilder
+
+
+def simulate_defaults(model, n_samples=300, random_state=0, **theta_overrides):
+    """Simulate ``model`` at its config's default parameters.
+
+    Args:
+        model: Model name, possibly with a ``_deadline`` suffix.
+        n_samples: Number of trials to simulate.
+        random_state: Seed passed to the simulator.
+        **theta_overrides: Parameter values that replace the defaults.
+
+    Returns:
+        The simulator output dict (``rts``, ``choices``, ``metadata``).
+    """
+    config = ModelConfigBuilder.from_model(model)
+    theta = dict(zip(config["params"], config["default_params"]))
+    theta.update(theta_overrides)
+    return simulator(
+        model=model, theta=theta, n_samples=n_samples, random_state=random_state
+    )
 
 
 @pytest.fixture
 def sample_ddm_data():
+    """Simulate a two-choice DDM dataset used as KDE input by the tests.
+
+    Returns:
+        The simulator output dict (``rts``, ``choices``, ``metadata``) for a
+        fixed-parameter DDM with 1000 trials.
+    """
     return simulator(
         model="ddm", theta=dict(v=1.0, a=1.5, z=0.5, t=0.3), n_samples=1000
     )
@@ -99,10 +127,206 @@ def test_displace_t_validation():
         LogKDE(simulator_data=data, displace_t=True)
 
 
+@pytest.mark.parametrize("model", [*KDE_NO_DISPLACE_T, "full_ddm2"])
+def test_displace_t_refuses_models_whose_rts_start_below_t(model):
+    """Test that displace_t=True is refused for every KDE_NO_DISPLACE_T model.
+
+    ``full_ddm2`` is registered under its own key but carries the config name
+    ``full_ddm``, so it checks the lookup by config name. ``displace_t=False``
+    must keep working for all of them.
+    """
+    data = simulate_defaults(model)
+
+    with pytest.raises(ValueError, match=rf"model '{model}'.*displace_t=False"):
+        LogKDE(simulator_data=data, displace_t=True)
+
+    kde = LogKDE(simulator_data=data, displace_t=False)
+    assert not kde.displace_t
+    for bw in kde.bandwidths:
+        assert bw != "no_base_data"
+        assert np.isfinite(bw) and bw > 0
+
+
+def test_displace_t_guard_clauses_are_independent(monkeypatch):
+    """Test that the declared edge shift is refused without the model list.
+
+    With ``KDE_NO_DISPLACE_T`` emptied, ``ddm_st`` is still refused through its
+    ``ndt_edge_shift`` declaration, while ``ddm_normal_st``, which declares no
+    edge shift, is only refused through the list.
+    """
+    monkeypatch.setattr(kde_class, "KDE_NO_DISPLACE_T", [])
+
+    with pytest.raises(ValueError, match="response times start below t"):
+        LogKDE(simulator_data=simulate_defaults("ddm_st"), displace_t=True)
+    LogKDE(simulator_data=simulate_defaults("ddm_normal_st"), displace_t=True)
+
+
+@pytest.mark.parametrize("model", ["ddm", "ddm_sdv", "angle"])
+def test_displace_t_still_shifts_fixed_t_models_by_t(model):
+    """Test that models with a fixed t keep the plain shift by t.
+
+    The labels at ``displace_t=True`` must follow the formula they always have:
+    ``log(p_choice) + log kde(log(rt - t)) - log(rt - t)`` above ``t``, and the
+    lower bound ``lb`` at or below ``t``.
+    """
+    data = simulate_defaults(model, n_samples=500, random_state=1, t=0.3)
+    lb = -66.774
+
+    kde = LogKDE(simulator_data=data, displace_t=True)
+
+    t = kde.displace_t_val  # the simulator's own (float32) t, not the literal
+    assert t == data["metadata"]["t"][0]
+    assert np.isclose(t, 0.3)
+    rts = t + np.array([-0.1, 0.0, 0.2, 0.6, 1.5])
+    for choice in (-1.0, 1.0):
+        labels = kde.kde_eval({"rts": rts, "choices": np.full(rts.shape, choice)})
+        idx = kde.data["choices"].index(choice)
+        log_shifted = np.log(rts[2:] - t)
+        expected = (
+            np.log(kde.data["choice_proportions"][idx])
+            + kde.base_kdes[idx].score_samples(np.expand_dims(log_shifted, 1))
+            - log_shifted
+        )
+        assert np.array_equal(labels[:2], [lb, lb])
+        assert np.array_equal(labels[2:], np.maximum(expected, lb))
+    assert np.all(kde.kde_sample(n_samples=50, random_state=2)["rts"] > t)
+
+
+@pytest.mark.parametrize(
+    "st, raises",
+    [
+        (0.1, True),
+        (np.array([0.1, 0.1]), True),
+        (0.0, False),
+        (np.array([0.0, 0.0]), False),
+        (None, False),
+    ],
+)
+def test_displace_t_unregistered_model_is_judged_by_st(st, raises):
+    """Test that an unregistered model name is refused only for a non-zero st."""
+    rng = np.random.default_rng(5)
+    n = 200
+    metadata = {
+        "max_t": 20.0,
+        "possible_choices": [-1, 1],
+        "t": np.array([0.3]),
+        "model": "not_a_registered_model",
+    }
+    if st is not None:
+        metadata["st"] = st
+    data = {
+        "rts": rng.lognormal(mean=-0.3, sigma=0.4, size=n).reshape(-1, 1) + 0.3,
+        "choices": np.where(rng.uniform(size=n) < 0.5, 1.0, -1.0).reshape(-1, 1),
+        "metadata": metadata,
+    }
+
+    if raises:
+        with pytest.raises(
+            ValueError, match="model 'not_a_registered_model'.*non-zero st"
+        ):
+            LogKDE(simulator_data=data, displace_t=True)
+    else:
+        assert LogKDE(simulator_data=data, displace_t=True).displace_t_val == 0.3
+
+
+@pytest.mark.parametrize(
+    "model, raises", [("ddm_st_deadline", True), ("ddm_deadline", False)]
+)
+def test_displace_t_recognises_deadline_model_names(model, raises):
+    """Test that a ``_deadline`` suffix is stripped before the config lookup."""
+    data = simulate_defaults(model, deadline=5.0)
+
+    if raises:
+        with pytest.raises(ValueError, match=rf"model '{model}'.*displace_t=False"):
+            LogKDE(simulator_data=data, displace_t=True)
+    else:
+        kde = LogKDE(simulator_data=data, displace_t=True)
+        assert kde.displace_t_val == data["metadata"]["t"][0]
+
+
 def test_invalid_data_kde_eval(sample_ddm_data):
-    """Test kde_eval with invalid data."""
+    """Test kde_eval with invalid data.
+
+    Args:
+        sample_ddm_data: Fixture providing simulator output used to build the KDE.
+    """
     kde = LogKDE(simulator_data=sample_ddm_data)
     with pytest.raises(
         ValueError, match="data dictionary must contain either rts or log_rts as keys!"
     ):
         kde.kde_eval({"invalid_key": np.array([0.6])})
+
+
+@pytest.mark.parametrize("rt_key", ["rts", "log_rts"])
+@pytest.mark.parametrize("displace_t", [False, True])
+@pytest.mark.parametrize("bad_rt", [-0.5, 0.0, np.inf])
+def test_unusable_rt_does_not_collapse_choice_group(bad_rt, displace_t, rt_key):
+    """Test that an unusable RT is dropped without discarding its choice group.
+
+    With ``displace_t``, the RTs at or below ``t`` are strictly positive on input
+    and become non-positive only after the shift, so they have to be dropped too.
+    """
+    rng = np.random.default_rng(7)
+    n = 200
+    t = 0.4  # in the lower tail of the RTs drawn below
+    rts = rng.lognormal(mean=-0.3, sigma=0.4, size=n)
+    choices = np.where(rng.uniform(size=n) < 0.7, 1.0, -1.0)
+    rts[0], choices[0] = bad_rt, 1.0  # negative: legitimate for an unbounded t-kernel
+    n_usable = np.sum(rts[1:] > t) if displace_t else n - 1
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rt_values = rts if rt_key == "rts" else np.log(rts)
+    data = {
+        rt_key: rt_values.reshape(-1, 1),
+        "choices": choices.reshape(-1, 1),
+        "metadata": {"max_t": 20.0, "possible_choices": [-1, 1], "t": np.array([t])},
+    }
+
+    kde = LogKDE(simulator_data=data, displace_t=displace_t)
+
+    assert len(kde.bandwidths) == 2
+    for bw in kde.bandwidths:
+        assert bw != "no_base_data"
+        assert np.isfinite(bw) and bw > 0
+    for arr in kde.data["rts"]:
+        assert np.all(arr > 0)
+    for arr in kde.data["log_rts"]:
+        assert np.all(np.isfinite(arr))
+    assert sum(arr.shape[0] for arr in kde.data["rts"]) == n_usable
+
+
+def test_clean_data_unchanged_by_filter():
+    """Test that an all-positive dataset keeps every sample."""
+    rng = np.random.default_rng(11)
+    n = 200
+    rts = rng.lognormal(mean=-0.3, sigma=0.4, size=n)
+    choices = np.where(rng.uniform(size=n) < 0.5, 1.0, -1.0)
+    data = {
+        "rts": rts.reshape(-1, 1),
+        "choices": choices.reshape(-1, 1),
+        "metadata": {"max_t": 20.0, "possible_choices": [-1, 1]},
+    }
+
+    kde = LogKDE(simulator_data=data)
+
+    assert sum(arr.shape[0] for arr in kde.data["rts"]) == n
+
+
+def test_single_retained_rt_falls_back_to_std_n_1_bandwidth():
+    """Test the n=1 limitation: the std_n_1 default is accepted as a bandwidth."""
+    rng = np.random.default_rng(3)
+    rts = rng.lognormal(mean=-0.3, sigma=0.4, size=20)
+    choices = -np.ones(20)
+    rts[0], choices[0] = 0.6, 1.0  # the only retained RT for choice 1
+    rts[1], choices[1] = -0.2, 1.0  # dropped by the filter
+    data = {
+        "rts": rts.reshape(-1, 1),
+        "choices": choices.reshape(-1, 1),
+        "metadata": {"max_t": 20.0, "possible_choices": [-1, 1]},
+    }
+
+    kde = LogKDE(simulator_data=data)
+
+    idx = kde.data["choices"].index(1)
+    assert kde.data["rts"][idx].shape[0] == 1
+    assert np.isclose(kde.bandwidths[idx], bandwidth_silverman(np.array([np.log(0.6)])))
+    assert np.isclose(kde.bandwidths[idx], 10.592238410488122)

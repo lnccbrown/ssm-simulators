@@ -28,7 +28,7 @@ benchmarks/                    # Performance benchmarks
 ## Build & Tooling
 
 - **Build system:** setuptools + Cython (C extensions compiled from `src/cssm/*.pyx`)
-- **Package manager:** uv (with `uv.lock`)
+- **Package manager:** uv (no tracked lockfile; `uv sync` resolves from `pyproject.toml`)
 - **Python:** >=3.12, <3.15 (classifiers target 3.12, 3.13, 3.14)
 - **System dependencies (required for C extensions):**
   - C compiler (Xcode CLI tools on macOS, build-essential on Linux)
@@ -56,9 +56,9 @@ uv run ruff check . && uv run ruff format --check .
 # Rebuild Cython extensions after C/pyx changes
 uv run python setup.py build_ext --inplace
 
-# Build docs
-uv run --extra docs mkdocs build
-uv run --extra docs mkdocs serve
+# Build docs strictly or preview them locally
+./scripts/docs.sh build
+./scripts/docs.sh serve
 
 # CLI: generate training data from YAML config
 uv run generate --config-path <path> --output <dir>
@@ -74,6 +74,15 @@ Models, boundary functions, and drift functions are registered in a registry sys
 - `ssms.config.get_drift_registry()` — drift function builders
 - `ssms.config.model_config` — CopyOnAccessDict of all 113 model configs (safe to modify)
 - `ModelConfigBuilder.from_model(name, **overrides)` — get/customize a model config
+
+Every entry above is a **consumer** API — how to *read* a config. Authoring one
+goes the other way round: a module under `ssms/config/_modelconfig/` names its
+boundary and drift functions directly (`bf.angle`, `df.gamma_drift`) and is added
+to the `configs` dict in `_modelconfig/__init__.py`. `model_registry.py` builds
+the registry from that dict at import, so a new entry there is registered
+everywhere automatically — reaching for `get_model_registry()` inside a config
+module would bypass the source the registry is built from. See the
+`add-ssm-model` skill for the full workflow.
 
 ### Cython Simulator Layer
 

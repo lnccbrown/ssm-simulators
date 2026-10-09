@@ -89,7 +89,9 @@ class PyDDMPipeline:
         4. Generate training data
 
         Args:
-            parameter_sampling_seed: Index for parameter sampling (used as seed)
+            parameter_sampling_seed: Theta index, used directly as the parameter-RNG
+                seed. Final as given: `TrainingDataGenerator` has already added its
+                base and cursor, so no offset is applied here.
             random_seed: Random seed (accepted for API compatibility,
                 may not be used as analytical solutions are deterministic)
 
@@ -105,8 +107,23 @@ class PyDDMPipeline:
             analytically without simulations. Only binned RT histograms require
             trajectory data and are set to None.
         """
-        # Use parameter_sampling_seed as random seed for parameter sampling
-        np.random.seed(parameter_sampling_seed)
+        # Use parameter_sampling_seed as random seed for parameter sampling. The
+        # index is final: the generator applied its base and cursor, and the KDE
+        # path seeds from the identical value, so the two pipelines index theta
+        # the same way.
+        #
+        # `np.random.seed` alone did not reach the parameter draws: `sample()` falls
+        # back to `np.random.default_rng()`, which seeds itself from OS entropy and
+        # ignores the legacy global state. PyDDM thetas were therefore irreproducible
+        # and the theta index bought nothing. Pass the RNG explicitly, as
+        # `SimulationPipeline` does. The global seed stays for any downstream code
+        # that still draws from it, reduced to the legacy seeder's 32-bit range:
+        # `default_rng` takes any non-negative integer, `np.random.seed` does not,
+        # and a theta index above an entropy-drawn base is a 62-bit number.
+        param_rng = np.random.default_rng(parameter_sampling_seed)
+        np.random.seed(
+            None if parameter_sampling_seed is None else parameter_sampling_seed % 2**32
+        )
 
         # Keep trying until we get valid parameters
         # (PyDDM may reject parameters with high P(undecided))
@@ -116,7 +133,7 @@ class PyDDMPipeline:
 
         while not success and attempt < max_attempts:
             # 1. Sample parameters (with transforms applied automatically)
-            theta_dict = self._param_sampler.sample(n_samples=1)
+            theta_dict = self._param_sampler.sample(n_samples=1, rng=param_rng)
 
             # 2. Build analytical estimator (simulations=None)
             # PyDDMEstimatorBuilder may raise ValueError if P(undecided) too high

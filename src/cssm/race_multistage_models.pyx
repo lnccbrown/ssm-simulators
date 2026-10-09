@@ -6,16 +6,25 @@
 
 """Forward simulator for independent, multi-stage race models.
 
-This module implements the Monte Carlo model in ``race_model.pdf``: every
-accumulator has an independent Brownian motion, a native stage partition,
-piecewise-constant drift/diffusion, and a piecewise-linear *upper* boundary.
-The race ends at the first upper-boundary crossing.  It intentionally has no
-lower decision boundary and does not clip paths at zero.
+Every accumulator has an independent Brownian motion, a native stage
+partition, piecewise-constant drift/diffusion, and a piecewise-linear *upper*
+boundary.  The race ends at the first upper-boundary crossing.  It
+intentionally has no lower decision boundary and does not clip paths at zero.
+The numerical reference this simulator is validated against (the multi-stage
+Volterra solver in ``notebooks/volterra_accuracy``) follows Appendix B of
+Lüken, Radev, Waldorp & Heathcote (2026), *Neural Racing Accumulator Model
+Estimation With Lightweight Monotonic Flows*,
+https://doi.org/10.31234/osf.io/bfsgr_v1.
 
 The random-number implementation follows ``addm_models.pyx``.  One xoshiro
 state is seeded for every (sample, trial) pair before the OpenMP loop, making
 results reproducible for a fixed ``random_state`` independently of scheduling
-or ``n_threads``.
+or ``n_threads``, and it needs no GSL.  The shared GSL generator in
+``_rng_wrappers.pxi`` is deliberately not used: it is only live on GSL builds
+and only in the parallel path (PyPI wheels build without GSL, and the stub
+returns 0.0), so the other kernels keep a second, sequential NumPy path for
+that case.  Consolidating the aDDM and race kernels on one generator is
+tracked in https://github.com/lnccbrown/ssm-simulators/issues/376.
 """
 
 import numpy as np
@@ -51,9 +60,10 @@ cdef struct TrialResult:
     int choice
 
 
-# Inline xoshiro256++ / Box-Muller RNG, matching the Efficient-FPT-derived
-# aDDM engine.  Keep this local for now; a future shared RNG module can remove
-# the duplication once the race simulator interface has settled.
+# Inline xoshiro256++ / Box-Muller RNG, duplicated from the Efficient-FPT-derived
+# aDDM engine (``addm_models.pyx``) because that engine is vendored and must not
+# be edited in place.  See the module docstring for why the shared GSL RNG is
+# not an option here; issue #376 tracks removing the duplication.
 cdef struct Xoshiro256State:
     uint64_t s0
     uint64_t s1
@@ -141,7 +151,7 @@ cdef inline double _upper_boundary_at(
 
 cdef inline bint _has_reached_next_stage(
     double[:, :, ::1] nodes,
-    int[:, ::1] d,
+    int[:, ::1] n_stages,
     int row,
     int accumulator,
     int current_stage,
@@ -149,7 +159,7 @@ cdef inline bint _has_reached_next_stage(
 ) noexcept nogil:
     """Return whether an accumulator should advance to its next stage."""
     return (
-        current_stage + 1 < d[row, accumulator]
+        current_stage + 1 < n_stages[row, accumulator]
         and time >= nodes[row, accumulator, current_stage + 1]
     )
 
@@ -158,7 +168,7 @@ cdef void _run_race_trial(
     double[:, :, ::1] mu,
     double[:, :, ::1] sigma,
     double[:, :, ::1] nodes,
-    int[:, ::1] d,
+    int[:, ::1] n_stages,
     double[:, :, ::1] upper_intercept,
     double[:, :, ::1] upper_slope,
     int row,
@@ -181,7 +191,8 @@ cdef void _run_race_trial(
         double t_particle, dt_current, sqrt_dt, boundary, next_node
         double drift_increment, diffusion_increment
         int stage[MAX_ACCUMULATORS]
-        int i, step, winner, stage_changed, n_accumulators
+        int i, step, winner, n_accumulators
+        bint stage_changed
 
     _seed(&rng, seed)
     bm.has_spare = 0
@@ -213,13 +224,13 @@ cdef void _run_race_trial(
     for step in range(config.max_steps):
         # A node reached by the preceding propagation begins its new stage
         # before this iteration can draw additional noise.
-        stage_changed = 0
+        stage_changed = False
         for i in range(n_accumulators):
             while _has_reached_next_stage(
-                nodes, d, row, i, stage[i], t_particle
+                nodes, n_stages, row, i, stage[i], t_particle
             ):
                 stage[i] += 1
-                stage_changed = 1
+                stage_changed = True
 
         # A discontinuity in the boundary can itself end the race. Use the
         # previous Euler-step midpoint convention (or zero at the start).
@@ -245,7 +256,7 @@ cdef void _run_race_trial(
         # Do not propagate through a stage node with the preceding stage's
         # dynamics. The earliest pending node controls this Euler step.
         for i in range(n_accumulators):
-            if stage[i] + 1 < d[row, i]:
+            if stage[i] + 1 < n_stages[row, i]:
                 next_node = nodes[row, i, stage[i] + 1]
                 if next_node < t_particle + dt_current:
                     dt_current = next_node - t_particle
@@ -286,7 +297,7 @@ cdef void _validate_race_inputs(
     double[:, :, ::1] mu,
     double[:, :, ::1] sigma,
     double[:, :, ::1] nodes,
-    int[:, ::1] d,
+    int[:, ::1] n_stages,
     double[:, :, ::1] upper_intercept,
     double[:, :, ::1] upper_slope,
     double[:, ::1] x0,
@@ -297,7 +308,6 @@ cdef void _validate_race_inputs(
     cdef:
         int n_rows = mu.shape[0]
         int n_accumulators = mu.shape[1]
-        int row, accumulator, stage
 
     if n_accumulators > MAX_ACCUMULATORS:
         raise ValueError(
@@ -306,33 +316,46 @@ cdef void _validate_race_inputs(
         )
     if dt <= 0.0:
         raise ValueError("dt must be positive")
-    if (
-        sigma.shape[0] != n_rows or sigma.shape[1] != n_accumulators or sigma.shape[2] != mu.shape[2]
-        or nodes.shape[0] != n_rows or nodes.shape[1] != n_accumulators or nodes.shape[2] != mu.shape[2]
-        or upper_intercept.shape[0] != n_rows or upper_intercept.shape[1] != n_accumulators or upper_intercept.shape[2] != mu.shape[2]
-        or upper_slope.shape[0] != n_rows or upper_slope.shape[1] != n_accumulators or upper_slope.shape[2] != mu.shape[2]
+    stage_shape = (n_rows, n_accumulators, mu.shape[2])
+    for name, array in (
+        ("sigma", sigma),
+        ("nodes", nodes),
+        ("upper_intercept", upper_intercept),
+        ("upper_slope", upper_slope),
     ):
-        raise ValueError("stage arrays must have the same (rows, accumulators, stages) shape")
-    if d.shape[0] != n_rows or d.shape[1] != n_accumulators:
-        raise ValueError("d must have shape (rows, accumulators)")
+        if np.asarray(array).shape != stage_shape:
+            raise ValueError(
+                f"{name} must have the same (rows, accumulators, stages) shape as mu, "
+                f"{stage_shape}; got {np.asarray(array).shape}"
+            )
+    if n_stages.shape[0] != n_rows or n_stages.shape[1] != n_accumulators:
+        raise ValueError("d_array must have shape (rows, accumulators)")
     if x0.shape[0] != n_rows or x0.shape[1] != n_accumulators:
         raise ValueError("x0 must have shape (rows, accumulators)")
     if seeds.shape[0] != n_rows:
         raise ValueError("seeds must contain one seed per row")
-    if np.any(np.asarray(d) < 1) or np.any(np.asarray(d) > mu.shape[2]):
-        raise ValueError("each d entry must lie between 1 and the padded stage count")
-    for row in range(n_rows):
-        for accumulator in range(n_accumulators):
-            for stage in range(d[row, accumulator] - 1):
-                if nodes[row, accumulator, stage + 1] < nodes[row, accumulator, stage]:
-                    raise ValueError("active stage nodes must be nondecreasing")
+    n_stages_np = np.asarray(n_stages)
+    if np.any(n_stages_np < 1) or np.any(n_stages_np > mu.shape[2]):
+        raise ValueError("each d_array entry must lie between 1 and the padded stage count")
+    # Only transitions between *active* stages constrain the node times.
+    nodes_np = np.asarray(nodes)
+    active_transition = (
+        np.arange(1, nodes_np.shape[2])[None, None, :] < n_stages_np[:, :, None]
+    )
+    decreasing = (np.diff(nodes_np, axis=2) < 0.0) & active_transition
+    if decreasing.any():
+        bad_row, bad_accumulator, _ = np.argwhere(decreasing)[0]
+        raise ValueError(
+            "active stage nodes must be nondecreasing "
+            f"(row {bad_row}, accumulator {bad_accumulator})"
+        )
 
 
 def _simulate_race_multistage(
     double[:, :, ::1] mu,
     double[:, :, ::1] sigma,
     double[:, :, ::1] nodes,
-    int[:, ::1] d,
+    int[:, ::1] n_stages,
     double[:, :, ::1] upper_intercept,
     double[:, :, ::1] upper_slope,
     double[:, ::1] x0,
@@ -351,7 +374,7 @@ def _simulate_race_multistage(
         TrialResult *trial_results
 
     _validate_race_inputs(
-        mu, sigma, nodes, d, upper_intercept, upper_slope, x0, dt, seeds
+        mu, sigma, nodes, n_stages, upper_intercept, upper_slope, x0, dt, seeds
     )
 
     rt = np.empty(n_rows, dtype=np.float64)
@@ -378,7 +401,7 @@ def _simulate_race_multistage(
     try:
         for row in prange(n_rows, nogil=True, num_threads=n_threads, schedule='dynamic'):
             _run_race_trial(
-                mu, sigma, nodes, d, upper_intercept, upper_slope, row, x0,
+                mu, sigma, nodes, n_stages, upper_intercept, upper_slope, row, x0,
                 config, seeds[row], &trial_results[row], &final_view[row, 0],
             )
         for row in range(n_rows):
@@ -426,7 +449,7 @@ def race_multistage(
     mu = np.ascontiguousarray(mu_array, dtype=np.float64)
     sigma = np.ascontiguousarray(sigma_array, dtype=np.float64)
     nodes = np.ascontiguousarray(node_array, dtype=np.float64)
-    d = np.ascontiguousarray(d_array, dtype=np.int32)
+    n_stages = np.ascontiguousarray(d_array, dtype=np.int32)
     intercept = np.ascontiguousarray(upper_intercept_array, dtype=np.float64)
     slope = np.ascontiguousarray(upper_slope_array, dtype=np.float64)
     x0 = np.ascontiguousarray(x0_array, dtype=np.float64)
@@ -449,24 +472,38 @@ def race_multistage(
     mu_rows = np.ascontiguousarray(np.tile(mu, (n_samples, 1, 1)))
     sigma_rows = np.ascontiguousarray(np.tile(sigma, (n_samples, 1, 1)))
     nodes_rows = np.ascontiguousarray(np.tile(nodes, (n_samples, 1, 1)))
-    d_rows = np.ascontiguousarray(np.tile(d, (n_samples, 1)))
+    n_stages_rows = np.ascontiguousarray(np.tile(n_stages, (n_samples, 1)))
     intercept_rows = np.ascontiguousarray(np.tile(intercept, (n_samples, 1, 1)))
     slope_rows = np.ascontiguousarray(np.tile(slope, (n_samples, 1, 1)))
     x0_rows = np.ascontiguousarray(np.tile(x0, (n_samples, 1)))
 
     rt, choice, x_final = _simulate_race_multistage(
-        mu_rows, sigma_rows, nodes_rows, d_rows, intercept_rows, slope_rows,
+        mu_rows, sigma_rows, nodes_rows, n_stages_rows, intercept_rows, slope_rows,
         x0_rows, delta_t, max_t, seeds, n_threads,
     )
 
-    ndt = np.zeros(n_trials, dtype=np.float64) if nondecision_time is None else np.asarray(nondecision_time, dtype=np.float64).reshape(-1)
-    ddl = np.full(n_trials, max_t, dtype=np.float64) if deadline is None else np.asarray(deadline, dtype=np.float64).reshape(-1)
+    if nondecision_time is None:
+        ndt = np.zeros(n_trials, dtype=np.float64)
+    else:
+        ndt = np.asarray(nondecision_time, dtype=np.float64).reshape(-1)
+    if deadline is None:
+        ddl = np.full(n_trials, max_t, dtype=np.float64)
+    else:
+        ddl = np.asarray(deadline, dtype=np.float64).reshape(-1)
     if ndt.size == 1:
         ndt = np.full(n_trials, ndt[0])
     if ddl.size == 1:
         ddl = np.full(n_trials, ddl[0])
-    if ndt.size != n_trials or ddl.size != n_trials:
-        raise ValueError("nondecision_time and deadline must be scalars or length n_trials")
+    if ndt.size != n_trials:
+        raise ValueError("nondecision_time must be a scalar or have length n_trials")
+    if ddl.size != n_trials:
+        raise ValueError("deadline must be a scalar or have length n_trials")
+    if np.any(ndt < 0.0):
+        raise ValueError("nondecision_time must be non-negative")
+    if np.any(ddl < 0.0):
+        raise ValueError("deadline must be non-negative")
+    if np.any(ddl < ndt):
+        raise ValueError("deadline must be >= nondecision_time")
     ndt_rows = np.tile(ndt, n_samples)
     ddl_rows = np.tile(ddl, n_samples)
     shifted_rt = rt + ndt_rows
@@ -494,7 +531,7 @@ def race_multistage(
             minimal_metadata=minimal_meta,
             params={
                 'mu_array': mu, 'sigma_array': sigma, 'node_array': nodes,
-                'd_array': d, 'upper_intercept_array': intercept,
+                'd_array': n_stages, 'upper_intercept_array': intercept,
                 'upper_slope_array': slope, 'x0_array': x0,
             },
             sim_config={'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads},
