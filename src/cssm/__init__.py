@@ -26,6 +26,7 @@ from .ddm_models import (
 )
 
 from .addm_models import addm
+from .race_multistage_models import race_multistage
 
 from .race_models import race_model, lca, racing_diffusion_model
 from .poisson_race_models import poisson_race
@@ -58,6 +59,7 @@ __all__ = [
     "ddm_flexbound_tradeoff",
     # ADDM model
     "addm",
+    "race_multistage",
     # Race models
     "race_model",
     "lca",
