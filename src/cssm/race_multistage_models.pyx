@@ -16,20 +16,17 @@ Lüken, Radev, Waldorp & Heathcote (2026), *Neural Racing Accumulator Model
 Estimation With Lightweight Monotonic Flows*,
 https://doi.org/10.31234/osf.io/bfsgr_v1.
 
-The random-number implementation follows ``addm_models.pyx``.  One xoshiro
-state is seeded for every (sample, trial) pair before the OpenMP loop, making
-results reproducible for a fixed ``random_state`` independently of scheduling
-or ``n_threads``, and it needs no GSL.  The shared GSL generator in
-``_rng_wrappers.pxi`` is deliberately not used: it is only live on GSL builds
-and only in the parallel path (PyPI wheels build without GSL, and the stub
-returns 0.0), so the other kernels keep a second, sequential NumPy path for
-that case.  Consolidating the aDDM and race kernels on one generator is
-tracked in https://github.com/lnccbrown/ssm-simulators/issues/376.
+The random numbers come from the generator shared with the aDDM engine
+(``_xoshiro_rng.pxi``: xoshiro256++ seeded per (sample, trial) through
+SplitMix64, Box-Muller transform).  One state per row, seeded before the
+OpenMP loop, makes results reproducible for a fixed ``random_state``
+independently of scheduling or ``n_threads``, and it needs no GSL; that file
+explains why the GSL generator in ``_rng_wrappers.pxi`` is not used here.
 """
 
 import numpy as np
 cimport numpy as np
-from libc.math cimport sqrt, log, cos, sin, M_PI
+from libc.math cimport sqrt
 from libc.stdlib cimport free, malloc
 from libc.stdint cimport uint64_t
 from cython.parallel cimport prange
@@ -43,10 +40,6 @@ from cssm._utils import (
 
 cdef double OMISSION = -999.0
 DEF MAX_ACCUMULATORS = 32
-cdef int UNIFORM_BITS = 11
-cdef double UINT64_TO_DOUBLE = 1.0 / 9007199254740992.0
-cdef double MIN_UNIFORM = 1e-300
-cdef double TWO_PI = 2.0 * M_PI
 
 
 cdef struct SimulationConfig:
@@ -60,76 +53,9 @@ cdef struct TrialResult:
     int choice
 
 
-# Inline xoshiro256++ / Box-Muller RNG, duplicated from the Efficient-FPT-derived
-# aDDM engine (``addm_models.pyx``) because that engine is vendored and must not
-# be edited in place.  See the module docstring for why the shared GSL RNG is
-# not an option here; issue #376 tracks removing the duplication.
-cdef struct Xoshiro256State:
-    uint64_t s0
-    uint64_t s1
-    uint64_t s2
-    uint64_t s3
-
-
-cdef inline uint64_t _rotl(uint64_t x, int k) noexcept nogil:
-    return (x << k) | (x >> (64 - k))
-
-
-cdef inline uint64_t _next(Xoshiro256State *state) noexcept nogil:
-    cdef uint64_t result = _rotl(state.s0 + state.s3, 23) + state.s0
-    cdef uint64_t t = state.s1 << 17
-    state.s2 ^= state.s0
-    state.s3 ^= state.s1
-    state.s1 ^= state.s2
-    state.s0 ^= state.s3
-    state.s2 ^= t
-    state.s3 = _rotl(state.s3, 45)
-    return result
-
-
-cdef inline uint64_t _splitmix64(uint64_t *state) noexcept nogil:
-    state[0] += <uint64_t>0x9e3779b97f4a7c15
-    cdef uint64_t z = state[0]
-    z = (z ^ (z >> 30)) * <uint64_t>0xbf58476d1ce4e5b9
-    z = (z ^ (z >> 27)) * <uint64_t>0x94d049bb133111eb
-    return z ^ (z >> 31)
-
-
-cdef inline void _seed(Xoshiro256State *state, uint64_t seed) noexcept nogil:
-    cdef uint64_t sm_state = seed
-    state.s0 = _splitmix64(&sm_state)
-    state.s1 = _splitmix64(&sm_state)
-    state.s2 = _splitmix64(&sm_state)
-    state.s3 = _splitmix64(&sm_state)
-
-
-cdef struct BoxMullerState:
-    # Box-Muller produces two normals from a pair of uniforms. ``spare``
-    # stores the second value, and ``has_spare`` marks it for the next call.
-    double spare
-    int has_spare
-
-
-cdef inline double _normal(Xoshiro256State *rng, BoxMullerState *bm) noexcept nogil:
-    """Return one standard normal and cache its Box-Muller companion.
-
-    A call first consumes ``bm.spare`` when available. Otherwise it generates
-    a pair of normals, returns the cosine component, and caches the sine
-    component for the following call.
-    """
-    cdef double u1, u2, magnitude
-    # Consume the cached companion before drawing new uniforms.
-    if bm.has_spare:
-        bm.has_spare = 0
-        return bm.spare
-    u1 = <double>(_next(rng) >> UNIFORM_BITS) * UINT64_TO_DOUBLE
-    u2 = <double>(_next(rng) >> UNIFORM_BITS) * UINT64_TO_DOUBLE
-    if u1 < MIN_UNIFORM:
-        u1 = MIN_UNIFORM
-    magnitude = sqrt(-2.0 * log(u1))
-    bm.spare = magnitude * sin(TWO_PI * u2)
-    bm.has_spare = 1
-    return magnitude * cos(TWO_PI * u2)
+# The generator is shared with the aDDM engine; see _xoshiro_rng.pxi for the
+# provenance and for why the GSL generator is not used in prange kernels.
+include "_xoshiro_rng.pxi"
 
 
 cdef inline double _upper_boundary_at(
@@ -194,7 +120,7 @@ cdef void _run_race_trial(
         int i, step, winner, n_accumulators
         bint stage_changed
 
-    _seed(&rng, seed)
+    seed_xoshiro256(&rng, seed)
     bm.has_spare = 0
     t_particle = 0.0
     result.rt = -1.0
@@ -265,7 +191,7 @@ cdef void _run_race_trial(
         for i in range(n_accumulators):
             drift_increment = mu[row, i, stage[i]] * dt_current
             diffusion_increment = (
-                sigma[row, i, stage[i]] * sqrt_dt * _normal(&rng, &bm)
+                sigma[row, i, stage[i]] * sqrt_dt * box_muller_next(&rng, &bm)
             )
             particle[i] += drift_increment + diffusion_increment
         t_particle += dt_current
