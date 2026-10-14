@@ -166,7 +166,17 @@ py.install_sources(
 )
 
 # Pure-Python ssms package (incl. ssms/cli/*.yaml package data).
-install_subdir('ssms', install_dir: py.get_install_dir())
+# install_subdir has no glob excludes, so find __pycache__ dirs at configure
+# time; otherwise a wheel built straight from a dev tree ships stale .pyc.
+ssms_pycache = run_command(py, '-c', '''
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+print("\n".join(str(p.relative_to(root)) for p in root.rglob("__pycache__")))
+''', meson.current_source_dir() / 'ssms', check: true).stdout().strip()
+install_subdir('ssms',
+  install_dir: py.get_install_dir(),
+  exclude_directories: ssms_pycache == '' ? [] : ssms_pycache.split('\n'),
+)
 
 summary({
   'OpenMP': have_openmp,
