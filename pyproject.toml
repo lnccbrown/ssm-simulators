@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython>=0.29.23", "numpy >= 2.0"]
-build-backend = "setuptools.build_meta"
+requires = ["meson-python>=0.17", "meson>=1.5", "ninja", "Cython>=3.0", "numpy >= 2.0"]
+build-backend = "mesonpy"
 
 [project]
 name = "ssm-simulators"
@@ -65,6 +65,11 @@ dev = [
     "pyddm>=0.9.0",
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
+    # build backend, needed in-venv for editable rebuilds (see [tool.uv])
+    "meson-python>=0.17",
+    "meson>=1.5",
+    "ninja",
+    "Cython>=3.0",
 ]
 
 [dependency-groups]
@@ -87,6 +92,11 @@ dev = [
     "pyddm>=0.9.0",
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
+    # build backend, needed in-venv for editable rebuilds (see [tool.uv])
+    "meson-python>=0.17",
+    "meson>=1.5",
+    "ninja",
+    "Cython>=3.0",
 ]
 docs = [
     "mkdocs==1.6.1",
@@ -102,13 +112,6 @@ docs = [
 Homepage = "https://github.com/lnccbrown/ssm-simulators"
 Documentation = "https://lnccbrown.github.io/ssm-simulators/"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
-
-[tool.setuptools.packages.find]
-where = [".", "src"]
-include = ["ssms*", "cssm"]
-
-[tool.setuptools.package-dir]
-cssm = "src/cssm"
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -213,7 +216,6 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "*/setup.py",
     "*/__init__.py",
     "tests/*",
     # Benchmark and reference scripts - not package code, not unit tests
@@ -237,6 +239,12 @@ exclude_lines = [
 [project.scripts]
 generate = "ssms.cli.generate:app"
 
-[tool.setuptools.package-data]
-"ssms.cli" = ["config_network_training_lan.yaml"]
-"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd", "*.pxi", "*.h"]
+[tool.uv]
+# Editable installs rebuild changed .pyx on import; that needs meson/ninja/
+# cython/numpy importable from the project venv, so build in-venv.
+no-build-isolation-package = ["ssm-simulators"]
+
+[tool.uv.extra-build-dependencies]
+# Ensures uv installs the build backend before building ssm-simulators
+# without isolation (otherwise a fresh `uv sync` fails on import mesonpy).
+ssm-simulators = ["meson-python>=0.17", "meson>=1.5", "ninja", "Cython>=3.0", "numpy>=2.0"]
