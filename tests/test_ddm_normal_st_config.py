@@ -50,6 +50,17 @@ def test_ddm_normal_st_is_registered_over_ddm_st_s_box():
     )
 
 
+def test_st_upper_bound_matches_the_shipped_networks():
+    """Both configs bound st at 0.35, the box the HSSM LANs were trained on.
+
+    The ddm_st and ddm_normal_st networks in HSSM (#1346, #1345) were trained
+    on st in (0.001, 0.35), and HSSM's training-box guard reads its bounds
+    from these configs, so the two must agree (issue #388).
+    """
+    for model in ("ddm_st", "ddm_normal_st"):
+        assert model_config[model]["param_bounds_dict"]["st"][1] == 0.35, model
+
+
 def test_ddm_normal_st_simulates():
     """Smoke test at a parameter set the 3-sigma floor keeps clear of zero."""
     result = simulator(
