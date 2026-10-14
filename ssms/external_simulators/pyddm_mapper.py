@@ -198,7 +198,7 @@ class SSMSToPyDDMMapper:
 
         Architecture:
         - Standard model configs specify boundary_name and boundary function
-        - Metadata (params, multiplicative) is looked up from the boundary registry
+        - Metadata (params) is looked up from the boundary registry
         - Direct boundary_config dict is supported for custom runtime configurations
 
         This design avoids duplicating metadata across 100+ model configs and ensures
@@ -219,7 +219,7 @@ class SSMSToPyDDMMapper:
             boundary_name = model_config.get("boundary_name", "constant")
             boundary_fn = model_config.get("boundary", None)
 
-            # Look up parameters and multiplicative flag from boundary registry
+            # Look up parameters from boundary registry
             if boundary_name != "constant" and boundary_fn is not None:
                 from ssms.config import get_boundary_registry
 
