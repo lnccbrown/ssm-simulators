@@ -66,11 +66,6 @@ dev = [
     "pyddm>=0.9.0",
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
-    # build backend, needed in-venv for editable rebuilds (see [tool.uv])
-    "meson-python>=0.17",
-    "meson>=1.5",
-    "ninja",
-    "Cython>=3.0",
 ]
 
 [dependency-groups]
@@ -93,11 +88,14 @@ dev = [
     "pyddm>=0.9.0",
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
-    # build backend, needed in-venv for editable rebuilds (see [tool.uv])
+]
+# Build backend, installed into the venv for the no-isolation editable build.
+build = [
     "meson-python>=0.17",
     "meson>=1.5",
     "ninja",
     "Cython>=3.0",
+    "numpy>=2.0",
 ]
 docs = [
     "mkdocs==1.6.1",
@@ -242,10 +240,7 @@ generate = "ssms.cli.generate:app"
 
 [tool.uv]
 # Editable installs rebuild changed .pyx on import; that needs meson/ninja/
-# cython/numpy importable from the project venv, so build in-venv.
+# cython/numpy importable from the project venv, so build in-venv. uv installs
+# the default groups (incl. `build`) before building the project.
 no-build-isolation-package = ["ssm-simulators"]
-
-[tool.uv.extra-build-dependencies]
-# Ensures uv installs the build backend before building ssm-simulators
-# without isolation (otherwise a fresh `uv sync` fails on import mesonpy).
-ssm-simulators = ["meson-python>=0.17", "meson>=1.5", "ninja", "Cython>=3.0", "numpy>=2.0"]
+default-groups = ["dev", "build"]
