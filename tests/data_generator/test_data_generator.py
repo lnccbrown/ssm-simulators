@@ -92,10 +92,16 @@ slow_prefixes = (
 )
 
 CHOICE_ONLY_RL_TAG = "choice_only_rl"
+PYTHON_SIMULATOR_TAG = "python_simulator"
 
 
 def _is_choice_only_rl_config(model_conf):
     return CHOICE_ONLY_RL_TAG in model_conf.get("tags", ())
+
+
+def _is_python_simulator_config(model_conf):
+    """Level 2 contributions ship a plain Python simulator, not a Cython one."""
+    return PYTHON_SIMULATOR_TAG in model_conf.get("tags", ())
 
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
@@ -154,7 +160,12 @@ def test_model_config(model_name):
     if _is_choice_only_rl_config(model_conf):
         pytest.skip(f"Skipping choice-only RL model: {model_name}")
 
-    assert type(model_conf["simulator"]).__name__ == "cython_function_or_method"
+    expected_simulator_type = (
+        "function"
+        if _is_python_simulator_config(model_conf)
+        else "cython_function_or_method"
+    )
+    assert type(model_conf["simulator"]).__name__ == expected_simulator_type
 
     assert callable(model_conf["simulator"])
     assert callable(model_conf["boundary"])
