@@ -23,11 +23,11 @@ from ssms.support_utils.kde_class import LogKDE
 # property of an unbounded kernel, and `random_state` does not pin the ndt
 # draws (t_dist samples from scipy's global RNG). Tolerances are set from a
 # 3-seed x 200_000-sample measurement, whose seed-to-seed spread at the box
-# corner is +-0.06 percentage points.
+# corner is about +-0.07 percentage points.
 N_SAMPLES = 100_000
 
 # The lower `t` bound with the widest `st`, the worst corner of the box.
-BOX_CORNER = {"v": 0.0, "a": 0.3, "z": 0.5, "t": 0.25, "st": 0.25}
+BOX_CORNER = {"v": 0.0, "a": 0.3, "z": 0.5, "t": 0.25, "st": 0.35}
 
 # `st` at which the kernel's 3-sigma floor sits exactly on rt = 0 at t = 0.25.
 THREE_SIGMA_ST = BOX_CORNER["t"] / 3.0
@@ -85,19 +85,29 @@ def test_st_is_a_standard_deviation_not_a_half_width():
     assert normal.support()[0] == -np.inf
 
 
-def test_bounded_sibling_never_emits_a_non_positive_rt():
-    """ddm_st's floor is t - st >= 0 over its whole box, and rt adds a positive dt."""
-    rts = simulator(model="ddm_st", theta=BOX_CORNER, n_samples=N_SAMPLES)["rts"]
+def test_bounded_sibling_emits_non_positive_rts_only_where_st_exceeds_t():
+    """ddm_st's floor is t - st, which is negative only where st > t.
+
+    At st = t the floor is 0 and rt adds a positive dt, so no RT is
+    non-positive. The box reaches st = 0.35 > t = 0.25, where the floor is
+    -0.1. Measured 4.21% at the corner (4.18-4.26 over 3 seeds x 200_000
+    samples).
+    """
+    at_floor_zero = dict(BOX_CORNER, st=BOX_CORNER["t"])
+    rts = simulator(model="ddm_st", theta=at_floor_zero, n_samples=N_SAMPLES)["rts"]
     assert np.all(rts > 0)
+
+    assert 0.02 < _frac_nonpositive(BOX_CORNER, model="ddm_st") < 0.07
 
 
 def test_non_positive_rts_are_a_declared_exposure_at_the_box_corner():
     """The unbounded kernel puts a large minority of RTs at or below zero here.
 
     Consumers that cannot represent a non-positive RT must filter, not assume.
-    Measured 8.92% (8.88-9.00 over 3 seeds x 200_000 samples).
+    Measured 16.39% (16.33-16.46 over 3 seeds x 200_000 samples; 8.95% at
+    the old st = 0.25 corner).
     """
-    assert 0.05 < _frac_nonpositive(BOX_CORNER) < 0.15
+    assert 0.12 < _frac_nonpositive(BOX_CORNER) < 0.21
 
 
 def test_non_positive_rt_exposure_falls_but_never_reaches_zero():
