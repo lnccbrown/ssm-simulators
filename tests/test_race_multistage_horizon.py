@@ -19,11 +19,6 @@ from cssm.race_multistage_models import _simulate_race_multistage
 OMISSION = -999.0
 NO_HIT = 10.0
 
-# Fails until the kernel terminates on elapsed time instead of a step budget.
-XFAIL_383 = pytest.mark.xfail(
-    strict=True, reason="#383: stage-split steps exhaust the loop before the horizon"
-)
-
 SPLIT_SCHEDULES = [
     pytest.param([0.0, 0.55], id="one-off-grid-node"),
     pytest.param([0.0, 0.15, 0.37, 0.55, 0.83], id="several-off-grid-nodes"),
@@ -70,7 +65,6 @@ def _x_final(out):
     return out["metadata"]["x_final"][0, 0]
 
 
-@XFAIL_383
 def test_issue_reproducer_no_hit_endpoint():
     out = _race([[0.0, 0.55]], [NO_HIT], delta_t=0.1, max_t=1.0, deadline=1.0)
 
@@ -78,7 +72,6 @@ def test_issue_reproducer_no_hit_endpoint():
     np.testing.assert_allclose(_x_final(out), [1.0], atol=1e-6)
 
 
-@XFAIL_383
 def test_issue_reproducer_late_response():
     out = _race([[0.0, 0.55]], [0.98], delta_t=0.1, max_t=1.0, deadline=1.0)
 
@@ -87,7 +80,6 @@ def test_issue_reproducer_late_response():
     assert 0.9 - 1e-6 <= _rt(out) <= 1.0 + 1e-6
 
 
-@XFAIL_383
 @pytest.mark.parametrize("nodes", SPLIT_SCHEDULES)
 def test_no_hit_path_ends_at_the_horizon(nodes):
     out = _race([nodes], [NO_HIT])
@@ -96,7 +88,6 @@ def test_no_hit_path_ends_at_the_horizon(nodes):
     np.testing.assert_allclose(_x_final(out), [1.0], atol=1e-12)
 
 
-@XFAIL_383
 @pytest.mark.parametrize("nodes", SPLIT_SCHEDULES)
 def test_crossing_before_the_horizon_is_reported(nodes):
     out = _race([nodes], [0.98])
@@ -105,7 +96,6 @@ def test_crossing_before_the_horizon_is_reported(nodes):
     assert 0.98 - 0.125 <= _rt(out) <= 1.0
 
 
-@XFAIL_383
 def test_different_schedules_across_accumulators_reach_the_horizon():
     out = _race([[0.0, 0.55], [0.0, 0.33, 0.71]], [NO_HIT, NO_HIT])
 
@@ -113,7 +103,6 @@ def test_different_schedules_across_accumulators_reach_the_horizon():
     np.testing.assert_allclose(_x_final(out), [1.0, 1.0], atol=1e-12)
 
 
-@XFAIL_383
 def test_late_crossing_by_the_more_finely_split_accumulator_wins():
     out = _race([[0.0, 0.55], [0.0, 0.33, 0.71]], [NO_HIT, 0.98])
 
@@ -121,7 +110,6 @@ def test_late_crossing_by_the_more_finely_split_accumulator_wins():
     assert 0.98 - 0.125 <= _rt(out) <= 1.0
 
 
-@XFAIL_383
 def test_coincident_nodes_across_accumulators_reach_the_horizon():
     schedules = [[0.0, 0.55], [0.0, 0.55, 0.55], [0.0, 0.3, 0.55]]
     out = _race(schedules, [NO_HIT] * 3)
@@ -130,7 +118,6 @@ def test_coincident_nodes_across_accumulators_reach_the_horizon():
     np.testing.assert_allclose(_x_final(out), [1.0, 1.0, 1.0], atol=1e-12)
 
 
-@XFAIL_383
 def test_final_step_shorter_than_delta_t():
     # 0.9375 = 7.5 nominal steps, so the last step is half of delta_t.
     out = _race([[0.0, 0.55]], [NO_HIT], max_t=0.9375)
@@ -175,7 +162,6 @@ def test_boundary_drop_at_an_off_grid_node_uses_the_preceding_step_midpoint():
     np.testing.assert_allclose(_rt(out), 0.525, atol=1e-6)
 
 
-@XFAIL_383
 def test_nondecision_time_shifts_a_late_response():
     plain = _race([[0.0, 0.55]], [0.98])
     shifted = _race([[0.0, 0.55]], [0.98], nondecision_time=0.3, deadline=2.0)
@@ -184,7 +170,6 @@ def test_nondecision_time_shifts_a_late_response():
     np.testing.assert_allclose(_rt(shifted), _rt(plain) + 0.3, atol=1e-6)
 
 
-@XFAIL_383
 def test_late_response_after_the_deadline_is_an_omission():
     out = _race([[0.0, 0.55]], [0.98], deadline=0.9)
 
@@ -194,7 +179,6 @@ def test_late_response_after_the_deadline_is_an_omission():
     np.testing.assert_allclose(_x_final(out), [1.0], atol=1e-12)
 
 
-@XFAIL_383
 def test_exhausted_step_budget_raises_instead_of_omitting():
     shape = (1, 1, 1)
     with pytest.raises(RuntimeError):
