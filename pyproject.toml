@@ -49,9 +49,10 @@ dev = [
     "pytest",
     "mypy",
     "black",
-    # ruff's default rule set moves at minor releases (0.16: 59 -> 413 rules + Markdown
-    # code-fence formatting; 0.17 dropped DTZ). Bump the minor deliberately: run
-    # `ruff check --fix` plus a triage pass, and keep .pre-commit-config.yaml in lockstep.
+    # ruff's default rule set moves at minor releases (0.16: 59 -> 413 rules
+    # plus Markdown code-fence formatting; 0.17 dropped most DTZ rules). Bump
+    # the minor deliberately: run `ruff check --fix` plus a triage pass, and
+    # keep .pre-commit-config.yaml in lockstep.
     "ruff>=0.17,<0.18",
     "types-PyYAML",
     "pre-commit",
