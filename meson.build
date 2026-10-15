@@ -22,7 +22,13 @@ project(
 
 py = import('python').find_installation(pure: false)
 py_dep = py.dependency()
-numpy_dep = dependency('numpy')  # numpy >= 2 ships numpy-config
+# Ask the build interpreter for numpy's headers. dependency('numpy') needs
+# pkg-config or numpy-config on PATH, which cibuildwheel's macOS build lacks.
+numpy_inc = run_command(py, '-c', 'import numpy; print(numpy.get_include())',
+  check: true).stdout().strip()
+# A plain -I flag: include_directories() rejects absolute paths inside the
+# source tree, which is where numpy lives in a local .venv editable build.
+numpy_dep = declare_dependency(compile_args: ['-I' + numpy_inc])
 cpp = meson.get_compiler('cpp')
 system = host_machine.system()
 
@@ -122,9 +128,13 @@ openmp_modules = [
 # Only built when GSL is available
 gsl_modules = ['_c_rng']
 
+# --module-name pins each module to cssm.<mod>, as setup.py's Extension names
+# did. Without it Cython walks up through src/__init__.py and names it
+# src.cssm.<mod>, so functions pickle by an unimportable module path and
+# multiprocessing (pathos/dill) fails to send them to worker processes.
 foreach mod : cython_modules
   py.extension_module(mod, 'src/cssm' / mod + '.pyx',
-    cython_args: cython_args,
+    cython_args: cython_args + ['--module-name', 'cssm.' + mod],
     cpp_args: opt_cpp_args,
     link_args: opt_link_args,
     include_directories: cssm_inc,
@@ -136,7 +146,7 @@ endforeach
 
 foreach mod : openmp_modules + (have_gsl ? gsl_modules : [])
   py.extension_module(mod, 'src/cssm' / mod + '.pyx',
-    cython_args: cython_args,
+    cython_args: cython_args + ['--module-name', 'cssm.' + mod],
     cpp_args: opt_cpp_args + omp_args + gsl_args,
     link_args: opt_link_args,
     include_directories: cssm_inc,
