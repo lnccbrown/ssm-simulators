@@ -189,7 +189,8 @@ def _validate_simulator_fun_arg(simulator_fun: str | Callable) -> None:
         If the simulator argument is not a string or a callable.
     """
     if not (isinstance(simulator_fun, str) or callable(simulator_fun)):
-        raise ValueError(
+        # ValueError, not TypeError: documented contract, pinned in tests.
+        raise ValueError(  # noqa: TRY004
             "`simulator_fun` must be a string or a callable, "
             f"but you passed {type(simulator_fun)}."
         )
@@ -378,7 +379,8 @@ def validate_simulator_fun(simulator_fun: Any) -> tuple[str, list, int]:
     obs_dim = simulator_fun.obs_dim
 
     if not isinstance(obs_dim, int):
-        raise ValueError("The obs_dim attribute must be an integer")
+        # ValueError, not TypeError: documented contract, pinned in tests.
+        raise ValueError("The obs_dim attribute must be an integer")  # noqa: TRY004
     obs_dim_int = obs_dim
 
     return model_name, choices, obs_dim_int

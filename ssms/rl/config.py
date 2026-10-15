@@ -200,7 +200,9 @@ class ModelConfig:
         """Return the task environment when it supports discrete choice mapping."""
         env = cast(TaskEnvironment, self.task_environment)
         if not isinstance(env, DiscreteChoiceEnvironment):
-            raise ValueError(
+            # ValueError, not TypeError: config validation errors are all
+            # ValueError, and tests pin this one.
+            raise ValueError(  # noqa: TRY004
                 "This RLSSM model requires a DiscreteChoiceEnvironment "
                 f"(response_labels and n_choices). Got {type(env).__name__}."
             )

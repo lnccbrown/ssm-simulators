@@ -400,7 +400,10 @@ class Simulator:
                 )
                 config["boundary_params"] = []
         else:
-            raise ValueError("boundary must be a string name or callable function")
+            # ValueError, not TypeError: the documented `Raises` contract.
+            raise ValueError(  # noqa: TRY004
+                "boundary must be a string name or callable function"
+            )
 
     def _apply_custom_drift(self, config: dict, drift: str | Callable) -> None:
         """Apply custom drift to configuration.
@@ -444,7 +447,10 @@ class Simulator:
                 )
                 config["drift_params"] = []
         else:
-            raise ValueError("drift must be a string name or callable function")
+            # ValueError, not TypeError: the documented `Raises` contract.
+            raise ValueError(  # noqa: TRY004
+                "drift must be a string name or callable function"
+            )
 
     def _validate_boundary_function(self, func: Callable) -> None:
         """Validate boundary function signature.

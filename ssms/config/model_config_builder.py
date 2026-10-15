@@ -425,7 +425,8 @@ class ModelConfigBuilder:
             config["boundary_name"] = getattr(boundary, "__name__", "custom")
             config["boundary_params"] = boundary_params
         else:
-            raise ValueError("boundary must be string name or callable")
+            # ValueError, not TypeError: documented contract, pinned in tests.
+            raise ValueError("boundary must be string name or callable")  # noqa: TRY004
 
         return config
 
@@ -479,7 +480,8 @@ class ModelConfigBuilder:
             config["drift_name"] = getattr(drift, "__name__", "custom")
             config["drift_params"] = drift_params
         else:
-            raise ValueError("drift must be string name or callable")
+            # ValueError, not TypeError: documented contract, pinned in tests.
+            raise ValueError("drift must be string name or callable")  # noqa: TRY004
 
         return config
 

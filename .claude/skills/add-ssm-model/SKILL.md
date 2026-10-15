@@ -143,7 +143,7 @@ Edit `ssms/config/_modelconfig/__init__.py`:
 
 3. **Export** — add to `__all__`:
    ```python
-   "get_{model_name}_config",
+   __all__ = [..., "get_{model_name}_config"]
    ```
 
 ## Step 6: Validate
@@ -178,7 +178,9 @@ for i, (lo, hi) in enumerate(zip(config["param_bounds"][0], config["param_bounds
 for i, (val, lo, hi) in enumerate(
     zip(config["default_params"], config["param_bounds"][0], config["param_bounds"][1])
 ):
-    assert lo <= val <= hi, f"Param {config['params'][i]}: default {val} outside [{lo}, {hi}]"
+    assert lo <= val <= hi, (
+        f"Param {config['params'][i]}: default {val} outside [{lo}, {hi}]"
+    )
 
 # 5. Simulator runs with default params
 sim = Simulator(model="{model_name}")
@@ -193,6 +195,7 @@ assert unique_choices.issubset(set(config["choices"])), (
 
 # 6. Simulator runs with random params within bounds
 import numpy as np
+
 rng = np.random.default_rng(42)
 for trial in range(5):
     random_params = [

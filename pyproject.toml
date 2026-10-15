@@ -208,19 +208,15 @@ ignore = [
     # Rules that became default in ruff 0.16 and fire widely on established idioms
     # Mutable class attributes: constant sets/lists on config, registry, and test stub classes
     "RUF012",
-    # Blind `except Exception` at CLI / IO / worker-pool boundaries (logged or re-raised)
+    # Blind `except Exception` where any failure becomes a fallback or a reported
+    # result: logged (CLI, CPU-count probes), returned as an error value (worker
+    # results, notebook runner), treated as "no match" (registry family matchers),
+    # or an optional-import guard in tests
     "BLE001",
-    # `__all__` lists are deliberately grouped by section (with comments), not alphabetised
+    # `__all__` lists keep a hand-chosen order (some grouped into commented
+    # sections), not alphabetical
     "RUF022",
-    # `ValueError` on bad argument types is the public contract (tests and HSSM assert it)
-    "TRY004",
 ]
-
-[tool.ruff.format]
-# ruff >= 0.16 formats Python code fences in Markdown. The fences in this skill are
-# paste-in fragments (e.g. a lone `__all__` entry) that the formatter would rewrite
-# into something else (a one-element tuple), so it is skipped.
-exclude = [".claude/skills/add-ssm-model/SKILL.md"]
 
 [tool.mypy]
 python_version = "3.12"

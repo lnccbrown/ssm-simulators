@@ -204,11 +204,8 @@ def _theta_array_to_dict(
         raise ValueError("model_param_list is not supplied")
     elif theta is None:
         raise ValueError("theta array is not supplied")
-    elif (
-        theta.ndim == 1
-        and len(model_param_list) != theta.shape[0]
-        or theta.ndim == 2
-        and len(model_param_list) != theta.shape[1]
+    elif (theta.ndim == 1 and len(model_param_list) != theta.shape[0]) or (
+        theta.ndim == 2 and len(model_param_list) != theta.shape[1]
     ):
         raise ValueError(
             "model_param_list and theta array do not imply"
@@ -250,7 +247,8 @@ def _preprocess_theta_generic(
         theta = theta.to_dict(orient="list")
         theta = {k: np.array(v).astype(np.float32) for k, v in theta.items()}
     else:
-        raise ValueError(
+        # ValueError, not TypeError: the documented `Raises` contract.
+        raise ValueError(  # noqa: TRY004
             "theta is not supplied as list, numpy array, dictionary, or pandas DataFrame!"
         )
     return theta
