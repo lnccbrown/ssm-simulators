@@ -133,7 +133,7 @@ def main():
     # KS test
     from scipy import stats
 
-    ks_stat, p_value = stats.ks_2samp(rts_1, rts_4)
+    _ks_stat, p_value = stats.ks_2samp(rts_1, rts_4)
     status = "PASS" if p_value > 0.01 else "FAIL"
     print(f"  KS test p-value: {p_value:.4f} [{status}]")
 

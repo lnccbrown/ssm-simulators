@@ -13,15 +13,15 @@ from ssms.rl.validation import DataValidationReport, validate_rlssm_data
 
 
 def _make_config(**overrides):
-    defaults = dict(
-        model_name="test_rlssm",
-        description="Test RLSSM",
-        decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
-        task_environment=rl.env.Bandit.bernoulli(
+    defaults = {
+        "model_name": "test_rlssm",
+        "description": "Test RLSSM",
+        "decision_process": "angle",
+        "learning_process": rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
+        "task_environment": rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
-    )
+    }
     defaults.update(overrides)
     return rl.ModelConfig(**defaults)
 

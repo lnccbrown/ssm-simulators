@@ -1,5 +1,3 @@
-#!/usr/bin/env -S uv run --script
-
 import logging
 import os
 import pickle
@@ -17,6 +15,7 @@ import ssms
 from ssms.config import get_default_generator_config
 
 app = typer.Typer(add_completion=False)
+_logger = logging.getLogger(__name__)
 
 
 def make_data_generator_configs(
@@ -55,10 +54,10 @@ def make_data_generator_configs(
     if save_name:
         Path(save_folder).mkdir(parents=True, exist_ok=True)
         output_file = Path(save_folder) / save_name
-        logging.info("Saving config to: %s", output_file)
+        _logger.info("Saving config to: %s", output_file)
         with open(output_file, "wb") as f:
             pickle.dump(config_dict, f)
-        logging.info("Config saved successfully.")
+        _logger.info("Config saved successfully.")
     return config_dict
 
 
@@ -92,7 +91,7 @@ def _make_data_folder_path(base_path: str | Path, basic_config: Any) -> Path:
 
 
 def get_basic_config_from_yaml(
-    yaml_config_path: str | Path, base_path: str | Path = None
+    yaml_config_path: str | Path, base_path: str | Path | None = None
 ):
     """Load the basic configuration from a YAML file."""
     # Handle both file paths and file-like objects (makes mock testing easier)
@@ -159,7 +158,7 @@ def collect_data_generator_config(
     data_generator_nested_dict = {
         "output": {"folder": str(training_data_folder)},
         "model": bc.model,
-        "cpn_only": True if (bc.generator_approach == "cpn") else False,
+        "cpn_only": (bc.generator_approach == "cpn"),
     }
 
     # Add pipeline config.

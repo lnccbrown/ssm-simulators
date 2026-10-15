@@ -10,16 +10,16 @@ from ssms.rl.simulator import MISSING_RESPONSE_SENTINEL
 
 def _make_simulator(**config_overrides):
     """Create a simulator with sensible defaults for testing."""
-    defaults = dict(
-        model_name="test_rlssm",
-        description="Test RLSSM",
-        decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
+    defaults = {
+        "model_name": "test_rlssm",
+        "description": "Test RLSSM",
+        "decision_process": "angle",
+        "learning_process": rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
         # Use response labels [-1, 1] to match angle model's SSM output
-        task_environment=rl.env.Bandit.bernoulli(
+        "task_environment": rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
-    )
+    }
     defaults.update(config_overrides)
     config = rl.ModelConfig(**defaults)
     return rl.Simulator(config)
@@ -498,9 +498,11 @@ class TestResponseChoiceMapping:
         def mock_simulator(**kwargs):
             return {"rts": np.array([[0.5]]), "choices": np.array([[0]])}
 
-        with patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator):
-            with pytest.raises(ValueError, match="not in response_to_choice"):
-                sim.simulate(theta=THETA, n_trials=1, n_participants=1)
+        with (
+            patch("ssms.rl.simulator.ssm_simulator", side_effect=mock_simulator),
+            pytest.raises(ValueError, match="not in response_to_choice"),
+        ):
+            sim.simulate(theta=THETA, n_trials=1, n_participants=1)
 
     def test_include_choice_emits_derived_choice(self):
         from unittest.mock import patch

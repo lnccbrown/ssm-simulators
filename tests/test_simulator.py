@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="module")
 def sim_input_data():
-    data = dict()
+    data = {}
 
     # Prepare input data for each model
     for key, config in model_config.items():
@@ -41,24 +41,20 @@ def sim_input_data():
 
         # Dictionary with mix of scalars and vectors
         theta_dict_sca_vec = deepcopy(theta_dict_all_vectors)
-        cnt = 0
-        for tmp_key in theta_dict_all_scalars:
-            theta_dict_sca_vec[tmp_key] = theta_dict_all_scalars[tmp_key]
+        for cnt, (tmp_key, value) in enumerate(theta_dict_all_scalars.items()):
+            theta_dict_sca_vec[tmp_key] = value
             if cnt > 0:
                 break
-            cnt += 1
 
         # Dictionary with vectors of uneven length
         theta_dict_uneven = deepcopy(theta_dict_all_vectors)
 
-        cnt = 0
-        for tmp_key in theta_dict_all_scalars:
+        for cnt, tmp_key in enumerate(theta_dict_all_scalars):
             if cnt > 0:
                 break
             theta_dict_uneven[tmp_key] = np.concatenate(
                 [theta_dict_all_vectors[tmp_key], np.zeros(2)]
             )
-            cnt += 1
 
         # Input is list
         theta_list = [
@@ -196,15 +192,15 @@ def test_simulator_bad_return_type_raises():
     bad_config["simulator"] = lambda **kwargs: [1, 2, 3]
 
     # ModelConfigBuilder is imported locally inside simulator(), so patch at the source.
-    with patch("ssms.config.ModelConfigBuilder.from_model", return_value=bad_config):
-        with pytest.raises(
-            TypeError, match="Expected simulator to return a dictionary"
-        ):
-            simulator(
-                model="ddm",
-                theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
-                n_samples=5,
-            )
+    with (
+        patch("ssms.config.ModelConfigBuilder.from_model", return_value=bad_config),
+        pytest.raises(TypeError, match="Expected simulator to return a dictionary"),
+    ):
+        simulator(
+            model="ddm",
+            theta={"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3},
+            n_samples=5,
+        )
 
 
 def test_make_boundary_dict_registry_path():

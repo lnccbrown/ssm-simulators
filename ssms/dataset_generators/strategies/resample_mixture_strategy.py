@@ -169,13 +169,11 @@ class ResampleMixtureStrategy:
             # One-hot encode choices
             out[:n_kde, (-2 - self.model_config["nchoices"])] = samples_kde["rts"]
 
-            r_cnt = 0
             choices = samples_kde["choices"]
-            for response in metadata["possible_choices"]:
+            for r_cnt, response in enumerate(metadata["possible_choices"]):
                 out[:n_kde, ((-1 - self.model_config["nchoices"]) + r_cnt)] = (
                     choices == response
                 ).astype(int)
-                r_cnt += 1
         else:
             out[:n_kde, -3] = samples_kde["rts"]
             out[:n_kde, -2] = samples_kde["choices"]

@@ -516,12 +516,15 @@ class ModelConfig:
             raise ValueError("list_params cannot be empty.")
 
         # list_params / params_default consistency
-        if self.list_params is not None and self.params_default is not None:
-            if len(self.list_params) != len(self.params_default):
-                raise ValueError(
-                    f"list_params length ({len(self.list_params)}) != "
-                    f"params_default length ({len(self.params_default)})"
-                )
+        if (
+            self.list_params is not None
+            and self.params_default is not None
+            and len(self.list_params) != len(self.params_default)
+        ):
+            raise ValueError(
+                f"list_params length ({len(self.list_params)}) != "
+                f"params_default length ({len(self.params_default)})"
+            )
 
         # All list_params have bounds
         if self.list_params is not None and self.bounds is not None:

@@ -48,7 +48,15 @@ def _fixed_covariates(n=12, max_d=5, seed=0):
     sacc = np.zeros((n, max_d), dtype=np.float64)
     for i in range(n):
         sacc[i, 1 : d[i]] = np.sort(rng.uniform(0.1, 1.5, d[i] - 1))
-    return dict(n=n, max_d=max_d, r1=r1, r2=r2, flag=flag, d=d, sacc=sacc)
+    return {
+        "n": n,
+        "max_d": max_d,
+        "r1": r1,
+        "r2": r2,
+        "flag": flag,
+        "d": d,
+        "sacc": sacc,
+    }
 
 
 def _efpt_boundary_arrays(sacc, a, b, sigma):
@@ -183,17 +191,17 @@ def test_addm_deterministic_across_n_threads():
     fx = _fixed_covariates(n=40, seed=1)
     n = fx["n"]
     col = lambda v: np.full(n, v, dtype=np.float64)
-    kw = dict(
-        r1=fx["r1"],
-        r2=fx["r2"],
-        flag=fx["flag"],
-        sacc_array=fx["sacc"],
-        d=fx["d"],
-        n_samples=1,
-        n_trials=n,
-        random_state=123,
-        max_t=10.0,
-    )
+    kw = {
+        "r1": fx["r1"],
+        "r2": fx["r2"],
+        "flag": fx["flag"],
+        "sacc_array": fx["sacc"],
+        "d": fx["d"],
+        "n_samples": 1,
+        "n_trials": n,
+        "random_state": 123,
+        "max_t": 10.0,
+    }
     a1 = am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -337,7 +345,7 @@ def test_addm_self_sample_mode_still_runs():
         col(999.0),
         col(_SIGMA),
     )
-    kw = dict(n_samples=100, n_trials=n, random_state=42, max_t=10.0)
+    kw = {"n_samples": 100, "n_trials": n, "random_state": 42, "max_t": 10.0}
     a = am.addm(*args, **kw)
     b = am.addm(*args, **kw)
     rts = np.asarray(a["rts"])

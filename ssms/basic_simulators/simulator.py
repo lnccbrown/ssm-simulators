@@ -484,14 +484,12 @@ def bin_simulator_output(
         bins[:nbins] = np.linspace(0, max_t, nbins)
         bins[nbins] = np.inf
 
-    cnt = 0
     counts = np.zeros((nbins, len(out["metadata"]["possible_choices"])))
 
-    for choice in out["metadata"]["possible_choices"]:
+    for cnt, choice in enumerate(out["metadata"]["possible_choices"]):
         counts[:, cnt] = np.histogram(out["rts"][out["choices"] == choice], bins=bins)[
             0
         ]
-        cnt += 1
 
     if freq_cnt is False:
         counts = counts / out["metadata"]["n_samples"]

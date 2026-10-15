@@ -145,8 +145,7 @@ def get_gsl_flags():
         else:
             compile_args.append(flag)
 
-    for flag in libs:
-        link_args.append(flag)
+    link_args.extend(libs)
 
     return {
         "include_dirs": include_dirs,

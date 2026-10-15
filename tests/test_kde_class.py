@@ -36,7 +36,7 @@ def sample_ddm_data():
         fixed-parameter DDM with 1000 trials.
     """
     return simulator(
-        model="ddm", theta=dict(v=1.0, a=1.5, z=0.5, t=0.3), n_samples=1000
+        model="ddm", theta={"v": 1.0, "a": 1.5, "z": 0.5, "t": 0.3}, n_samples=1000
     )
 
 

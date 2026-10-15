@@ -140,7 +140,7 @@ def test_data_persistance(tmp_path):
         config=generator_config, model_config=model_conf
     )
     my_dataset_generator.generate_data_training(save=True)
-    new_data_file = list(tmp_path.iterdir())[0]
+    new_data_file = next(iter(tmp_path.iterdir()))
     assert new_data_file.exists()
     assert new_data_file.suffix == ".pickle"
 

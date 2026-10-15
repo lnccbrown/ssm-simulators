@@ -268,7 +268,7 @@ class TestTrainingDataGeneratorDataGeneration:
         minimal_config["pipeline"]["n_cpus"] = "all"
 
         def raise_exception(*args, **kwargs):
-            raise Exception("Mocked exception")
+            raise RuntimeError("Mocked exception")
 
         if hasattr(os, "sched_getaffinity"):
             monkeypatch.setattr(os, "sched_getaffinity", raise_exception)
@@ -311,7 +311,7 @@ class TestTrainingDataGeneratorDataGeneration:
         minimal_config["pipeline"]["n_cpus"] = "all"
 
         def raise_exception(*args, **kwargs):
-            raise Exception("Mocked exception")
+            raise RuntimeError("Mocked exception")
 
         if hasattr(os, "sched_getaffinity"):
             monkeypatch.setattr(os, "sched_getaffinity", raise_exception)

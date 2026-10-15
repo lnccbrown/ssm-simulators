@@ -174,7 +174,7 @@ def test_output_consistency_across_methods(ddm_configs):
 
 def test_builder_config_extraction(ddm_configs):
     """Test that builder correctly extracts parameters from generator_config."""
-    gen_config, model_conf = ddm_configs
+    gen_config, _model_conf = ddm_configs
 
     # Test with displace_t=True (using nested structure)
     gen_config["estimator"]["displace_t"] = True
@@ -218,7 +218,7 @@ def test_strategy_mixture_probabilities(ddm_configs):
 
 def test_different_models_with_injection(ddm_configs):
     """Test pipeline injection works with different models."""
-    gen_config, model_conf = ddm_configs
+    gen_config, _model_conf = ddm_configs
 
     # Test with ornstein model
     ornstein_conf = model_config["ornstein"]

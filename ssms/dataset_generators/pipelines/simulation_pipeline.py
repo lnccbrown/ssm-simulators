@@ -125,7 +125,7 @@ class SimulationPipeline:
             simulations = self._run_simulations(theta_dict, simulator_seed)
 
             # 3. Filter simulations
-            keep, stats = self._is_valid_simulation(simulations)
+            keep, _stats = self._is_valid_simulation(simulations)
             attempt += 1
 
         if not keep:

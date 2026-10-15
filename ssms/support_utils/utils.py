@@ -213,12 +213,11 @@ def sample_parameters_from_constraints(
                 f"must be less than upper bound '{upper}' (same dependency)"
             )
         # Check numeric bounds
-        if not isinstance(lower, str) and not isinstance(upper, str):
-            if lower >= upper:
-                raise ValueError(
-                    f"Parameter '{param}' has invalid bounds: lower bound {lower} "
-                    f"must be less than upper bound {upper}"
-                )
+        if not isinstance(lower, str) and not isinstance(upper, str) and lower >= upper:
+            raise ValueError(
+                f"Parameter '{param}' has invalid bounds: lower bound {lower} "
+                f"must be less than upper bound {upper}"
+            )
 
     # Convert random_state to rng if provided
     rng = np.random.default_rng(random_state) if random_state is not None else None

@@ -9,15 +9,15 @@ import cssm
 def _inputs(n_trials=1, n_accumulators=2, n_stages=1):
     """Return a valid, zero-drift/noise race-array fixture."""
     shape = (n_trials, n_accumulators, n_stages)
-    return dict(
-        mu_array=np.zeros(shape),
-        sigma_array=np.zeros(shape),
-        node_array=np.zeros(shape),
-        d_array=np.full((n_trials, n_accumulators), n_stages, dtype=np.int32),
-        upper_intercept_array=np.ones(shape),
-        upper_slope_array=np.zeros(shape),
-        x0_array=np.zeros((n_trials, n_accumulators)),
-    )
+    return {
+        "mu_array": np.zeros(shape),
+        "sigma_array": np.zeros(shape),
+        "node_array": np.zeros(shape),
+        "d_array": np.full((n_trials, n_accumulators), n_stages, dtype=np.int32),
+        "upper_intercept_array": np.ones(shape),
+        "upper_slope_array": np.zeros(shape),
+        "x0_array": np.zeros((n_trials, n_accumulators)),
+    }
 
 
 def test_one_accumulator_deterministic_crossing():
@@ -138,7 +138,7 @@ def test_deadline_less_than_nondecision_time_is_rejected():
 
 
 def _run(inputs, **overrides):
-    kwargs = dict(n_samples=2, delta_t=0.1, max_t=0.5, random_state=5)
+    kwargs = {"n_samples": 2, "delta_t": 0.1, "max_t": 0.5, "random_state": 5}
     kwargs.update(overrides)
     return cssm.race_multistage(**inputs, **kwargs)
 

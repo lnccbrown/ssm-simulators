@@ -345,7 +345,7 @@ def ddm_flexbound_rust(
 
     for k in range(n_trials):
         boundary_params_tmp = {
-            key_: boundary_params[key_][k] for key_ in boundary_params.keys()
+            key_: boundary_params[key_][k] for key_ in boundary_params
         }
         boundary[k, : len(t_s)] = boundary_fun(t=t_s, **boundary_params_tmp).astype(
             np.float32
@@ -463,7 +463,7 @@ def full_ddm_rust(
 
     for k in range(n_trials):
         boundary_params_tmp = {
-            key_: boundary_params[key_][k] for key_ in boundary_params.keys()
+            key_: boundary_params[key_][k] for key_ in boundary_params
         }
         boundary[k, : len(t_s)] = boundary_fun(t=t_s, **boundary_params_tmp).astype(
             np.float32
