@@ -158,3 +158,6 @@ dmypy.json
 .vscode/*
 
 explorations/
+
+# Generated notebook results
+/notebooks/volterra_accuracy/results/
