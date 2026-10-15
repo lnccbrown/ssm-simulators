@@ -23,6 +23,7 @@ from ssms.config import (
     get_model_registry,
     ModelConfigBuilder,
 )
+from ssms.config import boundary_registry, drift_registry
 from ssms.basic_simulators.parameter_adapters import (
     register_adapter_to_model,
     register_adapter_to_model_family,
@@ -499,8 +500,14 @@ class TestRegistryParamsNotAliased:
             assert first["params"] is not second["params"]
             assert first["fun"] is second["fun"]
 
-    def test_register_boundary_copies_params(self):
+    def test_register_boundary_copies_params(self, monkeypatch):
         """Mutating the caller's list after register_boundary leaves the registry intact."""
+        # A fresh global registry lets a rerun register the same name again.
+        monkeypatch.setattr(
+            boundary_registry,
+            "_GLOBAL_BOUNDARY_REGISTRY",
+            boundary_registry.BoundaryRegistry(),
+        )
         params = ["a", "rate"]
         register_boundary(
             name="test_311_boundary_copy_in",
@@ -511,8 +518,12 @@ class TestRegistryParamsNotAliased:
         registry = get_boundary_registry()
         assert registry.get("test_311_boundary_copy_in")["params"] == ["a", "rate"]
 
-    def test_register_drift_copies_params(self):
+    def test_register_drift_copies_params(self, monkeypatch):
         """Mutating the caller's list after register_drift leaves the registry intact."""
+        # A fresh global registry lets a rerun register the same name again.
+        monkeypatch.setattr(
+            drift_registry, "_GLOBAL_DRIFT_REGISTRY", drift_registry.DriftRegistry()
+        )
         params = ["slope"]
         register_drift(
             name="test_311_drift_copy_in",
