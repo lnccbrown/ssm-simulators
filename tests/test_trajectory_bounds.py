@@ -164,15 +164,15 @@ _CHILD = textwrap.dedent(
 )
 
 
-def _run_child(spec, timeout=300):
-    """Run the child script on ``spec`` and return its JSON summary."""
+def _run_child(spec, timeout=300, child=_CHILD):
+    """Run the ``child`` script on ``spec`` and return its JSON summary."""
     env = dict(os.environ)
     if sys.platform.startswith("linux") and _MALLOC_DEBUG_LIB.exists():
         env["LD_PRELOAD"] = str(_MALLOC_DEBUG_LIB)
         env["MALLOC_CHECK_"] = "3"
     try:
         proc = subprocess.run(
-            [sys.executable, "-c", _CHILD, json.dumps(spec)],
+            [sys.executable, "-c", child, json.dumps(spec)],
             capture_output=True,
             text=True,
             timeout=timeout,
