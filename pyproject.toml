@@ -206,7 +206,8 @@ ignore = [
     "TID252",
 
     # Rules that became default in ruff 0.16 and fire widely on established idioms
-    # Mutable class attributes: constant sets/lists on config, registry, and test stub classes
+    # Mutable class attributes: 78 of 81 are fixtures on test stub classes; the
+    # other 3 are constant sets on SSMSToPyDDMMapper
     "RUF012",
     # Blind `except Exception` where any failure becomes a fallback or a reported
     # result: logged (CLI, CPU-count probes), returned as an error value (worker
