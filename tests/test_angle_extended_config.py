@@ -47,9 +47,8 @@ class TestItIsAngleExceptForTheDriftBox:
                 assert (lo_e, hi_e) == (lo_b, hi_b), f"{name} should not have moved"
 
     def test_the_name_field_and_the_registry_key_agree(self, configs):
-        # `shrink_spot_extended`, the registry's other bounds-only variant,
-        # sets its own "name" to "shrink_spot" -- key and name disagree there.
-        # This asserts we did not inherit that.
+        # Bounds-only variants start life as a copy of the base config; the
+        # copy must still identify itself by its own registry key.
         _, ext = configs
         assert ext["name"] == EXT
 
