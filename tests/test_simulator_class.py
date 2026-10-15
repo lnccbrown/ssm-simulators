@@ -100,6 +100,11 @@ class TestCustomBoundaryFunctions:
         with pytest.raises(ValueError, match="Unknown boundary"):
             Simulator("ddm", boundary="nonexistent_boundary")
 
+    def test_boundary_of_wrong_type_raises_value_error(self):
+        """A boundary that is neither a name nor a callable raises ValueError."""
+        with pytest.raises(ValueError, match="boundary must be a string name"):
+            Simulator("ddm", boundary=42)
+
     def test_boundary_without_t_parameter(self):
         """Test that boundary function must accept 't' parameter."""
 
@@ -133,6 +138,11 @@ class TestCustomDriftFunctions:
         """Test that invalid drift name raises error."""
         with pytest.raises(ValueError, match="Unknown drift"):
             Simulator("gamma_drift", drift="nonexistent_drift")
+
+    def test_drift_of_wrong_type_raises_value_error(self):
+        """A drift that is neither a name nor a callable raises ValueError."""
+        with pytest.raises(ValueError, match="drift must be a string name"):
+            Simulator("gamma_drift", drift=42)
 
     def test_drift_without_t_parameter(self):
         """Test that drift function must accept 't' parameter."""
@@ -168,6 +178,12 @@ class TestSimulation:
         assert "rts" in results
         assert "choices" in results
         assert len(results["rts"]) == 100
+
+    def test_theta_of_unsupported_type_raises_value_error(self):
+        """Theta that is not a list, array, dict or DataFrame raises ValueError."""
+        sim = Simulator("ddm")
+        with pytest.raises(ValueError, match="theta is not supplied as list"):
+            sim.simulate(theta=(0.5, 1.0, 0.5, 0.3), n_samples=10)
 
     def test_simulation_multiple_parameter_sets(self):
         """Test simulation with multiple parameter sets."""
