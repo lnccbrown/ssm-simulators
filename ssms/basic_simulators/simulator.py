@@ -5,10 +5,10 @@ In addition some utility functions are provided that help
 with preprocessing the output of the simulator function.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import numbers
+from copy import deepcopy
 from threading import Lock
 
 import numpy as np
@@ -134,7 +134,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
 
 
 def _theta_dict_to_array(
-    theta: dict = {},  # TODO: #80 use dict instead of dict | None  # noqa: B006, FIX002
+    theta: dict = {},  # TODO: #80 use dict instead of dict | None
     model_param_list: list[str] | None = None,
 ) -> np.ndarray:
     """Converts theta dictionary to numpy array for use with simulator function.
@@ -204,12 +204,12 @@ def _theta_array_to_dict(
         raise ValueError("model_param_list is not supplied")
     elif theta is None:
         raise ValueError("theta array is not supplied")
-    elif theta.ndim == 1 and len(model_param_list) != theta.shape[0]:
-        raise ValueError(
-            "model_param_list and theta array do not imply"
-            " the same number of parameters"
-        )
-    elif theta.ndim == 2 and len(model_param_list) != theta.shape[1]:
+    elif (
+        theta.ndim == 1
+        and len(model_param_list) != theta.shape[0]
+        or theta.ndim == 2
+        and len(model_param_list) != theta.shape[1]
+    ):
         raise ValueError(
             "model_param_list and theta array do not imply"
             " the same number of parameters"
@@ -822,7 +822,7 @@ def simulator(
     x["go_p"] = np.zeros((n_trials, 1))
 
     # Calculate choice probabilities by trial
-    # TODO: #79 vectorize this  # noqa: FIX002
+    # TODO: #79 vectorize this
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
         out_len_no_omission = x["rts"][:, k, :][

@@ -1,10 +1,10 @@
 """Configuration for multinoise models."""
 
+import numpy as np
+
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.transforms import LambdaAdaptation
-
-import numpy as np
 
 
 def get_ddm_mic2_multinoise_no_bias_config():

@@ -1,14 +1,13 @@
 """Tests for RLSSM data contract validation."""
 
-import io
 import contextlib
+import io
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ssms import OMISSION_SENTINEL
-import ssms.rl as rl
+from ssms import OMISSION_SENTINEL, rl
 from ssms.rl.simulator import MISSING_RESPONSE_SENTINEL
 from ssms.rl.validation import DataValidationReport, validate_rlssm_data
 

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ssms import rl
 from ssms.basic_simulators.simulator import simulator as ssm_simulator
 from ssms.config import ModelConfigBuilder
-import ssms.rl as rl
 
 
 def test_inv_temp_softmax_model_configs_are_registered():

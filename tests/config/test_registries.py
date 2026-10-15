@@ -10,25 +10,25 @@ This module tests all four registries:
 
 from typing import Any
 
-import pytest
 import numpy as np
+import pytest
 
-from ssms.config import (
-    register_boundary,
-    get_boundary_registry,
-    register_drift,
-    get_drift_registry,
-    register_model_config,
-    register_model_config_factory,
-    get_model_registry,
-    ModelConfigBuilder,
-)
 from ssms.basic_simulators.parameter_adapters import (
-    register_adapter_to_model,
-    register_adapter_to_model_family,
-    get_adapter_registry,
     ParameterAdaptation,
     SetDefaultValue,
+    get_adapter_registry,
+    register_adapter_to_model,
+    register_adapter_to_model_family,
+)
+from ssms.config import (
+    ModelConfigBuilder,
+    get_boundary_registry,
+    get_drift_registry,
+    get_model_registry,
+    register_boundary,
+    register_drift,
+    register_model_config,
+    register_model_config_factory,
 )
 
 

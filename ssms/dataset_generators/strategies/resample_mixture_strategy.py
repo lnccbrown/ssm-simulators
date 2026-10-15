@@ -10,7 +10,7 @@ This approach helps the network learn both the likelihood surface and its bounda
 Note: `MixtureTrainingStrategy` is provided as an alias for backward compatibility.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -63,7 +63,7 @@ class ResampleMixtureStrategy:
 
     def generate(
         self,
-        theta: Dict[str, Any],
+        theta: dict[str, Any],
         likelihood_estimator,
         random_state: int | None = None,
     ) -> np.ndarray:

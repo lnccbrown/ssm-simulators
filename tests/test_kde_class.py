@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
-from ssms.support_utils import kde_class
-from ssms.support_utils.kde_class import LogKDE, bandwidth_silverman
+import pytest
+
 from ssms.basic_simulators.simulator import simulator
 from ssms.config import KDE_NO_DISPLACE_T, ModelConfigBuilder
+from ssms.support_utils import kde_class
+from ssms.support_utils.kde_class import LogKDE, bandwidth_silverman
 
 
 def simulate_defaults(model, n_samples=300, random_state=0, **theta_overrides):

@@ -1,16 +1,17 @@
 """Simulation-based data generation pipeline for KDE estimators."""
 
-import numpy as np
 from copy import deepcopy
 from typing import Any
+
+import numpy as np
 from scipy.stats import mode
 
-from ssms.basic_simulators.simulator import _theta_dict_to_array, OMISSION_SENTINEL
+from ssms.basic_simulators.simulator import OMISSION_SENTINEL, _theta_dict_to_array
 from ssms.basic_simulators.simulator_class import Simulator
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
-    TrainingDataStrategyProtocol,
     ParameterSamplerProtocol,
+    TrainingDataStrategyProtocol,
 )
 
 
@@ -371,8 +372,8 @@ class SimulationPipeline:
         Returns:
             Parameter sampler configured with model transforms
         """
-        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
         from ssms.config import ModelConfigBuilder
+        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
 
         # Extract sampling transforms from model config (empty list if none defined)
         constraints = ModelConfigBuilder.get_sampling_transforms(self.model_config)

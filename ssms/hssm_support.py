@@ -1,12 +1,12 @@
-from functools import partial
-from typing import Any, Callable, cast
 import logging
+from collections.abc import Callable
+from functools import partial
+from typing import Any, cast
 
 import numpy as np
 
 from .basic_simulators.simulator import simulator
 from .config import model_config as ssms_model_config
-
 
 _logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def _calculate_n_replicas(is_all_args_scalar, size, new_data_size):
     ValueError
         If `size` is not compatible with `new_data_size` as determined by
         `_validate_size`.
-    """  # noqa: E501
+    """
     # The multiple then becomes how many samples we draw from each trial.
     if any([is_all_args_scalar, size is None, size == 1]):
         return 1

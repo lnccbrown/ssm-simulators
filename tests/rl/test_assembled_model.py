@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-import ssms.rl as rl
+from ssms import rl
 
 
 def _make_default_config(**overrides):

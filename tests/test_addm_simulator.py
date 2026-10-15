@@ -15,10 +15,10 @@ one engine. These tests pin:
 
 import hashlib
 
+import cssm.addm_models as am
 import numpy as np
 import pytest
 
-import cssm.addm_models as am
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.config import get_boundary_registry
 from ssms.config._modelconfig.addm import get_addm_config
@@ -145,7 +145,7 @@ def test_addm_public_mode2_matches_efpt():
         1,
     )
 
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     out = am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -182,7 +182,7 @@ def test_addm_public_mode2_matches_efpt():
 def test_addm_deterministic_across_n_threads():
     fx = _fixed_covariates(n=40, seed=1)
     n = fx["n"]
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     kw = dict(
         r1=fx["r1"],
         r2=fx["r2"],
@@ -326,7 +326,7 @@ def test_addm_x0_absolute_start():
 def test_addm_self_sample_mode_still_runs():
     """Mode 1 (no covariates): self-samples fixations, reproducible per seed."""
     n = 5
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     args = (
         col(_ETA),
         col(_KAPPA),
@@ -352,7 +352,7 @@ def test_addm_omission_sentinel():
     """Trials that don't terminate by max_t get rt == -999.0 and choice == 0."""
     n = 8
     fx = _fixed_covariates(n=n, seed=5)
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     # Very short horizon + wide bounds => most trials do not cross.
     out = am.addm(
         col(0.0),
@@ -425,7 +425,7 @@ _GAMMA_CONT = {"dist": "gamma", "dist_params": {"a": 2.0, "scale": 0.3}}
 def _run_mode2(n=6, seed=2, n_samples=200, random_state=1, **overrides):
     """Mode-2 aDDM on fixed observed covariates; returns the addm() output dict."""
     fx = _fixed_covariates(n=n, seed=seed)
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     return am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -487,7 +487,7 @@ def test_addm_resample_all_fixations_reaches_simulator():
 def test_addm_mode1_accepts_nongamma_distribution():
     """Mode-1 self-sampling now accepts any positive scipy dist (not just gamma)."""
     n = 5
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     out = am.addm(
         col(_ETA),
         col(_KAPPA),

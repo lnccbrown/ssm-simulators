@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import importlib.util
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pandas as pd
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 from .env import DiscreteChoiceEnvironment, TaskConfig, TaskEnvironment
 from .learning import LearningProcess
-
 
 # Fields that to_hssm_config_dict() must emit — kept as a constant
 # so we can write contract tests against it.

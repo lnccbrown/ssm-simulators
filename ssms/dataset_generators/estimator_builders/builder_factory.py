@@ -6,7 +6,7 @@ between different likelihood estimation methods (KDE, PyDDM, etc.) via
 configuration alone.
 """
 
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def create_estimator_builder(
-    generator_config: Dict[str, Any], model_config: Dict[str, Any]
+    generator_config: dict[str, Any], model_config: dict[str, Any]
 ) -> "EstimatorBuilderProtocol":
     """Create appropriate estimator builder based on configuration.
 

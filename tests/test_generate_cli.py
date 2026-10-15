@@ -1,11 +1,12 @@
 import io
-import yaml
 from pathlib import Path
+
 import pytest
+import yaml
 
 from ssms.cli.generate import (
-    make_data_generator_configs,
     collect_data_generator_config,
+    make_data_generator_configs,
 )
 
 

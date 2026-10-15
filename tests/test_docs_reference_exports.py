@@ -18,7 +18,6 @@ from mkdocs.commands.build import build
 from mkdocs.config import load_config
 from mkdocs.structure.files import get_files
 
-
 ROOT = Path(__file__).parents[1]
 DOCS = ROOT / "docs"
 

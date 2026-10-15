@@ -1,13 +1,12 @@
-from copy import deepcopy
+import functools
 import logging
+from copy import deepcopy
 from unittest.mock import patch
 
-import functools
-
 import numpy as np
-import scipy.stats as sps
 import pandas as pd
 import pytest
+import scipy.stats as sps
 
 from ssms.basic_simulators.simulator import _accepts_random_state, simulator
 from ssms.basic_simulators.simulator_class import Simulator

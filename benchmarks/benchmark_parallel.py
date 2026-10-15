@@ -3,10 +3,12 @@
 Benchmark script for SSMS parallel execution with GSL RNG.
 """
 
-import numpy as np
 import time
-from ssms.basic_simulators import simulator
+
+import numpy as np
 from cssm._openmp_status import get_openmp_info
+
+from ssms.basic_simulators import simulator
 
 
 def benchmark_model(model, theta, n_samples, n_threads_list, n_runs=3):

@@ -2,7 +2,7 @@
 
 import pytest
 
-import ssms.rl as rl
+from ssms import rl
 from ssms.rl import config as rl_config
 from ssms.rl.config import _HSSM_SHARED_FIELDS
 

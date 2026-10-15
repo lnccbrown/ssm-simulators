@@ -14,8 +14,8 @@ from ssms.config import model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
-from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.strategies import MixtureTrainingStrategy
 
 
@@ -73,8 +73,8 @@ def test_explicit_strategy_injection(ddm_configs):
     gen_config, model_conf = ddm_configs
 
     # Create custom strategy explicitly
-    from ssms.dataset_generators.pipelines import SimulationPipeline
     from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
+    from ssms.dataset_generators.pipelines import SimulationPipeline
     from ssms.dataset_generators.strategies import MixtureTrainingStrategy
 
     estimator_builder = KDEEstimatorBuilder

@@ -8,18 +8,12 @@ parameter settings across simulations.
 
 import copy
 
-# New registry-based imports
-from .boundary_registry import register_boundary, get_boundary_registry
-from .drift_registry import register_drift, get_drift_registry
-from .model_registry import (
-    register_model_config,
-    register_model_config_factory,
-    get_model_registry,
-)
-
 # Old imports for backward compatibility
 from ssms.config._modelconfig import get_model_config
 
+# New registry-based imports
+from .boundary_registry import get_boundary_registry, register_boundary
+from .drift_registry import get_drift_registry, register_drift
 from .generator_config.data_generator_config import (
     get_default_generator_config,
     get_defective_detector_config,
@@ -30,6 +24,11 @@ from .generator_config.data_generator_config import (
 )
 from .kde_constants import KDE_NO_DISPLACE_T  # noqa: F401
 from .model_config_builder import ModelConfigBuilder
+from .model_registry import (
+    get_model_registry,
+    register_model_config,
+    register_model_config_factory,
+)
 
 
 def boundary_config_to_function_params(config: dict) -> dict:

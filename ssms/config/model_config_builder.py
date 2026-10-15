@@ -9,11 +9,10 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
-from ssms.config.model_registry import get_model_registry
+from ssms.config._modelconfig.validation import get_ndt_edge_shift_errors
 from ssms.config.boundary_registry import get_boundary_registry
 from ssms.config.drift_registry import get_drift_registry
-from ssms.config._modelconfig.validation import get_ndt_edge_shift_errors
-
+from ssms.config.model_registry import get_model_registry
 
 # Centralized configuration for the deadline parameter variant
 # These values are used when adding deadline support to any model

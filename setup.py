@@ -20,8 +20,9 @@ import platform
 import subprocess
 import sys
 import tempfile
-from setuptools import setup, Extension
+
 import numpy
+from setuptools import Extension, setup
 
 # Define Cython extension modules that do NOT need OpenMP/GSL.
 # Modules that use prange/parallel or GSL RNG belong in OPENMP_MODULES below.

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-import ssms.rl as rl
+from ssms import rl
 
 
 def test_preset_assembles_to_hssm_ready_jax_contract():

@@ -4,12 +4,12 @@ This example demonstrates how to use the new nested config structure
 for clearer organization and better maintainability.
 """
 
-from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+from ssms.config._modelconfig import get_model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
     get_nested_generator_config,
 )
-from ssms.config._modelconfig import get_model_config
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
 
 def example_1_nested_config_from_helper():
@@ -149,7 +149,7 @@ def example_4_convert_flat_to_nested():
 
     print("\nConverted to nested config:")
     for section in ["pipeline", "estimator", "simulator", "output"]:
-        if section in nested_config and nested_config[section]:
+        if nested_config.get(section):
             print(f"\n  {section}:")
             for key, value in nested_config[section].items():
                 print(f"    {key}: {value}")

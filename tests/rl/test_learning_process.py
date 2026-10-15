@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-import ssms.rl.learning as learning
+from ssms.rl import learning
 from ssms.rl.learning import (
     LearningProcess,
     RescorlaWagnerDeltaRule,

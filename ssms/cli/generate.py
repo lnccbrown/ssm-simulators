@@ -4,7 +4,7 @@ import logging
 import os
 import pickle
 from collections import namedtuple
-from importlib.resources import files, as_file
+from importlib.resources import as_file, files
 from pathlib import Path
 from pprint import pformat
 from typing import Any

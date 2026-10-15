@@ -3,16 +3,14 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
+from expected_constrained_param_space import infer_param_bounds_dict
+from expected_shapes import get_expected_shapes
 
 from ssms.config import model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
-
-from expected_shapes import get_expected_shapes
-from expected_constrained_param_space import infer_param_bounds_dict
-
 
 N_PARAMETER_SETS = random.randint(2, 10)
 N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(2, 10)
