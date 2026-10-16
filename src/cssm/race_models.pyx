@@ -35,6 +35,7 @@ from cssm._utils import (
     compute_smooth_unif,
     enforce_deadline,
     compute_deadline_tmp,
+    compute_num_steps,
     build_param_dict_from_2d_array,
     build_full_metadata,
     build_minimal_metadata,
@@ -219,12 +220,13 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
     cdef int[:, :, :] choices_view = choices
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory storage - disabled in parallel mode
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj = np.zeros((num_steps, n_particles), dtype=DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
-    cdef int num_steps = int((max_t / delta_t) + 1)
     cdef float c_max_t = max_t
     cdef int c_n_samples = n_samples
     cdef int c_n_particles = n_particles
@@ -392,14 +394,14 @@ def _race_model_sequential(
     particles = np.zeros((n_particles), dtype = DTYPE)
     cdef float [:] particles_view = particles
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # TD: Add Trajectory
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
+    traj = np.zeros((num_steps, n_particles), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     # Boundary storage
-    cdef int num_steps = int((max_t / delta_t) + 1)
-
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -436,7 +438,7 @@ def _race_model_sequential(
                         traj_view[0, j] = particles[j]
 
             # Random walker
-            while not check_finished(particles_view, boundary_view[ix], n_particles) and t_particle <= deadline_tmp:
+            while ix < num_steps and not check_finished(particles_view, boundary_view[ix], n_particles) and t_particle <= deadline_tmp:
                 for j in range(n_particles):
                     particles_view[j] += (v_view[k, j] * delta_t) + sqrt_st_view[k, j] * gaussian_values[m]
                     particles_view[j] = fmax(0.0, particles_view[j]) # Cut off particles at 0
@@ -447,7 +449,7 @@ def _race_model_sequential(
                 t_particle += delta_t
                 ix += 1
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 
@@ -602,8 +604,10 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     cdef float[:, :] s_view = s
     cdef float[:] deadline_view = deadline
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory storage - disabled in parallel mode
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj = np.zeros((num_steps, n_particles), dtype=DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -617,7 +621,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     sqrt_st = s * delta_t_sqrt
     cdef float[:, :] sqrt_st_view = sqrt_st
 
-    cdef int num_steps = int((max_t / delta_t) + 2)
     cdef float c_max_t = max_t
     cdef int c_n_samples = n_samples
     cdef int c_n_particles = n_particles
@@ -786,7 +789,8 @@ def _lca_sequential(
 
     # Trajectory
     cdef int n_particles = v.shape[1]
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+    traj = np.zeros((num_steps, n_particles), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -808,16 +812,15 @@ def _lca_sequential(
 
     cdef Py_ssize_t n, i, ix, k
     cdef Py_ssize_t m = 0
-    cdef float t_par, particles_sum, smooth_u, deadline_tmp
+    cdef float t_particle, particles_sum, smooth_u, deadline_tmp
 
     # Boundary storage
-    cdef int num_steps = int((max_t / delta_t) + 2)
-
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
 
-    cdef int num_draws = num_steps * n_particles
+    # Batch size of the pre-drawn random numbers (not a step count)
+    cdef int num_draws = int((max_t / delta_t) + 2) * n_particles
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
     cdef Py_ssize_t mu = 0
     cdef float[:] uniform_values = draw_uniform(num_draws)
@@ -843,7 +846,7 @@ def _lca_sequential(
                     for i in range(n_particles):
                         traj_view[0, i] = particles[i]
 
-            while not check_finished(particles_view, boundary_view[ix], n_particles) and t_particle <= deadline_tmp:
+            while ix < num_steps and not check_finished(particles_view, boundary_view[ix], n_particles) and t_particle <= deadline_tmp:
                 # calculate current sum over particle positions
                 particles_sum = csum(particles_view)
 
@@ -863,7 +866,7 @@ def _lca_sequential(
                 ix += 1 # increment boundary index
 
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         for i in range(n_particles):
                             traj_view[ix, i] = particles[i]
 
@@ -1021,12 +1024,13 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
     choices = np.zeros((n_samples, n_trials, 1), dtype=np.intc)
     cdef int[:, :, :] choices_view = choices
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory storage - disabled in parallel mode
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype=DTYPE)
+    traj = np.zeros((num_steps, n_particles), dtype=DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
-    cdef int num_steps = int((max_t / delta_t) + 1)
     cdef int c_n_samples = n_samples
     cdef int c_n_particles = n_particles
 
@@ -1186,8 +1190,10 @@ def _racing_diffusion_model_sequential(
     particles = np.zeros((n_particles), dtype = DTYPE)
     cdef float [:] particles_view = particles
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory saving (for first trial, first sample)
-    traj = np.zeros((int(max_t / delta_t) + 1, n_particles), dtype = DTYPE)
+    traj = np.zeros((num_steps, n_particles), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -1198,7 +1204,6 @@ def _racing_diffusion_model_sequential(
     cdef int winner = -1
     cdef int winner_found = 0
 
-    cdef int num_steps = int((max_t / delta_t) + 1)
     cdef int num_draws = num_steps * n_particles
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
     cdef Py_ssize_t mu = 0
@@ -1226,7 +1231,7 @@ def _racing_diffusion_model_sequential(
                         traj_view[0, j] = particles[j]
 
             # Random walker (first-past-the-post, no reflecting boundary)
-            while not winner_found and t_particle <= deadline_tmp:
+            while ix < num_steps and not winner_found and t_particle <= deadline_tmp:
                 for j in range(n_particles):
                     particles_view[j] += (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * gaussian_values[m]
 
@@ -1249,7 +1254,7 @@ def _racing_diffusion_model_sequential(
 
                 # Save running trajectory
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 

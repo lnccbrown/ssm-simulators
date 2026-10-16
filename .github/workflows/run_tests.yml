@@ -96,6 +96,11 @@ jobs:
       - name: Run parallel equivalence tests
         run: uv run pytest tests/test_parallel_equivalence.py --run-statistical --no-cov -v
 
+      # n_threads>1 regressions for #115 (they skip without GSL + OpenMP, so they
+      # only run for real here)
+      - name: Run parallel trajectory-bounds tests
+        run: uv run pytest tests/test_trajectory_bounds_parallel.py --no-cov -v
+
   test_notebooks:
     name: Execute tutorial notebooks
     runs-on: ubuntu-latest
