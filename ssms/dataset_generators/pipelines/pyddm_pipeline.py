@@ -1,13 +1,14 @@
 """PyDDM-based data generation pipeline using analytical solutions."""
 
-import numpy as np
 from typing import Any
+
+import numpy as np
 
 from ssms.basic_simulators.simulator import _theta_dict_to_array
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
-    TrainingDataStrategyProtocol,
     ParameterSamplerProtocol,
+    TrainingDataStrategyProtocol,
 )
 
 
@@ -149,8 +150,7 @@ class PyDDMPipeline:
                         "theta": theta_dict,
                         "success": False,
                         "error": (
-                            f"Failed after {max_attempts} attempts. "
-                            f"Last error: {str(e)}"
+                            f"Failed after {max_attempts} attempts. Last error: {e!s}"
                         ),
                     }
                 continue
@@ -318,8 +318,8 @@ class PyDDMPipeline:
         Returns:
             Parameter sampler configured with model transforms
         """
-        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
         from ssms.config import ModelConfigBuilder
+        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
 
         # Extract sampling transforms from model config (empty list if none defined)
         constraints = ModelConfigBuilder.get_sampling_transforms(self.model_config)

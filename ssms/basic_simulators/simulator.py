@@ -5,10 +5,10 @@ In addition some utility functions are provided that help
 with preprocessing the output of the simulator function.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import numbers
+from copy import deepcopy
 from threading import Lock
 
 import numpy as np
@@ -134,7 +134,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
 
 
 def _theta_dict_to_array(
-    theta: dict = {},  # TODO: #80 use dict instead of dict | None  # noqa: B006, FIX002
+    theta: dict = {},  # TODO: #80 use dict instead of dict | None
     model_param_list: list[str] | None = None,
 ) -> np.ndarray:
     """Converts theta dictionary to numpy array for use with simulator function.
@@ -204,12 +204,9 @@ def _theta_array_to_dict(
         raise ValueError("model_param_list is not supplied")
     elif theta is None:
         raise ValueError("theta array is not supplied")
-    elif theta.ndim == 1 and len(model_param_list) != theta.shape[0]:
-        raise ValueError(
-            "model_param_list and theta array do not imply"
-            " the same number of parameters"
-        )
-    elif theta.ndim == 2 and len(model_param_list) != theta.shape[1]:
+    elif (theta.ndim == 1 and len(model_param_list) != theta.shape[0]) or (
+        theta.ndim == 2 and len(model_param_list) != theta.shape[1]
+    ):
         raise ValueError(
             "model_param_list and theta array do not imply"
             " the same number of parameters"
@@ -250,7 +247,8 @@ def _preprocess_theta_generic(
         theta = theta.to_dict(orient="list")
         theta = {k: np.array(v).astype(np.float32) for k, v in theta.items()}
     else:
-        raise ValueError(
+        # ValueError, not TypeError: the documented `Raises` contract.
+        raise ValueError(  # noqa: TRY004
             "theta is not supplied as list, numpy array, dictionary, or pandas DataFrame!"
         )
     return theta
@@ -484,14 +482,12 @@ def bin_simulator_output(
         bins[:nbins] = np.linspace(0, max_t, nbins)
         bins[nbins] = np.inf
 
-    cnt = 0
     counts = np.zeros((nbins, len(out["metadata"]["possible_choices"])))
 
-    for choice in out["metadata"]["possible_choices"]:
+    for cnt, choice in enumerate(out["metadata"]["possible_choices"]):
         counts[:, cnt] = np.histogram(out["rts"][out["choices"] == choice], bins=bins)[
             0
         ]
-        cnt += 1
 
     if freq_cnt is False:
         counts = counts / out["metadata"]["n_samples"]
@@ -822,7 +818,7 @@ def simulator(
     x["go_p"] = np.zeros((n_trials, 1))
 
     # Calculate choice probabilities by trial
-    # TODO: #79 vectorize this  # noqa: FIX002
+    # TODO: #79 vectorize this
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
         out_len_no_omission = x["rts"][:, k, :][

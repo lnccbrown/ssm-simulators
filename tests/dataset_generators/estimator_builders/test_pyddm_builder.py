@@ -1,7 +1,7 @@
 """Tests for PyDDMEstimatorBuilder."""
 
-import pytest
 import numpy as np
+import pytest
 
 # Import will fail if pyddm not installed - skip tests in that case
 pytest.importorskip("pyddm")

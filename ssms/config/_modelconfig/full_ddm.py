@@ -1,6 +1,7 @@
 """Full DDM model configuration."""
 
 import functools
+
 import scipy.stats as sps  # type: ignore
 
 import cssm

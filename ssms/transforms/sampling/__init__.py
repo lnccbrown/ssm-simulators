@@ -12,8 +12,8 @@ Examples:
     - NormalizeToSumConstraint: Normalize parameters to sum to 1
 """
 
-from ssms.transforms.sampling.swap import SwapIfLessConstraint
 from ssms.transforms.sampling.normalize import NormalizeToSumConstraint
+from ssms.transforms.sampling.swap import SwapIfLessConstraint
 
 __all__ = [
     "SwapIfLessConstraint",

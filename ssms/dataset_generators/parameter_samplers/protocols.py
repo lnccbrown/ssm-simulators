@@ -1,6 +1,7 @@
 """Protocols for parameter sampling and constraints."""
 
 from typing import Protocol
+
 import numpy as np
 
 

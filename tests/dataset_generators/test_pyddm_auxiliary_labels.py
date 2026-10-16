@@ -14,11 +14,11 @@ try:
 except ImportError:
     PYDDM_AVAILABLE = False
 
-from ssms.config import model_config, get_lan_kde_config
-from ssms.dataset_generators.pipelines import PyDDMPipeline
+from ssms.config import get_lan_kde_config, model_config
 from ssms.dataset_generators.estimator_builders.pyddm_builder import (
     PyDDMEstimatorBuilder,
 )
+from ssms.dataset_generators.pipelines import PyDDMPipeline
 from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
 

@@ -3,16 +3,16 @@
 This module tests error handling, validation, and edge cases for TrainingDataGenerator.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from ssms.config import model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
+from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.pipelines import SimulationPipeline
-from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
 from ssms.dataset_generators.strategies import MixtureTrainingStrategy
 
 
@@ -262,12 +262,13 @@ class TestTrainingDataGeneratorDataGeneration:
     def test_n_cpus_all_resolution_fallback(self, minimal_config, monkeypatch):
         """Test that n_cpus='all' raises RuntimeError when all detection methods fail."""
         import os
+
         import psutil
 
         minimal_config["pipeline"]["n_cpus"] = "all"
 
         def raise_exception(*args, **kwargs):
-            raise Exception("Mocked exception")
+            raise RuntimeError("Mocked exception")
 
         if hasattr(os, "sched_getaffinity"):
             monkeypatch.setattr(os, "sched_getaffinity", raise_exception)
@@ -310,7 +311,7 @@ class TestTrainingDataGeneratorDataGeneration:
         minimal_config["pipeline"]["n_cpus"] = "all"
 
         def raise_exception(*args, **kwargs):
-            raise Exception("Mocked exception")
+            raise RuntimeError("Mocked exception")
 
         if hasattr(os, "sched_getaffinity"):
             monkeypatch.setattr(os, "sched_getaffinity", raise_exception)
@@ -390,6 +391,7 @@ class TestTrainingDataGeneratorPipelineIntegration:
 
         # Use deepcopy to avoid mutating the fixture
         from copy import deepcopy
+
         from ssms.dataset_generators.pipelines import PyDDMPipeline
 
         # KDE config

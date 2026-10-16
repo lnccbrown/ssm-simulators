@@ -1,8 +1,9 @@
 """PyDDM-based likelihood estimator using Fokker-Planck solutions."""
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from typing import Any, Dict
 from scipy.interpolate import interp1d
 
 
@@ -71,7 +72,7 @@ class PyDDMLikelihoodEstimator:
             "n_choices": 2,
         }
 
-    def fit(self, simulations: Dict[str, Any]) -> None:
+    def fit(self, simulations: dict[str, Any]) -> None:
         """Fit is a no-op for analytical estimator (already fitted).
 
         This method exists for protocol compliance with LikelihoodEstimatorProtocol.
@@ -80,7 +81,7 @@ class PyDDMLikelihoodEstimator:
         Args:
             simulations: Ignored (not used by analytical estimator)
         """
-        pass  # Analytical PDFs don't need fitting
+        # Analytical PDFs don't need fitting
 
     def evaluate(self, rts: np.ndarray, choices: np.ndarray) -> np.ndarray:
         """Evaluate log-likelihood at (RT, choice) pairs.
@@ -183,7 +184,7 @@ class PyDDMLikelihoodEstimator:
             "choices": all_choices.ravel(),
         }
 
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """Return metadata about the estimator.
 
         Returns:

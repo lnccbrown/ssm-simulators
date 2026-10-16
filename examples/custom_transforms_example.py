@@ -6,6 +6,7 @@ model-specific modifications to sampled parameters.
 """
 
 import numpy as np
+
 from ssms.config import get_model_registry
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
