@@ -90,11 +90,19 @@ if not get_option('openmp').disabled()
     if brew.found()
       r = run_command(brew, '--prefix', 'libomp', check: false)
       if r.returncode() == 0
+        # `brew --prefix libomp` prints a path even when libomp is not
+        # installed, and an arm64 libomp cannot link x86_64 wheels. Accept it
+        # only if a test program compiles and links, as setup.py did; otherwise
+        # build without OpenMP (what setup.py's macOS wheels shipped).
         libomp = r.stdout().strip()
-        omp_dep = declare_dependency(
-          compile_args: ['-Xpreprocessor', '-fopenmp', '-I' + libomp / 'include'],
-          link_args: ['-L' + libomp / 'lib', '-lomp'],
-        )
+        omp_cargs = ['-Xpreprocessor', '-fopenmp', '-I' + libomp / 'include']
+        omp_largs = ['-L' + libomp / 'lib', '-lomp']
+        omp_test = '''#include <omp.h>
+int main(void) { return omp_get_max_threads() > 0 ? 0 : 1; }
+'''
+        if cpp.links(omp_test, args: omp_cargs + omp_largs, name: 'Homebrew libomp')
+          omp_dep = declare_dependency(compile_args: omp_cargs, link_args: omp_largs)
+        endif
       endif
     endif
   endif
