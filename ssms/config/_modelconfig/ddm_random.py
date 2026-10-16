@@ -17,13 +17,15 @@ def get_ddm_st_config():
         "params": ["v", "a", "z", "t", "st"],
         "param_bounds": [
             [-3.0, 0.3, 0.3, 0.25, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.25],
+            [3.0, 2.5, 0.7, 2.25, 0.35],
         ],
         "boundary_name": "constant",
         "boundary": bf.constant,
         "n_params": 5,
         "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3],
-        # non-decision time is t + U(-st, st), so RTs start at t - st
+        # non-decision time is t + U(-st, st), so RTs start at t - st. The
+        # box allows st > t, where that edge is negative: at t=0.25, st=0.35,
+        # a=0.3, v=0, 4.2% of RTs are non-positive (none at st <= t).
         "ndt_edge_shift": {"param": "st", "scale": 1.0},
         "nchoices": 2,
         "choices": [-1, 1],
@@ -83,7 +85,7 @@ def get_ddm_normal_st_config():
         Mean non-decision time, in seconds. Valid range: [0.25, 2.25]
     st : float
         Standard deviation of the non-decision-time kernel, in seconds.
-        Valid range: [1e-3, 0.25]
+        Valid range: [1e-3, 0.35]
 
     Model Characteristics
     ---------------------
@@ -97,12 +99,13 @@ def get_ddm_normal_st_config():
     - The kernel's support is unbounded, so ndt has no floor and can fall below
       0 near the lower ``t`` bound, yielding a non-positive RT. Positive RTs
       are therefore never guaranteed, anywhere in the box - only made rare, at
-      a rate that falls off steeply in t / st: measured 8.9% at the corner
-      t=0.25, st=0.25, a=0.3, 0.013% on the 3-sigma edge 3 * st = t
-      (st = 0.0833 at t = 0.25), and none in 6e5 draws at st = 0.05. Consumers
-      that cannot represent a non-positive RT (KDE-based likelihood estimation
-      in particular) must filter, not assume. ``ddm_st``'s bounded kernel
-      cannot produce one anywhere in its box.
+      a rate that falls off steeply in t / st: measured 16.4% at the corner
+      t=0.25, st=0.35, a=0.3, v=0 (9.0% at st=0.25), 0.013% on the 3-sigma
+      edge 3 * st = t (st = 0.0833 at t = 0.25), and none in 6e5 draws at
+      st = 0.05. Consumers that cannot represent a non-positive RT (KDE-based
+      likelihood estimation in particular) must filter, not assume.
+      ``ddm_st``'s bounded kernel produces one only where st > t (4.2% at the
+      same corner).
     - ``param_bounds`` are deliberately identical to ``ddm_st``'s so the two
       models span the same box; the ``st`` bounds therefore carry different
       meanings in the two models.
@@ -117,7 +120,7 @@ def get_ddm_normal_st_config():
         "params": ["v", "a", "z", "t", "st"],
         "param_bounds": [
             [-3.0, 0.3, 0.3, 0.25, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.25],
+            [3.0, 2.5, 0.7, 2.25, 0.35],
         ],
         "boundary_name": "constant",
         "boundary": bf.constant,
