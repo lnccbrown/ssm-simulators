@@ -1,5 +1,5 @@
 [build-system]
-requires = ["meson-python>=0.17", "meson>=1.5", "ninja", "Cython>=3.0", "numpy >= 2.0"]
+requires = ["meson-python>=0.18", "meson>=1.5", "ninja", "Cython>=3.0", "numpy >= 2.0"]
 build-backend = "mesonpy"
 
 [project]
@@ -95,7 +95,7 @@ dev = [
 ]
 # Build backend, installed into the venv for the no-isolation editable build.
 build = [
-    "meson-python>=0.17",
+    "meson-python>=0.18",
     "meson>=1.5",
     "ninja",
     "Cython>=3.0",
