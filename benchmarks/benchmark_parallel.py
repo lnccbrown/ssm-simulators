@@ -3,10 +3,12 @@
 Benchmark script for SSMS parallel execution with GSL RNG.
 """
 
-import numpy as np
 import time
-from ssms.basic_simulators import simulator
+
+import numpy as np
 from cssm._openmp_status import get_openmp_info
+
+from ssms.basic_simulators import simulator
 
 
 def benchmark_model(model, theta, n_samples, n_threads_list, n_runs=3):
@@ -131,7 +133,7 @@ def main():
     # KS test
     from scipy import stats
 
-    ks_stat, p_value = stats.ks_2samp(rts_1, rts_4)
+    _ks_stat, p_value = stats.ks_2samp(rts_1, rts_4)
     status = "PASS" if p_value > 0.01 else "FAIL"
     print(f"  KS test p-value: {p_value:.4f} [{status}]")
 

@@ -10,7 +10,7 @@ This separation of concerns ensures that:
 3. New estimator parameters can be added with minimal changes
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from ssms.dataset_generators.likelihood_estimators.kde_estimator import (
     KDELikelihoodEstimator,
@@ -64,7 +64,7 @@ class KDEEstimatorBuilder:
         )
 
     def build(
-        self, theta: Dict[str, Any], simulations: Dict[str, Any] | None = None
+        self, theta: dict[str, Any], simulations: dict[str, Any] | None = None
     ) -> KDELikelihoodEstimator:
         """Build and fit a KDE likelihood estimator.
 

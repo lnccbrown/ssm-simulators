@@ -318,7 +318,7 @@ class LogKDE:
 
     def __kde_eval_(
         self,
-        data: dict,  # noqa: B006
+        data: dict,
         log_eval: bool = True,
         lb: float = -66.774,
         eps: float = 10e-5,

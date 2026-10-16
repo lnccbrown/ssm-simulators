@@ -1,6 +1,8 @@
 import random
-import pytest
+
 import numpy as np
+import pytest
+
 import ssms
 from ssms.config import model_config
 from ssms.config.model_config_builder import ModelConfigBuilder

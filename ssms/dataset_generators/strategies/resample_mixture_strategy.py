@@ -10,7 +10,7 @@ This approach helps the network learn both the likelihood surface and its bounda
 Note: `MixtureTrainingStrategy` is provided as an alias for backward compatibility.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -63,7 +63,7 @@ class ResampleMixtureStrategy:
 
     def generate(
         self,
-        theta: Dict[str, Any],
+        theta: dict[str, Any],
         likelihood_estimator,
         random_state: int | None = None,
     ) -> np.ndarray:
@@ -169,13 +169,11 @@ class ResampleMixtureStrategy:
             # One-hot encode choices
             out[:n_kde, (-2 - self.model_config["nchoices"])] = samples_kde["rts"]
 
-            r_cnt = 0
             choices = samples_kde["choices"]
-            for response in metadata["possible_choices"]:
+            for r_cnt, response in enumerate(metadata["possible_choices"]):
                 out[:n_kde, ((-1 - self.model_config["nchoices"]) + r_cnt)] = (
                     choices == response
                 ).astype(int)
-                r_cnt += 1
         else:
             out[:n_kde, -3] = samples_kde["rts"]
             out[:n_kde, -2] = samples_kde["choices"]

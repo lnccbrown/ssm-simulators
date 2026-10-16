@@ -39,9 +39,12 @@ def get_nested_config(config: dict, section: str, key: str, default: Any = None)
         42
     """
     # Get value from nested structure
-    if section in config and isinstance(config[section], dict):
-        if key in config[section]:
-            return config[section][key]
+    if (
+        section in config
+        and isinstance(config[section], dict)
+        and key in config[section]
+    ):
+        return config[section][key]
 
     # Return default if not found
     return default

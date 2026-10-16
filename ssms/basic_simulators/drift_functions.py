@@ -13,9 +13,9 @@ import numpy as np
 from scipy.stats import norm
 
 
-# TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+# TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
 def constant(
-    t: np.ndarray = np.arange(0, 20, 0.1),  # noqa: B008
+    t: np.ndarray = np.arange(0, 20, 0.1),
     v: float = 0.0,
 ) -> np.ndarray:
     """Constant drift function.
@@ -36,9 +36,9 @@ def constant(
 
 
 def gamma_drift(
-    t: np.ndarray = np.arange(  # noqa: B008
+    t: np.ndarray = np.arange(
         0, 20, 0.1
-    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     v: float = 0.0,
     shape: float = 2,
     scale: float = 0.01,
@@ -163,7 +163,7 @@ def conflict_ds_drift(
     ------
     np.ndarray
          The full drift timecourse evaluated at the supplied timepoints t.
-    """  # noqa: D205, D401, D404
+    """
     if t is None:
         t = np.arange(0, 20, 0.1)
     w_t = ds_support_analytic(t=t, init_p=tinit, fix_point=tfixedp, slope=tslope)
@@ -176,9 +176,9 @@ def conflict_ds_drift(
 
 
 def attend_drift(
-    t: np.ndarray = np.arange(  # noqa: B008
+    t: np.ndarray = np.arange(
         0, 20, 0.1
-    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     v: float = 0.0,
     ptarget: float = -0.3,
     pouter: float = -0.3,
@@ -212,7 +212,7 @@ def attend_drift(
     ------
     np.ndarray
         Final drift evaluated at timepoints t
-    """  # noqa: D205
+    """
     new_sda = np.maximum(sda - r * t, 0.001)
 
     a_outer = norm.sf(1.5, loc=0, scale=new_sda)
@@ -230,9 +230,9 @@ def attend_drift(
 
 
 def attend_drift_simple(
-    t: np.ndarray = np.arange(  # noqa: B008
+    t: np.ndarray = np.arange(
         0, 20, 0.1
-    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     v: float = 0.0,
     ptarget: float = -0.3,
     pouter: float = -0.3,
@@ -263,7 +263,7 @@ def attend_drift_simple(
     ------
     np.ndarray
         Final drift evaluated at timepoints t
-    """  # noqa: D205
+    """
     new_sda = np.maximum(sda - r * t, 0.001)
     a_outer = 1.0 - norm.cdf(
         0.5, loc=0, scale=new_sda

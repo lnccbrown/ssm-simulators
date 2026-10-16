@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
 
 

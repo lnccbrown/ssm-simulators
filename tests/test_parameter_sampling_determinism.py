@@ -107,6 +107,7 @@ def _run(worker: str, args: list[str], hashseed: str) -> dict:
     env["PYTHONHASHSEED"] = hashseed
     proc = subprocess.run(
         [sys.executable, "-c", worker, *args],
+        check=False,  # returncode is inspected below
         capture_output=True,
         text=True,
         env=env,

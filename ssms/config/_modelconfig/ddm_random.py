@@ -1,6 +1,7 @@
 """Configuration for DDM models with random variables."""
 
 import functools
+
 import numpy as np
 import scipy.stats as sps
 

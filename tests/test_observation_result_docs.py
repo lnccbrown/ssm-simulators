@@ -1,10 +1,9 @@
 """Execute the structured-observation examples published in the documentation."""
 
-from pathlib import Path
 import runpy
+from pathlib import Path
 
 import pytest
-
 
 SNIPPET_DIR = (
     Path(__file__).resolve().parents[1] / "docs" / "snippets" / "observation_results"

@@ -1,16 +1,16 @@
 """Configuration for RLWM LBA models."""
 
+import numpy as np
+
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.transforms import (
-    SwapIfLessConstraint,
-    NormalizeToSumConstraint,
     ColumnStackParameters,
     ExpandDimension,
     LambdaAdaptation,
+    NormalizeToSumConstraint,
+    SwapIfLessConstraint,
 )
-
-import numpy as np
 
 
 def get_dev_rlwm_lba_pw_v1_config():

@@ -157,8 +157,8 @@ class ParameterAdapterRegistry:
             try:
                 if matcher(model_name):
                     return self._processors.get(family_name, [])
-            except Exception:
-                # Matcher raised an exception, skip it
+            except Exception:  # noqa: S112
+                # A user-supplied matcher that raises is treated as "does not match"
                 continue
 
         # No match found
@@ -185,11 +185,12 @@ class ParameterAdapterRegistry:
             return True
 
         # Check family matchers
-        for family_name, matcher in self._family_matchers.items():
+        for matcher in self._family_matchers.values():
             try:
                 if matcher(model_name):
                     return True
-            except Exception:
+            except Exception:  # noqa: S112
+                # A user-supplied matcher that raises is treated as "does not match"
                 continue
 
         return False

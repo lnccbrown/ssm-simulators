@@ -2,20 +2,18 @@
 
 import numpy as np
 
-from ssms.basic_simulators import boundary_functions as bf
 import cssm
-
+from ssms.basic_simulators import boundary_functions as bf
 from ssms.transforms import (
-    # Sampling transforms
-    SwapIfLessConstraint,
     # Simulation transforms
     ColumnStackParameters,
-    ExpandDimension,
-    RenameParameter,
     DeleteParameters,
+    ExpandDimension,
     LambdaAdaptation,
+    RenameParameter,
+    # Sampling transforms
+    SwapIfLessConstraint,
 )
-
 
 # ============================================================================
 # Shared simulation transforms for LBA models
