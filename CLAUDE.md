@@ -27,7 +27,9 @@ benchmarks/                    # Performance benchmarks
 
 ## Build & Tooling
 
-- **Build system:** setuptools + Cython (C extensions compiled from `src/cssm/*.pyx`)
+- **Build system:** meson-python + Cython (`meson.build`; C++ extensions compiled from `src/cssm/*.pyx`).
+  Editable installs rebuild changed `.pyx` on import (`[tool.uv] no-build-isolation-package`).
+  Build options: `-Dgsl=` / `-Dopenmp=` `auto|enabled|disabled` (see `meson.options`).
 - **Package manager:** uv (no tracked lockfile; `uv sync` resolves from `pyproject.toml`)
 - **Python:** >=3.12, <3.15 (classifiers target 3.12, 3.13, 3.14)
 - **System dependencies (required for C extensions):**
@@ -53,8 +55,9 @@ uv run pytest tests/ --run-statistical    # statistical equivalence tests
 # Lint & format
 uv run ruff check . && uv run ruff format --check .
 
-# Rebuild Cython extensions after C/pyx changes
-uv run python setup.py build_ext --inplace
+# Cython/C changes are rebuilt automatically on the next `import cssm`.
+# Force a reinstall, optionally with build options:
+uv sync --extra dev --reinstall-package ssm-simulators -C setup-args=-Dgsl=disabled
 
 # Build docs strictly or preview them locally
 ./scripts/docs.sh build

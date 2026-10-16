@@ -15,6 +15,8 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      # Let every platform finish so one failure does not hide the others.
+      fail-fast: false
       matrix:
         # ubuntu-24.04-arm is a native GitHub-hosted arm64 runner (free for public
         # repos): cibuildwheel with CIBW_ARCHS_LINUX=auto64 builds manylinux
@@ -34,6 +36,12 @@ jobs:
           CIBW_ARCHS_WINDOWS: auto64
           CIBW_BUILD_FRONTEND: build
           CIBW_BUILD_VERBOSITY: 3
+          # macOS wheels ship without OpenMP, as the setup.py build did: Apple
+          # clang has no -fopenmp and the runner's libomp cannot serve both
+          # x86_64 and arm64.
+          CIBW_CONFIG_SETTINGS_MACOS: "setup-args=-Dopenmp=disabled"
+          # meson needs the MSVC environment activated to find cl.exe.
+          CIBW_CONFIG_SETTINGS_WINDOWS: "setup-args=--vsenv"
 
       - uses: actions/upload-artifact@v7
         with:
