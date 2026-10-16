@@ -18,8 +18,7 @@ def get_angle_extended_config():
     network.
 
     Naming follows `shrink_spot_extended`, the registry's other bounds-only
-    variant. Note that one sets its own `"name"` field to `"shrink_spot"`, so
-    its key and name disagree; do not copy that here.
+    variant.
     """
     return {
         "name": "angle_extended",
