@@ -208,7 +208,7 @@ def test_trial_wise_parameters():
 
 
 def test_omissions_are_flagged():
-    """``rts`` past ``max_t`` are censored; the latent winner is preserved.
+    """Races unfinished at ``max_t`` are censored; the latent winner is kept.
 
     The sentinel belongs in ``rts`` only. The race is decided before the
     deadline is applied, so an omitted trial still has a winning accumulator,
@@ -226,7 +226,8 @@ def test_omissions_are_flagged():
     )
     omitted = out["rts"] == OMISSION_SENTINEL
     assert omitted.any()
-    assert np.all(out["rts"][~omitted] <= 2.0)
+    # ``max_t`` bounds the decision time, so a kept RT can reach t + max_t.
+    assert np.all(out["rts"][~omitted] <= 0.2 + 2.0 + 1e-6)
 
     # Omitted trials keep a valid latent choice; the sentinel never reaches
     # ``choices``.
@@ -278,6 +279,36 @@ def test_omitted_choices_keep_choice_p_normalized():
 
     # The omission rate is reported in ``omission_p``, not hidden as choice mass.
     np.testing.assert_allclose(out["omission_p"][0, 0], omitted.mean(), atol=1e-12)
+
+
+def test_max_t_bounds_the_race_and_deadline_bounds_the_rt():
+    """``max_t`` excludes the shift ``t``; ``deadline`` includes it.
+
+    These are the meanings ``compute_deadline_tmp`` and ``enforce_deadline``
+    give the two arguments in the Cython kernels. With ``sigma`` at its
+    lower bound, ``log(0.5)`` and ``log(2.0)`` keep every finishing time within
+    a factor of two of its median, ``T`` in ``(0.25, 1.0)`` and ``(1.0, 4.0)``
+    respectively, at better than six standard deviations.
+    """
+
+    def omissions(model, mu, **extra):
+        theta = {"mu0": mu, "mu1": mu, "sigma0": 0.1, "sigma1": 0.1, "t": 1.0}
+        out = simulator(
+            model=model,
+            theta={**theta, **extra},
+            n_samples=2000,
+            max_t=1.0,
+            random_state=4,
+        )
+        return out["rts"] == OMISSION_SENTINEL
+
+    # T < max_t < t + T: the race is won in time, so nothing is censored.
+    assert not omissions("lnr2", np.log(0.5)).any()
+    # T > max_t: no accumulator finishes, so every trial is an omission.
+    assert omissions("lnr2", np.log(2.0)).all()
+    # t + T lies in (1.25, 2.0): a deadline of 1.2 censors it, one of 2.0 not.
+    assert omissions("lnr2_deadline", np.log(0.5), deadline=1.2).all()
+    assert not omissions("lnr2_deadline", np.log(0.5), deadline=2.0).any()
 
 
 def test_deadline_variant(fig2_theta):

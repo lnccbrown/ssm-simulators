@@ -106,9 +106,14 @@ def lognormal_race(
     n_samples, n_trials, max_t, random_state
         Standard ``ssms`` simulator arguments. ``delta_t`` is accepted and
         ignored: the LNR has no within-trial noise, so finishing times are
-        sampled exactly rather than integrated on a time grid.
+        sampled exactly rather than integrated on a time grid. ``max_t``
+        bounds the decision time, not the RT, as ``compute_deadline_tmp``
+        does for the Cython kernels; a trial in which no accumulator has
+        finished within ``max_t`` is an omission even without a deadline, as
+        in ``poisson_race``.
     deadline : float or array or None
-        Per-trial deadline; responses later than it are returned as omissions.
+        Per-trial deadline on the observed RT, shift included; responses at
+        or after it are returned as omissions.
 
     Returns
     -------
@@ -128,8 +133,9 @@ def lognormal_race(
        Cholesky factor of ``[[1, rho], [rho, 1]]`` (Eq. 8).
     3. Map to finishing times ``T_i = exp(mu_i + sigma_i * eps_i)`` (Eq. 5).
     4. The winner is ``argmin_i T_i``; the RT is ``t + min_i T_i``.
-    5. RTs beyond ``max_t`` (or ``deadline``) are censored to
-       ``OMISSION_SENTINEL``; the latent winner is still reported.
+    5. Trials with ``min_i T_i > max_t``, or with an RT at or after
+       ``deadline``, are censored to ``OMISSION_SENTINEL``; the latent winner
+       is still reported.
 
     Step 1 draws the deviates before any correlation is applied, so ``rho = 0``
     reproduces the independent race sample for sample at a given seed.
@@ -214,12 +220,15 @@ def lognormal_race(
     decision_times = np.min(finishing_times, axis=-1)
     rts = t_arr[None, :] + decision_times
 
-    # Omissions: past max_t, or past a supplied deadline.
-    censor = np.full(n_trials, float(max_t), dtype=np.float64)
+    # Omissions, with the meanings ``compute_deadline_tmp`` and
+    # ``enforce_deadline`` give these arguments in the Cython kernels: ``max_t``
+    # bounds the decision time, so a race nobody has won by then is an omission
+    # even without a deadline (as in ``poisson_race_models``), and ``deadline``
+    # bounds the RT, shift included.
+    omitted = decision_times > max_t
     if deadline is not None:
         deadline_arr = _broadcast_param(deadline, n_trials, "deadline")
-        censor = np.minimum(censor, deadline_arr)
-    omitted = rts > censor[None, :]
+        omitted |= rts >= deadline_arr[None, :]
 
     rts_out = np.where(omitted, OMISSION_SENTINEL, rts).astype(np.float32)
     # Only ``rts`` is censored. The winner of the race is determined before the

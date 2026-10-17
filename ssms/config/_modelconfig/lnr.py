@@ -102,6 +102,17 @@ Notes
 - ``delta_t``, ``sigma_noise`` and ``smooth_unif`` play no role: the model is
   continuous in time and has no within-trial noise.
 - ``rho`` is implemented for two accumulators only, the case the paper derives.
+- ``max_t`` can produce omissions without a deadline. The model always
+  responds, but a race in which no accumulator finishes within ``max_t``
+  (the shift ``t`` not counted) is returned as an omission:
+  ``OMISSION_SENTINEL`` in ``rts``, the latent winner in ``choices``, and a
+  share of ``omission_p``. ``poisson_race`` handles ``max_t`` the same way;
+  the diffusion kernels instead stop at ``max_t`` and report the leading
+  accumulator, and the LBA kernels do not apply it. At the default
+  ``max_t = 20`` only the slow corner of the bounds is affected: with every
+  ``mu`` and ``sigma`` at 2.0, about 10% of ``lnr2`` samples and up to 26% of
+  ``lnr2_corr`` samples (``rho`` near 0.95) are omissions, against means of
+  about 0.07% and 0.1% over the bounds.
 - Sampling uses NumPy's ``default_rng``, not the C-level GSL RNG of ``cssm``,
   so ``random_state`` is comparable among LNR models but not against the
   Cython-backed models.
