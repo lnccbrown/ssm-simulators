@@ -15,10 +15,10 @@ from ssms.basic_simulators.parameter_adapters import (
     ColumnStackParameters,
     DeleteParameters,
     ExpandDimension,
+    ParameterAdapterRegistry,
     RenameParameter,
     SetDefaultValue,
     SetZeroArray,
-    ParameterAdapterRegistry,
     TileArray,
 )
 

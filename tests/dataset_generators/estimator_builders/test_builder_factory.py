@@ -1,7 +1,8 @@
 """Tests for estimator builder factory."""
 
 import pytest
-from ssms.config import model_config, get_lan_config
+
+from ssms.config import get_lan_config, model_config
 from ssms.dataset_generators.estimator_builders.builder_factory import (
     create_estimator_builder,
 )

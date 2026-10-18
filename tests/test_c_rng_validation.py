@@ -21,8 +21,8 @@ from scipy import stats
 try:
     from cssm._c_rng import (
         generate_gaussian_samples,
-        generate_uniform_samples,
         generate_levy_samples,
+        generate_uniform_samples,
         py_mix_seed,
     )
 
@@ -285,6 +285,7 @@ class TestSimulatorRNGIntegration:
     def test_ddm_parallel_reproducible(self):
         """Test that DDM parallel produces reproducible results with same seed."""
         from cssm.ddm_models import ddm_flexbound
+
         from ssms.basic_simulators.boundary_functions import constant
 
         n_trials = 10
@@ -334,6 +335,7 @@ class TestSimulatorRNGIntegration:
     def test_ddm_different_seeds_differ(self):
         """Test that different seeds produce different results."""
         from cssm.ddm_models import ddm_flexbound
+
         from ssms.basic_simulators.boundary_functions import constant
 
         n_trials = 10

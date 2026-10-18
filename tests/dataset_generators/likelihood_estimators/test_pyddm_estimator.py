@@ -1,17 +1,17 @@
 """Tests for PyDDMLikelihoodEstimator."""
 
-import pytest
 import numpy as np
+import pytest
 from scipy import integrate
 
 # Import will fail if pyddm not installed - skip tests in that case
 pytest.importorskip("pyddm")
 
-from ssms.external_simulators import SSMSToPyDDMMapper
+from ssms.config import model_config
 from ssms.dataset_generators.likelihood_estimators.pyddm_estimator import (
     PyDDMLikelihoodEstimator,
 )
-from ssms.config import model_config
+from ssms.external_simulators import SSMSToPyDDMMapper
 
 
 @pytest.fixture

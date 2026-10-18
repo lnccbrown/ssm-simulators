@@ -1,11 +1,11 @@
 """Builder for PyDDM-based likelihood estimators."""
 
-from typing import Any, Dict
+from typing import Any
 
-from ssms.external_simulators import SSMSToPyDDMMapper
 from ssms.dataset_generators.likelihood_estimators.pyddm_estimator import (
     PyDDMLikelihoodEstimator,
 )
+from ssms.external_simulators import SSMSToPyDDMMapper
 
 
 class PyDDMEstimatorBuilder:
@@ -62,7 +62,7 @@ class PyDDMEstimatorBuilder:
             )
 
     def build(
-        self, theta: Dict[str, Any], simulations: Dict[str, Any] | None = None
+        self, theta: dict[str, Any], simulations: dict[str, Any] | None = None
     ) -> PyDDMLikelihoodEstimator:
         """Build PyDDM likelihood estimator for given parameters.
 

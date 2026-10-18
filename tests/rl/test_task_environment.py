@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-import ssms.rl as rl
+from ssms import rl
 from ssms.rl.env import Bandit, TaskConfig, TaskEnvironment, registered_tasks
 
 

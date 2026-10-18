@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ssms.dataset_generators.protocols import DataGenerationPipelineProtocol
 
-from ssms.dataset_generators.pipelines.simulation_pipeline import SimulationPipeline
 from ssms.dataset_generators.pipelines.pyddm_pipeline import PyDDMPipeline
+from ssms.dataset_generators.pipelines.simulation_pipeline import SimulationPipeline
 
 
 def create_data_generation_pipeline(

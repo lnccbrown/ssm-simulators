@@ -230,9 +230,9 @@ def _check_balanced_panel(
             ),
             hint="Filter or pad participants so every participant has the same trial count.",
         )
-        return int(len(counts)), None
+        return len(counts), None
 
-    return int(len(counts)), int(counts.iloc[0])
+    return len(counts), int(counts.iloc[0])
 
 
 def _check_nan_values(

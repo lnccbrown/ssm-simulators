@@ -5,8 +5,10 @@ In addition some utility functions are provided that help
 with preprocessing the output of the simulator function.
 """
 
-from copy import deepcopy
+import functools
+import inspect
 import numbers
+from copy import deepcopy
 from threading import Lock
 
 import numpy as np
@@ -60,8 +62,8 @@ def _validate_random_state_for_c_rng(random_state: object) -> None:
 
     The Cython layer casts seeds to ``long``.  On Windows that is 32-bit signed; larger
     values raise ``OverflowError`` inside Cython.  We validate here with a clear
-    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) are skipped;
-    those paths do not use this cast in the same way.
+    Python error.  Non-integer seeds (e.g. ``numpy.random.Generator``) skip this
+    range check and are rejected by the C-level seeding itself.
     """
     if random_state is None:
         return
@@ -132,7 +134,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
 
 
 def _theta_dict_to_array(
-    theta: dict = {},  # TODO: #80 use dict instead of dict | None  # noqa: B006, FIX002
+    theta: dict = {},  # TODO: #80 use dict instead of dict | None
     model_param_list: list[str] | None = None,
 ) -> np.ndarray:
     """Converts theta dictionary to numpy array for use with simulator function.
@@ -202,12 +204,9 @@ def _theta_array_to_dict(
         raise ValueError("model_param_list is not supplied")
     elif theta is None:
         raise ValueError("theta array is not supplied")
-    elif theta.ndim == 1 and len(model_param_list) != theta.shape[0]:
-        raise ValueError(
-            "model_param_list and theta array do not imply"
-            " the same number of parameters"
-        )
-    elif theta.ndim == 2 and len(model_param_list) != theta.shape[1]:
+    elif (theta.ndim == 1 and len(model_param_list) != theta.shape[0]) or (
+        theta.ndim == 2 and len(model_param_list) != theta.shape[1]
+    ):
         raise ValueError(
             "model_param_list and theta array do not imply"
             " the same number of parameters"
@@ -248,7 +247,8 @@ def _preprocess_theta_generic(
         theta = theta.to_dict(orient="list")
         theta = {k: np.array(v).astype(np.float32) for k, v in theta.items()}
     else:
-        raise ValueError(
+        # ValueError, not TypeError: the documented `Raises` contract.
+        raise ValueError(  # noqa: TRY004
             "theta is not supplied as list, numpy array, dictionary, or pandas DataFrame!"
         )
     return theta
@@ -482,14 +482,12 @@ def bin_simulator_output(
         bins[:nbins] = np.linspace(0, max_t, nbins)
         bins[nbins] = np.inf
 
-    cnt = 0
     counts = np.zeros((nbins, len(out["metadata"]["possible_choices"])))
 
-    for choice in out["metadata"]["possible_choices"]:
+    for cnt, choice in enumerate(out["metadata"]["possible_choices"]):
         counts[:, cnt] = np.histogram(out["rts"][out["choices"] == choice], bins=bins)[
             0
         ]
-        cnt += 1
 
     if freq_cnt is False:
         counts = counts / out["metadata"]["n_samples"]
@@ -664,7 +662,12 @@ def simulator(
             Integer passed to the C-level RNG seeding.  Must lie in
             ``[-2**31, 2**31 - 1]`` so it fits in a 32-bit signed C ``long`` (required
             on Windows).  ``None`` draws a seed from that range automatically.
-            Non-integer RNG objects may be supported on specific code paths.
+            Non-integer RNG objects (e.g. ``numpy.random.Generator``) are rejected
+            by the C-level seeding.  An integer seed also pins the trial-to-trial
+            variability draws (``sv``/``sz``/``st``), which are taken from a
+            generator derived from it rather than from NumPy's global RNG.  A
+            variability distribution that already binds its own ``random_state``
+            keeps that generator, so its draws follow it rather than the seed.
         return_option: str <default='full'>
             Determines what the function returns. Can be either
             'full' or 'minimal'. If 'full' the function returns
@@ -774,6 +777,9 @@ def simulator(
         theta, model_config_local, n_trials
     )
 
+    # Pin the trial-to-trial variability draws to random_state
+    _bind_variability_rng(theta, model_config_local, random_state)
+
     # Make boundary dictionary
     boundary_dict = make_boundary_dict(model_config_local, theta)
     # Make drift dictionary
@@ -812,7 +818,7 @@ def simulator(
     x["go_p"] = np.zeros((n_trials, 1))
 
     # Calculate choice probabilities by trial
-    # TODO: #79 vectorize this  # noqa: FIX002
+    # TODO: #79 vectorize this
     for k in range(n_trials):
         out_len = x["rts"][:, k, :].shape[0]
         out_len_no_omission = x["rts"][:, k, :][
@@ -862,3 +868,53 @@ def simulator(
         bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
     )
     return x
+
+
+def _bind_variability_rng(
+    theta: dict, model_config: dict, random_state: object
+) -> None:
+    """Bind theta's trial-to-trial variability distributions to a seeded generator.
+
+    theta's ``*_dist`` entries are scipy ``rvs`` partials, whose default draw
+    source is NumPy's global RNG. Binding order is irrelevant - the simulator
+    fixes the call order. Shared by ``simulator()`` and ``Simulator.simulate``,
+    which call it once theta is final, i.e. after all parameter adaptations.
+    ``theta`` is modified in place.
+    """
+    # The generator is a spawned child of the seed, so its stream is independent
+    # of the C-level generator, which is seeded with the same integer:
+    # ``default_rng(seed)`` here would replay that stream. The modulo only maps
+    # the validated negative seeds into ``SeedSequence``'s domain.
+    if isinstance(random_state, numbers.Integral):
+        dist_rng = default_rng(
+            np.random.SeedSequence(int(random_state) % (2**32)).spawn(1)[0]
+        )
+        for key in set(model_config.get("simulator_param_mappings", {})) | set(
+            model_config.get("simulator_fixed_params", {})
+        ):
+            entry = theta.get(key)
+            if (
+                callable(entry)
+                and _accepts_random_state(entry)
+                and "random_state" not in getattr(entry, "keywords", {})
+            ):
+                theta[key] = functools.partial(entry, random_state=dist_rng)
+
+
+def _accepts_random_state(func) -> bool:
+    """Report whether ``func`` takes a ``random_state`` keyword.
+
+    A model configuration may map a parameter to any callable, and only those
+    that accept ``random_state`` can be bound to an explicit generator. scipy's
+    ``rvs`` takes it through ``**kwds``, so a variadic keyword also qualifies.
+    """
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    declared = params.get("random_state")
+    if declared is not None:
+        # A positional-only parameter cannot be filled by keyword: the value
+        # would land in **kwargs while the parameter kept its default, or raise.
+        return declared.kind is not inspect.Parameter.POSITIONAL_ONLY
+    return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())

@@ -88,7 +88,6 @@ class ParameterTransform(ABC):
         - If creating new arrays, use dtype=np.float32 for consistency
         - Document any parameters that are added, modified, or removed
         """
-        pass
 
     def __repr__(self) -> str:
         """String representation for debugging.

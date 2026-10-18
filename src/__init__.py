@@ -1,3 +1,3 @@
-from . import cssm  # noqa: D104
+from . import cssm
 
 __all__ = ["cssm"]

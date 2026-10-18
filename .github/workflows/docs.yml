@@ -12,7 +12,6 @@ on:
       - "scripts/docs.sh"
       - "src/cssm/**"
       - "ssms/**"
-      - "uv.lock"
   push:
     branches: [main]
     paths:
@@ -25,7 +24,6 @@ on:
       - "scripts/docs.sh"
       - "src/cssm/**"
       - "ssms/**"
-      - "uv.lock"
   schedule:
     # Retain the established Monday 06:23 UTC rendered-link check.
     - cron: "23 6 * * 1"

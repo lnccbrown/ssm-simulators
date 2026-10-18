@@ -26,8 +26,7 @@ esac
 uv sync \
   --python 3.12 \
   --no-dev \
-  --group docs \
-  --locked
+  --group docs
 
 case "$command" in
   build)

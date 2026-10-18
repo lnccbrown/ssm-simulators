@@ -6,7 +6,8 @@ as the drift is entirely driven by the dynamical system components.
 """
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf, drift_functions as df
+from ssms.basic_simulators import boundary_functions as bf
+from ssms.basic_simulators import drift_functions as df
 
 
 def get_conflict_ds_config():

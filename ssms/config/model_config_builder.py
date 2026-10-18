@@ -9,10 +9,10 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
-from ssms.config.model_registry import get_model_registry
+from ssms.config._modelconfig.validation import get_ndt_edge_shift_errors
 from ssms.config.boundary_registry import get_boundary_registry
 from ssms.config.drift_registry import get_drift_registry
-
+from ssms.config.model_registry import get_model_registry
 
 # Centralized configuration for the deadline parameter variant
 # These values are used when adding deadline support to any model
@@ -84,6 +84,9 @@ class ModelConfigBuilder:
             - simulator : Callable - Custom simulator function
             - nchoices : int - Number of choices
             - choices : list - Possible choice values
+            - ndt_edge_shift : dict - {"param": str, "scale": float}; declares
+              that RTs start at t - scale * param (absent: no finite edge below
+              t is declared)
 
         Returns
         -------
@@ -175,6 +178,9 @@ class ModelConfigBuilder:
             - drift : Callable - Drift function
             - drift_name : str - Drift name
             - drift_params : list[str] - Drift parameter names
+            - ndt_edge_shift : dict - {"param": str, "scale": float}; declares
+              that RTs start at t - scale * param (absent: no finite edge below
+              t is declared)
 
         Returns
         -------
@@ -216,6 +222,7 @@ class ModelConfigBuilder:
             "drift",
             "drift_name",
             "drift_params",
+            "ndt_edge_shift",
         ]
 
         for field in optional_fields:
@@ -321,12 +328,15 @@ class ModelConfigBuilder:
             )
 
         # Check consistency
-        if "params" in config and "n_params" in config:
-            if config["n_params"] != len(config["params"]):
-                errors.append(
-                    f"Inconsistent n_params: expected {len(config['params'])}, "
-                    f"got {config['n_params']}"
-                )
+        if (
+            "params" in config
+            and "n_params" in config
+            and config["n_params"] != len(config["params"])
+        ):
+            errors.append(
+                f"Inconsistent n_params: expected {len(config['params'])}, "
+                f"got {config['n_params']}"
+            )
 
         if "param_bounds" in config and "params" in config:
             bounds = config["param_bounds"]
@@ -341,11 +351,17 @@ class ModelConfigBuilder:
                     f"param_bounds must match number of params ({len(config['params'])})"
                 )
 
-        if "default_params" in config and "params" in config:
-            if len(config["default_params"]) != len(config["params"]):
-                errors.append(
-                    f"default_params must match number of params ({len(config['params'])})"
-                )
+        if (
+            "default_params" in config
+            and "params" in config
+            and len(config["default_params"]) != len(config["params"])
+        ):
+            errors.append(
+                f"default_params must match number of params ({len(config['params'])})"
+            )
+
+        # Optional support-edge declaration: {"param": str, "scale": float}
+        errors.extend(get_ndt_edge_shift_errors(config))
 
         # Strict mode: check recommended fields
         if strict:
@@ -409,7 +425,8 @@ class ModelConfigBuilder:
             config["boundary_name"] = getattr(boundary, "__name__", "custom")
             config["boundary_params"] = boundary_params
         else:
-            raise ValueError("boundary must be string name or callable")
+            # ValueError, not TypeError: documented contract, pinned in tests.
+            raise ValueError("boundary must be string name or callable")  # noqa: TRY004
 
         return config
 
@@ -463,7 +480,8 @@ class ModelConfigBuilder:
             config["drift_name"] = getattr(drift, "__name__", "custom")
             config["drift_params"] = drift_params
         else:
-            raise ValueError("drift must be string name or callable")
+            # ValueError, not TypeError: documented contract, pinned in tests.
+            raise ValueError("drift must be string name or callable")  # noqa: TRY004
 
         return config
 

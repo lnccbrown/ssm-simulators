@@ -14,7 +14,13 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
+from ssms.basic_simulators.modular_parameter_simulator_adapter import (
+    ModularParameterSimulatorAdapter,
+    ParameterSimulatorAdapterProtocol,
+)
+from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
 from ssms.basic_simulators.simulator import (
+    _bind_variability_rng,
     _get_unique_seed,
     _preprocess_theta_deadline,
     _preprocess_theta_generic,
@@ -24,11 +30,6 @@ from ssms.basic_simulators.simulator import (
     make_noise_vec,
     validate_ssm_parameters,
 )
-from ssms.basic_simulators.modular_parameter_simulator_adapter import (
-    ModularParameterSimulatorAdapter,
-    ParameterSimulatorAdapterProtocol,
-)
-from ssms.basic_simulators.parameter_adapters import ParameterAdaptation
 from ssms.config import get_boundary_registry, get_drift_registry
 
 
@@ -60,8 +61,8 @@ class Simulator:
     Fully custom simulator:
 
     >>> def my_sim(v, a, z, t, max_t=20, n_samples=1000, **kwargs):
-    ...     rts = np.random.exponential(1/abs(v), n_samples) + t
-    ...     choices = np.where(np.random.random(n_samples) < z, 1, -1)
+    ...     rts = (np.random.exponential(1/abs(v), n_samples) + t).reshape(-1, 1)
+    ...     choices = np.where(np.random.random(n_samples) < z, 1, -1).reshape(-1, 1)
     ...     return {'rts': rts, 'choices': choices,
     ...             'metadata': {'model': 'custom', 'n_samples': n_samples}}
     >>> sim = Simulator(simulator_function=my_sim, params=["v", "a", "z", "t"],
@@ -399,7 +400,10 @@ class Simulator:
                 )
                 config["boundary_params"] = []
         else:
-            raise ValueError("boundary must be a string name or callable function")
+            # ValueError, not TypeError: the documented `Raises` contract.
+            raise ValueError(  # noqa: TRY004
+                "boundary must be a string name or callable function"
+            )
 
     def _apply_custom_drift(self, config: dict, drift: str | Callable) -> None:
         """Apply custom drift to configuration.
@@ -443,7 +447,10 @@ class Simulator:
                 )
                 config["drift_params"] = []
         else:
-            raise ValueError("drift must be a string name or callable function")
+            # ValueError, not TypeError: the documented `Raises` contract.
+            raise ValueError(  # noqa: TRY004
+                "drift must be a string name or callable function"
+            )
 
     def _validate_boundary_function(self, func: Callable) -> None:
         """Validate boundary function signature.
@@ -550,7 +557,8 @@ class Simulator:
         random_state : int or None
             Integer seed for the C-level RNG. Must lie in ``[-2**31, 2**31 - 1]`` (fits
             a 32-bit signed C ``long``, required on Windows). ``None`` picks a seed in
-            ``[0, 2**31 - 1]`` automatically.
+            ``[0, 2**31 - 1]`` automatically. The seed also pins the trial-to-trial
+            variability draws (``sv``/``sz``/``st``), as in ``simulator()``.
         return_option : str, default="full"
             Output format: "full" or "minimal"
         n_threads : int, default=1
@@ -643,6 +651,9 @@ class Simulator:
         ):
             for adaptation in self._custom_adaptations:
                 theta = adaptation.apply(theta, model_config_local, n_trials)
+
+        # Pin the trial-to-trial variability draws to random_state
+        _bind_variability_rng(theta, model_config_local, random_state)
 
         # Make boundary and drift dictionaries (if applicable)
         boundary_dict = {}

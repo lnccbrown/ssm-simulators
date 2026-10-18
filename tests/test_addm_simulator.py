@@ -13,10 +13,12 @@ one engine. These tests pin:
   **omission** sentinel.
 """
 
+import hashlib
+
+import cssm.addm_models as am
 import numpy as np
 import pytest
 
-import cssm.addm_models as am
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.config import get_boundary_registry
 from ssms.config._modelconfig.addm import get_addm_config
@@ -46,7 +48,15 @@ def _fixed_covariates(n=12, max_d=5, seed=0):
     sacc = np.zeros((n, max_d), dtype=np.float64)
     for i in range(n):
         sacc[i, 1 : d[i]] = np.sort(rng.uniform(0.1, 1.5, d[i] - 1))
-    return dict(n=n, max_d=max_d, r1=r1, r2=r2, flag=flag, d=d, sacc=sacc)
+    return {
+        "n": n,
+        "max_d": max_d,
+        "r1": r1,
+        "r2": r2,
+        "flag": flag,
+        "d": d,
+        "sacc": sacc,
+    }
 
 
 def _efpt_boundary_arrays(sacc, a, b, sigma):
@@ -143,7 +153,7 @@ def test_addm_public_mode2_matches_efpt():
         1,
     )
 
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     out = am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -180,18 +190,18 @@ def test_addm_public_mode2_matches_efpt():
 def test_addm_deterministic_across_n_threads():
     fx = _fixed_covariates(n=40, seed=1)
     n = fx["n"]
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
-    kw = dict(
-        r1=fx["r1"],
-        r2=fx["r2"],
-        flag=fx["flag"],
-        sacc_array=fx["sacc"],
-        d=fx["d"],
-        n_samples=1,
-        n_trials=n,
-        random_state=123,
-        max_t=10.0,
-    )
+    col = lambda v: np.full(n, v, dtype=np.float64)
+    kw = {
+        "r1": fx["r1"],
+        "r2": fx["r2"],
+        "flag": fx["flag"],
+        "sacc_array": fx["sacc"],
+        "d": fx["d"],
+        "n_samples": 1,
+        "n_trials": n,
+        "random_state": 123,
+        "max_t": 10.0,
+    }
     a1 = am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -324,7 +334,7 @@ def test_addm_x0_absolute_start():
 def test_addm_self_sample_mode_still_runs():
     """Mode 1 (no covariates): self-samples fixations, reproducible per seed."""
     n = 5
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     args = (
         col(_ETA),
         col(_KAPPA),
@@ -335,7 +345,7 @@ def test_addm_self_sample_mode_still_runs():
         col(999.0),
         col(_SIGMA),
     )
-    kw = dict(n_samples=100, n_trials=n, random_state=42, max_t=10.0)
+    kw = {"n_samples": 100, "n_trials": n, "random_state": 42, "max_t": 10.0}
     a = am.addm(*args, **kw)
     b = am.addm(*args, **kw)
     rts = np.asarray(a["rts"])
@@ -350,7 +360,7 @@ def test_addm_omission_sentinel():
     """Trials that don't terminate by max_t get rt == -999.0 and choice == 0."""
     n = 8
     fx = _fixed_covariates(n=n, seed=5)
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     # Very short horizon + wide bounds => most trials do not cross.
     out = am.addm(
         col(0.0),
@@ -423,7 +433,7 @@ _GAMMA_CONT = {"dist": "gamma", "dist_params": {"a": 2.0, "scale": 0.3}}
 def _run_mode2(n=6, seed=2, n_samples=200, random_state=1, **overrides):
     """Mode-2 aDDM on fixed observed covariates; returns the addm() output dict."""
     fx = _fixed_covariates(n=n, seed=seed)
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     return am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -485,7 +495,7 @@ def test_addm_resample_all_fixations_reaches_simulator():
 def test_addm_mode1_accepts_nongamma_distribution():
     """Mode-1 self-sampling now accepts any positive scipy dist (not just gamma)."""
     n = 5
-    col = lambda v: np.full(n, v, dtype=np.float64)  # noqa: E731
+    col = lambda v: np.full(n, v, dtype=np.float64)
     out = am.addm(
         col(_ETA),
         col(_KAPPA),
@@ -567,3 +577,26 @@ def test_fixation_continuation_resolvers_and_require_dist():
     # ... and a non-str / non-callable is rejected loudly.
     with pytest.raises(TypeError):
         fc.resolve_continuation_mode(123)
+
+
+# --------------------------------------------------------------------------- #
+# Fixed-seed stream pin
+# --------------------------------------------------------------------------- #
+def test_addm_fixed_seed_output_is_pinned():
+    """Pin the engine's random stream through the public output.
+
+    Recorded on main before the generator moved into ``_xoshiro_rng.pxi``. A
+    change here means the stream changed, which also breaks the efficient_fpt
+    parity oracle. Only RTs and choices are pinned: they depend on the step at
+    which a boundary is crossed, not on the last bits of the accumulated path,
+    so they are stable across platforms and libm builds.
+    """
+    out = _run_mode2()
+    rts = np.asarray(out["rts"])
+    choices = np.asarray(out["choices"])
+    np.testing.assert_allclose(
+        rts[:5, 0, 0], [0.5375, 0.7415, 0.4185, 0.6865, 1.3115], rtol=0, atol=1e-6
+    )
+    assert choices[:5, 0, 0].tolist() == [-1, -1, -1, -1, 1]
+    digest = hashlib.sha256(rts.tobytes() + choices.tobytes()).hexdigest()
+    assert digest == "a25600dc00ed7f2a6b0ab6dbe9e7086211b2f6646847b4682264042772897774"

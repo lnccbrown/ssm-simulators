@@ -1,14 +1,19 @@
 """Validation helpers for model configuration dicts.
 
-This enforces rules for parameter names.
+This enforces rules for parameter names and for the optional
+``ndt_edge_shift`` declaration.
 """
 
 from __future__ import annotations
 
+import math
 import re
-from typing import Any, List
+from numbers import Real
+from typing import Any
 
 NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9\.]{0,30}$")
+
+NDT_EDGE_SHIFT_KEYS = {"param", "scale"}
 
 
 def is_valid_param_name(name: Any) -> bool:
@@ -23,7 +28,7 @@ def is_valid_param_name(name: Any) -> bool:
     return bool(NAME_RE.match(name))
 
 
-def get_invalid_param_names(params: list) -> List[str]:
+def get_invalid_param_names(params: list) -> list[str]:
     """Validate only the parameter names in ``params``.
 
     This checks that `params` is a list, that there are no duplicates,
@@ -34,7 +39,7 @@ def get_invalid_param_names(params: list) -> List[str]:
         raise TypeError(f"'params' must be a list, got {type(params).__name__}")
     # duplicates
     seen = set()
-    dupes: List[str] = []
+    dupes: list[str] = []
     for p in params:
         if p in seen:
             dupes.append(p)
@@ -52,4 +57,59 @@ def get_invalid_configs(configs: dict[str, dict]) -> list[str]:
     ]
 
 
-__all__ = ["is_valid_param_name", "get_invalid_param_names", "get_invalid_configs"]
+def get_ndt_edge_shift_errors(config: dict) -> list[str]:
+    """Validate the optional ``ndt_edge_shift`` entry of ``config``.
+
+    ``{"param": <name>, "scale": s}`` declares that the model's response-time
+    support starts at ``t - s * <name>`` rather than at ``t``. Absent means no
+    finite edge below ``t`` is declared: every shipped model then starts at
+    ``t``, except kernels with no lower edge (``ddm_normal_st``), which this key
+    cannot express and which are listed in ``KDE_NO_DISPLACE_T`` instead. When
+    present it must be a dict with exactly those
+    two keys, both ``<name>`` and ``"t"`` must be in ``config["params"]``, and
+    ``s`` must be a finite non-negative number (bools are rejected).
+
+    Returns the list of problems found; empty when the key is absent or valid.
+    """
+    if "ndt_edge_shift" not in config:
+        return []
+    shift = config["ndt_edge_shift"]
+    if not isinstance(shift, dict):
+        return [f"ndt_edge_shift must be a dict, got {type(shift).__name__}"]
+    errors: list[str] = []
+    if set(shift) != NDT_EDGE_SHIFT_KEYS:
+        errors.append(
+            f"ndt_edge_shift must have exactly the keys "
+            f"{sorted(NDT_EDGE_SHIFT_KEYS)}, got {list(shift)}"
+        )
+    params = config.get("params")
+    params = params if isinstance(params, list) else []
+    if "t" not in params:
+        errors.append("ndt_edge_shift requires 't' in params")
+    param = shift.get("param")
+    if param not in params:
+        errors.append(f"ndt_edge_shift param {param!r} is not in params")
+    scale = shift.get("scale")
+    if (
+        isinstance(scale, bool)
+        or not isinstance(scale, Real)
+        or not math.isfinite(scale)
+        or scale < 0
+    ):
+        errors.append(
+            f"ndt_edge_shift scale must be a finite non-negative number, got {scale!r}"
+        )
+    return errors
+
+
+def get_invalid_ndt_edge_shift_configs(configs: dict[str, dict]) -> list[str]:
+    return [name for name, cfg in configs.items() if get_ndt_edge_shift_errors(cfg)]
+
+
+__all__ = [
+    "is_valid_param_name",
+    "get_invalid_param_names",
+    "get_invalid_configs",
+    "get_ndt_edge_shift_errors",
+    "get_invalid_ndt_edge_shift_configs",
+]

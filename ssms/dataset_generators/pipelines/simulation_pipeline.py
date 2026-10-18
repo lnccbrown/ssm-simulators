@@ -1,16 +1,17 @@
 """Simulation-based data generation pipeline for KDE estimators."""
 
-import numpy as np
 from copy import deepcopy
 from typing import Any
+
+import numpy as np
 from scipy.stats import mode
 
-from ssms.basic_simulators.simulator import _theta_dict_to_array, OMISSION_SENTINEL
+from ssms.basic_simulators.simulator import OMISSION_SENTINEL, _theta_dict_to_array
 from ssms.basic_simulators.simulator_class import Simulator
 from ssms.dataset_generators.protocols import (
     EstimatorBuilderProtocol,
-    TrainingDataStrategyProtocol,
     ParameterSamplerProtocol,
+    TrainingDataStrategyProtocol,
 )
 
 
@@ -90,7 +91,10 @@ class SimulationPipeline:
         5. Generate training data
 
         Args:
-            parameter_sampling_seed: Seed for parameter sampling (ensures different workers sample different θ)
+            parameter_sampling_seed: Theta index, used directly as the parameter-RNG
+                seed. Final as given: `TrainingDataGenerator` has already added its
+                base (explicit `parameter_sampler_index_offset` or an entropy draw)
+                and cursor, so no offset is applied here.
             simulator_seed: Random seed for simulations (controls RT/choice variability)
 
         Returns:
@@ -100,6 +104,11 @@ class SimulationPipeline:
                 - 'success': Whether generation succeeded
         """
         # Create isolated RNG for parameter sampling (no global state pollution!)
+        #
+        # The theta index is the seed, so two runs that use the same indices draw
+        # the same thetas. Keeping runs apart is the generator's job (base + cursor,
+        # applied once before the index gets here); this pipeline must not shift
+        # the index again.
         param_rng = np.random.default_rng(parameter_sampling_seed)
 
         # Keep simulating until we get valid data
@@ -116,7 +125,7 @@ class SimulationPipeline:
             simulations = self._run_simulations(theta_dict, simulator_seed)
 
             # 3. Filter simulations
-            keep, stats = self._is_valid_simulation(simulations)
+            keep, _stats = self._is_valid_simulation(simulations)
             attempt += 1
 
         if not keep:
@@ -363,8 +372,8 @@ class SimulationPipeline:
         Returns:
             Parameter sampler configured with model transforms
         """
-        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
         from ssms.config import ModelConfigBuilder
+        from ssms.dataset_generators.parameter_samplers import UniformParameterSampler
 
         # Extract sampling transforms from model config (empty list if none defined)
         constraints = ModelConfigBuilder.get_sampling_transforms(self.model_config)

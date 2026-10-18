@@ -1,10 +1,10 @@
 """Tests for ssms.hssm_support module."""
 
 import random
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
 
 from ssms.basic_simulators.simulator import (
     _RNG_SEED_C_LONG_MAX,
@@ -12,17 +12,17 @@ from ssms.basic_simulators.simulator import (
 )
 from ssms.hssm_support import (
     _broadcast_extra_fields,
-    _extract_size_val,
+    _build_decorated_simulator,
     _calculate_n_replicas,
+    _extract_size_val,
     _get_seed,
     _prepare_theta_and_shape,
     _reshape_sims_out,
-    _validate_size,
     _validate_simulator_fun_arg,
+    _validate_size,
     decorate_atomic_simulator,
-    hssm_sim_wrapper,
-    _build_decorated_simulator,
     get_simulator_fun_internal,
+    hssm_sim_wrapper,
     rng_fn,
     validate_simulator_fun,
 )

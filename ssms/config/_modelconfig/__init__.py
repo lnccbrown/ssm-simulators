@@ -1,47 +1,23 @@
 """Model configuration module for SSM simulators."""
 
+from .addm import get_addm_config
+from .angle import get_angle_config, get_angle_extended_config
+from .conflict import (
+    get_conflict_ds_angle_config,
+    get_conflict_ds_config,
+    get_conflict_dsstimflex_angle_config,
+    get_conflict_dsstimflex_config,
+    get_conflict_stimflex_angle_config,
+    get_conflict_stimflex_config,
+    get_conflict_stimflexrel1_angle_config,
+    get_conflict_stimflexrel1_config,
+    get_conflict_stimflexrel1_leak2_config,
+    get_conflict_stimflexrel1_leak_config,
+)
 from .ddm import (
     get_ddm_config,
     get_ddm_legacy_config,
 )
-from .conflict import (
-    get_conflict_ds_config,
-    get_conflict_ds_angle_config,
-    get_conflict_dsstimflex_config,
-    get_conflict_dsstimflex_angle_config,
-    get_conflict_stimflex_config,
-    get_conflict_stimflex_angle_config,
-    get_conflict_stimflexrel1_config,
-    get_conflict_stimflexrel1_angle_config,
-    get_conflict_stimflexrel1_leak_config,
-    get_conflict_stimflexrel1_leak2_config,
-)
-from .full_ddm import (
-    get_full_ddm_config,
-    get_full_ddm_rv_config,
-)
-from .lca import (
-    get_lca_3_config,
-    get_lca_4_config,
-    get_lca_no_bias_3_config,
-    get_lca_no_bias_4_config,
-    get_lca_no_bias_angle_3_config,
-    get_lca_no_bias_angle_4_config,
-    get_lca_no_z_3_config,
-    get_lca_no_z_4_config,
-    get_lca_no_z_angle_3_config,
-    get_lca_no_z_angle_4_config,
-)
-from .levy import get_levy_angle_config, get_levy_config
-from .tradeoff import (
-    get_tradeoff_angle_no_bias_config,
-    get_tradeoff_conflict_gamma_no_bias_config,
-    get_tradeoff_no_bias_config,
-    get_tradeoff_weibull_no_bias_config,
-)
-
-from .angle import get_angle_config, get_angle_extended_config
-from .weibull import get_weibull_config
 from .ddm_par2 import (
     get_ddm_par2_angle_no_bias_config,
     get_ddm_par2_config,
@@ -50,6 +26,7 @@ from .ddm_par2 import (
     get_ddm_par2_weibull_no_bias_config,
 )
 from .ddm_random import (
+    get_ddm_normal_st_config,
     get_ddm_rayleight_config,
     get_ddm_sdv_config,
     get_ddm_st_config,
@@ -66,6 +43,10 @@ from .dev_rlwm_lba import (
     get_dev_rlwm_lba_pw_v1_config,
     get_dev_rlwm_lba_race_v1_config,
     get_dev_rlwm_lba_race_v2_config,
+)
+from .full_ddm import (
+    get_full_ddm_config,
+    get_full_ddm_rv_config,
 )
 from .gamma_drift import (
     get_gamma_drift_angle_config,
@@ -84,6 +65,19 @@ from .lba import (
     get_lba_angle_3_config,
     get_lba_angle_3_vs_constraint_config,
 )
+from .lca import (
+    get_lca_3_config,
+    get_lca_4_config,
+    get_lca_no_bias_3_config,
+    get_lca_no_bias_4_config,
+    get_lca_no_bias_angle_3_config,
+    get_lca_no_bias_angle_4_config,
+    get_lca_no_z_3_config,
+    get_lca_no_z_4_config,
+    get_lca_no_z_angle_3_config,
+    get_lca_no_z_angle_4_config,
+)
+from .levy import get_levy_angle_config, get_levy_config
 from .lnr import (
     get_lnr2_config,
     get_lnr2_corr_config,
@@ -117,6 +111,7 @@ from .ornstein import (
     get_ornstein_angle_config,
     get_ornstein_config,
 )
+from .poisson_race import get_poisson_race_config
 from .race import (
     get_race_2_config,
     get_race_3_config,
@@ -137,16 +132,20 @@ from .race import (
 from .racing_diffusion import (
     get_racing_diffusion_3_config,
 )
-from .poisson_race import get_poisson_race_config
 from .shrink import (
     get_shrink_spot_config,
     get_shrink_spot_extended_config,
     get_shrink_spot_simple_config,
     get_shrink_spot_simple_extended_config,
 )
-
-from .addm import get_addm_config
-from .validation import get_invalid_configs
+from .tradeoff import (
+    get_tradeoff_angle_no_bias_config,
+    get_tradeoff_conflict_gamma_no_bias_config,
+    get_tradeoff_no_bias_config,
+    get_tradeoff_weibull_no_bias_config,
+)
+from .validation import get_invalid_configs, get_invalid_ndt_edge_shift_configs
+from .weibull import get_weibull_config
 
 
 def _normalize_param_bounds(config: dict) -> dict:
@@ -199,6 +198,7 @@ def get_model_config():
     configs = {
         "ddm": get_ddm_config(),
         "ddm_st": get_ddm_st_config(),
+        "ddm_normal_st": get_ddm_normal_st_config(),
         "ddm_truncnormt": get_ddm_truncnormt_config(),
         "ddm_rayleight": get_ddm_rayleight_config(),
         "ddm_sdv": get_ddm_sdv_config(),
@@ -329,6 +329,7 @@ __all__ = [
     "get_weibull_config",
     "get_full_ddm_config",
     "get_ddm_st_config",
+    "get_ddm_normal_st_config",
     "get_ddm_truncnormt_config",
     "get_ddm_rayleight_config",
     "get_ddm_sdv_config",
@@ -390,6 +391,13 @@ def _validate_configs():
     }
     if any(invalid_configs.values()):
         raise ValueError(f"Invalid parameter names detected: {invalid_configs}")
+    invalid_ndt_edge_shifts = get_invalid_ndt_edge_shift_configs(
+        _ALL_CONFIGS["model_configs"]
+    )
+    if invalid_ndt_edge_shifts:
+        raise ValueError(
+            f"Invalid ndt_edge_shift declarations detected: {invalid_ndt_edge_shifts}"
+        )
 
 
 _validate_configs()

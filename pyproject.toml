@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssm-simulators"
-version = "0.14.0"
+version = "0.15.0"
 description = "SSMS is a package collecting simulators and training data generators for cognitive science, neuroscience, and approximate bayesian computation"
 authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
@@ -49,7 +49,11 @@ dev = [
     "pytest",
     "mypy",
     "black",
-    "ruff>=0.15.1,<0.16",
+    # ruff's default rule set moves at minor releases (0.16: 59 -> 413 rules
+    # plus Markdown code-fence formatting; 0.17 dropped most DTZ rules). Bump
+    # the minor deliberately: run `ruff check --fix` plus a triage pass, and
+    # keep .pre-commit-config.yaml in lockstep.
+    "ruff>=0.17,<0.18",
     "types-PyYAML",
     "pre-commit",
     "pytest-cov>=6.0.0",
@@ -72,7 +76,7 @@ dev = [
     "pytest",
     "mypy",
     "black",
-    "ruff>=0.15.1,<0.16",
+    "ruff>=0.17,<0.18",
     "pre-commit",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
@@ -200,6 +204,19 @@ ignore = [
     "PYI041",
     # Allow importing from parent modules
     "TID252",
+
+    # Rules that became default in ruff 0.16 and fire widely on established idioms
+    # Mutable class attributes: 78 of 81 are fixtures on test stub classes; the
+    # other 3 are constant sets on SSMSToPyDDMMapper
+    "RUF012",
+    # Blind `except Exception` where any failure becomes a fallback or a reported
+    # result: logged (CLI, CPU-count probes), returned as an error value (worker
+    # results, notebook runner), treated as "no match" (registry family matchers),
+    # or an optional-import guard in tests
+    "BLE001",
+    # `__all__` lists keep a hand-chosen order (some grouped into commented
+    # sections), not alphabetical
+    "RUF022",
 ]
 
 [tool.mypy]

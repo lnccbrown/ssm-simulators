@@ -29,14 +29,15 @@ Example:
     )
 """
 
+from typing import Any
+
 import numpy as np
-from typing import Dict, Any
 
 try:
     from ssms_rust import (
-        ddm_rust_sequential,
-        ddm_rust_parallel,
         ddm_flexbound_rust_parallel,
+        ddm_rust_parallel,
+        ddm_rust_sequential,
         full_ddm_rust_parallel,
         get_rust_info,
     )
@@ -81,7 +82,7 @@ def ddm_rust_single(
     return_option: str = "full",
     smooth_unif: bool = False,
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Single-threaded DDM simulator using Rust (no Rayon overhead).
 
@@ -169,7 +170,7 @@ def ddm_rust(
     return_option: str = "full",
     smooth_unif: bool = False,
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     DDM simulator using Rust with Rayon parallelism.
 
@@ -306,7 +307,7 @@ def ddm_flexbound_rust(
     return_option: str = "full",
     smooth_unif: bool = False,
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """DDM with flexible boundaries using Rust."""
     if boundary_params is None:
         boundary_params = {}
@@ -344,7 +345,7 @@ def ddm_flexbound_rust(
 
     for k in range(n_trials):
         boundary_params_tmp = {
-            key_: boundary_params[key_][k] for key_ in boundary_params.keys()
+            key_: boundary_params[key_][k] for key_ in boundary_params
         }
         boundary[k, : len(t_s)] = boundary_fun(t=t_s, **boundary_params_tmp).astype(
             np.float32
@@ -421,7 +422,7 @@ def full_ddm_rust(
     return_option: str = "full",
     smooth_unif: bool = False,
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Full DDM with inter-trial variability using Rust."""
     if boundary_params is None:
         boundary_params = {}
@@ -462,7 +463,7 @@ def full_ddm_rust(
 
     for k in range(n_trials):
         boundary_params_tmp = {
-            key_: boundary_params[key_][k] for key_ in boundary_params.keys()
+            key_: boundary_params[key_][k] for key_ in boundary_params
         }
         boundary[k, : len(t_s)] = boundary_fun(t=t_s, **boundary_params_tmp).astype(
             np.float32

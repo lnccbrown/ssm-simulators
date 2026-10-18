@@ -20,10 +20,10 @@ Factory:
   - Handles compatibility checking and error messages
 """
 
-from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 from ssms.dataset_generators.estimator_builders.builder_factory import (
     create_estimator_builder,
 )
+from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
 
 # PyDDM is optional dependency
 try:

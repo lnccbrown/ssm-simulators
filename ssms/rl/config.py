@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import importlib.util
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pandas as pd
@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 from .env import DiscreteChoiceEnvironment, TaskConfig, TaskEnvironment
 from .learning import LearningProcess
-
 
 # Fields that to_hssm_config_dict() must emit — kept as a constant
 # so we can write contract tests against it.
@@ -201,7 +200,9 @@ class ModelConfig:
         """Return the task environment when it supports discrete choice mapping."""
         env = cast(TaskEnvironment, self.task_environment)
         if not isinstance(env, DiscreteChoiceEnvironment):
-            raise ValueError(
+            # ValueError, not TypeError: config validation errors are all
+            # ValueError, and tests pin this one.
+            raise ValueError(  # noqa: TRY004
                 "This RLSSM model requires a DiscreteChoiceEnvironment "
                 f"(response_labels and n_choices). Got {type(env).__name__}."
             )
@@ -517,12 +518,15 @@ class ModelConfig:
             raise ValueError("list_params cannot be empty.")
 
         # list_params / params_default consistency
-        if self.list_params is not None and self.params_default is not None:
-            if len(self.list_params) != len(self.params_default):
-                raise ValueError(
-                    f"list_params length ({len(self.list_params)}) != "
-                    f"params_default length ({len(self.params_default)})"
-                )
+        if (
+            self.list_params is not None
+            and self.params_default is not None
+            and len(self.list_params) != len(self.params_default)
+        ):
+            raise ValueError(
+                f"list_params length ({len(self.list_params)}) != "
+                f"params_default length ({len(self.params_default)})"
+            )
 
         # All list_params have bounds
         if self.list_params is not None and self.bounds is not None:

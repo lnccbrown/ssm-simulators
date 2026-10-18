@@ -238,7 +238,11 @@ class DataGenerationPipelineProtocol(Protocol):
         Arguments
         ---------
         parameter_sampling_seed : int
-            Index of parameter set to generate (used to sample from param space)
+            Theta index of the parameter set to generate, used as the seed of
+            the parameter RNG. `TrainingDataGenerator` hands over final indices
+            -- its base (the config's `parameter_sampler_index_offset`, or an
+            entropy draw recorded in the output) plus its cursor -- so an
+            implementation uses the value as given and adds no offset of its own.
         random_seed : int | None
             Random seed for reproducibility (may be unused for deterministic methods)
 

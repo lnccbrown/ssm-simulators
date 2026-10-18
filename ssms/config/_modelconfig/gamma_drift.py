@@ -1,7 +1,8 @@
 """Gamma drift model configuration."""
 
 import cssm
-from ssms.basic_simulators import boundary_functions as bf, drift_functions as df
+from ssms.basic_simulators import boundary_functions as bf
+from ssms.basic_simulators import drift_functions as df
 
 
 def get_gamma_drift_config():

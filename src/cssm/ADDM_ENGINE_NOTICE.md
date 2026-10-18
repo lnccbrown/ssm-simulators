@@ -1,8 +1,10 @@
 # Vendored aDDM simulation engine — provenance & license
 
-The simulation engine inside [`addm_models.pyx`](addm_models.pyx) — the inline
-xoshiro256++/SplitMix64/Box-Muller PRNG and the stage-indexed
-`_run_heterog_trial` / `_simulate_heterog_multistage` Euler–Maruyama kernel — is
+The simulation engine inside [`addm_models.pyx`](addm_models.pyx) — the
+xoshiro256++/SplitMix64/Box-Muller PRNG (textually included from
+[`_xoshiro_rng.pxi`](_xoshiro_rng.pxi), where it is shared with other `prange`
+kernels) and the stage-indexed `_run_heterog_trial` /
+`_simulate_heterog_multistage` Euler–Maruyama kernel — is
 **vendored verbatim from the efficient-fpt (efpt) project** (`src/efficient_fpt/
 cython/simulator.pyx`). The aDDM covariate → per-stage drift construction
 (`_build_addm_mu_array_data`) is ported from `src/efficient_fpt/addm_helpers.py`.
@@ -46,8 +48,11 @@ is to **absorb & relicense** this engine under ssm-simulators' own MIT license.
 2. `float64` internals (efpt's dtype), cast to ssm-simulators' `float32` on output.
 3. Output via `setup_simulation` / `build_return_dict` with the standard
    `(n_samples, n_trials, 1)` shape and the `-999.0` omission sentinel.
-4. Inline xoshiro PRNG kept (not ssm-simulators' GSL RNG) so results are identical
-   to efpt on the same per-trial seeds and independent of `n_threads`.
+4. The xoshiro PRNG is kept (not ssm-simulators' GSL RNG) so results are identical
+   to efpt on the same per-trial seeds and independent of `n_threads`. It lives in
+   `_xoshiro_rng.pxi` (named constants, otherwise verbatim) so the multi-stage race
+   kernel can share it; `tests/test_addm_simulator.py::test_addm_fixed_seed_output_is_pinned`
+   pins the stream.
 
 ## Sanctioned in-place modification (re-apply on re-vendor)
 
@@ -67,5 +72,7 @@ result. Each edit site is tagged `# ssm-sim MOD` in `addm_models.pyx`:
   emits `metadata['boundary']` (`+(a - b·t)` over the grid) and a relative
   `metadata['z']` start alias — both pure ssm-simulators glue, no engine change.
 
-To re-vendor: drop in the upstream engine, then re-apply the two `# ssm-sim MOD`
-sites above (the `addm()` glue is regenerated as part of items 1–4).
+To re-vendor: drop in the upstream engine, replace its RNG block with
+`include "_xoshiro_rng.pxi"` (re-vendor the block into that file instead if upstream
+changed it, and update the pinned stream test deliberately), then re-apply the two
+`# ssm-sim MOD` sites above (the `addm()` glue is regenerated as part of items 1–4).

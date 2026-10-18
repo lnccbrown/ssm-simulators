@@ -1,28 +1,27 @@
 """Tests for RLSSM data contract validation."""
 
-import io
 import contextlib
+import io
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ssms import OMISSION_SENTINEL
-import ssms.rl as rl
+from ssms import OMISSION_SENTINEL, rl
 from ssms.rl.simulator import MISSING_RESPONSE_SENTINEL
 from ssms.rl.validation import DataValidationReport, validate_rlssm_data
 
 
 def _make_config(**overrides):
-    defaults = dict(
-        model_name="test_rlssm",
-        description="Test RLSSM",
-        decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
-        task_environment=rl.env.Bandit.bernoulli(
+    defaults = {
+        "model_name": "test_rlssm",
+        "description": "Test RLSSM",
+        "decision_process": "angle",
+        "learning_process": rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
+        "task_environment": rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
-    )
+    }
     defaults.update(overrides)
     return rl.ModelConfig(**defaults)
 
@@ -238,6 +237,8 @@ class TestValues:
 
     def test_non_numeric_response_reports_dtype_error(self, config):
         data = _valid_panel()
+        # pandas >= 3 no longer upcasts an int column to object on assignment.
+        data["response"] = data["response"].astype(object)
         data.loc[0, "response"] = "left"
         report = config.validate_data(data)
 
@@ -300,6 +301,7 @@ class TestValues:
 
     def test_non_numeric_rt_reports_dtype_error(self, config):
         data = _valid_panel()
+        data["rt"] = data["rt"].astype(object)
         data.loc[0, "rt"] = "fast"
         report = config.validate_data(data)
 

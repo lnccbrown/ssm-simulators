@@ -1,6 +1,7 @@
 """Uniform random parameter sampler (default behavior)."""
 
 import numpy as np
+
 from ssms.dataset_generators.parameter_samplers.base_sampler import (
     AbstractParameterSampler,
 )

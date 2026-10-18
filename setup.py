@@ -20,8 +20,9 @@ import platform
 import subprocess
 import sys
 import tempfile
-from setuptools import setup, Extension
+
 import numpy
+from setuptools import Extension, setup
 
 # Define Cython extension modules that do NOT need OpenMP/GSL.
 # Modules that use prange/parallel or GSL RNG belong in OPENMP_MODULES below.
@@ -38,6 +39,7 @@ CYTHON_MODULES = [
 OPENMP_MODULES = [
     "_openmp_status",  # Runtime OpenMP/GSL detection
     "addm_models",  # aDDM simulator (ported efpt engine, prange + inline xoshiro)
+    "race_multistage_models",  # covariate-conditioned multi-stage race model
     "ddm_models",  # DDM simulators with n_threads support
     "levy_models",  # Levy simulators with n_threads support
     "ornstein_models",  # Ornstein-Uhlenbeck with n_threads support
@@ -143,8 +145,7 @@ def get_gsl_flags():
         else:
             compile_args.append(flag)
 
-    for flag in libs:
-        link_args.append(flag)
+    link_args.extend(libs)
 
     return {
         "include_dirs": include_dirs,
