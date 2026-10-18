@@ -71,13 +71,6 @@ EXPECTED_KEYS = [
     "model_config",
 ]
 
-# TODO: Remove this once #114 is fixed
-broken_models = [
-    "lba_3_vs_constraint",  # broken
-    "lba_angle_3_vs_constraint",  # broken
-    "dev_rlwm_lba_race_v2",  # broken
-]
-
 # Ultra slow models, likely broken?
 slow_prefixes = (
     "race",
@@ -98,8 +91,6 @@ def _is_choice_only_rl_config(model_conf):
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
 def test_TrainingDataGenerator(model_name, model_conf):
-    if model_name in broken_models:
-        pytest.skip(f"Skipping broken model: {model_name}")
     if model_name.startswith(slow_prefixes):
         pytest.skip(f"Skipping slow model: {model_name}")
     if _is_choice_only_rl_config(model_conf):
