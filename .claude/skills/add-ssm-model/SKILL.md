@@ -50,6 +50,9 @@ Ask the user for each of these. Do not proceed until all are answered:
    - `cssm.race` — for race models (multiple choices, independent accumulators)
    - `cssm.lba` — for linear ballistic accumulator models
    - Check `src/cssm/` for other available simulators
+   - None fits: a new simulator is a Level 2 (Python) or Level 3 (Cython)
+     contribution. Write it by following `docs/contributing/add_models.md`,
+     then come back here for its config, registration and validation.
 9. **Number of particles** — usually 1 (for single-accumulator models), or
    matches nchoices for race/LBA models
 
@@ -105,7 +108,7 @@ The required fields are:
 | `"nchoices"` | int | Number of discrete choices |
 | `"choices"` | list[int] | Choice values |
 | `"n_particles"` | int | Usually 1 or nchoices |
-| `"simulator"` | Callable | Cython simulator function |
+| `"simulator"` | Callable | A `cssm` simulator, or a Python simulator for a Level 2 contribution |
 | `"parameter_transforms"` | dict | `{"sampling": [], "simulation": []}` |
 
 Optional fields for models with custom drift:
