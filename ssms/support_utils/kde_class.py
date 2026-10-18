@@ -277,8 +277,8 @@ class LogKDE:
             Epsilon value to use for lower bounds on rts.
         filter_rts: float
             Value to filter rts by, default is OMISSION_SENTINEL (-999).
-            This is the sentinel value returned by simulators when a trial
-            exceeds max_t or deadline (i.e., an omission).
+            This is the value simulators write into ``rts`` for an omission
+            (see ``OMISSION_SENTINEL``).
 
         Returns:
         --------
@@ -516,8 +516,8 @@ class LogKDE:
             Tuple of (rts, choices, simulator_info) as returned by simulator function.
         filter_rts: float
             Value to filter rts by, default is OMISSION_SENTINEL (-999).
-            This is the sentinel value returned by simulators when a trial
-            exceeds max_t or deadline (i.e., an omission).
+            This is the value simulators write into ``rts`` for an omission
+            (see ``OMISSION_SENTINEL``).
             Only rts that differ from this value, are strictly positive and have
             a finite log are retained per choice.
         """
