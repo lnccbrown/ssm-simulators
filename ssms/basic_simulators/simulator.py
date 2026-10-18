@@ -20,9 +20,16 @@ from ssms.basic_simulators.modular_parameter_simulator_adapter import (
 )
 from ssms.config import get_boundary_registry, get_drift_registry
 
-# Sentinel value indicating an omission (no response within deadline/max_t).
-# When a simulated trial exceeds the maximum time (max_t) or deadline parameter,
-# both the RT and choice are set to this value to indicate no valid response.
+# Sentinel value marking an omission: a trial that produced no response.
+# The simulators behind ``simulator()`` and ``Simulator`` write it into ``rts``
+# only, never into ``choices``, so identify omissions with
+# ``rts == OMISSION_SENTINEL``. Most keep the latent choice in ``choices`` and
+# ``choice_p`` counts the trial under it (``tests/test_omission_labels.py``); a
+# few record a code outside ``possible_choices`` instead (#404).
+#
+# A deadline always produces omissions: an RT past it is replaced by the
+# sentinel. Whether reaching ``max_t`` does too depends on the simulator: some
+# stop there and report a choice, others return an omission.
 #
 # This value is set by the low-level Cython simulators (in src/cssm/*.pyx) and
 # is used throughout the codebase for:
