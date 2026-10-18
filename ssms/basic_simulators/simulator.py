@@ -23,8 +23,9 @@ from ssms.config import get_boundary_registry, get_drift_registry
 # Sentinel value marking an omission: a trial that produced no response.
 # The simulators behind ``simulator()`` and ``Simulator`` write it into ``rts``
 # only, never into ``choices``, so identify omissions with
-# ``rts == OMISSION_SENTINEL``. ``choice_p`` counts an omitted trial under the
-# choice recorded for it (``tests/test_omission_labels.py``).
+# ``rts == OMISSION_SENTINEL``. Most keep the latent choice in ``choices`` and
+# ``choice_p`` counts the trial under it (``tests/test_omission_labels.py``); a
+# few record a code outside ``possible_choices`` instead (#404).
 #
 # A deadline always produces omissions: an RT past it is replaced by the
 # sentinel. Whether reaching ``max_t`` does too depends on the simulator: some
