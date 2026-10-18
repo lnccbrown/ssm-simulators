@@ -16,6 +16,8 @@ References
        models of simple choice. *Frontiers in Psychology, 3*, 292.
 """
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 from scipy import integrate, stats
@@ -443,7 +445,7 @@ def test_correlated_defective_density_matches_simulation():
             defective_density(
                 np.linspace(lo, hi, 201), 0, mus, sigmas, t=t, rho=rho
             ).mean()
-            for lo, hi in zip(edges[:-1], edges[1:])
+            for lo, hi in pairwise(edges)
         ]
     )
     np.testing.assert_allclose(emp, ana, atol=0.03)
