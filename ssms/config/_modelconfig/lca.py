@@ -1,15 +1,15 @@
 """LCA (Leaky Competing Accumulator) model configurations."""
 
+import numpy as np
+
 import cssm
 from ssms.basic_simulators import boundary_functions as bf
 from ssms.transforms import (
     ColumnStackParameters,
     ExpandDimension,
-    SetZeroArray,
     LambdaAdaptation,
+    SetZeroArray,
 )
-
-import numpy as np
 
 
 def get_lca_3_config():

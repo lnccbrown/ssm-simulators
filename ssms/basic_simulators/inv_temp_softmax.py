@@ -6,7 +6,6 @@ from typing import Any
 
 import numpy as np
 
-
 PLACEHOLDER_RT = -1.0
 
 

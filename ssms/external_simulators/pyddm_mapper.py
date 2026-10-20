@@ -5,8 +5,10 @@ to PyDDM models, enabling the use of PyDDM's analytical Fokker-Planck
 solver for compatible models.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
-from typing import Any, Callable
 
 
 class SSMSToPyDDMMapper:

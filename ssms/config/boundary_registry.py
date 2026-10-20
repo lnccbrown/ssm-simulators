@@ -26,7 +26,8 @@ List available boundaries:
 >>> print(get_boundary_registry().list_boundaries())
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class BoundaryRegistry:
@@ -258,7 +259,8 @@ def get_boundary_registry() -> BoundaryRegistry:
 # This uses the existing boundary_config dict which already defines all built-in boundaries
 # This way, when someone adds a new boundary function to base.py, it's automatically
 # registered here without needing to update this file
-from typing import cast, Callable
+from collections.abc import Callable
+from typing import cast
 
 from ssms.config._modelconfig.base import boundary_config
 

@@ -192,8 +192,9 @@ class TestParallelRequestValidation:
 
     def test_parallel_request_warns_when_unavailable(self):
         """check_parallel_request should warn when parallel not available."""
-        from cssm._openmp_status import check_parallel_request, get_openmp_info
         import warnings
+
+        from cssm._openmp_status import check_parallel_request, get_openmp_info
 
         info = get_openmp_info()
 

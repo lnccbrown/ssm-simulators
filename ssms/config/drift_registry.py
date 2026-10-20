@@ -26,7 +26,8 @@ List available drifts:
 >>> print(get_drift_registry().list_drifts())
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class DriftRegistry:
@@ -254,7 +255,8 @@ def get_drift_registry() -> DriftRegistry:
 # This uses the existing drift_config dict which already defines all built-in drifts
 # This way, when someone adds a new drift function to base.py, it's automatically
 # registered here without needing to update this file
-from typing import cast, Callable
+from collections.abc import Callable
+from typing import cast
 
 from ssms.config._modelconfig.base import drift_config
 

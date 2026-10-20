@@ -4,8 +4,8 @@ This module tests the nested config utilities used throughout the codebase.
 """
 
 from ssms.config.config_utils import (
-    has_nested_structure,
     get_nested_config,
+    has_nested_structure,
 )
 
 

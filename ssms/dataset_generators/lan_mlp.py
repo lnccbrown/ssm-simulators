@@ -15,11 +15,6 @@ import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Union
-
-from ssms.dataset_generators.protocols import (
-    DataGenerationPipelineProtocol,
-)
 
 import cloudpickle as pickle
 import numpy as np
@@ -27,11 +22,14 @@ import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from ssms.config import KDE_NO_DISPLACE_T
+from ssms.dataset_generators.protocols import (
+    DataGenerationPipelineProtocol,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class TrainingDataGenerator:  # noqa: N801
+class TrainingDataGenerator:
     """The TrainingDataGenerator() class is used to generate training data
       for various likelihood approximators.
 
@@ -68,8 +66,8 @@ class TrainingDataGenerator:  # noqa: N801
 
     def __init__(
         self,
-        config: Union[dict, DataGenerationPipelineProtocol, None] = None,
-        model_config: Optional[dict] = None,
+        config: dict | DataGenerationPipelineProtocol | None = None,
+        model_config: dict | None = None,
     ):
         """Initialize data generator class.
 

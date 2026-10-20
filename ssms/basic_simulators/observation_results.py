@@ -3,8 +3,8 @@
 This module does not register, wrap, or change simulators.
 """
 
-from collections.abc import Mapping, Sequence
 import math
+from collections.abc import Mapping, Sequence
 from numbers import Integral, Real
 from typing import Any
 

@@ -2,22 +2,22 @@
 
 import pytest
 
-import ssms.rl as rl
+from ssms import rl
 from ssms.rl import config as rl_config
 from ssms.rl.config import _HSSM_SHARED_FIELDS
 
 
 def _make_default_config(**overrides):
     """Helper to create a default angle + RW config with optional overrides."""
-    defaults = dict(
-        model_name="test_rlssm",
-        description="Test RLSSM config",
-        decision_process="angle",
-        learning_process=rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
-        task_environment=rl.env.Bandit.bernoulli(
+    defaults = {
+        "model_name": "test_rlssm",
+        "description": "Test RLSSM config",
+        "decision_process": "angle",
+        "learning_process": rl.learning.RescorlaWagnerDrift(n_actions=2, initial_q=0.5),
+        "task_environment": rl.env.Bandit.bernoulli(
             probabilities=[0.7, 0.3], response_labels=[-1, 1]
         ),
-    )
+    }
     defaults.update(overrides)
     return rl.ModelConfig(**defaults)
 

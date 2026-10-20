@@ -37,7 +37,7 @@ List available models:
 """
 
 import copy
-from typing import Callable
+from collections.abc import Callable
 
 
 class ModelConfigRegistry:

@@ -1,7 +1,7 @@
 """Integration tests for PyDDM-based training data generation."""
 
-import pytest
 import numpy as np
+import pytest
 
 # Skip all tests if pyddm not installed
 pytest.importorskip("pyddm")
@@ -11,13 +11,13 @@ from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
     get_lan_config,
 )
-from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 from ssms.dataset_generators.estimator_builders.builder_factory import (
     create_estimator_builder,
 )
 from ssms.dataset_generators.estimator_builders.pyddm_builder import (
     PyDDMEstimatorBuilder,
 )
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
 
 
 @pytest.fixture

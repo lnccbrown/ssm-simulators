@@ -1,7 +1,8 @@
 """Tests for parameter sampling constraints."""
 
 import numpy as np
-from ssms.transforms import SwapIfLessConstraint, NormalizeToSumConstraint
+
+from ssms.transforms import NormalizeToSumConstraint, SwapIfLessConstraint
 
 
 class TestSwapIfLessConstraint:

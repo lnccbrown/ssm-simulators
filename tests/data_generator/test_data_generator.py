@@ -3,16 +3,14 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
+from expected_constrained_param_space import infer_param_bounds_dict
+from expected_shapes import get_expected_shapes
 
 from ssms.config import model_config
 from ssms.config.generator_config.data_generator_config import (
     get_default_generator_config,
 )
 from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
-
-from expected_shapes import get_expected_shapes
-from expected_constrained_param_space import infer_param_bounds_dict
-
 
 N_PARAMETER_SETS = random.randint(2, 10)
 N_TRAINING_SAMPLES_BY_PARAMETER_SET = random.randint(2, 10)
@@ -73,13 +71,6 @@ EXPECTED_KEYS = [
     "model_config",
 ]
 
-# TODO: Remove this once #114 is fixed
-broken_models = [
-    "lba_3_vs_constraint",  # broken
-    "lba_angle_3_vs_constraint",  # broken
-    "dev_rlwm_lba_race_v2",  # broken
-]
-
 # Ultra slow models, likely broken?
 slow_prefixes = (
     "race",
@@ -100,8 +91,6 @@ def _is_choice_only_rl_config(model_conf):
 
 @pytest.mark.parametrize("model_name,model_conf", model_config.items())
 def test_TrainingDataGenerator(model_name, model_conf):
-    if model_name in broken_models:
-        pytest.skip(f"Skipping broken model: {model_name}")
     if model_name.startswith(slow_prefixes):
         pytest.skip(f"Skipping slow model: {model_name}")
     if _is_choice_only_rl_config(model_conf):
@@ -142,7 +131,7 @@ def test_data_persistance(tmp_path):
         config=generator_config, model_config=model_conf
     )
     my_dataset_generator.generate_data_training(save=True)
-    new_data_file = list(tmp_path.iterdir())[0]
+    new_data_file = next(iter(tmp_path.iterdir()))
     assert new_data_file.exists()
     assert new_data_file.suffix == ".pickle"
 
