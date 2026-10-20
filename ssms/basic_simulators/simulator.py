@@ -5,10 +5,10 @@ In addition some utility functions are provided that help
 with preprocessing the output of the simulator function.
 """
 
-from copy import deepcopy
 import functools
 import inspect
 import numbers
+from copy import deepcopy
 from threading import Lock
 
 import numpy as np
@@ -20,9 +20,16 @@ from ssms.basic_simulators.modular_parameter_simulator_adapter import (
 )
 from ssms.config import get_boundary_registry, get_drift_registry
 
-# Sentinel value indicating an omission (no response within deadline/max_t).
-# When a simulated trial exceeds the maximum time (max_t) or deadline parameter,
-# both the RT and choice are set to this value to indicate no valid response.
+# Sentinel value marking an omission: a trial that produced no response.
+# The simulators behind ``simulator()`` and ``Simulator`` write it into ``rts``
+# only, never into ``choices``, so identify omissions with
+# ``rts == OMISSION_SENTINEL``. Most keep the latent choice in ``choices`` and
+# ``choice_p`` counts the trial under it (``tests/test_omission_labels.py``); a
+# few record a code outside ``possible_choices`` instead (#404).
+#
+# A deadline always produces omissions: an RT past it is replaced by the
+# sentinel. Whether reaching ``max_t`` does too depends on the simulator: some
+# stop there and report a choice, others return an omission.
 #
 # This value is set by the low-level Cython simulators (in src/cssm/*.pyx) and
 # is used throughout the codebase for:
@@ -134,7 +141,7 @@ def _make_valid_dict(dict_in: dict) -> dict:
 
 
 def _theta_dict_to_array(
-    theta: dict = {},  # TODO: #80 use dict instead of dict | None  # noqa: B006, FIX002
+    theta: dict = {},  # TODO: #80 use dict instead of dict | None
     model_param_list: list[str] | None = None,
 ) -> np.ndarray:
     """Converts theta dictionary to numpy array for use with simulator function.
@@ -204,12 +211,9 @@ def _theta_array_to_dict(
         raise ValueError("model_param_list is not supplied")
     elif theta is None:
         raise ValueError("theta array is not supplied")
-    elif theta.ndim == 1 and len(model_param_list) != theta.shape[0]:
-        raise ValueError(
-            "model_param_list and theta array do not imply"
-            " the same number of parameters"
-        )
-    elif theta.ndim == 2 and len(model_param_list) != theta.shape[1]:
+    elif (theta.ndim == 1 and len(model_param_list) != theta.shape[0]) or (
+        theta.ndim == 2 and len(model_param_list) != theta.shape[1]
+    ):
         raise ValueError(
             "model_param_list and theta array do not imply"
             " the same number of parameters"
@@ -250,7 +254,8 @@ def _preprocess_theta_generic(
         theta = theta.to_dict(orient="list")
         theta = {k: np.array(v).astype(np.float32) for k, v in theta.items()}
     else:
-        raise ValueError(
+        # ValueError, not TypeError: the documented `Raises` contract.
+        raise ValueError(  # noqa: TRY004
             "theta is not supplied as list, numpy array, dictionary, or pandas DataFrame!"
         )
     return theta
@@ -484,14 +489,12 @@ def bin_simulator_output(
         bins[:nbins] = np.linspace(0, max_t, nbins)
         bins[nbins] = np.inf
 
-    cnt = 0
     counts = np.zeros((nbins, len(out["metadata"]["possible_choices"])))
 
-    for choice in out["metadata"]["possible_choices"]:
+    for cnt, choice in enumerate(out["metadata"]["possible_choices"]):
         counts[:, cnt] = np.histogram(out["rts"][out["choices"] == choice], bins=bins)[
             0
         ]
-        cnt += 1
 
     if freq_cnt is False:
         counts = counts / out["metadata"]["n_samples"]

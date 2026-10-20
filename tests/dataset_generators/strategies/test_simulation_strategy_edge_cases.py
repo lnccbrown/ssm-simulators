@@ -2,10 +2,11 @@
 
 import numpy as np
 import pytest
+
 from ssms import OMISSION_SENTINEL
-from ssms.config import model_config, get_lan_kde_config
-from ssms.dataset_generators.pipelines import SimulationPipeline
+from ssms.config import get_lan_kde_config, model_config
 from ssms.dataset_generators.estimator_builders.kde_builder import KDEEstimatorBuilder
+from ssms.dataset_generators.pipelines import SimulationPipeline
 from ssms.dataset_generators.strategies import ResampleMixtureStrategy
 
 

@@ -2,20 +2,17 @@
 
 import numpy as np
 
-from ssms.basic_simulators import boundary_functions as bf
 import cssm
-
+from ssms.basic_simulators import boundary_functions as bf
 from ssms.transforms import (
-    # Sampling transforms
-    SwapIfLessConstraint,
-    # Simulation transforms
     ColumnStackParameters,
-    ExpandDimension,
-    RenameParameter,
     DeleteParameters,
+    ExpandDimension,
     LambdaAdaptation,
+    NormalizeToSumConstraint,
+    RenameParameter,
+    SwapIfLessConstraint,
 )
-
 
 # ============================================================================
 # Shared simulation transforms for LBA models
@@ -28,6 +25,14 @@ _SET_ZERO_T = LambdaAdaptation(
 )
 
 _LBA_START_THRESHOLD_SAMPLING_TRANSFORMS = [SwapIfLessConstraint("b", "A")]
+
+# The *_vs_constraint models require v0 + v1 + v2 = 1 and z < a (checked by
+# validate_ssm_parameters). Independent uniform draws satisfy neither, so the
+# sampler normalizes the drift rates and orders a above z (#114).
+_LBA_VS_CONSTRAINT_SAMPLING_TRANSFORMS = [
+    NormalizeToSumConstraint(["v0", "v1", "v2"]),
+    SwapIfLessConstraint("a", "z"),
+]
 
 # LBA2 simulation transforms
 _LBA2_SIMULATION_TRANSFORMS = [
@@ -170,7 +175,7 @@ def get_lba_3_vs_constraint_config():
         "n_particles": 3,
         "simulator": cssm.lba_vanilla,
         "parameter_transforms": {
-            "sampling": [],
+            "sampling": _LBA_VS_CONSTRAINT_SAMPLING_TRANSFORMS,
             "simulation": _LBA_3_VS_CONSTRAINT_SIMULATION_TRANSFORMS,
         },
     }
@@ -192,7 +197,7 @@ def get_lba_angle_3_vs_constraint_config():
         "n_particles": 3,
         "simulator": cssm.lba_angle,
         "parameter_transforms": {
-            "sampling": [],
+            "sampling": _LBA_VS_CONSTRAINT_SAMPLING_TRANSFORMS,
             "simulation": _LBA_ANGLE_3_SIMULATION_TRANSFORMS,
         },
     }

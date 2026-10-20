@@ -27,6 +27,7 @@ def run_notebook(notebook_path: Path, timeout: int = 300) -> tuple[bool, str]:
                 "--ExecutePreprocessor.timeout=" + str(timeout),
                 str(notebook_path),
             ],
+            check=False,  # returncode is inspected below
             capture_output=True,
             text=True,
             timeout=timeout + 60,  # Extra buffer for nbconvert overhead

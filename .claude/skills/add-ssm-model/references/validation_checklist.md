@@ -17,7 +17,7 @@ Run through every item. All must pass before the model is considered complete.
 - [ ] `"boundary_params"` are all names that appear in `"params"`
 - [ ] If custom drift: `"drift_params"` are all names that appear in `"params"`
 - [ ] `"choices"` has length == `"nchoices"`
-- [ ] `"simulator"` is a valid Cython function from `cssm`
+- [ ] `"simulator"` is a function from `cssm`, or, for a Level 2 contribution, a Python function under `ssms/basic_simulators/` (see `docs/contributing/add_models.md`)
 - [ ] If the non-decision time varies per trial with a hard lower edge (e.g. `t + U(-st, st)`): `"ndt_edge_shift": {"param": ..., "scale": ...}` declares it (RTs start at `t - scale * param`). Omit it when the model has no `t` parameter, when the kernel has no finite lower edge (`ddm_normal_st`), or when the edge is not `t - scale * param`
 
 ## Registration

@@ -1,5 +1,6 @@
 """Tests for MLflow integration in the data generation CLI."""
 
+import contextlib
 import json
 import shutil
 from pathlib import Path
@@ -36,11 +37,9 @@ def cleanup_mlflow():
     if mlruns_path.exists():
         shutil.rmtree(mlruns_path)
 
-    # Reset to original URI (or default)
-    try:
+    # Reset to original URI (or default); best-effort teardown, failure is irrelevant
+    with contextlib.suppress(Exception):
         mlflow.set_tracking_uri(original_uri)
-    except Exception:
-        pass
 
 
 @pytest.fixture

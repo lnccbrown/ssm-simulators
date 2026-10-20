@@ -11,7 +11,7 @@ from scipy.stats import gamma  # type: ignore
 
 
 # Constant boundary
-def constant(t: float | np.ndarray = 0, a: float = 1.0) -> float | np.ndarray:  # noqa: ARG001
+def constant(t: float | np.ndarray = 0, a: float = 1.0) -> float | np.ndarray:
     """Constant boundary function.
 
     Arguments
@@ -76,9 +76,9 @@ def angle(
 def generalized_logistic(
     t: float | np.ndarray = 1,
     a: float = 1.0,
-    B: float = 2.0,  # noqa: N803
-    M: float = 3.0,  # noqa: N803
-    v: float = 0.5,  # noqa: N803
+    B: float = 2.0,
+    M: float = 3.0,
+    v: float = 0.5,
 ) -> np.ndarray | float | Any:
     """Generalized logistic boundary function.
 
@@ -123,9 +123,9 @@ def weibull_cdf(
 
 
 def conflict_gamma(
-    t: float | np.ndarray = np.arange(  # noqa: B008
+    t: float | np.ndarray = np.arange(
         0, 20, 0.1
-    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable  # noqa: B008, FIX002
+    ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     a: float = 1.0,
     theta: float = 0.5,
     scale: float = 1.0,

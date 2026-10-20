@@ -8,8 +8,8 @@ Import directly from ssms.transforms instead:
 
 # Re-export from canonical location for backwards compatibility
 from ssms.transforms.sampling import (
-    SwapIfLessConstraint,
     NormalizeToSumConstraint,
+    SwapIfLessConstraint,
 )
 
 __all__ = [

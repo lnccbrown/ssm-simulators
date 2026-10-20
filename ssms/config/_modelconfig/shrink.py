@@ -49,7 +49,7 @@ def get_shrink_spot_config():
 def get_shrink_spot_extended_config():
     """Get configuration for extended shrink spot model."""
     return {
-        "name": "shrink_spot",
+        "name": "shrink_spot_extended",
         "params": [
             "v",  # Base drift rate (typically 0 for shrink_spot models)
             "a",

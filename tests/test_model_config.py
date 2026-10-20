@@ -1,6 +1,8 @@
 import random
-import pytest
+
 import numpy as np
+import pytest
+
 import ssms
 from ssms.config import model_config
 from ssms.config.model_config_builder import ModelConfigBuilder
@@ -133,6 +135,30 @@ class TestModelConfigBuilder:
         transformed = transform.apply(theta)
 
         assert np.all(transformed["b"] > transformed["A"])
+
+    @pytest.mark.parametrize(
+        "model_name", ["lba_3_vs_constraint", "lba_angle_3_vs_constraint"]
+    )
+    def test_vs_constraint_lba_sampling_satisfies_simulator_constraints(
+        self, model_name
+    ):
+        """Sampled drift rates sum to 1 and z stays below a (#114)."""
+        config = ModelConfigBuilder.from_model(model_name)
+        transforms = ModelConfigBuilder.get_sampling_transforms(config)
+
+        rng = np.random.default_rng(0)
+        lower, upper = (np.asarray(b) for b in config["param_bounds"])
+        draws = rng.uniform(lower, upper, size=(1000, len(config["params"])))
+        theta = {
+            name: draws[:, i].astype(np.float32)
+            for i, name in enumerate(config["params"])
+        }
+        for transform in transforms:
+            theta = transform.apply(theta)
+
+        v_sum = theta["v0"] + theta["v1"] + theta["v2"]
+        np.testing.assert_allclose(v_sum, 1.0, atol=1e-5)
+        assert np.all(theta["z"] < theta["a"])
 
     def test_model_config_builder_preserves_structure(self):
         """Test that builder preserves all expected config fields."""

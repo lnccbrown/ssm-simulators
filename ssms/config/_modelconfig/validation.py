@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 import re
 from numbers import Real
-from typing import Any, List
+from typing import Any
 
 NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9\.]{0,30}$")
 
@@ -28,7 +28,7 @@ def is_valid_param_name(name: Any) -> bool:
     return bool(NAME_RE.match(name))
 
 
-def get_invalid_param_names(params: list) -> List[str]:
+def get_invalid_param_names(params: list) -> list[str]:
     """Validate only the parameter names in ``params``.
 
     This checks that `params` is a list, that there are no duplicates,
@@ -39,7 +39,7 @@ def get_invalid_param_names(params: list) -> List[str]:
         raise TypeError(f"'params' must be a list, got {type(params).__name__}")
     # duplicates
     seen = set()
-    dupes: List[str] = []
+    dupes: list[str] = []
     for p in params:
         if p in seen:
             dupes.append(p)
@@ -57,7 +57,7 @@ def get_invalid_configs(configs: dict[str, dict]) -> list[str]:
     ]
 
 
-def get_ndt_edge_shift_errors(config: dict) -> List[str]:
+def get_ndt_edge_shift_errors(config: dict) -> list[str]:
     """Validate the optional ``ndt_edge_shift`` entry of ``config``.
 
     ``{"param": <name>, "scale": s}`` declares that the model's response-time
@@ -76,7 +76,7 @@ def get_ndt_edge_shift_errors(config: dict) -> List[str]:
     shift = config["ndt_edge_shift"]
     if not isinstance(shift, dict):
         return [f"ndt_edge_shift must be a dict, got {type(shift).__name__}"]
-    errors: List[str] = []
+    errors: list[str] = []
     if set(shift) != NDT_EDGE_SHIFT_KEYS:
         errors.append(
             f"ndt_edge_shift must have exactly the keys "

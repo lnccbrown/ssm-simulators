@@ -15,7 +15,6 @@ from .config import ModelConfig
 from .env import TaskEnvironment
 from .validation import validate_rlssm_data
 
-
 MISSING_RESPONSE_SENTINEL = -999
 
 
