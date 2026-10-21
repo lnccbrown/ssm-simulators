@@ -143,8 +143,8 @@ def test_model_config(model_name):
     if _is_choice_only_rl_config(model_conf):
         pytest.skip(f"Skipping choice-only RL model: {model_name}")
 
-    assert type(model_conf["simulator"]).__name__ == "cython_function_or_method"
-
+    # Level 2 contributions may use Python simulators; the public contract is
+    # that the configured simulator and boundary are callable.
     assert callable(model_conf["simulator"])
     assert callable(model_conf["boundary"])
 

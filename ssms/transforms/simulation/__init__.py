@@ -7,6 +7,7 @@ Examples:
     - ColumnStackParameters: Stack v0, v1, v2 into single array v
     - ExpandDimension: Add dimension to parameters for multi-particle models
     - SetZeroArray: Create zero-filled arrays for dynamic drift models
+    - MLBAFrontEnd: Map MLBA attribute values onto LBA drift rates
 """
 
 from ssms.transforms.simulation.common import (
@@ -21,6 +22,7 @@ from ssms.transforms.simulation.common import (
     SetZeroArray,
     TileArray,
 )
+from ssms.transforms.simulation.mlba import MLBAFrontEnd
 
 __all__ = [
     "SetDefaultValue",
@@ -33,4 +35,5 @@ __all__ = [
     "ApplyMapping",
     "ConditionalAdaptation",
     "LambdaAdaptation",
+    "MLBAFrontEnd",
 ]

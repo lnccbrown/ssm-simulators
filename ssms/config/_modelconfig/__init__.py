@@ -101,6 +101,7 @@ from .mic2.multinoise import (
     get_ddm_mic2_multinoise_no_bias_config,
     get_ddm_mic2_multinoise_weibull_no_bias_config,
 )
+from .mlba import get_mlba2_config, get_mlba3_config
 from .ornstein import (
     get_ornstein_angle_config,
     get_ornstein_config,
@@ -288,6 +289,8 @@ def get_model_config():
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),
+        "mlba2": get_mlba2_config(),
+        "mlba3": get_mlba3_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
