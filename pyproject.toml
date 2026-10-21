@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython>=0.29.23", "numpy >= 2.0"]
-build-backend = "setuptools.build_meta"
+requires = ["meson-python>=0.18", "meson>=1.5", "ninja", "Cython>=3.0", "numpy >= 2.0"]
+build-backend = "mesonpy"
 
 [project]
 name = "ssm-simulators"
@@ -10,7 +10,8 @@ authors = [
     { name = "Alexander Fengler", email = "alexander_fengler@brown.edu" },
 ]
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.15"
 dependencies = [
     "scipy >= 1.6.3",
@@ -92,6 +93,14 @@ dev = [
     "jax>=0.4.20",
     "jaxlib>=0.4.20",
 ]
+# Build backend, installed into the venv for the no-isolation editable build.
+build = [
+    "meson-python>=0.18",
+    "meson>=1.5",
+    "ninja",
+    "Cython>=3.0",
+    "numpy>=2.0",
+]
 docs = [
     "mkdocs==1.6.1",
     "mkdocs-material==9.7.7",
@@ -106,13 +115,6 @@ docs = [
 Homepage = "https://github.com/lnccbrown/ssm-simulators"
 Documentation = "https://lnccbrown.github.io/ssm-simulators/"
 "Bug Tracker" = "https://github.com/lnccbrown/ssm-simulators/issues"
-
-[tool.setuptools.packages.find]
-where = [".", "src"]
-include = ["ssms*", "cssm"]
-
-[tool.setuptools.package-dir]
-cssm = "src/cssm"
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -230,7 +232,6 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "*/setup.py",
     "*/__init__.py",
     "tests/*",
     # Benchmark and reference scripts - not package code, not unit tests
@@ -254,6 +255,9 @@ exclude_lines = [
 [project.scripts]
 generate = "ssms.cli.generate:app"
 
-[tool.setuptools.package-data]
-"ssms.cli" = ["config_network_training_lan.yaml"]
-"cssm" = ["*.so", "*.pyd", "*.pyx", "*.pxd", "*.pxi", "*.h"]
+[tool.uv]
+# Editable installs rebuild changed .pyx on import; that needs meson/ninja/
+# cython/numpy importable from the project venv, so build in-venv. uv installs
+# the default groups (incl. `build`) before building the project.
+no-build-isolation-package = ["ssm-simulators"]
+default-groups = ["dev", "build"]
