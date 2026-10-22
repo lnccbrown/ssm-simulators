@@ -38,7 +38,25 @@ mlflow ui
 **Automatically logged:**
 - Configuration: model type, samples, parameter sets, estimator
 - Results: number of files, total size
-- Artifacts: data config, model config, file inventory
+- Artifacts: data config, model config, file inventory (with a `sha256` per file)
+- Identity tags (schema v2): `schema_version`, `phase` (`datagen` or
+  `datagen_dry_run`), `lineage_id`, `user`, `hostname`, `git_sha` when run from
+  a checkout, and SLURM job ids when present
+
+### Lineage id
+
+Every `generate` run carries one `lineage_id` that follows the dataset through
+LANfactory training and HSSM inference. It is an MLflow tag **and** is stored
+in every training-data pickle at `data["generator_config"]["lineage_id"]`, so
+downstream tools recover it from the files even when MLflow was off.
+
+- A standalone run mints a fresh UUID.
+- Distributed runs for one dataset (e.g. a SLURM array) must share it, so pass
+  `--lineage-id "$SLURM_ARRAY_JOB_ID"` or any string your orchestrator owns.
+- `lineage_id`, `schema_version`, and `phase` are reserved; `--mlflow-tag`
+  refuses to set them.
+
+The full schema lives in the HSSMSpine repo at `_docs/mlflow-schema.md`.
 
 ## 📖 Usage Examples
 
