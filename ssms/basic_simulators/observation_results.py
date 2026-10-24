@@ -227,12 +227,7 @@ def validate_observation_result(result: Mapping[str, Any]) -> dict[str, Any]:
             f"{_format_keys(missing_metadata_keys)}"
         )
 
-    version = metadata["observation_schema_version"]
-    if type(version) is not int or version != OBSERVATION_SCHEMA_VERSION:
-        raise ValueError(
-            "observation_schema_version must be the supported integer version "
-            f"{OBSERVATION_SCHEMA_VERSION}; got {version!r}"
-        )
+    _validate_schema_version(metadata["observation_schema_version"])
 
     schema = _validate_schema(metadata["observation_schema"], observations.dtype)
     if observations.shape[-1] != len(schema):
@@ -250,7 +245,7 @@ def validate_observation_result(result: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _validate_schema(
-    schema: object, observation_dtype: np.dtype[Any]
+    schema: object, observation_dtype: np.dtype[Any] | None = None
 ) -> tuple[Mapping[str, Any], ...]:
     if not isinstance(schema, tuple):
         raise TypeError("observation_schema must be an ordered tuple of mappings")
@@ -305,7 +300,9 @@ def _validate_schema(
 
 
 def _validate_categorical_schema(
-    entry: Mapping[str, Any], name: str, observation_dtype: np.dtype[Any]
+    entry: Mapping[str, Any],
+    name: str,
+    observation_dtype: np.dtype[Any] | None,
 ) -> None:
     if "values" not in entry:
         raise ValueError(f"categorical field {name!r} requires values")
@@ -326,7 +323,9 @@ def _validate_categorical_schema(
                 f"categorical field {name!r} values must be finite, "
                 "integer-valued numeric labels"
             )
-        if not _integer_is_exactly_representable(integer_value, observation_dtype):
+        if observation_dtype is not None and not _integer_is_exactly_representable(
+            integer_value, observation_dtype
+        ):
             raise ValueError(
                 f"categorical field {name!r} value {value!r} is not exactly "
                 f"representable in observations dtype {observation_dtype.name}"
@@ -335,6 +334,14 @@ def _validate_categorical_schema(
 
     if len(validated_values) != len(set(validated_values)):
         raise ValueError(f"categorical field {name!r} values must be unique")
+
+
+def _validate_schema_version(version: object) -> None:
+    if type(version) is not int or version != OBSERVATION_SCHEMA_VERSION:
+        raise ValueError(
+            "observation_schema_version must be the supported integer version "
+            f"{OBSERVATION_SCHEMA_VERSION}; got {version!r}"
+        )
 
 
 def _validate_continuous_schema(entry: Mapping[str, Any], name: str) -> None:
