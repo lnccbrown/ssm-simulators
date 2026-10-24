@@ -13,7 +13,6 @@ from typing import Any
 import numpy as np
 import pytest
 
-from ssms.config import boundary_registry, drift_registry
 from ssms.basic_simulators.parameter_adapters import (
     ParameterAdaptation,
     SetDefaultValue,
@@ -21,8 +20,12 @@ from ssms.basic_simulators.parameter_adapters import (
     register_adapter_to_model,
     register_adapter_to_model_family,
 )
+from ssms.basic_simulators.simulator import simulator
+from ssms.basic_simulators.simulator_class import Simulator
 from ssms.config import (
     ModelConfigBuilder,
+    boundary_registry,
+    drift_registry,
     get_boundary_registry,
     get_drift_registry,
     get_model_registry,
@@ -31,8 +34,6 @@ from ssms.config import (
     register_model_config,
     register_model_config_factory,
 )
-from ssms.basic_simulators.simulator import simulator
-from ssms.basic_simulators.simulator_class import Simulator
 
 
 class TestBoundaryRegistry:
