@@ -20,8 +20,12 @@ from ssms.basic_simulators.parameter_adapters import (
     register_adapter_to_model,
     register_adapter_to_model_family,
 )
+from ssms.basic_simulators.simulator import simulator
+from ssms.basic_simulators.simulator_class import Simulator
 from ssms.config import (
     ModelConfigBuilder,
+    boundary_registry,
+    drift_registry,
     get_boundary_registry,
     get_drift_registry,
     get_model_registry,
@@ -483,3 +487,99 @@ class TestRegistryIntegration:
         assert "fun" in boundary_info  # Boundary has 'fun' key
         assert "fun" in drift_info  # Drift also has 'fun' key
         assert "params" in model_info  # Model has 'params' key
+
+
+class TestRegistryParamsNotAliased:
+    """Regression tests for #311: registry params must not leak by reference."""
+
+    def test_get_returns_fresh_params_list(self):
+        """Two get() calls return equal but distinct params lists, same fun."""
+        breg, dreg = get_boundary_registry(), get_drift_registry()
+        for reg, name in ((breg, "angle"), (dreg, "gamma_drift")):
+            first, second = reg.get(name), reg.get(name)
+            assert first["params"] == second["params"]
+            assert first["params"] is not second["params"]
+            assert first["fun"] is second["fun"]
+
+    def test_register_boundary_copies_params(self, monkeypatch):
+        """Mutating the caller's list after register_boundary leaves the registry intact."""
+        # A fresh global registry lets a rerun register the same name again.
+        monkeypatch.setattr(
+            boundary_registry,
+            "_GLOBAL_BOUNDARY_REGISTRY",
+            boundary_registry.BoundaryRegistry(),
+        )
+        params = ["a", "rate"]
+        register_boundary(
+            name="test_311_boundary_copy_in",
+            function=lambda t, a, rate=1.0: a * np.exp(-rate * t),
+            params=params,
+        )
+        params.append("t")
+        registry = get_boundary_registry()
+        assert registry.get("test_311_boundary_copy_in")["params"] == ["a", "rate"]
+
+    def test_register_drift_copies_params(self, monkeypatch):
+        """Mutating the caller's list after register_drift leaves the registry intact."""
+        # A fresh global registry lets a rerun register the same name again.
+        monkeypatch.setattr(
+            drift_registry, "_GLOBAL_DRIFT_REGISTRY", drift_registry.DriftRegistry()
+        )
+        params = ["slope"]
+        register_drift(
+            name="test_311_drift_copy_in",
+            function=lambda t, slope=0.5: slope * t,
+            params=params,
+        )
+        params.append("t")
+        registry = get_drift_registry()
+        assert registry.get("test_311_drift_copy_in")["params"] == ["slope"]
+
+    def test_add_boundary_does_not_alias_registry(self):
+        """Editing boundary_params from add_boundary leaves the registry intact."""
+        registry = get_boundary_registry()
+        before = list(registry.get("angle")["params"])
+        cfg = ModelConfigBuilder.add_boundary(
+            ModelConfigBuilder.from_model("ddm"), "angle"
+        )
+        cfg["boundary_params"].append("x")
+        assert registry.get("angle")["params"] == before
+
+    def test_add_drift_does_not_alias_registry(self):
+        """Editing drift_params from add_drift leaves the registry intact."""
+        registry = get_drift_registry()
+        before = list(registry.get("gamma_drift")["params"])
+        cfg = ModelConfigBuilder.add_drift(
+            ModelConfigBuilder.from_model("ddm"), "gamma_drift"
+        )
+        cfg["drift_params"].append("x")
+        assert registry.get("gamma_drift")["params"] == before
+
+    def test_simulator_boundary_does_not_alias_registry(self):
+        """Editing Simulator._config boundary_params leaves the registry intact."""
+        # ddm_sdv has no boundary_params key, so the registry lookup path runs.
+        registry = get_boundary_registry()
+        before = list(registry.get("weibull_cdf")["params"])
+        sim = Simulator(model="ddm_sdv", boundary="weibull_cdf")
+        sim._config["boundary_params"].append("x")
+        assert registry.get("weibull_cdf")["params"] == before
+
+    def test_simulator_drift_does_not_alias_registry(self):
+        """Editing Simulator._config drift_params leaves the registry intact."""
+        # ddm_sdv has no drift_params key, so the registry lookup path runs.
+        registry = get_drift_registry()
+        before = list(registry.get("gamma_drift")["params"])
+        sim = Simulator(model="ddm_sdv", drift="gamma_drift")
+        sim._config["drift_params"].append("x")
+        assert registry.get("gamma_drift")["params"] == before
+
+    def test_angle_simulates_after_config_edit(self):
+        """A user config edit must not break later simulation of a built-in model."""
+        # Appending a real simulator kwarg ("t") used to surface as
+        # TypeError: got multiple values for keyword argument 't'.
+        cfg = ModelConfigBuilder.add_boundary(
+            ModelConfigBuilder.from_model("ddm"), "angle"
+        )
+        cfg["boundary_params"].append("t")
+        out = simulator(model="angle", theta=[1.0, 1.0, 0.5, 0.3, 0.2], n_samples=10)
+        assert out["rts"].shape[0] == 10

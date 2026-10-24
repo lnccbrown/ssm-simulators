@@ -80,7 +80,7 @@ class DriftRegistry:
 
         self._drifts[name] = {
             "fun": function,
-            "params": params,
+            "params": list(params),
         }
 
     def get(self, name: str) -> dict[str, Any]:
@@ -96,7 +96,8 @@ class DriftRegistry:
         dict
             Dictionary containing:
             - 'fun': The drift function
-            - 'params': List of parameter names
+            - 'params': Copy of the parameter names; editing it does not
+              affect the registry
 
         Raises
         ------
@@ -108,14 +109,15 @@ class DriftRegistry:
         >>> registry = DriftRegistry()
         >>> config = registry.get("gamma_drift")
         >>> print(config["params"])
-        ['shape', 'scale', 'c']
+        ['v', 'shape', 'scale', 'c']
         """
         if name not in self._drifts:
             available = self.list_drifts()
             raise KeyError(
                 f"Drift '{name}' is not registered. Available drifts: {available}"
             )
-        return self._drifts[name]
+        spec = self._drifts[name]
+        return {"fun": spec["fun"], "params": list(spec["params"])}
 
     def is_registered(self, name: str) -> bool:
         """Check if drift name is registered.
