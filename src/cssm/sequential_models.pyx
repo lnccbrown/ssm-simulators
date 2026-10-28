@@ -34,6 +34,7 @@ from cssm._utils import (
     compute_smooth_unif,
     enforce_deadline,
     compute_deadline_tmp,
+    compute_num_steps,
     build_full_metadata,
     build_minimal_metadata,
     build_return_dict,
@@ -151,13 +152,14 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
     cdef float[:, :, :] rts_view = rts
     cdef int[:, :, :] choices_view = choices
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory disabled in parallel mode
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype=DTYPE)
+    traj = np.zeros((num_steps, 3), dtype=DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     cdef float delta_t_sqrt = sqrt(delta_t)
-    cdef int num_steps = int((max_t / delta_t) + 1)
     cdef int c_n_samples = n_samples
 
     # Pre-compute boundaries for all trials (outside nogil)
@@ -278,7 +280,8 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                         decision_taken = 1
                     else:
                         # Run low-dim walker 1
-                        while True:
+                        # ix1 starts at ix, which is num_steps if the high-dim walker ran out the clock
+                        while ix1 < num_steps:
                             bound_val = boundaries_view[k, ix1]
                             if y_l1 < (-1.0) * bound_val or y_l1 > bound_val or t_particle1 > deadline_tmp_k:
                                 break
@@ -298,7 +301,8 @@ def ddm_flexbound_seq2(np.ndarray[float, ndim = 1] vh,
                         decision_taken = 1
                     else:
                         # Run low-dim walker 2
-                        while True:
+                        # ix2 starts at ix, which is num_steps if the high-dim walker ran out the clock
+                        while ix2 < num_steps:
                             bound_val = boundaries_view[k, ix2]
                             if y_l2 < (-1.0) * bound_val or y_l2 > bound_val or t_particle2 > deadline_tmp_k:
                                 break
@@ -415,20 +419,23 @@ def _ddm_flexbound_seq2_sequential(
     cdef int[:, :, :] choices_view = choices
     cdef int decision_taken = 0
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # TD: Add Trajectory
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
     cdef float delta_t_sqrt = sqrt(delta_t)
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
 
     cdef float y_h, t_particle, t_particle1, t_particle2, y_l, y_l1, y_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float bound_val
     cdef Py_ssize_t n, ix, ix1, ix2, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -456,7 +463,7 @@ def _ddm_flexbound_seq2_sequential(
                 if k == 0:
                     traj_view[0, 0] = y_h
 
-            while y_h >= (-1) * boundary_view[ix] and y_h <= boundary_view[ix] and t_particle <= deadline_tmp:
+            while ix < num_steps and y_h >= (-1) * boundary_view[ix] and y_h <= boundary_view[ix] and t_particle <= deadline_tmp:
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 t_particle += delta_t
                 ix += 1
@@ -467,16 +474,19 @@ def _ddm_flexbound_seq2_sequential(
                     m = 0
 
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         traj_view[ix, 0] = y_h
+
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
 
             # If we are already at maximum t, to generate a choice we just sample from a bernoulli
             if t_particle >= max_t:
                 # High dim choice depends on position of particle
-                if boundary_view[ix] <= 0:
+                if bound_val <= 0:
                     if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 2
-                elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                         choices_view[n, k, 0] += 2
                 mu += 1
                 if mu == num_draws:
@@ -499,19 +509,19 @@ def _ddm_flexbound_seq2_sequential(
                 decision_taken = 1
             else:
                 # If boundary is negative (or 0) already, we flip a coin
-                if boundary_view[ix] <= 0:
+                if bound_val <= 0:
                     if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 2
                 # Otherwise apply rule from above
-                elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                     choices_view[n, k, 0] += 2
                 mu += 1
                 if mu == num_draws:
                     uniform_values = draw_uniform(num_draws)
                     mu = 0
 
-                y_l1 = (-1) * boundary_view[ix] + (zl1_view[k] * 2 * (boundary_view[ix]))
-                y_l2 = (-1) * boundary_view[ix] + (zl2_view[k] * 2 * (boundary_view[ix]))
+                y_l1 = (-1) * bound_val + (zl1_view[k] * 2 * (bound_val))
+                y_l2 = (-1) * bound_val + (zl2_view[k] * 2 * (bound_val))
 
                 ix1 = ix
                 t_particle1 = t_particle
@@ -521,7 +531,7 @@ def _ddm_flexbound_seq2_sequential(
                 # Figure out negative bound for low level
                 if choices_view[n, k, 0] == 0:
                     # In case boundary is negative already, we flip a coin with bias determined by w_l_ parameter
-                    if (y_l1 >= boundary_view[ix]) or (y_l1 <= ((-1) * boundary_view[ix])):
+                    if (y_l1 >= bound_val) or (y_l1 <= ((-1) * bound_val)):
                         if uniform_values[mu] < zl1_view[k]:
                             choices_view[n, k, 0] += 1
                         mu += 1
@@ -531,11 +541,11 @@ def _ddm_flexbound_seq2_sequential(
                         decision_taken = 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 1] = y_l1
                 else:
                     # In case boundary is negative already, we flip a coin with bias determined by w_l_ parameter
-                    if (y_l2 >= boundary_view[ix]) or (y_l2 <= ((-1) * boundary_view[ix])):
+                    if (y_l2 >= bound_val) or (y_l2 <= ((-1) * bound_val)):
                         if uniform_values[mu] < zl2_view[k]:
                             choices_view[n, k, 0] += 1
                         mu += 1
@@ -545,12 +555,12 @@ def _ddm_flexbound_seq2_sequential(
                         decision_taken = 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 2] = y_l2
 
                 # Random walker low level (1)
                 if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
-                    while (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_particle1 <= deadline_tmp):
+                    while ix1 < num_steps and (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_particle1 <= deadline_tmp):
                         y_l1 += (vl1_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                         t_particle1 += delta_t
                         ix1 += 1
@@ -560,12 +570,12 @@ def _ddm_flexbound_seq2_sequential(
                             m = 0
 
                         if n == 0:
-                            if k == 0:
+                            if k == 0 and ix1 < num_steps:
                                 traj_view[ix1, 1] = y_l1
 
                 # Random walker low level (2)
                 if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
-                    while (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_particle2 <= deadline_tmp):
+                    while ix2 < num_steps and (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_particle2 <= deadline_tmp):
                         y_l2 += (vl2_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                         t_particle2 += delta_t
                         ix2 += 1
@@ -575,7 +585,7 @@ def _ddm_flexbound_seq2_sequential(
                             m = 0
 
                         if n == 0:
-                            if k == 0:
+                            if k == 0 and ix2 < num_steps:
                                 traj_view[ix2, 2] = y_l2
 
                 # Get back to single t_particle
@@ -606,11 +616,12 @@ def _ddm_flexbound_seq2_sequential(
 
             # If boundary is negative (or 0) already, we flip a coin
             if not decision_taken:
-                if boundary_view[ix] <= 0:
+                bound_val = boundary_view[min(ix, num_steps - 1)]
+                if bound_val <= 0:
                     if uniform_values[mu] <= 0.5:
                         choices_view[n, k, 0] += 1
                 # Otherwise apply rule from above
-                elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+                elif uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                     choices_view[n, k, 0] += 1
                 mu += 1
                 if mu == num_draws:
@@ -809,7 +820,8 @@ def _ddm_flexbound_mic2_ornstein_sequential(
     cdef float[:, :, :] rts_low_view = rts_low
     cdef int[:, :, :] choices_view = choices
 
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -817,7 +829,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
     #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -831,6 +843,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
     cdef float y_h, y_l, y_l1, y_l2
     cdef float v_l, v_l1, v_l2,
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float bound_val, bound_val_l
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -868,7 +881,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
                     traj_view[0, 0] = y_h
 
             # Random walks until y_h hits bound
-            while (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 bias_trace_l2_view[ix] = ((y_h + boundary_view[ix]) / (2 * boundary_view[ix]))
                 bias_trace_l1_view[ix] = 1.0 - bias_trace_l2_view[ix]
@@ -880,7 +893,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
                     m = 0
 
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         traj_view[ix, 0] = y_h
 
             # The probability of making a 'mistake' 1 - (relative y position)
@@ -888,11 +901,13 @@ def _ddm_flexbound_mic2_ornstein_sequential(
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -920,7 +935,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
 
             # lower level random walker (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
-                while (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
+                while ix1 < num_steps and (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
                     if (bias_trace_l1_view[ix1] < 1) and (bias_trace_l1_view[ix1] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
@@ -942,12 +957,12 @@ def _ddm_flexbound_mic2_ornstein_sequential(
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix1 < num_steps:
                             traj_view[ix1, 1] = y_l1
 
             # lower level random walker (2)
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
-                while (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
+                while ix2 < num_steps and (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
                     if (bias_trace_l2_view[ix2] < 1) and (bias_trace_l2_view[ix2] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
@@ -968,7 +983,7 @@ def _ddm_flexbound_mic2_ornstein_sequential(
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix2 < num_steps:
                             traj_view[ix2, 2] = y_l2
 
             # Get back to single y_l and t_l
@@ -996,11 +1011,14 @@ def _ddm_flexbound_mic2_ornstein_sequential(
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            bound_val_l = boundary_view[min(ix_l, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_l + boundary_view[ix_l]) / (2 * boundary_view[ix_l])):
+            elif uniform_values[mu] <= ((y_l + bound_val_l) / (2 * bound_val_l)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
@@ -1170,7 +1188,8 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef float[:, :, :] rts_low_view = rts_low
     cdef int[:, :, :] choices_view = choices
 
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -1178,7 +1197,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -1192,6 +1211,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef float y_h, y_l, y_l1, y_l2
     cdef float v_l, v_l1, v_l2
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float bound_val
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -1229,7 +1249,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                     traj_view[0, 0] = y_h
 
             # Random walks until y_h hits bound
-            while (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 bias_trace_l2_view[ix] = ((y_h + boundary_view[ix]) / (2 * boundary_view[ix]))
                 bias_trace_l1_view[ix] = 1.0 - bias_trace_l2_view[ix]
@@ -1241,7 +1261,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                     m = 0
 
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         traj_view[ix, 0] = y_h
 
             # The probability of making a 'mistake' 1 - (relative y position)
@@ -1249,11 +1269,13 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -1281,7 +1303,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # lower level random walker (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
-                while (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
+                while ix1 < num_steps and (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
                     if (bias_trace_l1_view[ix1] < 1) and (bias_trace_l1_view[ix1] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k]))) * delta_t)
@@ -1304,12 +1326,12 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix1 < num_steps:
                             traj_view[ix1, 1] = y_l1
 
             # lower level random walker (2)
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
-                while (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
+                while ix2 < num_steps and (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
                     if (bias_trace_l2_view[ix2] < 1) and (bias_trace_l2_view[ix2] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k]))) * delta_t)
@@ -1332,7 +1354,7 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix2 < num_steps:
                             traj_view[ix2, 2] = y_l2
 
             # Get back to single y_l and t_l
@@ -1360,11 +1382,13 @@ def ddm_flexbound_mic2_multinoise(np.ndarray[float, ndim = 1] vh,
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
@@ -1536,7 +1560,8 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef float[:, :, :] rts_low_view = rts_low
     cdef int[:, :, :] choices_view = choices
 
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -1544,7 +1569,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -1558,6 +1583,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
     cdef float y_h, y_l, y_l1, y_l2
     cdef float v_l, v_l1, v_l2,
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float bound_val
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -1595,7 +1621,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                     traj_view[0, 0] = y_h
 
             # Random walks until y_h hits bound
-            while (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 bias_trace_l2_view[ix] = ((y_h + boundary_view[ix]) / (2 * boundary_view[ix]))
                 bias_trace_l1_view[ix] = 1.0 - bias_trace_l2_view[ix]
@@ -1611,11 +1637,13 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -1643,7 +1671,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
 
             # lower level random walker (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
-                while (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
+                while ix1 < num_steps and (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
                     if (bias_trace_l1_view[ix1] < 1) and (bias_trace_l1_view[ix1] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
@@ -1665,12 +1693,12 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix1 < num_steps:
                             traj_view[ix1, 1] = y_l1
 
             # lower level random walker (2)
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
-                while (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
+                while ix2 < num_steps and (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
                     if (bias_trace_l2_view[ix2] < 1) and (bias_trace_l2_view[ix2] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
@@ -1691,7 +1719,7 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix2 < num_steps:
                             traj_view[ix2, 2] = y_l2
 
             # Get back to single y_l and t_l
@@ -1719,11 +1747,13 @@ def ddm_flexbound_mic2_ornstein_multinoise(np.ndarray[float, ndim = 1] vh,
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
@@ -2306,7 +2336,8 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     cdef float[:, :, :] rts_low_view = rts_low
     cdef int[:, :, :] choices_view = choices
 
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -2314,7 +2345,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
@@ -2328,6 +2359,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
     cdef float y_h, y_l, y_l1, y_l2
     cdef float v_l, v_l1, v_l2,
     cdef float t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float bound_val
     cdef Py_ssize_t n, ix, ix1, ix2, ix_l, ix_tmp, ix1_tmp, ix2_tmp, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -2365,7 +2397,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                     traj_view[0, 0] = y_h
 
             # Random walks until y_h hits bound
-            while (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 bias_trace_l2_view[ix] = ((y_h + boundary_view[ix]) / (2))
                 bias_trace_l1_view[ix] = boundary_view[ix] - bias_trace_l2_view[ix]
@@ -2381,11 +2413,13 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise, apply rule from above
-            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -2413,7 +2447,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
 
             # lower level random walker (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
-                while (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
+                while ix1 < num_steps and (y_l1 >= ((-1) * boundary_view[ix1])) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
                     if (bias_trace_l1_view[ix1] < boundary_view[ix1]) and (bias_trace_l1_view[ix1] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l1 += (((vl1_view[k] * bias_trace_l1_view[ix1] * (1 - d_view[k])) - (g_view[k] * y_l1)) * delta_t)
@@ -2434,12 +2468,12 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix1 < num_steps:
                             traj_view[ix1, 1] = y_l1
 
             # lower level random walker (2)
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
-                while (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
+                while ix2 < num_steps and (y_l2 >= ((-1) * boundary_view[ix2])) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
                     if (bias_trace_l2_view[ix2] < boundary_view[ix2]) and (bias_trace_l2_view[ix2] > 0):
                         # main propagation if bias_trace is between 0 and 1 (high level choice is not yet made)
                         y_l2 += (((vl2_view[k] * bias_trace_l2_view[ix2] * (1 - d_view[k])) - (g_view[k] * y_l2)) * delta_t)
@@ -2460,7 +2494,7 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix2 < num_steps:
                             traj_view[ix2, 2] = y_l2
 
             # Get back to single y_l and t_l
@@ -2488,11 +2522,13 @@ def ddm_flexbound_mic2_unnormalized_ornstein_multinoise(np.ndarray[float, ndim =
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            # ix == num_steps if the walker ran out the clock: use the last grid point
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
