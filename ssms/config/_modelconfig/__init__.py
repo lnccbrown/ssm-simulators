@@ -46,6 +46,7 @@ from .dev_rlwm_lba import (
 )
 from .full_ddm import (
     get_full_ddm_config,
+    get_full_ddm_lan_config,
     get_full_ddm_rv_config,
 )
 from .gamma_drift import (
@@ -236,6 +237,7 @@ def get_model_config():
         "addm": get_addm_config(),
         "full_ddm": get_full_ddm_config(),
         "full_ddm_rv": get_full_ddm_rv_config(),
+        "full_ddm_lan": get_full_ddm_lan_config(),
         "levy": get_levy_config(),
         "levy_angle": get_levy_angle_config(),
         "angle": get_angle_config(),
@@ -318,6 +320,7 @@ __all__ = [
     "get_angle_extended_config",
     "get_weibull_config",
     "get_full_ddm_config",
+    "get_full_ddm_lan_config",
     "get_ddm_st_config",
     "get_ddm_normal_st_config",
     "get_ddm_truncnormt_config",
