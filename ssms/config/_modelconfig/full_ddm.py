@@ -102,7 +102,7 @@ def get_full_ddm_lan_config():
       counts, and networks trained down to the floor place spurious density
       there; above 2.0 lies part of the empirical range.
     - ``st`` is bounded above at the constant 0.35 instead of by ``t``, the
-      same widening ``ddm_st`` and ``ddm_normal_st`` carry (#390).
+      same bound ``ddm_st`` and ``ddm_normal_st`` carry.
 
     It is not ``full_ddm`` (``cssm.full_ddm``) under another name: there
     ``sz`` displaces the starting point by ``U(-sz, sz)`` in evidence units,

@@ -112,7 +112,7 @@ def test_st_is_a_half_width_in_seconds():
     draws = _draws(
         model_config["full_ddm_lan"]["simulator_param_mappings"]["t_dist"], st
     )
-    assert draws.min() >= -st and draws.max() <= st
+    assert -st <= draws.min() <= draws.max() <= st
     assert draws.std() == pytest.approx(st / np.sqrt(3), rel=0.02)
 
 
@@ -123,7 +123,7 @@ def test_sz_is_a_relative_half_width():
     draws = _draws(
         model_config["full_ddm_lan"]["simulator_param_mappings"]["z_dist"], sz
     )
-    assert draws.min() >= -sz and draws.max() <= sz
+    assert -sz <= draws.min() <= draws.max() <= sz
     assert draws.std() == pytest.approx(sz / np.sqrt(3), rel=0.02)
 
 
