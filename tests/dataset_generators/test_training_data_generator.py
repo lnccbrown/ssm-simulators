@@ -506,4 +506,17 @@ def test_unguarded_script_fails_fast_under_spawn(tmp_path):
     assert result.returncode != 0
     assert 'if __name__ == "__main__":' in result.stderr
     assert "SSMS_MP_START_METHOD" in result.stderr
-    assert "bootstrapping phase" not in result.stderr
+    # The parent prints one traceback. Worker tracebacks would add more.
+    assert result.stderr.count("Traceback (most recent call last)") == 1
+
+
+def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
+    """Inside a worker that re-imports the script, exit without a traceback."""
+    from ssms.dataset_generators import lan_mlp
+
+    monkeypatch.setattr(
+        lan_mlp.multiprocess.current_process(), "_inheriting", True, raising=False
+    )
+    with pytest.raises(SystemExit) as exc:
+        lan_mlp._check_workers_can_start()
+    assert exc.value.code == 1
