@@ -89,28 +89,26 @@ def get_full_ddm_lan_config():
 
     Description
     -----------
-    The seven-parameter DDM with trial-to-trial variability in drift (``sv``),
-    starting point (``sz``) and non-decision time (``st``), registered under the
-    name of the HSSM network trained on it (``full_ddm_lan.onnx``). The box
-    below is that network's training box, and HSSM's training-box guard reads
-    it from here. The model reaches ``cssm.full_ddm_rv`` through the same
-    mapping machinery as ``full_ddm_rv``.
+    ``full_ddm_rv`` on a different box, registered under the name of the HSSM
+    network trained on it (``full_ddm_lan.onnx``). The box below is that
+    network's training box, and HSSM's training-box guard reads it from here.
+    Everything else is ``full_ddm_rv``'s: the simulator (``cssm.full_ddm_rv``),
+    the three kernel mappings, and the ``t - st`` support edge.
 
-    It is not ``full_ddm`` under another name. The two differ in what ``sz``
-    means and in two bounds:
+    The box differs from ``full_ddm_rv``'s in three bounds:
 
-    - ``sz`` is a RELATIVE half-width: the trial's starting point is
-      ``z + U(-sz, sz)``, a fraction of the separation, as ``full_ddm_rv``
-      draws it. ``full_ddm`` (``cssm.full_ddm``) displaces the starting point by
-      ``U(-sz, sz)`` in evidence units, so there ``sz`` depends on ``a`` when
-      read as a fraction. HDDM's ``sz`` is the FULL width of this fraction:
-      ``sz_hddm = 2 * sz``.
     - ``sv`` is bounded below at 0.3 instead of 1e-3, and above at 2.5 instead
       of 2.0. Below about 0.3 ``sv`` is not identifiable at ordinary trial
       counts, and networks trained down to the floor place spurious density
       there; above 2.0 lies part of the empirical range.
-    - ``st`` is bounded above at 0.35 instead of 0.25, the same widening
-      ``ddm_st`` and ``ddm_normal_st`` carry (#390).
+    - ``st`` is bounded above at the constant 0.35 instead of by ``t``, the
+      same widening ``ddm_st`` and ``ddm_normal_st`` carry (#390).
+
+    It is not ``full_ddm`` (``cssm.full_ddm``) under another name: there
+    ``sz`` displaces the starting point by ``U(-sz, sz)`` in evidence units,
+    whereas here, as in ``full_ddm_rv``, ``sz`` is a RELATIVE half-width,
+    ``z + U(-sz, sz)`` as a fraction of the separation. HDDM's ``sz`` is the
+    FULL width of this fraction: ``sz_hddm = 2 * sz``.
 
     Parameters
     ----------
@@ -152,42 +150,21 @@ def get_full_ddm_lan_config():
 
     See Also
     --------
+    get_full_ddm_rv_config : the same model with ``st`` bounded by ``t``.
     get_full_ddm_config : the same model with ``sz`` in evidence units.
-    get_full_ddm_rv_config : the same simulator with ``st`` bounded by ``t``.
     """
-    return {
-        "name": "full_ddm_lan",
-        "params": ["v", "a", "z", "t", "sz", "sv", "st"],
-        "param_bounds": [
-            [-3.0, 0.3, 0.3, 0.25, 1e-3, 0.3, 1e-3],
-            [3.0, 2.5, 0.7, 2.25, 0.2, 2.5, 0.35],
-        ],
-        "boundary_name": "constant",
-        "boundary": bf.constant,
-        "n_params": 7,
-        "default_params": [0.0, 1.0, 0.5, 0.25, 1e-3, 0.3, 1e-3],
-        # non-decision time is t + U(-st, st), so RTs start at t - st
-        "ndt_edge_shift": {"param": "st", "scale": 1.0},
-        "nchoices": 2,
-        "choices": [-1, 1],
-        "n_particles": 1,
-        "simulator": cssm.full_ddm_rv,
-        "simulator_fixed_params": {},
-        "simulator_param_mappings": {
-            "t_dist": lambda st: functools.partial(
-                sps.uniform.rvs, loc=(-1) * st, scale=2 * st
-            ),
-            "v_dist": lambda sv: functools.partial(sps.norm.rvs, loc=0, scale=sv),
-            "z_dist": lambda sz: functools.partial(
-                sps.uniform.rvs, loc=(-1) * sz, scale=2 * sz
-            ),
+    config = get_full_ddm_rv_config()
+    config.update(
+        name="full_ddm_lan",
+        param_bounds={
+            "v": (-3.0, 3.0),
+            "a": (0.3, 2.5),
+            "z": (0.3, 0.7),
+            "t": (0.25, 2.25),
+            "sz": (1e-3, 0.2),
+            "sv": (0.3, 2.5),
+            "st": (1e-3, 0.35),
         },
-        "parameter_transforms": {
-            "sampling": [],
-            "simulation": [
-                ApplyMapping("sz", "z_dist", "z_dist"),
-                ApplyMapping("st", "t_dist", "t_dist"),
-                ApplyMapping("sv", "v_dist", "v_dist"),
-            ],
-        },
-    }
+        default_params=[0.0, 1.0, 0.5, 0.25, 1e-3, 0.3, 1e-3],
+    )
+    return config

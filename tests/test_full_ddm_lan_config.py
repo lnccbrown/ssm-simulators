@@ -40,6 +40,18 @@ def test_full_ddm_lan_is_registered_on_its_training_box():
     assert config["nchoices"] == 2
 
 
+def test_full_ddm_lan_is_full_ddm_rv_on_another_box():
+    """Simulator, mappings and support edge are full_ddm_rv's; only the box moves."""
+    lan = model_config["full_ddm_lan"]
+    rv = model_config["full_ddm_rv"]
+    assert lan["simulator"] is rv["simulator"]
+    assert lan["params"] == rv["params"]
+    assert set(lan["simulator_param_mappings"]) == {"t_dist", "v_dist", "z_dist"}
+    assert lan["ndt_edge_shift"] == rv["ndt_edge_shift"]
+    assert lan["param_bounds_dict"] != rv["param_bounds_dict"]
+    assert rv["param_bounds_dict"]["st"] == (1e-3, "t")
+
+
 def test_full_ddm_lan_differs_from_full_ddm_in_exactly_three_bounds():
     """sv's floor and ceiling and st's ceiling move; every other bound is full_ddm's."""
     lan = model_config["full_ddm_lan"]["param_bounds_dict"]
@@ -123,6 +135,23 @@ def test_sv_is_a_standard_deviation():
     )
     assert draws.mean() == pytest.approx(0.0, abs=0.02)
     assert draws.std() == pytest.approx(sv, rel=0.02)
+
+
+def test_sz_changes_the_simulated_output():
+    """Starting-point variability reaches the simulator through sz."""
+    narrow = simulator(
+        model="full_ddm_lan",
+        theta={**MID_BOX, "sz": 1e-3},
+        n_samples=N_SAMPLES,
+        random_state=RANDOM_STATE,
+    )
+    wide = simulator(
+        model="full_ddm_lan",
+        theta={**MID_BOX, "sz": 0.2},
+        n_samples=N_SAMPLES,
+        random_state=RANDOM_STATE,
+    )
+    assert not np.array_equal(narrow["rts"], wide["rts"])
 
 
 def test_displace_t_is_refused():
