@@ -82,3 +82,89 @@ def get_full_ddm_rv_config():
             ],
         },
     }
+
+
+def get_full_ddm_lan_config():
+    """Get the configuration for the full DDM on the box its LAN was trained on.
+
+    Description
+    -----------
+    ``full_ddm_rv`` on a different box, registered under the name of the HSSM
+    network trained on it (``full_ddm_lan.onnx``). The box below is that
+    network's training box, and HSSM's training-box guard reads it from here.
+    Everything else is ``full_ddm_rv``'s: the simulator (``cssm.full_ddm_rv``),
+    the three kernel mappings, and the ``t - st`` support edge.
+
+    The box differs from ``full_ddm_rv``'s in three bounds:
+
+    - ``sv`` is bounded below at 0.3 instead of 1e-3, and above at 2.5 instead
+      of 2.0. Below about 0.3 ``sv`` is not identifiable at ordinary trial
+      counts, and networks trained down to the floor place spurious density
+      there; above 2.0 lies part of the empirical range.
+    - ``st`` is bounded above at the constant 0.35 instead of by ``t``, the
+      same bound ``ddm_st`` and ``ddm_normal_st`` carry.
+
+    It is not ``full_ddm`` (``cssm.full_ddm``) under another name: there
+    ``sz`` displaces the starting point by ``U(-sz, sz)`` in evidence units,
+    whereas here, as in ``full_ddm_rv``, ``sz`` is a RELATIVE half-width,
+    ``z + U(-sz, sz)`` as a fraction of the separation. HDDM's ``sz`` is the
+    FULL width of this fraction: ``sz_hddm = 2 * sz``.
+
+    Parameters
+    ----------
+    v : float
+        Drift rate. Valid range: [-3.0, 3.0]
+    a : float
+        Boundary separation. Valid range: [0.3, 2.5]
+    z : float
+        Starting point as a fraction of ``a``. Valid range: [0.3, 0.7]
+    t : float
+        Mean non-decision time, in seconds. Valid range: [0.25, 2.25]
+    sz : float
+        Half-width of the uniform starting-point kernel, as a fraction of
+        ``a``: the trial's starting point is ``z + U(-sz, sz)``.
+        Valid range: [1e-3, 0.2]
+    sv : float
+        Standard deviation of the Normal drift kernel: the trial's drift is
+        ``v + Normal(0, sv)``. Valid range: [0.3, 2.5]
+    st : float
+        Half-width of the uniform non-decision-time kernel, in seconds: the
+        trial's non-decision time is ``t + U(-st, st)``, so RTs start at
+        ``t - st`` (``ndt_edge_shift``). Valid range: [1e-3, 0.35]
+
+    Model Characteristics
+    ---------------------
+    - Number of choices: 2
+    - Boundary type: constant
+    - Drift type: constant
+    - Key assumption: all three kernels are independent across trials.
+
+    Notes
+    -----
+    - ``t`` keeps its lower bound of 0.25 although ``st`` can reach 0.35, so
+      in the sliver of the box where ``st > t`` (about 0.7% of a uniform draw
+      over it) ``t - st`` is negative and some RTs are non-positive.
+      Consumers that cannot represent a non-positive RT must filter.
+    - Listed in ``KDE_NO_DISPLACE_T``: RTs start below ``t``, so a KDE fitted
+      to its output must not be displaced by ``t``.
+
+    See Also
+    --------
+    get_full_ddm_rv_config : the same model with ``st`` bounded by ``t``.
+    get_full_ddm_config : the same model with ``sz`` in evidence units.
+    """
+    config = get_full_ddm_rv_config()
+    config.update(
+        name="full_ddm_lan",
+        param_bounds={
+            "v": (-3.0, 3.0),
+            "a": (0.3, 2.5),
+            "z": (0.3, 0.7),
+            "t": (0.25, 2.25),
+            "sz": (1e-3, 0.2),
+            "sv": (0.3, 2.5),
+            "st": (1e-3, 0.35),
+        },
+        default_params=[0.0, 1.0, 0.5, 0.25, 1e-3, 0.3, 1e-3],
+    )
+    return config
