@@ -36,6 +36,10 @@ def test_full_ddm_lan_is_registered_on_its_training_box():
     assert config["params"] == ["v", "a", "z", "t", "sz", "sv", "st"]
     assert config["params"] == model_config["full_ddm"]["params"]
     assert config["param_bounds_dict"] == TRAINING_BOX
+    # Two lists, not full_ddm_rv's dict: HSSM's training-box guard unpacks
+    # ``lo, hi = param_bounds`` for every model it registers.
+    lo, hi = config["param_bounds"]
+    assert dict(zip(config["params"], zip(lo, hi))) == TRAINING_BOX
     assert config["choices"] == [-1, 1]
     assert config["nchoices"] == 2
 

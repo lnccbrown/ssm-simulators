@@ -156,15 +156,13 @@ def get_full_ddm_lan_config():
     config = get_full_ddm_rv_config()
     config.update(
         name="full_ddm_lan",
-        param_bounds={
-            "v": (-3.0, 3.0),
-            "a": (0.3, 2.5),
-            "z": (0.3, 0.7),
-            "t": (0.25, 2.25),
-            "sz": (1e-3, 0.2),
-            "sv": (0.3, 2.5),
-            "st": (1e-3, 0.35),
-        },
+        # Two lists, as full_ddm: HSSM's training-box guard unpacks
+        # ``lo, hi = param_bounds``, which full_ddm_rv's dict form (st bounded
+        # by t) cannot satisfy.
+        param_bounds=[
+            [-3.0, 0.3, 0.3, 0.25, 1e-3, 0.3, 1e-3],
+            [3.0, 2.5, 0.7, 2.25, 0.2, 2.5, 0.35],
+        ],
         default_params=[0.0, 1.0, 0.5, 0.25, 1e-3, 0.3, 1e-3],
     )
     return config
