@@ -1087,17 +1087,17 @@ def racing_diffusion_model(np.ndarray[float, ndim = 2] v,  # mean drift rates
                     noise = rng_gaussian_f32(&rng_states[tid])
                     particles[tid][j] = particles[tid][j] + (v_view[k, j] * delta_t) + sqrt_st_view[k, 0] * noise
 
-                    # Check for a winner
-                    if particles[tid][j] >= b_view[k, 0]:
-                        winner_found = 1
-                        winner = j
-                        break
-
-                if winner_found:
-                    break
-
                 t_particle = t_particle + delta_t
                 ix = ix + 1
+
+                # Check for a winner after the full step (see sequential path)
+                for j in range(c_n_particles):
+                    if particles[tid][j] >= b_view[k, 0] and (
+                        winner_found == 0 or particles[tid][j] > particles[tid][winner]
+                    ):
+                        winner_found = 1
+                        winner = j
+
                 if ix >= num_steps:
                     break
 
@@ -1235,15 +1235,6 @@ def _racing_diffusion_model_sequential(
                         m = 0
                         gaussian_values = draw_gaussian(num_draws)
 
-                    # Check for a winner
-                    if particles_view[j] >= b_view[k, 0]:
-                        winner_found = 1
-                        winner = j
-                        break
-
-                if winner_found:
-                    break
-
                 t_particle += delta_t
                 ix += 1
 
@@ -1252,6 +1243,16 @@ def _racing_diffusion_model_sequential(
                     if k == 0:
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
+
+                # Check for a winner only after every accumulator has taken
+                # this step; if several crossed, the furthest one wins
+                # (as in race_model), so no accumulator index has priority.
+                for j in range(n_particles):
+                    if particles_view[j] >= b_view[k, 0] and (
+                        not winner_found or particles_view[j] > particles_view[winner]
+                    ):
+                        winner_found = 1
+                        winner = j
 
             # Apply smoothing
             smooth_u = compute_smooth_unif(smooth_unif, t_particle, deadline_tmp, delta_t, uniform_values[mu])
