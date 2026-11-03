@@ -1240,7 +1240,7 @@ def _racing_diffusion_model_sequential(
 
                 # Save running trajectory
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         for j in range(n_particles):
                             traj_view[ix, j] = particles[j]
 
