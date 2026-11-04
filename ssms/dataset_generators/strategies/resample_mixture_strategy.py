@@ -84,7 +84,10 @@ class ResampleMixtureStrategy:
         np.ndarray
             Training data array of shape (n_samples, n_features) where:
             - First columns: theta parameters
-            - Middle columns: RT and choice (possibly one-hot encoded)
+            - Middle columns: RT and choice. With `separate_response_channels`,
+              one RT column then `nchoices` one-hot columns, in the order of
+              `possible_choices`; otherwise one RT column and one choice column.
+              Every row uses this layout, uniform draws included.
             - Last column: log-likelihood
 
             Note: Rows are shuffled to avoid ordering bias in training batches.
@@ -165,19 +168,13 @@ class ResampleMixtureStrategy:
             samples_kde["rts"], samples_kde["choices"]
         )
 
-        if training_config["separate_response_channels"]:
-            # One-hot encode choices
-            out[:n_kde, (-2 - self.model_config["nchoices"])] = samples_kde["rts"]
-
-            choices = samples_kde["choices"]
-            for r_cnt, response in enumerate(metadata["possible_choices"]):
-                out[:n_kde, ((-1 - self.model_config["nchoices"]) + r_cnt)] = (
-                    choices == response
-                ).astype(int)
-        else:
-            out[:n_kde, -3] = samples_kde["rts"]
-            out[:n_kde, -2] = samples_kde["choices"]
-
+        self._fill_rts_and_choices(
+            out[:n_kde],
+            samples_kde["rts"],
+            samples_kde["choices"],
+            metadata["possible_choices"],
+            training_config["separate_response_channels"],
+        )
         out[:n_kde, -1] = likelihoods_kde
 
         # === 2. Positive uniform samples ===
@@ -190,11 +187,13 @@ class ResampleMixtureStrategy:
 
         likelihoods_unif = likelihood_estimator.evaluate(rt_tmp, choice_tmp)
 
-        # Note: Uniform samples always use -3/-2 indexing, even with separate_response_channels
-        # This matches the original lan_mlp.py behavior (lines 346-348)
-        # AF-TODO: Check if we can do something better here, to allow separate channels throughout!
-        out[n_kde : (n_kde + n_unif_up), -3] = rt_tmp
-        out[n_kde : (n_kde + n_unif_up), -2] = choice_tmp
+        self._fill_rts_and_choices(
+            out[n_kde : (n_kde + n_unif_up)],
+            rt_tmp,
+            choice_tmp,
+            metadata["possible_choices"],
+            training_config["separate_response_channels"],
+        )
         out[n_kde : (n_kde + n_unif_up), -1] = likelihoods_unif
 
         # === 3. Negative uniform samples ===
@@ -202,11 +201,53 @@ class ResampleMixtureStrategy:
 
         rt_tmp = rng.uniform(low=-1.0, high=0.0001, size=n_unif_down)
 
-        out[(n_kde + n_unif_up) :, -3] = rt_tmp
-        out[(n_kde + n_unif_up) :, -2] = choice_tmp
+        self._fill_rts_and_choices(
+            out[(n_kde + n_unif_up) :],
+            rt_tmp,
+            choice_tmp,
+            metadata["possible_choices"],
+            training_config["separate_response_channels"],
+        )
         out[(n_kde + n_unif_up) :, -1] = training_config["negative_rt_log_likelihood"]
 
         # Shuffle rows to avoid ordering bias in training batches
         rng.shuffle(out)
 
         return out.astype(np.float32)
+
+    def _fill_rts_and_choices(
+        self,
+        rows: np.ndarray,
+        rts: np.ndarray,
+        choices: np.ndarray,
+        possible_choices,
+        separate_response_channels: bool,
+    ) -> None:
+        """Write RTs and choices into `rows` in the layout `generate` documents.
+
+        All three mixture components go through here, so the estimator draws and
+        the uniform draws share one layout.
+
+        Arguments
+        ---------
+        rows : np.ndarray
+            View on the rows of the output array to fill (modified in place).
+        rts : np.ndarray
+            Reaction times, one per row.
+        choices : np.ndarray
+            Choices, one per row.
+        possible_choices : sequence
+            Choice values, in the order of the one-hot columns.
+        separate_response_channels : bool
+            If True, write the RT to column `-2 - nchoices` and one-hot encode the
+            choice over columns `-1 - nchoices` to `-2`; otherwise write the RT to
+            column `-3` and the choice to column `-2`.
+        """
+        if separate_response_channels:
+            nchoices = self.model_config["nchoices"]
+            rows[:, -2 - nchoices] = rts
+            for r_cnt, response in enumerate(possible_choices):
+                rows[:, (-1 - nchoices) + r_cnt] = (choices == response).astype(int)
+        else:
+            rows[:, -3] = rts
+            rows[:, -2] = choices

@@ -7,6 +7,8 @@ These tests verify that ResampleMixtureStrategy correctly:
 4. Implements TrainingDataStrategyProtocol
 """
 
+import copy
+
 import numpy as np
 import pytest
 
@@ -231,7 +233,7 @@ def test_strategy_log_likelihoods_are_reasonable(
 def test_strategy_with_separate_response_channels(
     generator_config, ddm_model_config, ddm_theta, fitted_estimator
 ):
-    """Test strategy with one-hot encoded choices after shuffling."""
+    """Test that every row, uniform draws included, uses the one-hot layout."""
     generator_config["training"]["separate_response_channels"] = True
     strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
 
@@ -244,29 +246,113 @@ def test_strategy_with_separate_response_channels(
 
     assert training_data.shape == (n_samples, n_features)
 
-    # After shuffling, KDE samples with one-hot encoding are mixed with uniform samples
-    # that use scalar choice encoding. We need to identify which samples have one-hot encoding.
+    rt_col = training_data[:, -2 - nchoices]
+    one_hot_cols = training_data[:, (-1 - nchoices) : -1]
 
-    # Strategy: One-hot encoded rows will have integer values in the choice columns that sum to 1
-    # Uniform samples will have non-integer choice values in column -2
-    rt_col_idx = -2 - nchoices
-    one_hot_cols = training_data[:, (rt_col_idx + 1) : -1]
-    _choice_scalar_col = training_data[:, -2]  # For reference
+    # Exactly one choice column is hot in every row, whichever mixture component
+    # the row comes from
+    assert np.all((one_hot_cols == 0) | (one_hot_cols == 1))
+    np.testing.assert_array_equal(one_hot_cols.sum(axis=1), 1)
 
-    # Find rows where one-hot encoding is used (KDE samples)
-    # These have choice columns that sum to approximately 1
-    row_sums = one_hot_cols.sum(axis=1)
-    one_hot_rows = np.abs(row_sums - 1.0) < 0.01  # Tolerance for floating point
+    # The negative-RT draws land in the RT column, with the configured label
+    expected_negative = int(
+        n_samples * generator_config["training"]["data_mixture_probabilities"][2]
+    )
+    negative_rt_mask = rt_col < 0
+    assert abs(negative_rt_mask.sum() - expected_negative) <= 1  # Allow for rounding
+    np.testing.assert_allclose(
+        training_data[negative_rt_mask, -1],
+        generator_config["training"]["negative_rt_log_likelihood"],
+    )
 
-    # For one-hot encoded rows, verify structure
-    one_hot_samples = one_hot_cols[one_hot_rows]
-    if len(one_hot_samples) > 0:
-        # Each row should sum to exactly 1
-        one_hot_sums = one_hot_samples.sum(axis=1)
-        np.testing.assert_allclose(one_hot_sums, 1.0, rtol=1e-5)
 
-        # All values should be 0 or 1
-        assert np.all((one_hot_samples == 0) | (one_hot_samples == 1))
+def test_separate_response_channels_matches_scalar_layout(
+    generator_config, ddm_model_config, ddm_theta, fitted_estimator
+):
+    """Test that the one-hot layout holds the same rows as the scalar layout.
+
+    Both layouts draw from the random generator in the same order, so with the
+    same seed row i of one output is row i of the other: same theta, same RT,
+    the choice as a 1 in its own column, same log-likelihood. This covers every
+    mixture component, the uniform draws included.
+    """
+    separate_config = copy.deepcopy(generator_config)
+    separate_config["training"]["separate_response_channels"] = True
+    scalar_strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
+    separate_strategy = ResampleMixtureStrategy(separate_config, ddm_model_config)
+
+    scalar_data = scalar_strategy.generate(ddm_theta, fitted_estimator, random_state=42)
+    separate_data = separate_strategy.generate(
+        ddm_theta, fitted_estimator, random_state=42
+    )
+
+    n_params = len(ddm_theta)
+    nchoices = ddm_model_config["nchoices"]
+    possible_choices = fitted_estimator.get_metadata()["possible_choices"]
+
+    np.testing.assert_array_equal(
+        separate_data[:, :n_params], scalar_data[:, :n_params]
+    )
+    np.testing.assert_array_equal(separate_data[:, -2 - nchoices], scalar_data[:, -3])
+    for r_cnt, response in enumerate(possible_choices):
+        np.testing.assert_array_equal(
+            separate_data[:, (-1 - nchoices) + r_cnt], scalar_data[:, -2] == response
+        )
+    np.testing.assert_array_equal(separate_data[:, -1], scalar_data[:, -1])
+
+
+def test_separate_response_channels_matches_scalar_layout_three_choices(
+    generator_config,
+):
+    """Test the same row-by-row match with three choices.
+
+    The one-hot column offsets depend on `nchoices`, which the two-choice fixtures
+    above cannot exercise.
+    """
+    theta = {
+        "v0": 1.0,
+        "v1": 0.8,
+        "v2": 0.6,
+        "a": 1.5,
+        "z0": 0.5,
+        "z1": 0.5,
+        "z2": 0.5,
+        "t": 0.2,
+    }
+    conf = model_config["race_3"]
+    simulations = simulator(
+        theta=theta,
+        model="race_3",
+        n_samples=1000,
+        max_t=5.0,
+        delta_t=0.001,
+        smooth_unif=False,
+        random_state=42,
+    )
+    estimator = KDEEstimatorBuilder(generator_config).build(theta, simulations)
+    separate_config = copy.deepcopy(generator_config)
+    separate_config["training"]["separate_response_channels"] = True
+
+    scalar_data = ResampleMixtureStrategy(generator_config, conf).generate(
+        theta, estimator, random_state=42
+    )
+    separate_data = ResampleMixtureStrategy(separate_config, conf).generate(
+        theta, estimator, random_state=42
+    )
+
+    n_params = len(theta)
+    nchoices = conf["nchoices"]
+    assert nchoices == 3
+    assert separate_data.shape == (scalar_data.shape[0], n_params + 1 + nchoices + 1)
+    np.testing.assert_array_equal(
+        separate_data[:, :n_params], scalar_data[:, :n_params]
+    )
+    np.testing.assert_array_equal(separate_data[:, -2 - nchoices], scalar_data[:, -3])
+    for r_cnt, response in enumerate(estimator.get_metadata()["possible_choices"]):
+        np.testing.assert_array_equal(
+            separate_data[:, (-1 - nchoices) + r_cnt], scalar_data[:, -2] == response
+        )
+    np.testing.assert_array_equal(separate_data[:, -1], scalar_data[:, -1])
 
 
 def test_strategy_rounding_adjustment(
