@@ -99,6 +99,12 @@ def softmax_inv_temperature(
     Other keyword arguments (e.g. a stray ``q0`` in theta) are ignored.
     """
     del kwargs
+    labels = np.ravel(np.asarray(choices, dtype=np.int64))
+    n_choices = 2 + (logit2 is not None) + (logit3 is not None)
+    if labels.size != n_choices:
+        raise ValueError(
+            f"Got {labels.size} choice labels for {n_choices} softmax alternatives."
+        )
     out = inv_temp_softmax(
         beta=beta,
         q0=0.0,
@@ -110,12 +116,6 @@ def softmax_inv_temperature(
         max_t=max_t,
         random_state=random_state,
     )
-    labels = np.asarray(choices, dtype=np.int64)
-    if labels.shape[0] != out["metadata"]["n_choices"]:
-        raise ValueError(
-            f"Got {labels.shape[0]} choice labels for "
-            f"{out['metadata']['n_choices']} softmax alternatives."
-        )
     out["choices"] = labels[out["choices"]]
     out["metadata"]["possible_choices"] = labels.tolist()
     return out

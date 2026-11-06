@@ -1,5 +1,7 @@
 """HSSM's choice-only ``softmax_inv_temperature_<n>`` models."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
@@ -92,11 +94,23 @@ def test_hssm_simulator_fun_returns_rt_response_pairs(n, choices):
     assert set(np.unique(out[:, 1])) <= set(choices)
 
 
-def test_label_count_mismatch_raises():
-    from ssms.basic_simulators.inv_temp_softmax import softmax_inv_temperature
+@pytest.mark.parametrize(
+    ("logits", "choices"),
+    [
+        ({}, [0, 1, 2]),
+        ({}, 1),
+        ({"logit2": 0.0}, [-1, 1]),
+    ],
+)
+def test_label_count_mismatch_raises_before_sampling(logits, choices):
+    from ssms.basic_simulators import inv_temp_softmax as mod
 
-    with pytest.raises(ValueError, match="choice labels"):
-        softmax_inv_temperature(beta=1.0, logit1=0.0, choices=[0, 1, 2])
+    with (
+        patch.object(mod, "inv_temp_softmax") as sample,
+        pytest.raises(ValueError, match="choice labels"),
+    ):
+        mod.softmax_inv_temperature(beta=1.0, logit1=0.0, choices=choices, **logits)
+    sample.assert_not_called()
 
 
 def test_stray_q_keys_in_theta_are_ignored():
