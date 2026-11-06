@@ -52,6 +52,44 @@ def test_the_simulator_marks_omissions_in_rts_not_choices(model):
     )
 
 
+def test_the_lognormal_race_marks_omissions_in_rts_not_choices():
+    """The same premise for the one censoring simulator written in Python.
+
+    The models in ``DEADLINE_MODELS`` are Cython and share ``enforce_deadline``,
+    which only ever touches ``rts``. The LNR censors in Python and so has to
+    honour the contract on its own -- and it is the model that got this wrong:
+    it wrote the sentinel into ``choices`` as well, which left ``choice_p``
+    summing to ``1 - omission_p`` instead of to one. Any future simulator added
+    outside ``src/cssm`` needs a case here.
+    """
+    out = simulator(
+        model="lnr2_deadline",
+        theta={
+            "mu0": 0.0,
+            "mu1": 0.3,
+            "sigma0": 0.6,
+            "sigma1": 0.6,
+            "t": 0.2,
+            "deadline": 0.8,
+        },
+        n_samples=8000,
+        random_state=0,
+    )
+    choices = np.asarray(out["choices"]).ravel()
+    rts = np.asarray(out["rts"]).ravel()
+
+    assert (rts == OMISSION_SENTINEL).any(), "no omissions: lower the deadline"
+    assert not (choices == OMISSION_SENTINEL).any(), (
+        "choices now carry the sentinel too -- the omission mask needs revisiting"
+    )
+
+    labels = _labels(choices, rts, possible=(0, 1))
+    assert labels["omission_p"][0, 0] == pytest.approx(
+        float((rts == OMISSION_SENTINEL).mean()), abs=1e-9
+    )
+    assert labels["choice_p"][0].sum() == pytest.approx(1.0, abs=1e-9)
+
+
 @pytest.mark.parametrize("model", DEADLINE_MODELS)
 def test_omission_probability_is_not_identically_zero(model):
     choices, rts = _simulate(model)
