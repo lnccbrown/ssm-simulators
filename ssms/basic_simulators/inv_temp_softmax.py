@@ -86,14 +86,30 @@ def softmax_inv_temperature(
     logit2=None,
     logit3=None,
     choices,
+    n_samples: int = 1000,
+    n_trials: int = 1,
+    max_t: float = 20.0,
+    random_state: int | None = None,
     **kwargs,
 ) -> dict:
     """Sample choices from softmax(beta * [0, logit1, ...]), labelled by ``choices``.
 
     HSSM's ``softmax_inv_temperature_<n>`` parameterisation: logit0 is fixed at 0
     for identifiability, and softmax index ``k`` is reported as ``choices[k]``.
+    Other keyword arguments (e.g. a stray ``q0`` in theta) are ignored.
     """
-    out = inv_temp_softmax(beta=beta, q0=0.0, q1=logit1, q2=logit2, q3=logit3, **kwargs)
+    del kwargs
+    out = inv_temp_softmax(
+        beta=beta,
+        q0=0.0,
+        q1=logit1,
+        q2=logit2,
+        q3=logit3,
+        n_samples=n_samples,
+        n_trials=n_trials,
+        max_t=max_t,
+        random_state=random_state,
+    )
     labels = np.asarray(choices, dtype=np.int64)
     if labels.shape[0] != out["metadata"]["n_choices"]:
         raise ValueError(

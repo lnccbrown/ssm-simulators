@@ -97,3 +97,14 @@ def test_label_count_mismatch_raises():
 
     with pytest.raises(ValueError, match="choice labels"):
         softmax_inv_temperature(beta=1.0, logit1=0.0, choices=[0, 1, 2])
+
+
+def test_stray_q_keys_in_theta_are_ignored():
+    out = simulator(
+        theta={"beta": 1.0, "logit1": 0.0, "q0": 5.0},
+        model="softmax_inv_temperature_2",
+        n_samples=10,
+        random_state=1,
+    )
+
+    assert set(np.unique(out["choices"])) <= {-1, 1}
