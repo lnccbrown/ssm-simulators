@@ -171,6 +171,21 @@ def test_simulator_sigma_noise_conflict_raises():
         )
 
 
+@pytest.mark.parametrize(
+    "simulate",
+    [
+        lambda theta: simulator(theta=theta, model="ddm", n_samples=5),
+        lambda theta: Simulator("ddm").simulate(theta=theta, n_samples=5),
+    ],
+    ids=["simulator", "Simulator"],
+)
+def test_unknown_theta_key_raises(simulate):
+    """A misspelled parameter raises instead of silently falling back to a default."""
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "vv": 1.0}
+    with pytest.raises(ValueError, match=r"\['vv'\] that are not parameters"):
+        simulate(theta)
+
+
 def test_simulator_no_noise_flag():
     """no_noise=True suppresses diffusion noise (sigma_noise set to 0.0 internally)."""
     out = simulator(

@@ -277,8 +277,20 @@ def _preprocess_theta_deadline(
 
     Returns:
         tuple[int, dict]: The number of trials and the preprocessed theta in dictionary format
+
+    Raises:
+        ValueError: If a theta dictionary has a key that is not a parameter of the
+            model (or the noise keys 's' and 'sd'). Such a key would be ignored, and
+            the simulator would fall back to that parameter's default.
     """
-    if not isinstance(theta, dict):
+    if isinstance(theta, dict):
+        unknown = sorted(set(theta) - set(config["params"]) - {"s", "sd"})
+        if unknown:
+            raise ValueError(
+                f"theta has keys {unknown} that are not parameters of model "
+                f"'{config['name']}'. Its parameters are {config['params']}."
+            )
+    else:
         theta = _theta_array_to_dict(theta, config["params"])
 
     n_trials = theta[config["params"][0]].shape[0]
