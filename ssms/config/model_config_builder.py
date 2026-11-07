@@ -41,7 +41,7 @@ def _simulator_taking_drift(simulator: Callable, model_name: str | None) -> Call
     if takes_drift:
         return simulator
     if simulator is cssm.ddm_flexbound:
-        return cssm.ddm_flex
+        return cast(Callable, cssm.ddm_flex)
     sim_name = getattr(simulator, "__name__", repr(simulator))
     raise ValueError(
         f"Model '{model_name}' uses the simulator '{sim_name}', which takes no "
