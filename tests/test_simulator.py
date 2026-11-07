@@ -186,6 +186,17 @@ def test_unknown_theta_key_raises(simulate):
         simulate(theta)
 
 
+def test_custom_boundary_params_are_known_theta_keys():
+    """Parameters declared for a custom boundary are not reported as unknown."""
+
+    def decaying(t, a, decay):
+        return a * np.exp(-decay * t)
+
+    sim = Simulator("ddm", boundary=decaying, boundary_params=["a", "decay"])
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "decay": 0.1}
+    assert sim.simulate(theta=theta, n_samples=5)["rts"].shape == (5, 1)
+
+
 def test_simulator_no_noise_flag():
     """no_noise=True suppresses diffusion noise (sigma_noise set to 0.0 internally)."""
     out = simulator(
