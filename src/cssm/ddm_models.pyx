@@ -36,6 +36,7 @@ from cssm._utils import (
     compute_smooth_unif,
     enforce_deadline,
     compute_deadline_tmp,
+    compute_num_steps,
     build_full_metadata,
     build_minimal_metadata,
     build_return_dict,
@@ -117,7 +118,7 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
     cdef float c_max_t = max_t
 
     # Param views
@@ -194,14 +195,14 @@ def full_ddm_hddm_base(np.ndarray[float, ndim = 1] v, # = 0,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y >= 0 and y <= a_view[k] and t_particle <= deadline_tmp:
+                while ix < num_steps and y >= 0 and y <= a_view[k] and t_particle <= deadline_tmp:
                     y += drift_increment + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
                     if m == num_draws:
                         gaussian_values = draw_gaussian(num_draws)
@@ -408,6 +409,7 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     # Param views
     cdef float[:] v_view = v
@@ -457,14 +459,14 @@ def ddm(np.ndarray[float, ndim = 1] v, # drift by timestep 'delta_t'
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y <= a_view[k] and y >= 0 and t_particle <= deadline_tmp:
+                while ix < num_steps and y <= a_view[k] and y >= 0 and t_particle <= deadline_tmp:
                     y += v_view[k] * delta_t + sqrt_st * gaussian_values[m] # update particle position
                     t_particle += delta_t
                     m += 1
                     ix += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     if m == num_draws:
@@ -664,7 +666,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
     cdef float[:] boundary_view = boundary
 
     # Number of timesteps
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
@@ -716,7 +718,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
+                while ix < num_steps and (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
                     y += (v_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
@@ -724,7 +726,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
 
                     # Can improve with less checks
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     # Can improve with less checks
@@ -757,7 +759,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             drift_inc_all_np[k] = v_view[k] * delta_t
@@ -951,7 +953,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     # Param views
     cdef float[:] v_view = v
@@ -1022,7 +1024,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
+                while ix < num_steps and (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
                     y += (drift_view[ix] * delta_t) + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
@@ -1030,7 +1032,7 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
 
                     # Can improve with less checks
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     # Can improve with less checks
@@ -1063,12 +1065,12 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             # Drift
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             # Boundary
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -1265,7 +1267,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     # Param views
     cdef float[:] v_view = v
@@ -1337,7 +1339,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
+                while ix < num_steps and (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
                     y += ((drift_view[ix] - (g_view[k] * y)) * delta_t) + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
@@ -1345,7 +1347,7 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 
                     # Can improve with less checks
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     # Can improve with less checks
@@ -1377,11 +1379,11 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 
         for k in range(n_trials):
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -1585,7 +1587,7 @@ def ddm_flex_leak2(
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     # Custom traj array for this model (3 columns)
     traj = np.zeros((num_draws, 3), dtype = DTYPE)
@@ -1668,7 +1670,7 @@ def ddm_flex_leak2(
                         traj_view[0, 2] = y_d
 
                 # Random walker
-                while (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
+                while ix < num_steps and (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
                     y_t += ((drift_view[ix, 0] - (g_t_view[k] * y_t)) * delta_t) + (sqrt_st/2 * gaussian_values[m])
                     y_d += ((drift_view[ix, 1] - (g_d_view[k] * y_d)) * delta_t) + (sqrt_st/2 * gaussian_values[m])
                     y = y_start + y_t + y_d
@@ -1679,7 +1681,7 @@ def ddm_flex_leak2(
 
                     # Can improve with less checks
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
                             traj_view[ix, 1] = y_t
                             traj_view[ix, 2] = y_d
@@ -1714,11 +1716,11 @@ def ddm_flex_leak2(
 
         for k in range(n_trials):
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             half_sqrt_st_all_np[k] = sqrt_st_all_np[k] / 2.0
@@ -1920,7 +1922,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
     cdef float c_max_t = max_t
 
     # Param views
@@ -2012,14 +2014,14 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                while ix < num_steps and y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
                     y += drift_increment + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
                     if m == num_draws:
                         gaussian_values = draw_gaussian(num_draws)
@@ -2048,7 +2050,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
         boundaries_all = boundaries_all_np
@@ -2246,7 +2248,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
     cdef float c_max_t = max_t
 
     # Param views
@@ -2333,14 +2335,14 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                while ix < num_steps and y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
                     y += drift_increment + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
                     if m == num_draws:
                         gaussian_values = draw_gaussian(num_draws)
@@ -2368,7 +2370,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
 
         boundaries_all = boundaries_all_np
 
@@ -2565,7 +2567,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
     cdef float c_max_t = max_t
 
     # Param views
@@ -2641,14 +2643,14 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                while ix < num_steps and y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
                     y += drift_increment + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     if m == num_draws:
@@ -2679,7 +2681,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -2901,6 +2903,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     # Param views
     cdef float[:] vh_view = vh
@@ -2923,7 +2926,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
     bias_trace = np.zeros(num_draws, dtype = DTYPE)
     cdef float[:] bias_trace_view = bias_trace
 
-    cdef float y_h, y_l, v_l, t_h, t_l, tmp_pos_dep, smooth_u, deadline_tmp, sqrt_st
+    cdef float y_h, y_l, v_l, t_h, t_l, tmp_pos_dep, smooth_u, deadline_tmp, sqrt_st, bound_val
     cdef Py_ssize_t n, ix, ix_tmp, k
     cdef Py_ssize_t m = 0
     cdef Py_ssize_t mu = 0
@@ -2950,7 +2953,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
             bias_trace_view[0] = ((y_h + boundary_view[0]) / (2 * boundary_view[0]))
 
             # Random walks until y_h hits bound
-            while (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= ((-1) * boundary_view[ix])) and ((y_h <= boundary_view[ix])) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 bias_trace_view[ix] = ((y_h + boundary_view[ix]) / (2 * boundary_view[ix]))
                 t_h += delta_t
@@ -2963,7 +2966,9 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add 2 deterministically
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically
-            if uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            # (ix == num_steps if the walker ran out the clock: use the last grid point)
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -2998,7 +3003,7 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
 
             # Random walks until the y_l corresponding to y_h hits bound
             ix = 0
-            while (y_l >= ((-1) * boundary_view[ix])) and (y_l <= boundary_view[ix]) and (t_l <= deadline_tmp):
+            while ix < num_steps and (y_l >= ((-1) * boundary_view[ix])) and (y_l <= boundary_view[ix]) and (t_l <= deadline_tmp):
                 # Compute local position dependence
                 # AF-todo: can't understand what the idea here is anymore
                 # especially why bias_trace_view is flipped (-1) here
@@ -3032,7 +3037,8 @@ def ddm_flexbound_tradeoff(np.ndarray[float, ndim = 1] vh,
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add one deterministically
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
-            if uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
@@ -3169,7 +3175,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
     cdef float[:] boundary_view = boundary
 
     # Number of timesteps
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
 
     cdef float y, t_particle, smooth_u, deadline_tmp, sqrt_st
     cdef Py_ssize_t n, ix, k
@@ -3214,13 +3220,13 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
                 if n == 0 and k == 0:
                     traj_view[0, 0] = y
 
-                while (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
+                while ix < num_steps and (y >= (-1) * boundary_view[ix]) and (y <= boundary_view[ix]) and (t_particle <= deadline_tmp):
                     y += (v_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
-                    if n == 0 and k == 0:
+                    if n == 0 and k == 0 and ix < num_steps:
                         traj_view[ix, 0] = y
 
                     if m == num_draws:
@@ -3249,7 +3255,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             drift_inc_all_np[k] = v_view[k] * delta_t
