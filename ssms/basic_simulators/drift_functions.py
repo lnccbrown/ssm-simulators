@@ -40,7 +40,7 @@ def gamma_drift(
         0, 20, 0.1
     ),  # TODO: #81 B008 Do not perform function call `np.arange` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
     v: float = 0.0,
-    shape: float = 2,
+    k: float = 2,
     scale: float = 0.01,
     c: float = 1.5,
 ) -> np.ndarray:
@@ -55,7 +55,7 @@ def gamma_drift(
             Usually np.arange() of some sort.
         v: float
             Base drift rate. Defaults to 0.0.
-        shape: float
+        k: float
             Shape parameter of the gamma distribution
         scale: float
             Scale parameter of the gamma distribution
@@ -70,12 +70,8 @@ def gamma_drift(
         np.ndarray
             The final drift (v + gamma component) evaluated at the supplied timepoints t.
     """
-    num_ = np.power(t, shape - 1) * np.exp(np.divide(-t, scale))
-    div_ = (
-        np.power(shape - 1, shape - 1)
-        * np.power(scale, shape - 1)
-        * np.exp(-(shape - 1))
-    )
+    num_ = np.power(t, k - 1) * np.exp(np.divide(-t, scale))
+    div_ = np.power(k - 1, k - 1) * np.power(scale, k - 1) * np.exp(-(k - 1))
     gamma_component = c * np.divide(num_, div_)
     result: np.ndarray | Any = v + gamma_component
     return result

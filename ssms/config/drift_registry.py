@@ -57,7 +57,7 @@ class DriftRegistry:
             Drift function with signature (t, **params) -> float or array
             where t is time and params are drift-specific parameters
         params : list[str]
-            List of parameter names the function expects (e.g., ["shape", "scale", "c"])
+            List of parameter names the function expects (e.g., ["v", "k", "scale", "c"])
 
         Raises
         ------
@@ -108,7 +108,7 @@ class DriftRegistry:
         >>> registry = DriftRegistry()
         >>> config = registry.get("gamma_drift")
         >>> print(config["params"])
-        ['shape', 'scale', 'c']
+        ['v', 'k', 'scale', 'c']
         """
         if name not in self._drifts:
             available = self.list_drifts()

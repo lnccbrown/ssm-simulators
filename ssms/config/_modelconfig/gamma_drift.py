@@ -9,7 +9,7 @@ def get_gamma_drift_config():
     """Get the configuration for the Gamma drift model."""
     return {
         "name": "gamma_drift",
-        "params": ["v", "a", "z", "t", "shape", "scale", "c"],
+        "params": ["v", "a", "z", "t", "k", "scale", "c"],
         "param_bounds": [
             [-3.0, 0.3, 0.1, 1e-3, 2.0, 0.01, -3.0],
             [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],
@@ -35,7 +35,7 @@ def get_gamma_drift_angle_config():
     """Get the configuration for the Gamma drift angle model."""
     return {
         "name": "gamma_drift_angle",
-        "params": ["v", "a", "z", "t", "theta", "shape", "scale", "c"],
+        "params": ["v", "a", "z", "t", "theta", "k", "scale", "c"],
         "param_bounds": [
             [-3.0, 0.3, 0.1, 1e-3, -0.1, 2.0, 0.01, -3.0],
             [3.0, 3.0, 0.9, 2.0, 1.3, 10.0, 1.0, 3.0],

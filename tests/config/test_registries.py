@@ -25,6 +25,7 @@ from ssms.config import (
     get_boundary_registry,
     get_drift_registry,
     get_model_registry,
+    model_config,
     register_boundary,
     register_drift,
     register_model_config,
@@ -131,6 +132,17 @@ class TestDriftRegistry:
         assert "constant" in drifts
         assert "gamma_drift" in drifts
         assert len(drifts) >= 9
+
+    def test_builtin_models_list_their_drift_params(self):
+        """A drift parameter missing from a model's params is never read from theta.
+
+        The drift function then runs on its own default for it, silently.
+        """
+        registry = get_drift_registry()
+        for name, config in model_config.items():
+            if "drift_name" in config:
+                drift_params = registry.get(config["drift_name"])["params"]
+                assert set(drift_params) <= set(config["params"]), name
 
     def test_register_custom_drift(self):
         """Test registering a custom drift function."""

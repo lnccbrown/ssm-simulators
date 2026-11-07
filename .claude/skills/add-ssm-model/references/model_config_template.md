@@ -79,7 +79,7 @@ def get_{model_name}_config():
     """Get the configuration for the <Model Name> model."""
     return {
         "name": "{model_name}",
-        "params": ["v", "a", "z", "t", "shape", "scale", "c"],
+        "params": ["v", "a", "z", "t", "k", "scale", "c"],
         "param_bounds": [
             [-3.0, 0.3, 0.1, 1e-3, 1.0, 0.1, 0.0],
             [3.0, 3.0, 0.9, 2.0, 5.0, 2.0, 3.0],
@@ -89,7 +89,7 @@ def get_{model_name}_config():
         "boundary_params": [],
         "drift_name": "gamma_drift",
         "drift_fun": df.gamma_drift,
-        "drift_params": ["v", "shape", "scale", "c"],
+        "drift_params": ["v", "k", "scale", "c"],
         "n_params": 7,
         "default_params": [1.0, 1.0, 0.5, 1e-3, 2.0, 0.5, 1.0],
         "nchoices": 2,
