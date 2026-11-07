@@ -6,7 +6,12 @@ import pytest
 
 import cssm
 import ssms
-from ssms.config import model_config, register_drift, register_model_config
+from ssms.config import (
+    drift_registry,
+    model_config,
+    register_drift,
+    register_model_config,
+)
 from ssms.config.model_config_builder import ModelConfigBuilder
 from ssms.transforms import SwapIfLessConstraint
 
@@ -811,6 +816,27 @@ class TestAddDriftSimulator:
         slow = sim.simulate({**self._THETA, "decay_rate": 3.0}, 2000, random_state=3)
 
         assert slow["rts"].mean() > fast["rts"].mean() + 0.2
+
+    def test_registered_drift_resolves_in_a_fresh_registry(self, monkeypatch):
+        """Spawn workers (TrainingDataGenerator, n_cpus > 1) start with a fresh
+        registry; the config carries the drift, so it still resolves there."""
+        drift_name = f"decaying_drift_{uuid.uuid4().hex}"
+        register_drift(drift_name, _decaying_drift, params=["v", "decay_rate"])
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        sim = ssms.Simulator(ModelConfigBuilder.add_drift(config, drift_name))
+        theta = {**self._THETA, "decay_rate": 3.0}
+        in_parent = sim.simulate(theta, n_samples=2000, random_state=3)
+
+        monkeypatch.setattr(
+            drift_registry, "_GLOBAL_DRIFT_REGISTRY", drift_registry.DriftRegistry()
+        )
+        in_worker = sim.simulate(theta, n_samples=2000, random_state=3)
+
+        np.testing.assert_array_equal(in_worker["rts"], in_parent["rts"])
 
     @pytest.mark.parametrize("base", ["ddm", "angle", "ddm_deadline"])
     def test_ddm_flexbound_configs_switch_to_ddm_flex(self, base):
