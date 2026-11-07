@@ -87,7 +87,13 @@ class TestDeclaredEdge:
 
     def test_declaring_models_are_the_uniform_st_family(self):
         """Only the t + U(-st, st) simulators (and the full_ddm2 alias) declare it."""
-        assert DECLARING_MODELS == ["ddm_st", "full_ddm", "full_ddm2", "full_ddm_rv"]
+        assert DECLARING_MODELS == [
+            "ddm_st",
+            "full_ddm",
+            "full_ddm2",
+            "full_ddm_lan",
+            "full_ddm_rv",
+        ]
 
     @pytest.mark.parametrize("model", DECLARING_MODELS)
     def test_declaration_is_t_minus_st(self, model):
