@@ -6,7 +6,7 @@ from typing import Any, cast
 import numpy as np
 
 from .basic_simulators.simulator import simulator
-from .config import model_config as ssms_model_config
+from .config import ModelConfigBuilder
 
 _logger = logging.getLogger(__name__)
 
@@ -331,7 +331,14 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
         return cast("Callable[..., Any]", simulator_fun)
 
     simulator_fun_str = simulator_fun
-    if simulator_fun_str not in ssms_model_config:
+    # Resolve through the model registry, not the import-time model_config
+    # snapshot, so models added with register_model_config (and "_deadline"
+    # variants) are found (#427).
+    try:
+        config = ModelConfigBuilder.from_model(simulator_fun_str)
+    except ValueError:
+        # Unknown name: warn and fall back, since callers such as HSSM's RLSSM
+        # pass names that ssms cannot simulate and supply their own simulator.
         _logger.warning(
             "You supplied a model '%s', which is currently not supported in "
             "the ssm_simulators package. An error will be thrown when sampling "
@@ -339,7 +346,8 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
             "posterior or prior predictive sampling methods.",
             simulator_fun_str,
         )
-    choices = ssms_model_config.get(simulator_fun_str, {}).get("choices", [0, 1, 2])
+        config = {}
+    choices = config.get("choices", [0, 1, 2])
     simulator_fun_internal = _build_decorated_simulator(
         model_name=simulator_fun_str,
         choices=choices,
