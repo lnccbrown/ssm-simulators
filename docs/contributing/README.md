@@ -67,17 +67,22 @@ We are committed to providing a welcoming and inclusive environment for all cont
 3. **Set up the development environment** (requires [uv](https://github.com/astral-sh/uv)):
    ```bash
    cd ssm-simulators
-   uv pip install -e ".[dev]"
+   uv sync --extra dev
    ```
-   The development dependencies include JAX so RLSSM differentiable-backend
-   tests can run locally. For a minimal editable install with only the optional
-   JAX backend, use:
-   ```bash
-   uv pip install -e ".[jax]"
-   ```
-   Or sync only the optional JAX extra for RLSSM backend work:
+   This creates an editable install that recompiles changed `.pyx` files on the
+   next `import cssm`. It also installs the default `build` dependency group
+   (meson-python, meson, ninja, Cython, numpy), which the editable build needs
+   in the project environment. The development dependencies include JAX so
+   RLSSM differentiable-backend tests can run locally. For a minimal install
+   with only the optional JAX backend, use:
    ```bash
    uv sync --extra jax
+   ```
+   To use `uv pip` instead, install the build tools first: `uv pip` does not
+   install dependency groups, and the editable build runs without isolation:
+   ```bash
+   uv pip install --group build
+   uv pip install -e ".[dev]"
    ```
    Or, if you want to sync *all* dependency groups for development:
    ```bash
