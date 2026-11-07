@@ -349,7 +349,7 @@ class TestModelConfigBuilder:
 
     def test_add_boundary(self):
         """Test ModelConfigBuilder.add_boundary()."""
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model("angle")
         config = ModelConfigBuilder.add_boundary(config, "angle", ["theta"])
 
         assert config["boundary_name"] == "angle"
@@ -361,7 +361,7 @@ class TestModelConfigBuilder:
         def my_boundary(t, theta):
             return np.sin(theta * t)
 
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model("angle")
         config = ModelConfigBuilder.add_boundary(config, my_boundary, ["theta"])
 
         assert config["boundary"] == my_boundary

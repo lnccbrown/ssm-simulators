@@ -340,7 +340,11 @@ class TestModelConfigBuilder:
 
     def test_model_config_builder_add_boundary_string(self):
         """Test adding boundary by name."""
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "theta"],
+            param_bounds=[[-3.0, 0.3, 0.1, 0.0, -0.1], [3.0, 2.5, 0.9, 2.0, 1.3]],
+        )
 
         # Add a different boundary
         config = ModelConfigBuilder.add_boundary(config, "angle")
@@ -393,7 +397,14 @@ class TestModelConfigBuilder:
 
     def test_model_config_builder_add_drift_string(self):
         """Test adding drift by name."""
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "shape", "scale", "c"],
+            param_bounds=[
+                [-3.0, 0.3, 0.1, 0.0, 2.0, 0.01, -3.0],
+                [3.0, 2.5, 0.9, 2.0, 10.0, 1.0, 3.0],
+            ],
+        )
 
         # Add a drift function
         config = ModelConfigBuilder.add_drift(config, "gamma_drift")
@@ -604,3 +615,134 @@ class TestModelConfigBuilder:
         assert manual_config["n_params"] == auto_config["n_params"]
         assert manual_config["param_bounds_dict"] == auto_config["param_bounds_dict"]
         assert manual_config.get("deadline") == auto_config.get("deadline")
+
+
+# Bounds for ddm's [v, a, z, t] plus one extra parameter in [0, 2] (#308).
+_DDM_PLUS_ONE_BOUNDS = [[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]]
+
+
+class TestDeclaredParameters:
+    """Boundary and drift parameters live in params, with bounds (#308)."""
+
+    def test_params_override_rebuilds_n_params_and_default_params(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+
+        assert config["n_params"] == 5
+        # ddm's own defaults by name; the new parameter gets its bounds' midpoint
+        assert config["default_params"] == [0.0, 1.0, 0.5, 0.001, 1.0]
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+
+    def test_params_override_takes_base_defaults_by_name(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["t", "z", "a", "v"],
+            param_bounds=[[0.0, 0.1, 0.3, -3.0], [2.0, 0.9, 2.5, 3.0]],
+        )
+
+        assert config["default_params"] == [0.001, 0.5, 1.0, 0.0]
+
+    def test_explicit_n_params_and_default_params_win(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+            n_params=5,
+            default_params=[0.5, 1.2, 0.4, 0.2, 0.3],
+        )
+
+        assert config["default_params"] == [0.5, 1.2, 0.4, 0.2, 0.3]
+
+    def test_params_override_without_bounds_for_new_param_raises(self):
+        with pytest.raises(ValueError, match=r"No default value for .*'rate'"):
+            ModelConfigBuilder.from_model("ddm", params=["v", "a", "z", "t", "rate"])
+
+    def test_params_override_with_deadline_variant(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm_deadline",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+
+        assert config["params"] == ["v", "a", "z", "t", "rate", "deadline"]
+        assert config["n_params"] == 6
+        assert config["default_params"] == [0.0, 1.0, 0.5, 0.001, 1.0, 10.0]
+        assert ModelConfigBuilder.validate_config(config) == (True, [])
+
+    @pytest.mark.parametrize(
+        ("add", "spec"),
+        [
+            (ModelConfigBuilder.add_boundary, "angle"),
+            (ModelConfigBuilder.add_drift, "gamma_drift"),
+        ],
+    )
+    def test_add_by_name_raises_on_undeclared_params(self, add, spec):
+        config = ModelConfigBuilder.from_model("ddm")
+        before = dict(config)
+
+        with pytest.raises(ValueError, match=r"not in config\['params'\]"):
+            add(config, spec)
+        # Rejected before touching the config, which add_* edits in place
+        assert config == before
+
+    def test_add_callable_raises_on_undeclared_params(self):
+        def exp_collapse(t, a, rate):
+            return a * np.exp(-rate * t)
+
+        with pytest.raises(ValueError, match=r"\['rate'\]"):
+            ModelConfigBuilder.add_boundary(
+                ModelConfigBuilder.from_model("ddm"), exp_collapse, ["a", "rate"]
+            )
+        with pytest.raises(ValueError, match=r"\['rate'\]"):
+            ModelConfigBuilder.add_drift(
+                ModelConfigBuilder.from_model("ddm"), exp_collapse, ["a", "rate"]
+            )
+
+    def test_validate_config_flags_undeclared_boundary_and_drift_params(self):
+        config = ModelConfigBuilder.from_model("ddm")
+        config["boundary_params"] = ["a", "rate"]
+        config["drift_params"] = ["v", "decay"]
+
+        is_valid, errors = ModelConfigBuilder.validate_config(config, strict=True)
+
+        assert not is_valid
+        assert "boundary_params entries missing from params: ['rate']" in errors
+        assert "drift_params entries missing from params: ['decay']" in errors
+
+    def test_no_builtin_config_has_undeclared_boundary_or_drift_params(self):
+        registry = ssms.config.get_model_registry()
+        for name in registry.list_models():
+            _, errors = ModelConfigBuilder.validate_config(registry.get(name))
+            assert not [e for e in errors if "missing from params" in e], name
+
+    def test_declared_boundary_param_works_with_array_theta(self):
+        """A boundary parameter declared via from_model works end to end.
+
+        Array theta raised for the undeclared form shown in #308.
+        """
+
+        def exp_collapse(t, a, rate):
+            return a * np.exp(-rate * np.asarray(t))
+
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        config = ModelConfigBuilder.add_boundary(config, exp_collapse, ["a", "rate"])
+        sim = ssms.Simulator(config)
+        theta = {"v": 0.8, "a": 1.5, "z": 0.5, "t": 0.2, "rate": 0.5}
+
+        from_array = sim.simulate(
+            np.array([list(theta.values())]), n_samples=200, random_state=1
+        )
+        from_dict = sim.simulate(theta, n_samples=200, random_state=1)
+
+        np.testing.assert_array_equal(from_array["rts"], from_dict["rts"])
+        no_collapse = sim.simulate(
+            {**theta, "rate": 0.0}, n_samples=200, random_state=1
+        )
+        assert from_dict["rts"].mean() < no_collapse["rts"].mean()

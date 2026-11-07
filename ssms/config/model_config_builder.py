@@ -23,6 +23,45 @@ DEADLINE_PARAM_CONFIG = {
 }
 
 
+def _require_in_params(config: dict, fun_params: list[str], kind: str) -> None:
+    """Raise if a boundary or drift function needs parameters the config lacks.
+
+    Bounds for a new parameter cannot be guessed, so the caller has to declare
+    it up front instead of getting a config whose ``params`` and
+    ``param_bounds`` silently miss it.
+    """
+    params = config.get("params", [])
+    missing = [p for p in fun_params if p not in params]
+    if missing:
+        raise ValueError(
+            f"The {kind} function takes parameter(s) {missing} that are not in "
+            f"config['params'] ({params}). Declare them when building the config, "
+            "e.g. ModelConfigBuilder.from_model(<model>, params=[...], "
+            "param_bounds=[[...], [...]]), with one bound per parameter."
+        )
+
+
+def _default_params(config: dict, base_defaults: dict, base_model: str) -> list:
+    """Default value per entry of ``config["params"]``.
+
+    The base model's default where the name matches, otherwise the midpoint of
+    the parameter's bounds.
+    """
+    bounds = config.get("param_bounds_dict", {})
+    no_default = [p for p in config["params"] if p not in base_defaults | bounds]
+    if no_default:
+        raise ValueError(
+            f"No default value for parameter(s) {no_default}: they are not "
+            f"parameters of '{base_model}' and param_bounds gives no bounds for "
+            "them. Pass param_bounds with one bound per entry of params, or "
+            "pass default_params."
+        )
+    return [
+        base_defaults[p] if p in base_defaults else (bounds[p][0] + bounds[p][1]) / 2
+        for p in config["params"]
+    ]
+
+
 class ModelConfigBuilder:
     """Helper class for building custom model configurations.
 
@@ -73,7 +112,11 @@ class ModelConfigBuilder:
             Examples: "ddm", "angle", "ddm_deadline", "angle_deadline"
         **overrides
             Configuration fields to override. Common options:
-            - params : list[str] - Parameter names
+            - params : list[str] - Parameter names. Unless also passed,
+              n_params becomes len(params) and default_params is rebuilt:
+              the base model's default for a parameter it shares, otherwise
+              the midpoint of the parameter's bounds. Pass param_bounds with
+              one bound per entry of params when adding a parameter.
             - param_bounds : list - [[lower bounds], [upper bounds]]
             - boundary : Callable - Custom boundary function
             - boundary_name : str - Boundary name
@@ -96,13 +139,24 @@ class ModelConfigBuilder:
         Raises
         ------
         ValueError
-            If the base model name is not recognized
+            If the base model name is not recognized, or if ``params`` adds a
+            parameter that ``param_bounds`` gives no bounds for (and
+            ``default_params`` is not passed)
 
         Examples
         --------
         >>> config = ModelConfigBuilder.from_model("ddm",
         ...                                     param_bounds=[[-4, 0.3, 0.1, 0],
         ...                                                   [4, 3.0, 0.9, 2.0]])
+
+        >>> # Add a parameter (e.g. for a custom drift or boundary)
+        >>> config = ModelConfigBuilder.from_model(
+        ...     "ddm",
+        ...     params=["v", "a", "z", "t", "decay_rate"],
+        ...     param_bounds=[[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]],
+        ... )
+        >>> config["n_params"], config["default_params"]
+        (5, [0.0, 1.0, 0.5, 0.001, 1.0])
 
         >>> # With deadline variant
         >>> config = ModelConfigBuilder.from_model("ddm_deadline")
@@ -127,6 +181,9 @@ class ModelConfigBuilder:
             )
 
         config = registry.get(base_model)  # Already returns a deep copy
+        base_defaults = dict(
+            zip(config.get("params", []), config.get("default_params", []))
+        )
         config.update(overrides)
 
         # If param_bounds was overridden, update param_bounds_dict accordingly
@@ -136,6 +193,16 @@ class ModelConfigBuilder:
             # Remove old param_bounds_dict to force re-normalization
             config.pop("param_bounds_dict", None)
             config = _normalize_param_bounds(config)
+
+        # A params override keeps n_params and default_params in step with it,
+        # unless the caller set them too.
+        if "params" in overrides:
+            if "n_params" not in overrides:
+                config["n_params"] = len(config["params"])
+            if "default_params" not in overrides:
+                config["default_params"] = _default_params(
+                    config, base_defaults, base_model
+                )
 
         # Apply deadline variant if requested
         if has_deadline:
@@ -360,6 +427,16 @@ class ModelConfigBuilder:
                 f"default_params must match number of params ({len(config['params'])})"
             )
 
+        # Boundary and drift parameters must be declared model parameters, or
+        # they get no bounds and are invisible to anything reading the box.
+        if isinstance(config.get("params"), list):
+            for key in ("boundary_params", "drift_params"):
+                missing = [
+                    p for p in config.get(key) or [] if p not in config["params"]
+                ]
+                if missing:
+                    errors.append(f"{key} entries missing from params: {missing}")
+
         # Optional support-edge declaration: {"param": str, "scale": float}
         errors.extend(get_ndt_edge_shift_errors(config))
 
@@ -398,11 +475,17 @@ class ModelConfigBuilder:
         Raises
         ------
         ValueError
-            If boundary specification is invalid
+            If boundary specification is invalid, or if the boundary takes a
+            parameter that is not in ``config["params"]`` (declare it with
+            ``from_model(..., params=..., param_bounds=...)`` first)
 
         Examples
         --------
-        >>> config = ModelConfigBuilder.from_model("ddm")
+        >>> config = ModelConfigBuilder.from_model(
+        ...     "ddm",
+        ...     params=["v", "a", "z", "t", "theta"],
+        ...     param_bounds=[[-3.0, 0.3, 0.1, 1e-3, -0.1], [3.0, 3.0, 0.9, 2.0, 1.3]],
+        ... )
         >>> config = ModelConfigBuilder.add_boundary(config, "angle")
         """
         if isinstance(boundary, str):
@@ -413,21 +496,23 @@ class ModelConfigBuilder:
                     f"Unknown boundary '{boundary}'. Available: {available}"
                 )
             boundary_spec = registry.get(boundary)
-            config["boundary_name"] = boundary
-            config["boundary"] = boundary_spec["fun"]
-            config["boundary_params"] = boundary_spec["params"]
+            fun, name = boundary_spec["fun"], boundary
+            params = list(boundary_spec["params"])
         elif callable(boundary):
             if boundary_params is None:
                 raise ValueError(
                     "Must provide boundary_params when using custom boundary function"
                 )
-            config["boundary"] = boundary
-            config["boundary_name"] = getattr(boundary, "__name__", "custom")
-            config["boundary_params"] = boundary_params
+            fun, name = boundary, getattr(boundary, "__name__", "custom")
+            params = list(boundary_params)
         else:
             # ValueError, not TypeError: documented contract, pinned in tests.
             raise ValueError("boundary must be string name or callable")  # noqa: TRY004
 
+        _require_in_params(config, params, "boundary")
+        config["boundary_name"] = name
+        config["boundary"] = fun
+        config["boundary_params"] = params
         return config
 
     @staticmethod
@@ -455,11 +540,20 @@ class ModelConfigBuilder:
         Raises
         ------
         ValueError
-            If drift specification is invalid
+            If drift specification is invalid, or if the drift takes a
+            parameter that is not in ``config["params"]`` (declare it with
+            ``from_model(..., params=..., param_bounds=...)`` first)
 
         Examples
         --------
-        >>> config = ModelConfigBuilder.from_model("ddm")
+        >>> config = ModelConfigBuilder.from_model(
+        ...     "ddm",
+        ...     params=["v", "a", "z", "t", "shape", "scale", "c"],
+        ...     param_bounds=[
+        ...         [-3.0, 0.3, 0.1, 1e-3, 2.0, 0.01, -3.0],
+        ...         [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],
+        ...     ],
+        ... )
         >>> config = ModelConfigBuilder.add_drift(config, "gamma_drift")
         """
         if isinstance(drift, str):
@@ -468,21 +562,23 @@ class ModelConfigBuilder:
                 available = registry.list_drifts()
                 raise ValueError(f"Unknown drift '{drift}'. Available: {available}")
             drift_spec = registry.get(drift)
-            config["drift_name"] = drift
-            config["drift"] = drift_spec["fun"]
-            config["drift_params"] = drift_spec["params"]
+            fun, name = drift_spec["fun"], drift
+            params = list(drift_spec["params"])
         elif callable(drift):
             if drift_params is None:
                 raise ValueError(
                     "Must provide drift_params when using custom drift function"
                 )
-            config["drift"] = drift
-            config["drift_name"] = getattr(drift, "__name__", "custom")
-            config["drift_params"] = drift_params
+            fun, name = drift, getattr(drift, "__name__", "custom")
+            params = list(drift_params)
         else:
             # ValueError, not TypeError: documented contract, pinned in tests.
             raise ValueError("drift must be string name or callable")  # noqa: TRY004
 
+        _require_in_params(config, params, "drift")
+        config["drift_name"] = name
+        config["drift"] = fun
+        config["drift_params"] = params
         return config
 
     @staticmethod
