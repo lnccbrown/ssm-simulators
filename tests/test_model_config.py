@@ -1,10 +1,12 @@
 import random
+import uuid
 
 import numpy as np
 import pytest
 
+import cssm
 import ssms
-from ssms.config import model_config
+from ssms.config import model_config, register_drift, register_model_config
 from ssms.config.model_config_builder import ModelConfigBuilder
 from ssms.transforms import SwapIfLessConstraint
 
@@ -746,3 +748,115 @@ class TestDeclaredParameters:
             {**theta, "rate": 0.0}, n_samples=200, random_state=1
         )
         assert from_dict["rts"].mean() < no_collapse["rts"].mean()
+
+
+def _decaying_drift(t, v, decay_rate):
+    # Uses the module-level numpy import, as user code would.
+    return v * np.exp(-decay_rate * t)
+
+
+class TestAddDriftSimulator:
+    """add_drift must give a config whose simulator uses the drift (#426)."""
+
+    _THETA = {"v": 1.0, "a": 1.2, "z": 0.5, "t": 0.3}
+
+    @staticmethod
+    def _decay_config(base="ddm", name="ddm_decay"):
+        config = ModelConfigBuilder.from_model(
+            base,
+            name=name,
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        return ModelConfigBuilder.add_drift(
+            config, _decaying_drift, ["v", "decay_rate"]
+        )
+
+    def test_registered_custom_drift_model_end_to_end(self):
+        """The user route from #426: register_drift, add_drift, register."""
+        drift_name = f"decaying_drift_{uuid.uuid4().hex}"
+        model_name = f"ddm_decay_{uuid.uuid4().hex}"
+        register_drift(drift_name, _decaying_drift, params=["v", "decay_rate"])
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            name=model_name,
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        config = ModelConfigBuilder.add_drift(config, drift_name)
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+        register_model_config(model_name, config)
+
+        def simulate(model, **extra):
+            return ssms.Simulator(model).simulate(
+                theta={**self._THETA, **extra}, n_samples=5000, random_state=1
+            )
+
+        ddm = simulate("ddm")
+        no_decay = simulate(model_name, decay_rate=0.0)
+        decay = simulate(model_name, decay_rate=3.0)
+
+        # A constant drift reproduces ddm exactly; a decaying one slows
+        # responses and lowers accuracy (the drift used to be ignored).
+        np.testing.assert_array_equal(no_decay["rts"], ddm["rts"])
+        np.testing.assert_array_equal(no_decay["choices"], ddm["choices"])
+        assert decay["rts"].mean() > ddm["rts"].mean() + 0.2
+        assert (decay["choices"] == 1).mean() < (ddm["choices"] == 1).mean() - 0.1
+
+    def test_unregistered_callable_drift_takes_effect(self):
+        config = self._decay_config()
+        sim = ssms.Simulator(config)
+
+        fast = sim.simulate({**self._THETA, "decay_rate": 0.0}, 2000, random_state=3)
+        slow = sim.simulate({**self._THETA, "decay_rate": 3.0}, 2000, random_state=3)
+
+        assert slow["rts"].mean() > fast["rts"].mean() + 0.2
+
+    @pytest.mark.parametrize("base", ["ddm", "angle", "ddm_deadline"])
+    def test_ddm_flexbound_configs_switch_to_ddm_flex(self, base):
+        config = ModelConfigBuilder.from_model(base)
+        boundary = config["boundary_name"]
+
+        config = ModelConfigBuilder.add_drift(config, "constant")
+
+        assert config["simulator"] is cssm.ddm_flex
+        assert config["boundary_name"] == boundary
+
+    @pytest.mark.parametrize(
+        ("base", "drift", "simulator"),
+        [
+            ("gamma_drift", "constant", cssm.ddm_flex),
+            ("conflict_stimflexrel1_leak", "constant", cssm.ddm_flex_leak),
+        ],
+    )
+    def test_drift_capable_simulator_is_kept(self, base, drift, simulator):
+        config = ModelConfigBuilder.add_drift(
+            ModelConfigBuilder.from_model(base), drift
+        )
+        assert config["simulator"] is simulator
+
+    @pytest.mark.parametrize("base", ["ddm_legacy", "full_ddm", "ornstein", "levy"])
+    def test_simulator_without_drift_function_raises(self, base):
+        config = ModelConfigBuilder.from_model(base)
+        before = dict(config)
+
+        with pytest.raises(ValueError, match="takes no drift function"):
+            ModelConfigBuilder.add_drift(config, "constant")
+        assert config == before
+
+    def test_simulator_drift_argument_switches_ddm(self):
+        """Simulator(model, drift=...) had the same silent-ignore gap."""
+        sim = ssms.Simulator(
+            "ddm",
+            drift=lambda t, v: v * np.exp(-3.0 * t),
+            drift_params=["v"],
+        )
+        assert sim.config["simulator"] is cssm.ddm_flex
+
+        decay = sim.simulate(self._THETA, n_samples=2000, random_state=5)
+        ddm = ssms.Simulator("ddm").simulate(self._THETA, 2000, random_state=5)
+        assert decay["rts"].mean() > ddm["rts"].mean() + 0.2
+
+    def test_simulator_drift_argument_raises_without_drift_function(self):
+        with pytest.raises(ValueError, match="takes no drift function"):
+            ssms.Simulator("ornstein", drift="constant")

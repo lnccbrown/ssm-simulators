@@ -183,7 +183,9 @@ def register_drift(
 
     This is the main entry point for registering custom drift functions.
     Once registered, drifts can be used with ModelConfigBuilder.add_drift()
-    just like built-in drifts.
+    just like built-in drifts. The model's simulator must take a drift
+    function: add_drift() moves a ddm_flexbound model (ddm, angle, weibull)
+    onto ddm_flex and raises for simulators that take none.
 
     Parameters
     ----------

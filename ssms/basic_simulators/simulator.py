@@ -364,21 +364,25 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
             - drift_params (dict): Extracted drift-related parameters.
             If no drift name is specified in config, returns an empty dictionary.
     """
-    if "drift_name" in config:
-        drift_name = config["drift_name"]
-        drift_registry = get_drift_registry()
-        drift_info = drift_registry.get(drift_name)
-
-        drift_params = {
-            param_name: value
-            for param_name, value in theta.items()
-            if param_name in drift_info["params"]
-        }
+    if callable(config.get("drift")) and config.get("drift_params"):
+        # The config carries the function AND its param-name list (as
+        # ModelConfigBuilder.add_drift sets them), as for boundaries above: a
+        # drift passed as a callable needs no registry entry, and a registered
+        # one also works in multiprocessing workers with a fresh registry.
+        drift_fun = config["drift"]
+        drift_params_names = config["drift_params"]
+    elif "drift_name" in config:
+        drift_info = get_drift_registry().get(config["drift_name"])
         drift_fun = drift_info["fun"]
-        drift_dict = {"drift_fun": drift_fun, "drift_params": drift_params}
+        drift_params_names = drift_info["params"]
     else:
-        drift_dict = {}
-    return drift_dict
+        return {}
+    drift_params = {
+        param_name: value
+        for param_name, value in theta.items()
+        if param_name in drift_params_names
+    }
+    return {"drift_fun": drift_fun, "drift_params": drift_params}
 
 
 # TODO: Make useful as independent utility,

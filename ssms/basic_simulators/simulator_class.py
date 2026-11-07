@@ -31,6 +31,7 @@ from ssms.basic_simulators.simulator import (
     validate_ssm_parameters,
 )
 from ssms.config import get_boundary_registry, get_drift_registry
+from ssms.config.model_config_builder import _simulator_taking_drift
 
 
 class Simulator:
@@ -418,7 +419,8 @@ class Simulator:
         Raises
         ------
         ValueError
-            If drift specification is invalid
+            If drift specification is invalid, or if the simulator takes no
+            drift function (a ``ddm_flexbound`` model switches to ``ddm_flex``)
         """
         if isinstance(drift, str):
             # Look up drift by name
@@ -450,6 +452,11 @@ class Simulator:
             # ValueError, not TypeError: the documented `Raises` contract.
             raise ValueError(  # noqa: TRY004
                 "drift must be a string name or callable function"
+            )
+
+        if "simulator" in config:
+            config["simulator"] = _simulator_taking_drift(
+                config["simulator"], config.get("name")
             )
 
     def _validate_boundary_function(self, func: Callable) -> None:

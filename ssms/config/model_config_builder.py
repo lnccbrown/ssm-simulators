@@ -5,10 +5,12 @@ This module provides helper classes and functions for creating valid
 model configurations for use with the Simulator class.
 """
 
+import inspect
 from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, cast
 
+import cssm
 from ssms.config._modelconfig.validation import get_ndt_edge_shift_errors
 from ssms.config.boundary_registry import get_boundary_registry
 from ssms.config.drift_registry import get_drift_registry
@@ -21,6 +23,33 @@ DEADLINE_PARAM_CONFIG = {
     "default_bounds": (0.001, 10.0),
     "default_value": 10.0,
 }
+
+
+def _simulator_taking_drift(simulator: Callable, model_name: str | None) -> Callable:
+    """Return the simulator a config needs once it has a drift function.
+
+    A simulator that accepts ``drift_fun`` (``ddm_flex``, ``ddm_flex_leak``,
+    ``ddm_flex_leak2``, or a custom one) is kept. ``ddm_flexbound`` (``ddm``,
+    ``angle``, ``weibull``, ...) takes none, so it becomes ``ddm_flex``: the
+    same diffusion with flexible bounds, plus a time-varying drift. Any other
+    simulator would silently ignore the drift, so this raises.
+    """
+    try:
+        takes_drift = "drift_fun" in inspect.signature(simulator).parameters
+    except (TypeError, ValueError):  # no introspectable signature
+        takes_drift = False
+    if takes_drift:
+        return simulator
+    if simulator is cssm.ddm_flexbound:
+        return cssm.ddm_flex
+    sim_name = getattr(simulator, "__name__", repr(simulator))
+    raise ValueError(
+        f"Model '{model_name}' uses the simulator '{sim_name}', which takes no "
+        "drift function, so the drift would be ignored. A drift needs a "
+        "simulator that accepts drift_fun (ddm_flex, ddm_flex_leak or "
+        "ddm_flex_leak2, as in the 'gamma_drift' model); configs on "
+        "ddm_flexbound ('ddm', 'angle', 'weibull', ...) are switched to ddm_flex."
+    )
 
 
 def _require_in_params(config: dict, fun_params: list[str], kind: str) -> None:
@@ -523,6 +552,12 @@ class ModelConfigBuilder:
     ) -> dict:
         """Add or replace drift function in configuration.
 
+        The drift function returns the drift at each time step, so it replaces
+        the constant drift ``v`` (list ``"v"`` among its parameters to use it).
+        Only some simulators take a drift function: a config on
+        ``ddm_flexbound`` (``ddm``, ``angle``, ``weibull``, ...) is switched to
+        ``ddm_flex``, the same diffusion with a time-varying drift.
+
         Parameters
         ----------
         config : dict
@@ -540,9 +575,11 @@ class ModelConfigBuilder:
         Raises
         ------
         ValueError
-            If drift specification is invalid, or if the drift takes a
+            If drift specification is invalid, if the drift takes a
             parameter that is not in ``config["params"]`` (declare it with
-            ``from_model(..., params=..., param_bounds=...)`` first)
+            ``from_model(..., params=..., param_bounds=...)`` first), or if
+            the config's simulator takes no drift function (e.g. ``levy``,
+            ``ornstein``, ``full_ddm``, race and LBA models)
 
         Examples
         --------
@@ -576,6 +613,10 @@ class ModelConfigBuilder:
             raise ValueError("drift must be string name or callable")  # noqa: TRY004
 
         _require_in_params(config, params, "drift")
+        if "simulator" in config:
+            config["simulator"] = _simulator_taking_drift(
+                config["simulator"], config.get("name")
+            )
         config["drift_name"] = name
         config["drift"] = fun
         config["drift_params"] = params
