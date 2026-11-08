@@ -76,6 +76,18 @@ class TestSimulatorInitialization:
             Simulator(simulator_function=my_sim, params=["v", "a"])
 
 
+def test_params_override_on_named_model_rebuilds_bookkeeping():
+    sim = Simulator(
+        "ddm",
+        params=["v", "a", "z", "t", "rate"],
+        param_bounds=[[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]],
+    )
+
+    assert sim.config["n_params"] == 5
+    assert sim.config["default_params"] == [0.0, 1.0, 0.5, 0.001, 1.0]
+    assert sim.config["param_bounds_dict"]["rate"] == (0.0, 2.0)
+
+
 class TestCustomBoundaryFunctions:
     """Test custom boundary function support."""
 

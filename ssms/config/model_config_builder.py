@@ -223,9 +223,20 @@ class ModelConfigBuilder:
             config.pop("param_bounds_dict", None)
             config = _normalize_param_bounds(config)
 
-        # A params override keeps n_params and default_params in step with it,
-        # unless the caller set them too.
+        # A params override keeps n_params, default_params and positional
+        # bounds in step with it, unless the caller set them too.
         if "params" in overrides:
+            bounds = config.get("param_bounds_dict", {})
+            if (
+                "param_bounds" not in overrides
+                and isinstance(config.get("param_bounds"), list)
+                and all(p in bounds for p in config["params"])
+            ):
+                # Reordered or dropped parameters keep their own bounds.
+                config["param_bounds"] = [
+                    [bounds[p][i] for p in config["params"]] for i in (0, 1)
+                ]
+                config["param_bounds_dict"] = {p: bounds[p] for p in config["params"]}
             if "n_params" not in overrides:
                 config["n_params"] = len(config["params"])
             if "default_params" not in overrides:

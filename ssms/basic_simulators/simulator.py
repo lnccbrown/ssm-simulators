@@ -364,7 +364,7 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
             - drift_params (dict): Extracted drift-related parameters.
             If no drift name is specified in config, returns an empty dictionary.
     """
-    if callable(config.get("drift")) and config.get("drift_params"):
+    if callable(config.get("drift")) and config.get("drift_params") is not None:
         # The config carries the function AND its param-name list (as
         # ModelConfigBuilder.add_drift sets them), as for boundaries above: a
         # drift passed as a callable needs no registry entry, and a registered

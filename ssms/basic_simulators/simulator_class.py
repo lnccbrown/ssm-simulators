@@ -194,9 +194,11 @@ class Simulator:
         # Case 2: Model name provided (including variants like "_deadline")
         elif isinstance(model, str):
             # Use ModelConfigBuilder.from_model() which handles variant suffixes
+            # and keeps n_params, default_params and bounds in step with a
+            # params override.
             from ssms.config import ModelConfigBuilder
 
-            config = ModelConfigBuilder.from_model(model)
+            config = ModelConfigBuilder.from_model(model, **config_overrides)
         # Case 3: Custom simulator without base model
         elif model is None and simulator_function is not None:
             config = self._create_minimal_config(simulator_function, config_overrides)
@@ -205,8 +207,9 @@ class Simulator:
                 "Must provide either a model name, config dict, or simulator_function"
             )
 
-        # Apply config overrides
-        config.update(config_overrides)
+        # Apply config overrides (from_model has applied them to a named model)
+        if not isinstance(model, str):
+            config.update(config_overrides)
 
         # Handle custom simulator function
         if simulator_function is not None:

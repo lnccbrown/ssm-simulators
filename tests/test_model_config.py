@@ -667,6 +667,15 @@ class TestDeclaredParameters:
         with pytest.raises(ValueError, match=r"No default value for .*'rate'"):
             ModelConfigBuilder.from_model("ddm", params=["v", "a", "z", "t", "rate"])
 
+    def test_params_override_without_bounds_keeps_bounds_by_name(self):
+        ddm_bounds = ModelConfigBuilder.from_model("ddm")["param_bounds_dict"]
+        config = ModelConfigBuilder.from_model("ddm", params=["a", "v", "z", "t"])
+
+        lower, upper = config["param_bounds"]
+        # "a" moved to the front and takes its own bounds, not those of "v"
+        assert (lower[0], upper[0]) == tuple(ddm_bounds["a"])
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+
     def test_params_override_with_deadline_variant(self):
         config = ModelConfigBuilder.from_model(
             "ddm_deadline",
@@ -776,6 +785,19 @@ class TestAddDriftSimulator:
         return ModelConfigBuilder.add_drift(
             config, _decaying_drift, ["v", "decay_rate"]
         )
+
+    def test_callable_drift_without_parameters_simulates(self):
+        def flat_drift(t):
+            return np.ones_like(t)
+
+        config = ModelConfigBuilder.add_drift(
+            ModelConfigBuilder.from_model("ddm"), flat_drift, []
+        )
+        # Unregistered, so a lookup by name would raise KeyError.
+        out = ssms.Simulator(config).simulate(
+            theta=self._THETA, n_samples=100, random_state=1
+        )
+        assert out["rts"].size == 100
 
     def test_registered_custom_drift_model_end_to_end(self):
         """The user route from #426: register_drift, add_drift, register."""
