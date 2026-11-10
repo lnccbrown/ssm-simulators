@@ -34,6 +34,7 @@ from cssm._utils import (
     compute_smooth_unif,
     enforce_deadline,
     compute_deadline_tmp,
+    compute_num_steps,
     build_full_metadata,
     build_minimal_metadata,
     build_return_dict,
@@ -147,8 +148,10 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     cdef float[:] deadline_view = deadline
     cdef float[:] s_view = s
 
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # Trajectory storage - disabled in parallel mode (would require first sample only)
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype=DTYPE)
+    traj = np.zeros((num_steps, 3), dtype=DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -163,7 +166,6 @@ def ddm_flexbound_par2(np.ndarray[float, ndim = 1] vh,
     cdef int[:, :, :] choices_view = choices
 
     cdef float delta_t_sqrt = sqrt(delta_t)
-    cdef int num_steps = int((max_t / delta_t) + 1)
     cdef float c_max_t = max_t
     cdef int c_n_samples = n_samples
 
@@ -397,8 +399,10 @@ def _ddm_flexbound_par2_sequential(
     cdef float[:] s_view = s
 
     # TD: Add trajectory --> Tricky here because the simulator is optimized to include only two instead of three particles (high dimension choice determines which low dimension choice will matter for ultimate choice)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
+
     # TD: Add Trajectory
-    traj = np.zeros((int(max_t / delta_t) + 1, 3), dtype = DTYPE)
+    traj = np.zeros((num_steps, 3), dtype = DTYPE)
     traj[:, :] = -999
     cdef float[:, :] traj_view = traj
 
@@ -416,13 +420,14 @@ def _ddm_flexbound_par2_sequential(
     #cdef float sqrt_st = delta_t_sqrt * s # scalar to ensure the correct variance for the gaussian step
 
     # Boundary storage for the upper bound
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = num_steps
 
     t_s = np.arange(0, max_t + delta_t, delta_t).astype(DTYPE)
     boundary = np.zeros(t_s.shape, dtype = DTYPE)
     cdef float[:] boundary_view = boundary
 
     cdef float y_h, y_l, y_l1, y_l2, v_l, v_l1, v_l2, t_h, t_l, t_l1, t_l2, smooth_u, deadline_tmp, sqrt_st
+    cdef float t_particle, bound_val
     cdef Py_ssize_t n, ix, ix1, ix2, k
     cdef Py_ssize_t m = 0
     cdef float[:] gaussian_values = draw_gaussian(num_draws)
@@ -453,7 +458,7 @@ def _ddm_flexbound_par2_sequential(
                     traj_view[0, 0] = y_h
 
             # Random walks until y_h hits bound
-            while (y_h >= (-1) * boundary_view[ix]) and (y_h <= boundary_view[ix]) and (t_h <= deadline_tmp):
+            while ix < num_steps and (y_h >= (-1) * boundary_view[ix]) and (y_h <= boundary_view[ix]) and (t_h <= deadline_tmp):
                 y_h += (vh_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                 t_h += delta_t
                 ix += 1
@@ -463,19 +468,21 @@ def _ddm_flexbound_par2_sequential(
                     m = 0
 
                 if n == 0:
-                    if k == 0:
+                    if k == 0 and ix < num_steps:
                         traj_view[ix, 0] = y_h
 
             # The probability of making a 'mistake' 1 - (relative y position)
             # y at upper bound --> choices_view[n, k, 0] add 2 deterministically (correct)
             # y at lower bound --> choice_view[n, k, 0] stay the same deterministically (mistake)
 
+            # (ix == num_steps if the walker ran out the clock: use the last grid point)
+            bound_val = boundary_view[min(ix, num_steps - 1)]
             # if boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 2
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_h + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_h + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 2
             mu += 1
             if mu == num_draws:
@@ -489,7 +496,7 @@ def _ddm_flexbound_par2_sequential(
             # Random walker lower level (1)
             if (choices_view[n, k, 0] == 0) | ((n == 0) & (k == 0)):
                 ix1 = 0
-                while (y_l1 >= (-1) * boundary_view[ix1]) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
+                while ix1 < num_steps and (y_l1 >= (-1) * boundary_view[ix1]) and (y_l1 <= boundary_view[ix1]) and (t_l1 <= deadline_tmp):
                     y_l1 += (vl1_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                     t_l1 += delta_t
                     ix1 += 1
@@ -499,13 +506,13 @@ def _ddm_flexbound_par2_sequential(
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix1 < num_steps:
                             traj_view[ix1, 1] = y_l1
 
             # Random walker lower level (2)
             if (choices_view[n, k, 0] == 2) | ((n == 0) & (k == 0)):
                 ix2 = 0
-                while (y_l2 >= (-1) * boundary_view[ix2]) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
+                while ix2 < num_steps and (y_l2 >= (-1) * boundary_view[ix2]) and (y_l2 <= boundary_view[ix2]) and (t_l2 <= deadline_tmp):
                     y_l2 += (vl2_view[k] * delta_t) + (sqrt_st * gaussian_values[m])
                     t_l2 += delta_t
                     ix2 += 1
@@ -515,7 +522,7 @@ def _ddm_flexbound_par2_sequential(
                         m = 0
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix2 < num_steps:
                             traj_view[ix2, 2] = y_l2
 
             # Consider only relevant lower-dim walker for final rt
@@ -544,11 +551,12 @@ def _ddm_flexbound_par2_sequential(
             # y at lower bound --> choice_view[n, k, 0] stays the same deterministically
 
             # If boundary is negative (or 0) already, we flip a coin
-            if boundary_view[ix] <= 0:
+            bound_val = boundary_view[min(ix, num_steps - 1)]
+            if bound_val <= 0:
                 if uniform_values[mu] <= 0.5:
                     choices_view[n, k, 0] += 1
             # Otherwise apply rule from above
-            elif uniform_values[mu] <= ((y_l + boundary_view[ix]) / (2 * boundary_view[ix])):
+            elif uniform_values[mu] <= ((y_l + bound_val) / (2 * bound_val)):
                 choices_view[n, k, 0] += 1
             mu += 1
             if mu == num_draws:
