@@ -39,6 +39,11 @@ from cssm._utils import (
 )
 
 cdef double OMISSION = -999.0
+# Broadie, Glasserman & Kou (1997): monitoring a Brownian motion only at grid
+# points of spacing dt is equivalent, to leading order, to continuous monitoring
+# of a boundary moved outward by BGK_BETA * sigma * sqrt(dt). Lowering the
+# boundary by that amount removes the first-passage bias of the Euler scheme.
+cdef double BGK_BETA = 0.5825971579390107  # -zeta(1/2) / sqrt(2 pi)
 DEF MAX_ACCUMULATORS = 32
 
 
@@ -46,6 +51,7 @@ cdef struct SimulationConfig:
     double dt
     double horizon
     int max_steps
+    double correction  # BGK_BETA when the boundary correction is on, else 0
 
 
 cdef struct TrialResult:
@@ -202,6 +208,8 @@ cdef void _run_race_trial(
                 upper_intercept, upper_slope, nodes,
                 row, i, stage[i], t_particle,
             )
+            # Compensate for crossings missed between grid points (see BGK_BETA).
+            boundary -= config.correction * sigma[row, i, stage[i]] * sqrt_dt
             if particle[i] >= boundary and winner < 0:
                 winner = i
 
@@ -289,6 +297,7 @@ def _simulate_race_multistage(
     double horizon,
     uint64_t[::1] seeds,
     int n_threads=1,
+    bint boundary_correction=True,
 ):
     """Low-level batch kernel used by :func:`race_multistage` and tests."""
     cdef:
@@ -321,6 +330,7 @@ def _simulate_race_multistage(
     config.dt = dt
     config.horizon = horizon
     config.max_steps = max_steps
+    config.correction = BGK_BETA if boundary_correction else 0.0
     trial_results = <TrialResult *>malloc(n_rows * sizeof(TrialResult))
     if trial_results == NULL:
         raise MemoryError("could not allocate race trial results")
@@ -355,6 +365,7 @@ def race_multistage(
     return_option='full',
     random_state=None,
     int n_threads=1,
+    boundary_correction=True,
     **kwargs,
 ):
     """Simulate independent multi-stage race-model trajectories.
@@ -368,6 +379,14 @@ def race_multistage(
     ``n_samples`` repeats each experimental trial. Outputs follow the SSMS
     contract: arrays are ``(n_samples, n_trials, 1)``, choices are zero based,
     and an unobserved response has RT ``-999.0``.
+
+    ``boundary_correction`` (default ``True``) lowers every boundary by
+    ``0.5826 * sigma * sqrt(step)`` when checking for a crossing. Euler
+    monitoring only at grid points misses crossings in between, which biases
+    first-passage times late and omission rates up by an amount proportional
+    to ``sqrt(delta_t)``; the shift of Broadie, Glasserman & Kou (1997)
+    removes that leading-order term. It has no effect when ``sigma`` is zero.
+    Pass ``False`` to reproduce the uncorrected scheme.
     """
     if n_samples < 1:
         raise ValueError("n_samples must be positive")
@@ -405,7 +424,7 @@ def race_multistage(
 
     rt, choice, x_final = _simulate_race_multistage(
         mu_rows, sigma_rows, nodes_rows, n_stages_rows, intercept_rows, slope_rows,
-        x0_rows, delta_t, max_t, seeds, n_threads,
+        x0_rows, delta_t, max_t, seeds, n_threads, bool(boundary_correction),
     )
 
     if nondecision_time is None:
@@ -460,7 +479,8 @@ def race_multistage(
                 'd_array': n_stages, 'upper_intercept_array': intercept,
                 'upper_slope_array': slope, 'x0_array': x0,
             },
-            sim_config={'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads},
+            sim_config={'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads,
+                        'boundary_correction': bool(boundary_correction)},
             traj=setup['traj'],
             boundary=np.array([], dtype=np.float32),
         )
