@@ -59,6 +59,9 @@ def angle(
 ) -> np.ndarray | float | Any:
     """Linear collapsing boundary at angle theta.
 
+    The linear collapse bound of Fengler et al. (2021): ``theta > 0`` collapses the
+    bound over time, ``theta = 0`` gives a constant bound.
+
     Arguments
     ---------
         t (float or np.ndarray, optional): Time point(s). Defaults to 1.
@@ -67,7 +70,7 @@ def angle(
 
     Returns
     -------
-        np.ndarray or float: Boundary value = a + t * tan(theta)
+        np.ndarray or float: Boundary value = a - t * tan(theta)
     """
     return a + np.multiply(t, (-np.sin(theta) / np.cos(theta)))
 
@@ -153,7 +156,7 @@ def conflict_gamma(
 
     Returns
     -------
-        np.ndarray: Boundary value = a + gamma_bump(t) + t*tan(theta)
+        np.ndarray: Boundary value = a + gamma_bump(t) - t*tan(theta)
     """
     gamma_bump = scale * gamma.pdf(t, a=alphaGamma, loc=0, scale=scaleGamma)
     angle_offset = np.multiply(t, (-np.sin(theta) / np.cos(theta)))
