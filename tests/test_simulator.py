@@ -171,6 +171,32 @@ def test_simulator_sigma_noise_conflict_raises():
         )
 
 
+@pytest.mark.parametrize(
+    "simulate",
+    [
+        lambda theta: simulator(theta=theta, model="ddm", n_samples=5),
+        lambda theta: Simulator("ddm").simulate(theta=theta, n_samples=5),
+    ],
+    ids=["simulator", "Simulator"],
+)
+def test_unknown_theta_key_raises(simulate):
+    """A misspelled parameter raises instead of silently falling back to a default."""
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "vv": 1.0}
+    with pytest.raises(ValueError, match=r"\['vv'\] that are not parameters"):
+        simulate(theta)
+
+
+def test_custom_boundary_params_are_known_theta_keys():
+    """Parameters declared for a custom boundary are not reported as unknown."""
+
+    def decaying(t, a, decay):
+        return a * np.exp(-decay * t)
+
+    sim = Simulator("ddm", boundary=decaying, boundary_params=["a", "decay"])
+    theta = {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.3, "decay": 0.1}
+    assert sim.simulate(theta=theta, n_samples=5)["rts"].shape == (5, 1)
+
+
 def test_simulator_no_noise_flag():
     """no_noise=True suppresses diffusion noise (sigma_noise set to 0.0 internally)."""
     out = simulator(
