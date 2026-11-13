@@ -1,3 +1,7 @@
+# Theme, palette, fonts, logo and stylesheets come from the shared brand base
+# (vendored from HSSMSpine docs-brand/; do not redefine them here).
+INHERIT: docs/overrides/.mkdocs-brand-notebooks.yml
+
 site_name: SSMS (Sequential Sampling Model Simulators)
 repo_name: lnccbrown/ssm-simulators
 repo_url: https://github.com/lnccbrown/ssm-simulators
@@ -99,9 +103,6 @@ plugins:
               - "!^_"
 
 theme:
-  logo: images/navlogo.png
-  favicon: images/navlogo.png
-  name: material
   custom_dir: docs/overrides
   features:
     - navigation.tracking
@@ -117,30 +118,6 @@ theme:
     - content.action.edit
     - header.autohide
     - announce.dismiss
-  palette:
-    # Palette toggle for automatic mode
-    - media: "(prefers-color-scheme)"
-      scheme: ocean
-      primary: custom
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to dark mode
-
-    # Palette toggle for light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: ocean
-      primary: custom
-      toggle:
-        icon: material/brightness-7
-        name: Switch to light mode
-
-    # Palette toggle for dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: custom
-      toggle:
-        icon: material/brightness-4
-        name: Switch to automatic mode
 
 copyright: Copyright © 2021 Alexander Fengler. MIT License.
 
@@ -152,9 +129,6 @@ extra:
       link: https://github.com/lnccbrown/ssm-simulators
     - icon: material/forum
       link: https://github.com/lnccbrown/HSSM/discussions
-
-extra_css:
-  - "styles/extra.css"
 
 markdown_extensions:
   - toc:
@@ -168,6 +142,7 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
   - attr_list
+  - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
