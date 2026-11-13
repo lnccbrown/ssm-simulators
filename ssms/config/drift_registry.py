@@ -15,9 +15,16 @@ Register a custom drift:
 >>>
 >>> register_drift("sinusoidal", sinusoidal_drift, ["frequency", "amplitude", "baseline"])
 >>>
->>> # Use with ModelConfigBuilder
+>>> # Use with ModelConfigBuilder: declare the new parameters and their bounds
 >>> from ssms.config import ModelConfigBuilder
->>> config = ModelConfigBuilder.from_model("ddm")
+>>> config = ModelConfigBuilder.from_model(
+...     "ddm",
+...     params=["v", "a", "z", "t", "frequency", "amplitude", "baseline"],
+...     param_bounds=[
+...         [-3.0, 0.3, 0.1, 0.0, 0.1, 0.0, -1.0],
+...         [3.0, 2.5, 0.9, 2.0, 5.0, 1.0, 1.0],
+...     ],
+... )
 >>> config = ModelConfigBuilder.add_drift(config, "sinusoidal")
 
 List available drifts:
@@ -176,7 +183,9 @@ def register_drift(
 
     This is the main entry point for registering custom drift functions.
     Once registered, drifts can be used with ModelConfigBuilder.add_drift()
-    just like built-in drifts.
+    just like built-in drifts. The model's simulator must take a drift
+    function: add_drift() moves a ddm_flexbound model (ddm, angle, weibull)
+    onto ddm_flex and raises for simulators that take none.
 
     Parameters
     ----------
@@ -208,9 +217,17 @@ def register_drift(
     ...     params=["frequency", "amplitude", "baseline"]
     ... )
     >>>
-    >>> # Now use it with ModelConfigBuilder
+    >>> # Now use it with ModelConfigBuilder: declare the new parameters and
+    >>> # their bounds
     >>> from ssms.config import ModelConfigBuilder
-    >>> config = ModelConfigBuilder.from_model("ddm")
+    >>> config = ModelConfigBuilder.from_model(
+    ...     "ddm",
+    ...     params=["v", "a", "z", "t", "frequency", "amplitude", "baseline"],
+    ...     param_bounds=[
+    ...         [-3.0, 0.3, 0.1, 0.0, 0.1, 0.0, -1.0],
+    ...         [3.0, 2.5, 0.9, 2.0, 5.0, 1.0, 1.0],
+    ...     ],
+    ... )
     >>> config = ModelConfigBuilder.add_drift(config, "sinusoidal")
 
     Register a time-varying drift:

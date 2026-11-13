@@ -17,6 +17,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import cloudpickle as pickle
+import dill
 import numpy as np
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -555,16 +556,26 @@ class TrainingDataGenerator:
             # aggregation — which would be a good change, overlapping result
             # unpickling with compute — reinstate the reservation.
             if self.generator_config["pipeline"]["n_cpus"] > 1:
-                with Pool(
-                    processes=self.generator_config["pipeline"]["n_cpus"]
-                ) as pool:
-                    # Map strategy.generate_for_parameter_set over parameter indices
-                    results = pool.map(
-                        self._generation_pipeline.generate_for_parameter_set,
-                        list(range(theta_base + start_idx, theta_base + end_idx)),
-                        list(seeds_2[start_idx:end_idx]),
-                    )
-                    out_list += results
+                # Ship a user's drift or boundary function with the globals it
+                # reads. Without recurse, dill pickles a __main__ function's
+                # globals by reference, and a spawn worker re-imports __main__
+                # without running its main-guard block or its marimo cells, so
+                # a name bound there (`np`) raises NameError in the worker.
+                recurse = dill.settings["recurse"]
+                dill.settings["recurse"] = True
+                try:
+                    with Pool(
+                        processes=self.generator_config["pipeline"]["n_cpus"]
+                    ) as pool:
+                        # Map strategy.generate_for_parameter_set over parameter indices
+                        results = pool.map(
+                            self._generation_pipeline.generate_for_parameter_set,
+                            list(range(theta_base + start_idx, theta_base + end_idx)),
+                            list(seeds_2[start_idx:end_idx]),
+                        )
+                        out_list += results
+                finally:
+                    dill.settings["recurse"] = recurse
             else:
                 if verbose:
                     logger.info("No Multiprocessing, since only one cpu requested!")
