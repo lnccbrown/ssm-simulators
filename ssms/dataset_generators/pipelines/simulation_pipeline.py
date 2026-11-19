@@ -224,6 +224,12 @@ class SimulationPipeline:
         if simulations is None:
             raise ValueError("No simulations provided")
 
+        from ssms.config.config_utils import get_nested_config
+
+        filters = get_nested_config(
+            self.generator_config, "pipeline", "simulation_filters", {}
+        )
+
         keep = True
         n_sim = simulations["rts"].shape[0]
 
@@ -250,16 +256,13 @@ class SimulationPipeline:
                 mode_cnt_rel_ = 0
 
             # Apply all filters
-            # AF-TODO: Apply .get() pattern here to default to "no filter" on the
-            # key if it isn't present.
-            filters = self.generator_config.get("simulator", {}).get("filters", {})
             keep = (
                 keep
-                & (mode_ <= filters.get("mode", float("inf")))
+                & (mode_ < filters.get("mode", float("inf")))
                 & (mean_ <= filters.get("mean_rt", float("inf")))
-                & (std_ >= filters.get("std", 0.0))
+                & (std_ > filters.get("std", float("-inf")))
                 & (mode_cnt_rel_ <= filters.get("mode_cnt_rel", 1.0))
-                & (tmp_n_c >= filters.get("choice_cnt", 0))
+                & (tmp_n_c > filters.get("choice_cnt", float("-inf")))
             )
 
         stats = np.array(

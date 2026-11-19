@@ -159,8 +159,7 @@ class TestSimulationPipelineErrorHandling:
         """Test that generate_for_parameter_set returns failure after max attempts."""
         # Create a pipeline with impossible filters
         config = get_lan_kde_config()
-        # SimulationPipeline reads filters from simulator.filters
-        config["simulator"]["filters"] = {
+        config["pipeline"]["simulation_filters"] = {
             "mode": 0.001,  # Impossible: mode must be tiny
             "choice_cnt": 1000,  # Impossible: need 1000 samples of each choice
             "mean_rt": 0.001,  # Impossible: mean must be tiny
@@ -203,6 +202,47 @@ class TestSimulationPipelineErrorHandling:
 
         # Stats should have expected shape
         assert len(stats) == 6  # [mode, mean, std, mode_cnt_rel, tmp_n_c, n_sim]
+
+    def test_is_valid_simulation_rejects_degenerate_simulations(self, pipeline):
+        """Test that the default simulation_filters reject degenerate simulations."""
+        spread = np.linspace(0.3, 2.0, 50)
+        degenerate_cases = {
+            "all rts at max_t": (np.full(100, 20.0), np.array([1] * 50 + [-1] * 50)),
+            "choice without samples": (np.linspace(0.3, 2.0, 100), np.ones(100)),
+            "choice without spread": (
+                np.concatenate([np.full(50, 1.0), spread]),
+                np.array([1] * 50 + [-1] * 50),
+            ),
+            "mode above mode_cnt_rel": (
+                np.concatenate([np.full(49, 1.0), [1.5], spread]),
+                np.array([1] * 50 + [-1] * 50),
+            ),
+        }
+        for name, (rts, choices) in degenerate_cases.items():
+            simulations = {
+                "rts": rts,
+                "choices": choices,
+                "metadata": {"possible_choices": [-1, 1], "max_t": 20.0},
+            }
+            keep, _ = pipeline._is_valid_simulation(simulations)
+            assert not keep, name
+
+        # A non-default threshold in pipeline.simulation_filters is applied
+        config = get_lan_kde_config()
+        config["pipeline"]["simulation_filters"]["mean_rt"] = 0.5
+        strict_pipeline = SimulationPipeline(
+            generator_config=config,
+            model_config=model_config["ddm"],
+            estimator_builder=KDEEstimatorBuilder,
+            training_strategy=ResampleMixtureStrategy,
+        )
+        valid_simulations = {
+            "rts": np.linspace(0.3, 2.0, 100),
+            "choices": np.array([1] * 50 + [-1] * 50),
+            "metadata": {"possible_choices": [-1, 1], "max_t": 20.0},
+        }
+        assert pipeline._is_valid_simulation(valid_simulations)[0]
+        assert not strict_pipeline._is_valid_simulation(valid_simulations)[0]
 
     def test_generate_for_parameter_set_with_isolated_rng(self, pipeline):
         """Test that parameter sampling uses isolated RNG (no global state pollution)."""
