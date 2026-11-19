@@ -227,22 +227,31 @@ class TestSimulationPipelineErrorHandling:
             keep, _ = pipeline._is_valid_simulation(simulations)
             assert not keep, name
 
-        # A non-default threshold in pipeline.simulation_filters is applied
-        config = get_lan_kde_config()
-        config["pipeline"]["simulation_filters"]["mean_rt"] = 0.5
-        strict_pipeline = SimulationPipeline(
-            generator_config=config,
-            model_config=model_config["ddm"],
-            estimator_builder=KDEEstimatorBuilder,
-            training_strategy=ResampleMixtureStrategy,
-        )
-        valid_simulations = {
-            "rts": np.linspace(0.3, 2.0, 100),
-            "choices": np.array([1] * 50 + [-1] * 50),
-            "metadata": {"possible_choices": [-1, 1], "max_t": 20.0},
-        }
-        assert pipeline._is_valid_simulation(valid_simulations)[0]
-        assert not strict_pipeline._is_valid_simulation(valid_simulations)[0]
+        # A value exactly at the mode, std or choice_cnt threshold is rejected,
+        # and moving that threshold in pipeline.simulation_filters accepts it
+        spread_choice = np.linspace(0.3, 2.0, 5)
+        boundary_cases = [
+            ("mode", 20, 21, np.array([20.0, 20.0, 1.0, 2.0, 3.0])),
+            ("std", 0, -1, np.full(5, 1.0)),
+            ("choice_cnt", 0, -1, np.array([])),
+        ]
+        for key, rejecting, accepting, rts in boundary_cases:
+            simulations = {
+                "rts": np.concatenate([rts, spread_choice]),
+                "choices": np.array([1] * len(rts) + [-1] * 5),
+                "metadata": {"possible_choices": [-1, 1], "max_t": 20.0},
+            }
+            for threshold, expected in [(rejecting, False), (accepting, True)]:
+                config = get_lan_kde_config()
+                config["pipeline"]["simulation_filters"] = {key: threshold}
+                filter_pipeline = SimulationPipeline(
+                    generator_config=config,
+                    model_config=model_config["ddm"],
+                    estimator_builder=KDEEstimatorBuilder,
+                    training_strategy=ResampleMixtureStrategy,
+                )
+                keep, _ = filter_pipeline._is_valid_simulation(simulations)
+                assert bool(keep) is expected, (key, threshold)
 
     def test_generate_for_parameter_set_with_isolated_rng(self, pipeline):
         """Test that parameter sampling uses isolated RNG (no global state pollution)."""
