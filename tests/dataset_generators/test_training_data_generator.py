@@ -469,3 +469,62 @@ class TestPoolWorkerCount:
     def test_no_pool_when_only_one_cpu_is_allowed(self, monkeypatch):
         # The sequential branch, not a one-worker pool.
         assert self._spawned_worker_counts(monkeypatch, n_cpus=1) == []
+
+
+_MAIN_GUARD_DRIFT_SCRIPT = """
+import multiprocess
+
+from ssms.config import ModelConfigBuilder, register_drift
+from ssms.config.generator_config.data_generator_config import (
+    get_default_generator_config,
+)
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+
+
+def decaying_drift(t, v, decay_rate):
+    return v * np.exp(-decay_rate * t)
+
+
+if __name__ == "__main__":
+    # Bound in __main__ only when run, not when a spawn worker re-imports
+    # the script: how a marimo notebook's cells bind their names.
+    import numpy as np
+
+    multiprocess.set_start_method("spawn", force=True)
+    register_drift("decaying_drift", decaying_drift, params=["v", "decay_rate"])
+    model_config = ModelConfigBuilder.add_drift(
+        ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=[[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]],
+        ),
+        "decaying_drift",
+    )
+    gen_config = get_default_generator_config("lan")
+    gen_config["pipeline"].update(n_parameter_sets=2, n_subruns=1, n_cpus=2)
+    gen_config["simulator"]["n_samples"] = 1000
+    gen_config["training"]["n_samples_per_param"] = 100
+    data = TrainingDataGenerator(
+        config=gen_config, model_config=model_config
+    ).generate_data_training(save=False)
+    print(len(data["lan_data"]))
+"""
+
+
+def test_drift_using_runtime_main_globals_runs_in_spawn_workers(tmp_path):
+    """A drift defined in a script reads globals bound under the main guard;
+    spawn workers re-import the script without running that block."""
+    import subprocess
+    import sys
+
+    script = tmp_path / "custom_drift.py"
+    script.write_text(_MAIN_GUARD_DRIFT_SCRIPT)
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert result.stdout.strip() == "200"
