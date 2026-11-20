@@ -3,6 +3,10 @@
 This module tests error handling, validation, and edge cases for TrainingDataGenerator.
 """
 
+import os
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -469,3 +473,50 @@ class TestPoolWorkerCount:
     def test_no_pool_when_only_one_cpu_is_allowed(self, monkeypatch):
         # The sequential branch, not a one-worker pool.
         assert self._spawned_worker_counts(monkeypatch, n_cpus=1) == []
+
+
+UNGUARDED_SCRIPT = """\
+from ssms.config.generator_config.data_generator_config import get_lan_kde_config
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+
+datagen_config = get_lan_kde_config(model="angle")
+datagen_config["pipeline"]["n_cpus"] = 2
+TrainingDataGenerator(config=datagen_config).generate_data_training()
+"""
+
+
+def test_unguarded_script_fails_fast_under_spawn(tmp_path):
+    """A script without a __main__ guard raises once instead of hanging.
+
+    Each spawned worker re-imports the script and dies, and the pool used to
+    replace dead workers forever while pool.map waited (issue #414).
+    """
+    script = tmp_path / "unguarded.py"
+    script.write_text(UNGUARDED_SCRIPT)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={**os.environ, "SSMS_MP_START_METHOD": "spawn"},
+    )
+
+    assert result.returncode != 0
+    assert 'if __name__ == "__main__":' in result.stderr
+    assert "SSMS_MP_START_METHOD" in result.stderr
+    # The parent prints one traceback. Worker tracebacks would add more.
+    assert result.stderr.count("Traceback (most recent call last)") == 1
+
+
+def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
+    """Inside a worker that re-imports the script, exit without a traceback."""
+    from ssms.dataset_generators import lan_mlp
+
+    monkeypatch.setattr(
+        lan_mlp.multiprocess.current_process(), "_inheriting", True, raising=False
+    )
+    with pytest.raises(SystemExit) as exc:
+        lan_mlp._check_workers_can_start()
+    assert exc.value.code == 1
