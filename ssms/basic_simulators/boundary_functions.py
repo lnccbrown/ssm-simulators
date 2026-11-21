@@ -60,7 +60,9 @@ def angle(
     """Linear collapsing boundary at angle theta.
 
     The linear collapse bound of Fengler et al. (2021): ``theta > 0`` collapses the
-    bound over time, ``theta = 0`` gives a constant bound.
+    bound over time, ``theta = 0`` gives a constant bound, and ``theta < 0``
+    widens the bound over time (the ``angle`` model configs allow ``theta`` down
+    to -0.1).
 
     Arguments
     ---------
