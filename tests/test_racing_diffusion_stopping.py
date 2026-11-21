@@ -72,10 +72,13 @@ def test_noise_free_rt_includes_the_crossing_step(n_threads):
 
 
 @pytest.mark.parametrize("n_threads", N_THREADS)
-def test_same_step_crossers_furthest_one_wins(n_threads):
+# The furthest crosser has the higher index in one case and the lower in the
+# other, so neither a lowest-index nor a last-checked rule can pass both.
+@pytest.mark.parametrize("v0, v1, winner", [(1.0, 1.005, 1), (1.005, 1.0, 0)])
+def test_same_step_crossers_furthest_one_wins(n_threads, v0, v1, winner):
     b, delta_t, t = 0.9955, 0.01, 0.3
     out = simulator(
-        theta={"v0": 1.0, "v1": 1.005, "v2": 0.0, "A": 0.0, "b": b, "t": t},
+        theta={"v0": v0, "v1": v1, "v2": 0.0, "A": 0.0, "b": b, "t": t},
         model="racing_diffusion_3",
         n_samples=5,
         delta_t=delta_t,
@@ -86,5 +89,5 @@ def test_same_step_crossers_furthest_one_wins(n_threads):
     )
 
     # Accumulators 0 and 1 both first cross on step 100, at 1.0 and 1.005
-    np.testing.assert_array_equal(out["choices"].ravel(), 1)
+    np.testing.assert_array_equal(out["choices"].ravel(), winner)
     np.testing.assert_allclose(out["rts"].ravel() - t, 100 * delta_t, atol=1e-5)
