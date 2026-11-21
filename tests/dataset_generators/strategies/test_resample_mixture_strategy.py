@@ -12,6 +12,7 @@ import copy
 import numpy as np
 import pytest
 
+from ssms.basic_simulators import Simulator
 from ssms.basic_simulators.simulator import simulator
 from ssms.config import model_config
 from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
@@ -320,9 +321,8 @@ def test_separate_response_channels_matches_scalar_layout_three_choices(
         "t": 0.2,
     }
     conf = model_config["race_3"]
-    simulations = simulator(
+    simulations = Simulator("race_3").simulate(
         theta=theta,
-        model="race_3",
         n_samples=1000,
         max_t=5.0,
         delta_t=0.001,
@@ -515,3 +515,28 @@ def test_strategy_with_different_model(generator_config):
     assert set(choice_col[choice_col >= 0]) <= set(
         simulations["metadata"]["possible_choices"]
     )
+
+
+@pytest.mark.parametrize(
+    ("possible_choices", "choices", "match"),
+    [
+        ([-1, 1, 2], np.array([-1, 1]), "nchoices"),
+        ([-1, 1], np.array([-1, 0, 1]), "not in possible_choices"),
+    ],
+)
+def test_separate_response_channels_rejects_inconsistent_choices(
+    generator_config, ddm_model_config, possible_choices, choices, match
+):
+    """Test that choices that do not fit the one-hot block raise.
+
+    With more possible choices than `nchoices` columns, a choice would be written
+    into the log-likelihood or a theta column; a choice outside
+    `possible_choices` would leave its row with no hot column.
+    """
+    strategy = ResampleMixtureStrategy(generator_config, ddm_model_config)
+    rows = np.zeros((choices.size, 4 + 1 + ddm_model_config["nchoices"] + 1))
+
+    with pytest.raises(ValueError, match=match):
+        strategy._fill_rts_and_choices(
+            rows, np.full(choices.size, 0.5), choices, possible_choices, True
+        )

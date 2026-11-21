@@ -242,9 +242,33 @@ class ResampleMixtureStrategy:
             If True, write the RT to column `-2 - nchoices` and one-hot encode the
             choice over columns `-1 - nchoices` to `-2`; otherwise write the RT to
             column `-3` and the choice to column `-2`.
+
+        Raises
+        ------
+        ValueError
+            With `separate_response_channels=True`, if `possible_choices` does
+            not have `model_config["nchoices"]` entries, or if a choice is not in
+            `possible_choices`.
         """
         if separate_response_channels:
             nchoices = self.model_config["nchoices"]
+            # The one-hot block is sized by `nchoices` but filled in the order of
+            # `possible_choices`. If the two disagree, choices would be written
+            # into the log-likelihood or theta columns, and a choice outside
+            # `possible_choices` would leave its row with no hot column.
+            if len(possible_choices) != nchoices:
+                raise ValueError(
+                    f"model_config[nchoices] is {nchoices}, but the estimator "
+                    f"reports {len(possible_choices)} possible choices "
+                    f"({list(possible_choices)}); the one-hot layout of "
+                    "separate_response_channels=True needs one column per choice."
+                )
+            unknown = np.setdiff1d(choices, possible_choices)
+            if unknown.size:
+                raise ValueError(
+                    f"Choices {unknown.tolist()} are not in possible_choices "
+                    f"{list(possible_choices)}, so they have no one-hot column."
+                )
             rows[:, -2 - nchoices] = rts
             for r_cnt, response in enumerate(possible_choices):
                 rows[:, (-1 - nchoices) + r_cnt] = (choices == response).astype(int)
