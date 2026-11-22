@@ -54,19 +54,28 @@ def _check_workers_can_start() -> None:
 @functools.cache
 def _probe_worker_start(start_method: str) -> None:
     probe = multiprocess.Process()
-    probe.start()
-    probe.join()
-    if probe.exitcode != 0:
-        raise RuntimeError(
-            f"A worker process exited with code {probe.exitcode} while starting "
-            f"up. With the '{start_method}' start method, each worker re-imports "
-            "the script you ran, so a call to generate_data_training() at the top "
-            "of the script starts generation again in every worker. Put that "
-            'code under `if __name__ == "__main__":`, or set n_cpus=1 in the '
-            "pipeline config, or set the environment variable "
-            "SSMS_MP_START_METHOD=fork before importing ssms (ssms uses spawn by "
-            "default because fork can deadlock with OpenMP)."
+    cause = None
+    try:
+        probe.start()
+        probe.join()
+    except (EOFError, OSError) as err:
+        # 'forkserver' imports the script in its server process. When that
+        # dies, start() fails before there is an exit code to read.
+        cause = err
+    if cause is not None or probe.exitcode != 0:
+        failure = (
+            f"exit code {probe.exitcode}" if cause is None else type(cause).__name__
         )
+        raise RuntimeError(
+            f"A worker process failed while starting up ({failure}). With the "
+            f"'{start_method}' start method, starting workers re-imports the "
+            "script you ran, so a call to generate_data_training() at the top of "
+            "the script starts generation again there. Put that code under "
+            '`if __name__ == "__main__":`, or set n_cpus=1 in the pipeline '
+            "config, or set the environment variable SSMS_MP_START_METHOD=fork "
+            "before importing ssms (ssms uses spawn by default because fork can "
+            "deadlock with OpenMP)."
+        ) from cause
 
 
 class TrainingDataGenerator:

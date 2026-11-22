@@ -3,6 +3,7 @@
 This module tests error handling, validation, and edge cases for TrainingDataGenerator.
 """
 
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -485,12 +486,19 @@ TrainingDataGenerator(config=datagen_config).generate_data_training()
 """
 
 
-def test_unguarded_script_fails_fast_under_spawn(tmp_path):
+# 'spawn': the parent's traceback only. 'forkserver': the server dies while
+# importing the script, so start() raises and that error is chained as the cause.
+@pytest.mark.parametrize(
+    ("start_method", "n_tracebacks"), [("spawn", 1), ("forkserver", 2)]
+)
+def test_unguarded_script_fails_fast(tmp_path, start_method, n_tracebacks):
     """A script without a __main__ guard raises once instead of hanging.
 
     Each spawned worker re-imports the script and dies, and the pool used to
     replace dead workers forever while pool.map waited (issue #414).
     """
+    if start_method not in multiprocessing.get_all_start_methods():
+        pytest.skip(f"{start_method} is not available on this platform")
     script = tmp_path / "unguarded.py"
     script.write_text(UNGUARDED_SCRIPT)
 
@@ -500,14 +508,15 @@ def test_unguarded_script_fails_fast_under_spawn(tmp_path):
         capture_output=True,
         text=True,
         timeout=120,
-        env={**os.environ, "SSMS_MP_START_METHOD": "spawn"},
+        env={**os.environ, "SSMS_MP_START_METHOD": start_method},
     )
 
     assert result.returncode != 0
     assert 'if __name__ == "__main__":' in result.stderr
     assert "SSMS_MP_START_METHOD" in result.stderr
-    # The parent prints one traceback. Worker tracebacks would add more.
-    assert result.stderr.count("Traceback (most recent call last)") == 1
+    # Worker tracebacks would add more.
+    assert result.stderr.count("Traceback (most recent call last)") == n_tracebacks
+    assert result.stderr.splitlines()[-1].startswith("RuntimeError: A worker process")
 
 
 def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
@@ -520,3 +529,26 @@ def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         lan_mlp._check_workers_can_start()
     assert exc.value.code == 1
+
+
+def test_probe_that_cannot_start_names_the_guard(monkeypatch):
+    """A start() failure gets the same guidance as a non-zero exit code.
+
+    Under 'forkserver' the server dies while importing the unguarded script,
+    so start() raises EOFError before there is an exit code. The subprocess
+    test above shows that for real; this one runs the branch in-process.
+    """
+    from ssms.dataset_generators import lan_mlp
+
+    class DeadServerProcess:
+        exitcode = None
+
+        def start(self):
+            raise EOFError
+
+    monkeypatch.setattr(lan_mlp.multiprocess, "Process", DeadServerProcess)
+    # __wrapped__: skip the cache, so the failure is not remembered.
+    with pytest.raises(RuntimeError, match="if __name__ ==") as exc:
+        lan_mlp._probe_worker_start.__wrapped__("forkserver")
+    assert isinstance(exc.value.__cause__, EOFError)
+    assert "EOFError" in str(exc.value)
