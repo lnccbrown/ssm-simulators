@@ -8,15 +8,19 @@ Note: Multiprocessing start method is configured in ssms/__init__.py
       SSMS_MP_START_METHOD environment variable if needed.
 """
 
+import functools
 import logging
 import os
 import secrets
+import sys
 import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
 
 import cloudpickle as pickle
+import dill
+import multiprocess
 import numpy as np
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -27,6 +31,52 @@ from ssms.dataset_generators.protocols import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _check_workers_can_start() -> None:
+    """Raise instead of hanging when pool workers die while starting up.
+
+    Under 'spawn' (the ssms default) and 'forkserver', every worker re-imports
+    the script that started Python. A script that calls
+    generate_data_training() outside an ``if __name__ == "__main__":`` block
+    starts generation again inside each worker, the worker dies, and the pool
+    replaces it forever while ``pool.map`` waits. A dying worker cannot report
+    this to the parent, so the parent starts one throwaway process first.
+    """
+    if getattr(multiprocess.current_process(), "_inheriting", False):
+        # We are such a worker, still importing the script (the flag is the
+        # one multiprocess checks itself). Exit quietly; the parent raises.
+        sys.exit(1)
+    start_method = multiprocess.get_start_method()
+    if start_method != "fork":
+        _probe_worker_start(start_method)
+
+
+@functools.cache
+def _probe_worker_start(start_method: str) -> None:
+    probe = multiprocess.Process()
+    cause = None
+    try:
+        probe.start()
+        probe.join()
+    except (EOFError, OSError) as err:
+        # On Python 3.13+, 'forkserver' imports the script in its server
+        # process. When that dies, start() fails before there is an exit code.
+        cause = err
+    if cause is not None or probe.exitcode != 0:
+        failure = (
+            f"exit code {probe.exitcode}" if cause is None else type(cause).__name__
+        )
+        raise RuntimeError(
+            f"A worker process failed while starting up ({failure}). With the "
+            f"'{start_method}' start method, starting workers re-imports the "
+            "script you ran, so a call to generate_data_training() at the top of "
+            "the script starts generation again there. Put that code under "
+            '`if __name__ == "__main__":`, or set n_cpus=1 in the pipeline '
+            "config, or set the environment variable SSMS_MP_START_METHOD=fork "
+            "before importing ssms (ssms uses spawn by default because fork can "
+            "deadlock with OpenMP)."
+        ) from cause
 
 
 class TrainingDataGenerator:
@@ -555,16 +605,34 @@ class TrainingDataGenerator:
             # aggregation — which would be a good change, overlapping result
             # unpickling with compute — reinstate the reservation.
             if self.generator_config["pipeline"]["n_cpus"] > 1:
-                with Pool(
-                    processes=self.generator_config["pipeline"]["n_cpus"]
-                ) as pool:
-                    # Map strategy.generate_for_parameter_set over parameter indices
-                    results = pool.map(
-                        self._generation_pipeline.generate_for_parameter_set,
-                        list(range(theta_base + start_idx, theta_base + end_idx)),
-                        list(seeds_2[start_idx:end_idx]),
-                    )
-                    out_list += results
+                _check_workers_can_start()
+                # Ship a user's drift or boundary function with the globals it
+                # reads. Without recurse, dill pickles a __main__ function's
+                # globals by reference, and a spawn worker re-imports __main__
+                # without running its main-guard block or its marimo cells, so
+                # a name bound there (`np`) raises NameError in the worker.
+                #
+                # Known limit: those globals travel with every task chunk
+                # (4 x n_cpus per round), so a __main__ function that reads a
+                # large global array pays that pickle each time. A function in
+                # an importable module is pickled by reference and pays nothing.
+                # Send the function once per worker (a pool initializer) if a
+                # user ever hits this.
+                recurse = dill.settings["recurse"]
+                dill.settings["recurse"] = True
+                try:
+                    with Pool(
+                        processes=self.generator_config["pipeline"]["n_cpus"]
+                    ) as pool:
+                        # Map strategy.generate_for_parameter_set over parameter indices
+                        results = pool.map(
+                            self._generation_pipeline.generate_for_parameter_set,
+                            list(range(theta_base + start_idx, theta_base + end_idx)),
+                            list(seeds_2[start_idx:end_idx]),
+                        )
+                        out_list += results
+                finally:
+                    dill.settings["recurse"] = recurse
             else:
                 if verbose:
                     logger.info("No Multiprocessing, since only one cpu requested!")

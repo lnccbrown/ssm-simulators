@@ -1,6 +1,7 @@
 """Tests for ssms.hssm_support module."""
 
 import random
+import uuid
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -10,6 +11,7 @@ from ssms.basic_simulators.simulator import (
     _RNG_SEED_C_LONG_MAX,
     _validate_random_state_for_c_rng,
 )
+from ssms.config import ModelConfigBuilder, model_config, register_model_config
 from ssms.hssm_support import (
     _broadcast_extra_fields,
     _build_decorated_simulator,
@@ -389,38 +391,37 @@ class TestGetSimulatorFunInternal:
         result = get_simulator_fun_internal(mock_simulator)
         assert result is mock_simulator
 
-    @patch("ssms.hssm_support.ssms_model_config")
-    @patch("ssms.hssm_support._build_decorated_simulator")
-    def test_get_simulator_fun_internal_string_known_model(
-        self, mock_build, mock_config
-    ):
-        """Test get_simulator_fun_internal with known model string."""
-        mock_config.__contains__ = Mock(return_value=True)
-        mock_config.get = Mock(return_value={"choices": [0, 1]})
-        mock_build.return_value = Mock()
+    @pytest.mark.parametrize(
+        ("model", "choices"),
+        [("ddm", [-1, 1]), ("ddm_deadline", [-1, 1]), ("race_no_bias_4", [0, 1, 2, 3])],
+    )
+    def test_known_model_takes_choices_from_its_config(self, model, choices, caplog):
+        result = get_simulator_fun_internal(model)
 
-        result = get_simulator_fun_internal("ddm")
+        assert result.model_name == model
+        assert result.choices == choices
+        assert "not supported" not in caplog.text
 
-        mock_build.assert_called_once_with(model_name="ddm", choices=[0, 1])
-        assert result == mock_build.return_value
+    def test_model_registered_after_import_is_supported(self, caplog):
+        """Models added with register_model_config are found (#427)."""
+        name = f"ddm_copy_{uuid.uuid4().hex}"
+        register_model_config(name, ModelConfigBuilder.from_model("ddm", name=name))
+        assert name not in model_config  # the import-time snapshot misses it
 
-    @patch("ssms.hssm_support.ssms_model_config")
-    @patch("ssms.hssm_support._build_decorated_simulator")
-    @patch("ssms.hssm_support._logger")
-    def test_get_simulator_fun_internal_string_unknown_model(
-        self, mock_logger, mock_build, mock_config
-    ):
-        """Test get_simulator_fun_internal with unknown model string."""
-        mock_config.__contains__ = Mock(return_value=False)
-        mock_config.get = Mock(return_value={"choices": [0, 1, 2]})
-        mock_build.return_value = Mock()
+        result = get_simulator_fun_internal(name)
 
-        get_simulator_fun_internal("unknown_model")
-
-        mock_logger.warning.assert_called_once()
-        mock_build.assert_called_once_with(
-            model_name="unknown_model", choices=[0, 1, 2]
+        assert result.choices == [-1, 1]  # not the [0, 1, 2] fallback
+        assert "not supported" not in caplog.text
+        sims = result(
+            theta=np.array([[0.5, 1.5, 0.5, 0.3]]), random_state=1, n_replicas=1
         )
+        assert set(np.unique(sims[..., 1])) <= {-1.0, 1.0}
+
+    def test_unknown_model_warns_and_falls_back(self, caplog):
+        result = get_simulator_fun_internal("unknown_model")
+
+        assert result.choices == [0, 1, 2]
+        assert "'unknown_model', which is currently not supported" in caplog.text
 
     def test_get_simulator_fun_internal_invalid_type(self):
         """Test get_simulator_fun_internal with invalid type."""
