@@ -15,9 +15,13 @@ Register a custom boundary:
 >>>
 >>> register_boundary("exponential", my_boundary, ["a", "decay"])
 >>>
->>> # Use with ModelConfigBuilder
+>>> # Use with ModelConfigBuilder: declare the new parameter and its bounds
 >>> from ssms.config import ModelConfigBuilder
->>> config = ModelConfigBuilder.from_model("ddm")
+>>> config = ModelConfigBuilder.from_model(
+...     "ddm",
+...     params=["v", "a", "z", "t", "decay"],
+...     param_bounds=[[-3.0, 0.3, 0.1, 0.0, 0.0], [3.0, 2.5, 0.9, 2.0, 1.0]],
+... )
 >>> config = ModelConfigBuilder.add_boundary(config, "exponential")
 
 List available boundaries:
@@ -212,9 +216,13 @@ def register_boundary(
     ...     params=["a", "rate"]
     ... )
     >>>
-    >>> # Now use it with ModelConfigBuilder
+    >>> # Now use it with ModelConfigBuilder: declare 'rate' and its bounds
     >>> from ssms.config import ModelConfigBuilder
-    >>> config = ModelConfigBuilder.from_model("ddm")
+    >>> config = ModelConfigBuilder.from_model(
+    ...     "ddm",
+    ...     params=["v", "a", "z", "t", "rate"],
+    ...     param_bounds=[[-3.0, 0.3, 0.1, 0.0, 0.0], [3.0, 2.5, 0.9, 2.0, 1.0]],
+    ... )
     >>> config = ModelConfigBuilder.add_boundary(config, "exponential_decay")
 
     Register a collapsing boundary:
