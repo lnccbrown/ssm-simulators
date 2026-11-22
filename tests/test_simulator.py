@@ -160,6 +160,44 @@ def test_simulator_runs_parallel(model):
     assert "metadata" in out
 
 
+@pytest.mark.parametrize(
+    "model",
+    [
+        "ddm",  # ddm_models.pyx
+        "levy",  # levy_models.pyx
+        "ornstein",  # ornstein_models.pyx
+        "ddm_par2",  # parallel_models.pyx
+        "ddm_seq2",  # sequential_models.pyx
+        "race_3",  # race_models.pyx — race_model
+        "lca_3",  # race_models.pyx — lca
+        "poisson_race",  # poisson_race_models.pyx
+    ],
+)
+def test_simulator_minimal_return_option(model):
+    """return_option='minimal' trims the metadata and changes nothing else (#433).
+
+    It used to raise ``KeyError: 'max_t'`` for every time-stepped simulator:
+    the binned outputs read ``max_t`` from the metadata, and the minimal
+    metadata does not carry it. The race and LCA simulators also reported
+    ``possible_choices=[-1, 1]`` in the minimal metadata whatever the number
+    of accumulators, which the choice probabilities are computed from.
+    """
+    cfg = model_config[model]
+    theta = dict(zip(cfg["params"], cfg["default_params"]))
+    kwargs = {"theta": theta, "model": model, "n_samples": 50, "random_state": 1}
+
+    full = simulator(**kwargs)
+    minimal = simulator(**kwargs, return_option="minimal")
+
+    assert minimal.keys() == full.keys()
+    for key in full.keys() - {"metadata"}:
+        np.testing.assert_array_equal(minimal[key], full[key], err_msg=key)
+    for key, value in minimal["metadata"].items():
+        np.testing.assert_array_equal(value, full["metadata"][key], err_msg=key)
+    assert "boundary" not in minimal["metadata"]
+    assert "trajectory" not in minimal["metadata"]
+
+
 def test_simulator_sigma_noise_conflict_raises():
     """ValueError when 's' is in theta and sigma_noise is also explicitly passed."""
     with pytest.raises(ValueError, match="sigma_noise parameter should be None"):

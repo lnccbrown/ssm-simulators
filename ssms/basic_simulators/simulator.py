@@ -833,11 +833,13 @@ def simulator(
 
     x["metadata"]["model"] = model
 
+    # Minimal metadata has no "max_t" entry, so fall back to the argument.
+    bin_max_t = x["metadata"].get("max_t", max_t)
     x["binned_128"] = np.expand_dims(
-        bin_simulator_output(x, nbins=128, max_t=-1, freq_cnt=True), axis=0
+        bin_simulator_output(x, nbins=128, max_t=bin_max_t, freq_cnt=True), axis=0
     )
     x["binned_256"] = np.expand_dims(
-        bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
+        bin_simulator_output(x, nbins=256, max_t=bin_max_t, freq_cnt=True), axis=0
     )
     return x
 
