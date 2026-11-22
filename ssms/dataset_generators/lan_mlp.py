@@ -59,8 +59,8 @@ def _probe_worker_start(start_method: str) -> None:
         probe.start()
         probe.join()
     except (EOFError, OSError) as err:
-        # 'forkserver' imports the script in its server process. When that
-        # dies, start() fails before there is an exit code to read.
+        # On Python 3.13+, 'forkserver' imports the script in its server
+        # process. When that dies, start() fails before there is an exit code.
         cause = err
     if cause is not None or probe.exitcode != 0:
         failure = (

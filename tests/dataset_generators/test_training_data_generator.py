@@ -486,12 +486,14 @@ TrainingDataGenerator(config=datagen_config).generate_data_training()
 """
 
 
-# 'spawn': the parent's traceback only. 'forkserver': the server dies while
-# importing the script, so start() raises and that error is chained as the cause.
+# 'spawn': the parent's traceback only. 'forkserver' on Python 3.13+: the server
+# dies while importing the script, so start() raises and that error is chained
+# as the cause. On 3.12 the server does not import the script, the worker does,
+# and the result is the same single traceback as under 'spawn'.
 @pytest.mark.parametrize(
-    ("start_method", "n_tracebacks"), [("spawn", 1), ("forkserver", 2)]
+    ("start_method", "max_tracebacks"), [("spawn", 1), ("forkserver", 2)]
 )
-def test_unguarded_script_fails_fast(tmp_path, start_method, n_tracebacks):
+def test_unguarded_script_fails_fast(tmp_path, start_method, max_tracebacks):
     """A script without a __main__ guard raises once instead of hanging.
 
     Each spawned worker re-imports the script and dies, and the pool used to
@@ -514,9 +516,9 @@ def test_unguarded_script_fails_fast(tmp_path, start_method, n_tracebacks):
     assert result.returncode != 0
     assert 'if __name__ == "__main__":' in result.stderr
     assert "SSMS_MP_START_METHOD" in result.stderr
-    # Worker tracebacks would add more.
-    assert result.stderr.count("Traceback (most recent call last)") == n_tracebacks
     assert result.stderr.splitlines()[-1].startswith("RuntimeError: A worker process")
+    # Worker tracebacks would add more.
+    assert result.stderr.count("Traceback (most recent call last)") <= max_tracebacks
 
 
 def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
