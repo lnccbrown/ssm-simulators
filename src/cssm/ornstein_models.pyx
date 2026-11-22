@@ -211,7 +211,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 

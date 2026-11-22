@@ -757,7 +757,7 @@ def ddm_flexbound(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             drift_inc_all_np[k] = v_view[k] * delta_t
@@ -1063,12 +1063,12 @@ def ddm_flex(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             # Drift
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             # Boundary
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -1377,11 +1377,11 @@ def ddm_flex_leak(np.ndarray[float, ndim = 1] v,
 
         for k in range(n_trials):
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -1714,11 +1714,11 @@ def ddm_flex_leak2(
 
         for k in range(n_trials):
             drift_params_tmp = {key: drift_params[key][k] for key in drift_params.keys()}
-            drifts_all_np[k, :, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)
+            drifts_all_np[k, :, :] = drift_fun(t=t_s, **drift_params_tmp).astype(DTYPE)[:num_steps]
 
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             half_sqrt_st_all_np[k] = sqrt_st_all_np[k] / 2.0
@@ -2048,7 +2048,7 @@ def full_ddm_rv(np.ndarray[float, ndim = 1] v, # = 0,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
         boundaries_all = boundaries_all_np
@@ -2368,7 +2368,7 @@ def full_ddm(np.ndarray[float, ndim = 1] v, # = 0,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
 
         boundaries_all = boundaries_all_np
 
@@ -2679,7 +2679,7 @@ def ddm_sdv(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
 
@@ -3249,7 +3249,7 @@ def ddm_flexbound_flat(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             sqrt_st_all_np[k] = delta_t_sqrt * s_view[k]
             drift_inc_all_np[k] = v_view[k] * delta_t
