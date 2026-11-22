@@ -133,8 +133,8 @@ def get_tradeoff_conflict_gamma_no_bias_config():
             "a",
             "theta",
             "scale",
-            "alphagamma",
-            "scalegamma",
+            "alphaGamma",
+            "scaleGamma",
         ],
         "param_bounds": [
             [-4.0, -4.0, -4.0, 0.0, 0.0, 0.3, 0.0, 0.0, 1.1, 0.5],
