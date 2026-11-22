@@ -561,6 +561,13 @@ class TrainingDataGenerator:
                 # globals by reference, and a spawn worker re-imports __main__
                 # without running its main-guard block or its marimo cells, so
                 # a name bound there (`np`) raises NameError in the worker.
+                #
+                # Known limit: those globals travel with every task chunk
+                # (4 x n_cpus per round), so a __main__ function that reads a
+                # large global array pays that pickle each time. A function in
+                # an importable module is pickled by reference and pays nothing.
+                # Send the function once per worker (a pool initializer) if a
+                # user ever hits this.
                 recurse = dill.settings["recurse"]
                 dill.settings["recurse"] = True
                 try:
