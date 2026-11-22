@@ -31,6 +31,7 @@ from ssms.basic_simulators.simulator import (
     validate_ssm_parameters,
 )
 from ssms.config import get_boundary_registry, get_drift_registry
+from ssms.config.model_config_builder import _simulator_taking_drift
 
 
 class Simulator:
@@ -192,10 +193,15 @@ class Simulator:
             config = deepcopy(model)
         # Case 2: Model name provided (including variants like "_deadline")
         elif isinstance(model, str):
-            # Use ModelConfigBuilder.from_model() which handles variant suffixes
+            # Use ModelConfigBuilder.from_model() which handles variant suffixes.
+            # A params override goes through it too, so n_params,
+            # default_params and bounds stay in step with params. Any other
+            # override describes the final model (a "_deadline" model with its
+            # deadline parameter) and is applied below.
             from ssms.config import ModelConfigBuilder
 
-            config = ModelConfigBuilder.from_model(model)
+            builder_overrides = config_overrides if "params" in config_overrides else {}
+            config = ModelConfigBuilder.from_model(model, **builder_overrides)
         # Case 3: Custom simulator without base model
         elif model is None and simulator_function is not None:
             config = self._create_minimal_config(simulator_function, config_overrides)
@@ -204,8 +210,9 @@ class Simulator:
                 "Must provide either a model name, config dict, or simulator_function"
             )
 
-        # Apply config overrides
-        config.update(config_overrides)
+        # Apply config overrides (unless from_model has applied them)
+        if not (isinstance(model, str) and "params" in config_overrides):
+            config.update(config_overrides)
 
         # Handle custom simulator function
         if simulator_function is not None:
@@ -418,7 +425,8 @@ class Simulator:
         Raises
         ------
         ValueError
-            If drift specification is invalid
+            If drift specification is invalid, or if the simulator takes no
+            drift function (a ``ddm_flexbound`` model switches to ``ddm_flex``)
         """
         if isinstance(drift, str):
             # Look up drift by name
@@ -450,6 +458,11 @@ class Simulator:
             # ValueError, not TypeError: the documented `Raises` contract.
             raise ValueError(  # noqa: TRY004
                 "drift must be a string name or callable function"
+            )
+
+        if "simulator" in config:
+            config["simulator"] = _simulator_taking_drift(
+                config["simulator"], config.get("name")
             )
 
     def _validate_boundary_function(self, func: Callable) -> None:

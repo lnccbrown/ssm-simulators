@@ -3,6 +3,11 @@
 This module tests error handling, validation, and edge cases for TrainingDataGenerator.
 """
 
+import multiprocessing
+import os
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -469,3 +474,139 @@ class TestPoolWorkerCount:
     def test_no_pool_when_only_one_cpu_is_allowed(self, monkeypatch):
         # The sequential branch, not a one-worker pool.
         assert self._spawned_worker_counts(monkeypatch, n_cpus=1) == []
+
+
+UNGUARDED_SCRIPT = """\
+from ssms.config.generator_config.data_generator_config import get_lan_kde_config
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+
+datagen_config = get_lan_kde_config(model="angle")
+datagen_config["pipeline"]["n_cpus"] = 2
+TrainingDataGenerator(config=datagen_config).generate_data_training()
+"""
+
+
+# 'spawn': the parent's traceback only. 'forkserver' on Python 3.13+: the server
+# dies while importing the script, so start() raises and that error is chained
+# as the cause. On 3.12 the server does not import the script, the worker does,
+# and the result is the same single traceback as under 'spawn'.
+@pytest.mark.parametrize(
+    ("start_method", "max_tracebacks"), [("spawn", 1), ("forkserver", 2)]
+)
+def test_unguarded_script_fails_fast(tmp_path, start_method, max_tracebacks):
+    """A script without a __main__ guard raises once instead of hanging.
+
+    Each spawned worker re-imports the script and dies, and the pool used to
+    replace dead workers forever while pool.map waited (issue #414).
+    """
+    if start_method not in multiprocessing.get_all_start_methods():
+        pytest.skip(f"{start_method} is not available on this platform")
+    script = tmp_path / "unguarded.py"
+    script.write_text(UNGUARDED_SCRIPT)
+
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={**os.environ, "SSMS_MP_START_METHOD": start_method},
+    )
+
+    assert result.returncode != 0
+    assert 'if __name__ == "__main__":' in result.stderr
+    assert "SSMS_MP_START_METHOD" in result.stderr
+    assert result.stderr.splitlines()[-1].startswith("RuntimeError: A worker process")
+    # Worker tracebacks would add more.
+    assert result.stderr.count("Traceback (most recent call last)") <= max_tracebacks
+
+
+def test_worker_still_importing_the_script_exits_quietly(monkeypatch):
+    """Inside a worker that re-imports the script, exit without a traceback."""
+    from ssms.dataset_generators import lan_mlp
+
+    monkeypatch.setattr(
+        lan_mlp.multiprocess.current_process(), "_inheriting", True, raising=False
+    )
+    with pytest.raises(SystemExit) as exc:
+        lan_mlp._check_workers_can_start()
+    assert exc.value.code == 1
+
+
+def test_probe_that_cannot_start_names_the_guard(monkeypatch):
+    """A start() failure gets the same guidance as a non-zero exit code.
+
+    Under 'forkserver' the server dies while importing the unguarded script,
+    so start() raises EOFError before there is an exit code. The subprocess
+    test above shows that for real; this one runs the branch in-process.
+    """
+    from ssms.dataset_generators import lan_mlp
+
+    class DeadServerProcess:
+        exitcode = None
+
+        def start(self):
+            raise EOFError
+
+    monkeypatch.setattr(lan_mlp.multiprocess, "Process", DeadServerProcess)
+    # __wrapped__: skip the cache, so the failure is not remembered.
+    with pytest.raises(RuntimeError, match="if __name__ ==") as exc:
+        lan_mlp._probe_worker_start.__wrapped__("forkserver")
+    assert isinstance(exc.value.__cause__, EOFError)
+    assert "EOFError" in str(exc.value)
+
+
+_MAIN_GUARD_DRIFT_SCRIPT = """
+import multiprocess
+
+from ssms.config import ModelConfigBuilder, register_drift
+from ssms.config.generator_config.data_generator_config import (
+    get_default_generator_config,
+)
+from ssms.dataset_generators.lan_mlp import TrainingDataGenerator
+
+
+def decaying_drift(t, v, decay_rate):
+    return v * np.exp(-decay_rate * t)
+
+
+if __name__ == "__main__":
+    # Bound in __main__ only when run, not when a spawn worker re-imports
+    # the script: how a marimo notebook's cells bind their names.
+    import numpy as np
+
+    multiprocess.set_start_method("spawn", force=True)
+    register_drift("decaying_drift", decaying_drift, params=["v", "decay_rate"])
+    model_config = ModelConfigBuilder.add_drift(
+        ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=[[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]],
+        ),
+        "decaying_drift",
+    )
+    gen_config = get_default_generator_config("lan")
+    gen_config["pipeline"].update(n_parameter_sets=2, n_subruns=1, n_cpus=2)
+    gen_config["simulator"]["n_samples"] = 1000
+    gen_config["training"]["n_samples_per_param"] = 100
+    data = TrainingDataGenerator(
+        config=gen_config, model_config=model_config
+    ).generate_data_training(save=False)
+    print(len(data["lan_data"]))
+"""
+
+
+def test_drift_using_runtime_main_globals_runs_in_spawn_workers(tmp_path):
+    """A drift defined in a script reads globals bound under the main guard;
+    spawn workers re-import the script without running that block."""
+    script = tmp_path / "custom_drift.py"
+    script.write_text(_MAIN_GUARD_DRIFT_SCRIPT)
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert result.stdout.strip() == "200"
