@@ -8,15 +8,18 @@ Note: Multiprocessing start method is configured in ssms/__init__.py
       SSMS_MP_START_METHOD environment variable if needed.
 """
 
+import functools
 import logging
 import os
 import secrets
+import sys
 import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
 
 import cloudpickle as pickle
+import multiprocess
 import numpy as np
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -27,6 +30,52 @@ from ssms.dataset_generators.protocols import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _check_workers_can_start() -> None:
+    """Raise instead of hanging when pool workers die while starting up.
+
+    Under 'spawn' (the ssms default) and 'forkserver', every worker re-imports
+    the script that started Python. A script that calls
+    generate_data_training() outside an ``if __name__ == "__main__":`` block
+    starts generation again inside each worker, the worker dies, and the pool
+    replaces it forever while ``pool.map`` waits. A dying worker cannot report
+    this to the parent, so the parent starts one throwaway process first.
+    """
+    if getattr(multiprocess.current_process(), "_inheriting", False):
+        # We are such a worker, still importing the script (the flag is the
+        # one multiprocess checks itself). Exit quietly; the parent raises.
+        sys.exit(1)
+    start_method = multiprocess.get_start_method()
+    if start_method != "fork":
+        _probe_worker_start(start_method)
+
+
+@functools.cache
+def _probe_worker_start(start_method: str) -> None:
+    probe = multiprocess.Process()
+    cause = None
+    try:
+        probe.start()
+        probe.join()
+    except (EOFError, OSError) as err:
+        # On Python 3.13+, 'forkserver' imports the script in its server
+        # process. When that dies, start() fails before there is an exit code.
+        cause = err
+    if cause is not None or probe.exitcode != 0:
+        failure = (
+            f"exit code {probe.exitcode}" if cause is None else type(cause).__name__
+        )
+        raise RuntimeError(
+            f"A worker process failed while starting up ({failure}). With the "
+            f"'{start_method}' start method, starting workers re-imports the "
+            "script you ran, so a call to generate_data_training() at the top of "
+            "the script starts generation again there. Put that code under "
+            '`if __name__ == "__main__":`, or set n_cpus=1 in the pipeline '
+            "config, or set the environment variable SSMS_MP_START_METHOD=fork "
+            "before importing ssms (ssms uses spawn by default because fork can "
+            "deadlock with OpenMP)."
+        ) from cause
 
 
 class TrainingDataGenerator:
@@ -555,6 +604,7 @@ class TrainingDataGenerator:
             # aggregation — which would be a good change, overlapping result
             # unpickling with compute — reinstate the reservation.
             if self.generator_config["pipeline"]["n_cpus"] > 1:
+                _check_workers_can_start()
                 with Pool(
                     processes=self.generator_config["pipeline"]["n_cpus"]
                 ) as pool:
