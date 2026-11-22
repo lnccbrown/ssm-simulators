@@ -193,12 +193,15 @@ class Simulator:
             config = deepcopy(model)
         # Case 2: Model name provided (including variants like "_deadline")
         elif isinstance(model, str):
-            # Use ModelConfigBuilder.from_model() which handles variant suffixes
-            # and keeps n_params, default_params and bounds in step with a
-            # params override.
+            # Use ModelConfigBuilder.from_model() which handles variant suffixes.
+            # A params override goes through it too, so n_params,
+            # default_params and bounds stay in step with params. Any other
+            # override describes the final model (a "_deadline" model with its
+            # deadline parameter) and is applied below.
             from ssms.config import ModelConfigBuilder
 
-            config = ModelConfigBuilder.from_model(model, **config_overrides)
+            builder_overrides = config_overrides if "params" in config_overrides else {}
+            config = ModelConfigBuilder.from_model(model, **builder_overrides)
         # Case 3: Custom simulator without base model
         elif model is None and simulator_function is not None:
             config = self._create_minimal_config(simulator_function, config_overrides)
@@ -207,8 +210,8 @@ class Simulator:
                 "Must provide either a model name, config dict, or simulator_function"
             )
 
-        # Apply config overrides (from_model has applied them to a named model)
-        if not isinstance(model, str):
+        # Apply config overrides (unless from_model has applied them)
+        if not (isinstance(model, str) and "params" in config_overrides):
             config.update(config_overrides)
 
         # Handle custom simulator function

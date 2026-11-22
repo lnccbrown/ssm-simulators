@@ -88,6 +88,25 @@ def test_params_override_on_named_model_rebuilds_bookkeeping():
     assert sim.config["param_bounds_dict"]["rate"] == (0.0, 2.0)
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"n_params": 5, "default_params": [0, 1, 0.5, 0.2, 5]},
+        {"default_params": [0, 1, 0.5, 0.2, 5]},
+        {"param_bounds": [[-3, 0.3, 0.1, 0, 1], [3, 2.5, 0.9, 2, 8]]},
+    ],
+)
+def test_overrides_without_params_describe_the_deadline_model(overrides):
+    """An override other than params has one entry per parameter of the final
+    model, deadline included, so it is applied after the deadline is added."""
+    config = Simulator("ddm_deadline", **overrides).config
+
+    assert config["params"] == ["v", "a", "z", "t", "deadline"]
+    assert config["n_params"] == 5
+    assert len(config["default_params"]) == 5
+    assert len(config["param_bounds"][0]) == 5
+
+
 class TestCustomBoundaryFunctions:
     """Test custom boundary function support."""
 
