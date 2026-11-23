@@ -375,3 +375,39 @@ def test_pyddm_pattern_actually_works(ddm_configs):
     lan_data = training_data_dict["lan_data"]
     assert lan_data.shape[0] > 0
     assert np.all(np.isfinite(lan_data[:, -1]))
+
+
+def _estimator_built_by_generator(gen_config, model_conf):
+    """Build one estimator the way the generator's own pipeline does."""
+    pipeline = TrainingDataGenerator(gen_config, model_conf)._generation_pipeline
+    theta = pipeline._param_sampler.sample(n_samples=1, rng=np.random.default_rng(0))
+    simulations = pipeline._run_simulations(theta, 0)
+    return pipeline.estimator_builder.build(theta, simulations)
+
+
+def test_generator_honors_documented_kde_displace_t(ddm_configs):
+    """`estimator.kde_displace_t`, the key the default config ships, is honored."""
+    gen_config, model_conf = ddm_configs
+    assert gen_config["estimator"]["kde_displace_t"] is False  # shipped default
+    gen_config["estimator"]["kde_displace_t"] = True
+
+    estimator = _estimator_built_by_generator(gen_config, model_conf)
+
+    assert estimator.displace_t is True
+    assert estimator._kde.displace_t is True
+
+
+def test_generator_honors_displace_t_alias(ddm_configs):
+    """`estimator.displace_t` keeps working on top of the default config.
+
+    The default config still holds `kde_displace_t=False`, so the two keys
+    disagree: the generator warns and displaces.
+    """
+    gen_config, model_conf = ddm_configs
+    gen_config["estimator"]["displace_t"] = True
+
+    with pytest.warns(UserWarning, match="alias of 'kde_displace_t'"):
+        estimator = _estimator_built_by_generator(gen_config, model_conf)
+
+    assert estimator.displace_t is True
+    assert estimator._kde.displace_t is True

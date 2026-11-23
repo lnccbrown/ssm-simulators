@@ -3,9 +3,14 @@
 This module tests the nested config utilities used throughout the codebase.
 """
 
+import warnings
+
+import pytest
+
 from ssms.config.config_utils import (
     get_nested_config,
     has_nested_structure,
+    resolve_kde_displace_t,
 )
 
 
@@ -97,3 +102,40 @@ class TestGetNestedConfig:
 
         value = get_nested_config(config, "pipeline", "key", default="default")
         assert value == "default"
+
+
+class TestResolveKdeDisplaceT:
+    """Test the resolve_kde_displace_t function."""
+
+    @pytest.mark.parametrize(
+        ("estimator", "expected"),
+        [
+            ({}, False),
+            ({"kde_displace_t": False}, False),
+            ({"kde_displace_t": True}, True),
+            ({"displace_t": True}, True),
+            ({"kde_displace_t": True, "displace_t": True}, True),
+            ({"kde_displace_t": False, "displace_t": False}, False),
+        ],
+    )
+    def test_documented_key_and_alias(self, estimator, expected):
+        """Either key alone, or both in agreement, resolve without a warning."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert resolve_kde_displace_t({"estimator": estimator}) is expected
+
+    def test_missing_estimator_section(self):
+        """A config without an estimator section does not displace."""
+        assert resolve_kde_displace_t({}) is False
+
+    @pytest.mark.parametrize(
+        "estimator",
+        [
+            {"kde_displace_t": False, "displace_t": True},
+            {"kde_displace_t": True, "displace_t": False},
+        ],
+    )
+    def test_disagreement_warns_and_displaces(self, estimator):
+        """Keys that disagree warn, and the True value wins."""
+        with pytest.warns(UserWarning, match="alias of 'kde_displace_t'"):
+            assert resolve_kde_displace_t({"estimator": estimator}) is True
