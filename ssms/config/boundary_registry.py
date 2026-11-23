@@ -87,7 +87,7 @@ class BoundaryRegistry:
 
         self._boundaries[name] = {
             "fun": function,
-            "params": params,
+            "params": list(params),
         }
 
     def get(self, name: str) -> dict[str, Any]:
@@ -103,7 +103,8 @@ class BoundaryRegistry:
         dict
             Dictionary containing:
             - 'fun': The boundary function
-            - 'params': List of parameter names (including 'a')
+            - 'params': Copy of the parameter names (including 'a');
+              editing it does not affect the registry
 
         Raises
         ------
@@ -115,7 +116,7 @@ class BoundaryRegistry:
         >>> registry = BoundaryRegistry()
         >>> config = registry.get("angle")
         >>> print(config["params"])
-        ['theta']
+        ['a', 'theta']
         """
         if name not in self._boundaries:
             available = self.list_boundaries()
@@ -123,7 +124,8 @@ class BoundaryRegistry:
                 f"Boundary '{name}' is not registered. "
                 f"Available boundaries: {available}"
             )
-        return self._boundaries[name]
+        spec = self._boundaries[name]
+        return {"fun": spec["fun"], "params": list(spec["params"])}
 
     def is_registered(self, name: str) -> bool:
         """Check if boundary name is registered.
