@@ -148,6 +148,11 @@ from .tradeoff import (
     get_tradeoff_no_bias_config,
     get_tradeoff_weibull_no_bias_config,
 )
+from .trdm import (
+    get_trdm_2_config,
+    get_trdm_2_guess_config,
+    get_trdm_3_config,
+)
 from .validation import get_invalid_configs, get_invalid_ndt_edge_shift_configs
 from .weibull import get_weibull_config
 
@@ -306,6 +311,9 @@ def get_model_config():
         "lnr3": get_lnr3_config(),
         "lnr4": get_lnr4_config(),
         "lnr2_corr": get_lnr2_corr_config(),
+        "trdm_2": get_trdm_2_config(),
+        "trdm_2_guess": get_trdm_2_guess_config(),
+        "trdm_3": get_trdm_3_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
@@ -383,6 +391,9 @@ __all__ = [
     "get_lnr3_config",
     "get_lnr4_config",
     "get_lnr2_corr_config",
+    "get_trdm_2_config",
+    "get_trdm_2_guess_config",
+    "get_trdm_3_config",
 ]
 
 # Validate
