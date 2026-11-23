@@ -46,6 +46,7 @@ from .dev_rlwm_lba import (
 )
 from .full_ddm import (
     get_full_ddm_config,
+    get_full_ddm_lan_config,
     get_full_ddm_rv_config,
 )
 from .gamma_drift import (
@@ -56,6 +57,9 @@ from .inv_temp_softmax import (
     get_inv_temp_softmax_2_config,
     get_inv_temp_softmax_3_config,
     get_inv_temp_softmax_4_config,
+    get_softmax_inv_temperature_2_config,
+    get_softmax_inv_temperature_3_config,
+    get_softmax_inv_temperature_4_config,
 )
 from .lba import (
     get_lba2_config,
@@ -78,6 +82,12 @@ from .lca import (
     get_lca_no_z_angle_4_config,
 )
 from .levy import get_levy_angle_config, get_levy_config
+from .lnr import (
+    get_lnr2_config,
+    get_lnr2_corr_config,
+    get_lnr3_config,
+    get_lnr4_config,
+)
 from .mic2 import (
     get_ddm_mic2_adj_angle_no_bias_config,
     get_ddm_mic2_adj_config,
@@ -101,7 +111,6 @@ from .mic2.multinoise import (
     get_ddm_mic2_multinoise_no_bias_config,
     get_ddm_mic2_multinoise_weibull_no_bias_config,
 )
-from .mlba import get_mlba2_config, get_mlba3_config
 from .ornstein import (
     get_ornstein_angle_config,
     get_ornstein_config,
@@ -237,6 +246,7 @@ def get_model_config():
         "addm": get_addm_config(),
         "full_ddm": get_full_ddm_config(),
         "full_ddm_rv": get_full_ddm_rv_config(),
+        "full_ddm_lan": get_full_ddm_lan_config(),
         "levy": get_levy_config(),
         "levy_angle": get_levy_angle_config(),
         "angle": get_angle_config(),
@@ -246,6 +256,9 @@ def get_model_config():
         "inv_temp_softmax_2": get_inv_temp_softmax_2_config(),
         "inv_temp_softmax_3": get_inv_temp_softmax_3_config(),
         "inv_temp_softmax_4": get_inv_temp_softmax_4_config(),
+        "softmax_inv_temperature_2": get_softmax_inv_temperature_2_config(),
+        "softmax_inv_temperature_3": get_softmax_inv_temperature_3_config(),
+        "softmax_inv_temperature_4": get_softmax_inv_temperature_4_config(),
         "shrink_spot": get_shrink_spot_config(),
         "shrink_spot_extended": get_shrink_spot_extended_config(),
         "shrink_spot_simple": get_shrink_spot_simple_config(),
@@ -289,8 +302,10 @@ def get_model_config():
         "lba_3_vs_constraint": get_lba_3_vs_constraint_config(),
         "lba_angle_3_vs_constraint": get_lba_angle_3_vs_constraint_config(),
         "lba_angle_3": get_lba_angle_3_config(),
-        "mlba2": get_mlba2_config(),
-        "mlba3": get_mlba3_config(),
+        "lnr2": get_lnr2_config(),
+        "lnr3": get_lnr3_config(),
+        "lnr4": get_lnr4_config(),
+        "lnr2_corr": get_lnr2_corr_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
@@ -321,6 +336,7 @@ __all__ = [
     "get_angle_extended_config",
     "get_weibull_config",
     "get_full_ddm_config",
+    "get_full_ddm_lan_config",
     "get_ddm_st_config",
     "get_ddm_normal_st_config",
     "get_ddm_truncnormt_config",
@@ -360,6 +376,13 @@ __all__ = [
     "get_inv_temp_softmax_2_config",
     "get_inv_temp_softmax_3_config",
     "get_inv_temp_softmax_4_config",
+    "get_softmax_inv_temperature_2_config",
+    "get_softmax_inv_temperature_3_config",
+    "get_softmax_inv_temperature_4_config",
+    "get_lnr2_config",
+    "get_lnr3_config",
+    "get_lnr4_config",
+    "get_lnr2_corr_config",
 ]
 
 # Validate

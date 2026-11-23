@@ -110,7 +110,11 @@ class TestBoundaryRegistry:
         )
 
         # Use with ModelConfigBuilder
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "slope"],
+            param_bounds=[[-3.0, 0.3, 0.1, 0.0, 0.0], [3.0, 2.5, 0.9, 2.0, 0.5]],
+        )
         config = ModelConfigBuilder.add_boundary(config, "test_linear_decay")
 
         assert config["boundary_name"] == "test_linear_decay"
@@ -184,7 +188,11 @@ class TestDriftRegistry:
         register_drift(name="test_exp_drift", function=exp_drift, params=["rate"])
 
         # Use with ModelConfigBuilder
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=[[-3.0, 0.3, 0.1, 0.0, 0.0], [3.0, 2.5, 0.9, 2.0, 1.0]],
+        )
         config = ModelConfigBuilder.add_drift(config, "test_exp_drift")
 
         assert config["drift_name"] == "test_exp_drift"

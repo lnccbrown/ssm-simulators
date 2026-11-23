@@ -63,7 +63,6 @@ from ssms.transforms.simulation import (
     DeleteParameters,
     ExpandDimension,
     LambdaAdaptation,
-    MLBAFrontEnd,
     RenameParameter,
     SetDefaultValue,
     SetZeroArray,
@@ -87,5 +86,4 @@ __all__ = [
     "ApplyMapping",
     "ConditionalAdaptation",
     "LambdaAdaptation",
-    "MLBAFrontEnd",
 ]

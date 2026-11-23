@@ -1,10 +1,17 @@
 import random
+import uuid
 
 import numpy as np
 import pytest
 
+import cssm
 import ssms
-from ssms.config import model_config
+from ssms.config import (
+    drift_registry,
+    model_config,
+    register_drift,
+    register_model_config,
+)
 from ssms.config.model_config_builder import ModelConfigBuilder
 from ssms.transforms import SwapIfLessConstraint
 
@@ -340,7 +347,11 @@ class TestModelConfigBuilder:
 
     def test_model_config_builder_add_boundary_string(self):
         """Test adding boundary by name."""
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "theta"],
+            param_bounds=[[-3.0, 0.3, 0.1, 0.0, -0.1], [3.0, 2.5, 0.9, 2.0, 1.3]],
+        )
 
         # Add a different boundary
         config = ModelConfigBuilder.add_boundary(config, "angle")
@@ -393,7 +404,14 @@ class TestModelConfigBuilder:
 
     def test_model_config_builder_add_drift_string(self):
         """Test adding drift by name."""
-        config = ModelConfigBuilder.from_model("ddm")
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "shape", "scale", "c"],
+            param_bounds=[
+                [-3.0, 0.3, 0.1, 0.0, 2.0, 0.01, -3.0],
+                [3.0, 2.5, 0.9, 2.0, 10.0, 1.0, 3.0],
+            ],
+        )
 
         # Add a drift function
         config = ModelConfigBuilder.add_drift(config, "gamma_drift")
@@ -604,3 +622,289 @@ class TestModelConfigBuilder:
         assert manual_config["n_params"] == auto_config["n_params"]
         assert manual_config["param_bounds_dict"] == auto_config["param_bounds_dict"]
         assert manual_config.get("deadline") == auto_config.get("deadline")
+
+
+# Bounds for ddm's [v, a, z, t] plus one extra parameter in [0, 2] (#308).
+_DDM_PLUS_ONE_BOUNDS = [[-2.5, 0.5, 0.3, 0.1, 0.0], [2.5, 2.0, 0.7, 0.8, 2.0]]
+
+
+class TestDeclaredParameters:
+    """Boundary and drift parameters live in params, with bounds (#308)."""
+
+    def test_params_override_rebuilds_n_params_and_default_params(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+
+        assert config["n_params"] == 5
+        # ddm's own defaults by name; the new parameter gets its bounds' midpoint
+        assert config["default_params"] == [0.0, 1.0, 0.5, 0.001, 1.0]
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+
+    def test_params_override_takes_base_defaults_by_name(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["t", "z", "a", "v"],
+            param_bounds=[[0.0, 0.1, 0.3, -3.0], [2.0, 0.9, 2.5, 3.0]],
+        )
+
+        assert config["default_params"] == [0.001, 0.5, 1.0, 0.0]
+
+    def test_explicit_n_params_and_default_params_win(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+            n_params=5,
+            default_params=[0.5, 1.2, 0.4, 0.2, 0.3],
+        )
+
+        assert config["default_params"] == [0.5, 1.2, 0.4, 0.2, 0.3]
+
+    def test_params_override_without_bounds_for_new_param_raises(self):
+        with pytest.raises(ValueError, match=r"No default value for .*'rate'"):
+            ModelConfigBuilder.from_model("ddm", params=["v", "a", "z", "t", "rate"])
+
+    def test_params_override_without_bounds_keeps_bounds_by_name(self):
+        ddm_bounds = ModelConfigBuilder.from_model("ddm")["param_bounds_dict"]
+        config = ModelConfigBuilder.from_model("ddm", params=["a", "v", "z", "t"])
+
+        lower, upper = config["param_bounds"]
+        # "a" moved to the front and takes its own bounds, not those of "v"
+        assert (lower[0], upper[0]) == tuple(ddm_bounds["a"])
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+
+    def test_params_override_with_deadline_variant(self):
+        config = ModelConfigBuilder.from_model(
+            "ddm_deadline",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+
+        assert config["params"] == ["v", "a", "z", "t", "rate", "deadline"]
+        assert config["n_params"] == 6
+        assert config["default_params"] == [0.0, 1.0, 0.5, 0.001, 1.0, 10.0]
+        assert ModelConfigBuilder.validate_config(config) == (True, [])
+
+    @pytest.mark.parametrize(
+        ("add", "spec"),
+        [
+            (ModelConfigBuilder.add_boundary, "angle"),
+            (ModelConfigBuilder.add_drift, "gamma_drift"),
+        ],
+    )
+    def test_add_by_name_raises_on_undeclared_params(self, add, spec):
+        config = ModelConfigBuilder.from_model("ddm")
+        before = dict(config)
+
+        with pytest.raises(ValueError, match=r"not in config\['params'\]"):
+            add(config, spec)
+        # Rejected before touching the config, which add_* edits in place
+        assert config == before
+
+    def test_add_callable_raises_on_undeclared_params(self):
+        def exp_collapse(t, a, rate):
+            return a * np.exp(-rate * t)
+
+        with pytest.raises(ValueError, match=r"\['rate'\]"):
+            ModelConfigBuilder.add_boundary(
+                ModelConfigBuilder.from_model("ddm"), exp_collapse, ["a", "rate"]
+            )
+        with pytest.raises(ValueError, match=r"\['rate'\]"):
+            ModelConfigBuilder.add_drift(
+                ModelConfigBuilder.from_model("ddm"), exp_collapse, ["a", "rate"]
+            )
+
+    def test_validate_config_flags_undeclared_boundary_and_drift_params(self):
+        config = ModelConfigBuilder.from_model("ddm")
+        config["boundary_params"] = ["a", "rate"]
+        config["drift_params"] = ["v", "decay"]
+
+        is_valid, errors = ModelConfigBuilder.validate_config(config, strict=True)
+
+        assert not is_valid
+        assert "boundary_params entries missing from params: ['rate']" in errors
+        assert "drift_params entries missing from params: ['decay']" in errors
+
+    def test_no_builtin_config_has_undeclared_boundary_or_drift_params(self):
+        registry = ssms.config.get_model_registry()
+        for name in registry.list_models():
+            _, errors = ModelConfigBuilder.validate_config(registry.get(name))
+            assert not [e for e in errors if "missing from params" in e], name
+
+    def test_declared_boundary_param_works_with_array_theta(self):
+        """A boundary parameter declared via from_model works end to end.
+
+        Array theta raised for the undeclared form shown in #308.
+        """
+
+        def exp_collapse(t, a, rate):
+            return a * np.exp(-rate * np.asarray(t))
+
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        config = ModelConfigBuilder.add_boundary(config, exp_collapse, ["a", "rate"])
+        sim = ssms.Simulator(config)
+        theta = {"v": 0.8, "a": 1.5, "z": 0.5, "t": 0.2, "rate": 0.5}
+
+        from_array = sim.simulate(
+            np.array([list(theta.values())]), n_samples=200, random_state=1
+        )
+        from_dict = sim.simulate(theta, n_samples=200, random_state=1)
+
+        np.testing.assert_array_equal(from_array["rts"], from_dict["rts"])
+        no_collapse = sim.simulate(
+            {**theta, "rate": 0.0}, n_samples=200, random_state=1
+        )
+        assert from_dict["rts"].mean() < no_collapse["rts"].mean()
+
+
+def _decaying_drift(t, v, decay_rate):
+    # Uses the module-level numpy import, as user code would.
+    return v * np.exp(-decay_rate * t)
+
+
+class TestAddDriftSimulator:
+    """add_drift must give a config whose simulator uses the drift (#426)."""
+
+    _THETA = {"v": 1.0, "a": 1.2, "z": 0.5, "t": 0.3}
+
+    @staticmethod
+    def _decay_config(base="ddm", name="ddm_decay"):
+        config = ModelConfigBuilder.from_model(
+            base,
+            name=name,
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        return ModelConfigBuilder.add_drift(
+            config, _decaying_drift, ["v", "decay_rate"]
+        )
+
+    def test_callable_drift_without_parameters_simulates(self):
+        def flat_drift(t):
+            return np.ones_like(t)
+
+        config = ModelConfigBuilder.add_drift(
+            ModelConfigBuilder.from_model("ddm"), flat_drift, []
+        )
+        # Unregistered, so a lookup by name would raise KeyError.
+        out = ssms.Simulator(config).simulate(
+            theta=self._THETA, n_samples=100, random_state=1
+        )
+        assert out["rts"].size == 100
+
+    def test_registered_custom_drift_model_end_to_end(self):
+        """The user route from #426: register_drift, add_drift, register."""
+        drift_name = f"decaying_drift_{uuid.uuid4().hex}"
+        model_name = f"ddm_decay_{uuid.uuid4().hex}"
+        register_drift(drift_name, _decaying_drift, params=["v", "decay_rate"])
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            name=model_name,
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        config = ModelConfigBuilder.add_drift(config, drift_name)
+        assert ModelConfigBuilder.validate_config(config, strict=True) == (True, [])
+        register_model_config(model_name, config)
+
+        def simulate(model, **extra):
+            return ssms.Simulator(model).simulate(
+                theta={**self._THETA, **extra}, n_samples=5000, random_state=1
+            )
+
+        ddm = simulate("ddm")
+        no_decay = simulate(model_name, decay_rate=0.0)
+        decay = simulate(model_name, decay_rate=3.0)
+
+        # A constant drift reproduces ddm exactly; a decaying one slows
+        # responses and lowers accuracy (the drift used to be ignored).
+        np.testing.assert_array_equal(no_decay["rts"], ddm["rts"])
+        np.testing.assert_array_equal(no_decay["choices"], ddm["choices"])
+        assert decay["rts"].mean() > ddm["rts"].mean() + 0.2
+        assert (decay["choices"] == 1).mean() < (ddm["choices"] == 1).mean() - 0.1
+
+    def test_unregistered_callable_drift_takes_effect(self):
+        config = self._decay_config()
+        sim = ssms.Simulator(config)
+
+        fast = sim.simulate({**self._THETA, "decay_rate": 0.0}, 2000, random_state=3)
+        slow = sim.simulate({**self._THETA, "decay_rate": 3.0}, 2000, random_state=3)
+
+        assert slow["rts"].mean() > fast["rts"].mean() + 0.2
+
+    def test_registered_drift_resolves_in_a_fresh_registry(self, monkeypatch):
+        """Spawn workers (TrainingDataGenerator, n_cpus > 1) start with a fresh
+        registry; the config carries the drift, so it still resolves there."""
+        drift_name = f"decaying_drift_{uuid.uuid4().hex}"
+        register_drift(drift_name, _decaying_drift, params=["v", "decay_rate"])
+        config = ModelConfigBuilder.from_model(
+            "ddm",
+            params=["v", "a", "z", "t", "decay_rate"],
+            param_bounds=_DDM_PLUS_ONE_BOUNDS,
+        )
+        sim = ssms.Simulator(ModelConfigBuilder.add_drift(config, drift_name))
+        theta = {**self._THETA, "decay_rate": 3.0}
+        in_parent = sim.simulate(theta, n_samples=2000, random_state=3)
+
+        monkeypatch.setattr(
+            drift_registry, "_GLOBAL_DRIFT_REGISTRY", drift_registry.DriftRegistry()
+        )
+        in_worker = sim.simulate(theta, n_samples=2000, random_state=3)
+
+        np.testing.assert_array_equal(in_worker["rts"], in_parent["rts"])
+
+    @pytest.mark.parametrize("base", ["ddm", "angle", "ddm_deadline"])
+    def test_ddm_flexbound_configs_switch_to_ddm_flex(self, base):
+        config = ModelConfigBuilder.from_model(base)
+        boundary = config["boundary_name"]
+
+        config = ModelConfigBuilder.add_drift(config, "constant")
+
+        assert config["simulator"] is cssm.ddm_flex
+        assert config["boundary_name"] == boundary
+
+    @pytest.mark.parametrize(
+        ("base", "drift", "simulator"),
+        [
+            ("gamma_drift", "constant", cssm.ddm_flex),
+            ("conflict_stimflexrel1_leak", "constant", cssm.ddm_flex_leak),
+        ],
+    )
+    def test_drift_capable_simulator_is_kept(self, base, drift, simulator):
+        config = ModelConfigBuilder.add_drift(
+            ModelConfigBuilder.from_model(base), drift
+        )
+        assert config["simulator"] is simulator
+
+    @pytest.mark.parametrize("base", ["ddm_legacy", "full_ddm", "ornstein", "levy"])
+    def test_simulator_without_drift_function_raises(self, base):
+        config = ModelConfigBuilder.from_model(base)
+        before = dict(config)
+
+        with pytest.raises(ValueError, match="takes no drift function"):
+            ModelConfigBuilder.add_drift(config, "constant")
+        assert config == before
+
+    def test_simulator_drift_argument_switches_ddm(self):
+        """Simulator(model, drift=...) had the same silent-ignore gap."""
+        sim = ssms.Simulator(
+            "ddm",
+            drift=lambda t, v: v * np.exp(-3.0 * t),
+            drift_params=["v"],
+        )
+        assert sim.config["simulator"] is cssm.ddm_flex
+
+        decay = sim.simulate(self._THETA, n_samples=2000, random_state=5)
+        ddm = ssms.Simulator("ddm").simulate(self._THETA, 2000, random_state=5)
+        assert decay["rts"].mean() > ddm["rts"].mean() + 0.2
+
+    def test_simulator_drift_argument_raises_without_drift_function(self):
+        with pytest.raises(ValueError, match="takes no drift function"):
+            ssms.Simulator("ornstein", drift="constant")

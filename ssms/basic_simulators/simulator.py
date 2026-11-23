@@ -364,21 +364,25 @@ def make_drift_dict(config: dict, theta: dict) -> dict:
             - drift_params (dict): Extracted drift-related parameters.
             If no drift name is specified in config, returns an empty dictionary.
     """
-    if "drift_name" in config:
-        drift_name = config["drift_name"]
-        drift_registry = get_drift_registry()
-        drift_info = drift_registry.get(drift_name)
-
-        drift_params = {
-            param_name: value
-            for param_name, value in theta.items()
-            if param_name in drift_info["params"]
-        }
+    if callable(config.get("drift")) and config.get("drift_params") is not None:
+        # The config carries the function AND its param-name list (as
+        # ModelConfigBuilder.add_drift sets them), as for boundaries above: a
+        # drift passed as a callable needs no registry entry, and a registered
+        # one also works in multiprocessing workers with a fresh registry.
+        drift_fun = config["drift"]
+        drift_params_names = config["drift_params"]
+    elif "drift_name" in config:
+        drift_info = get_drift_registry().get(config["drift_name"])
         drift_fun = drift_info["fun"]
-        drift_dict = {"drift_fun": drift_fun, "drift_params": drift_params}
+        drift_params_names = drift_info["params"]
     else:
-        drift_dict = {}
-    return drift_dict
+        return {}
+    drift_params = {
+        param_name: value
+        for param_name, value in theta.items()
+        if param_name in drift_params_names
+    }
+    return {"drift_fun": drift_fun, "drift_params": drift_params}
 
 
 # TODO: Make useful as independent utility,
@@ -815,48 +819,9 @@ def simulator(
 
     # Postprocess simulator output ----------------------------
     # Additional model outputs, easy to compute:
-    # Choice probability
-    x["choice_p"] = np.zeros((n_trials, len(x["metadata"]["possible_choices"])))
-    x["choice_p_no_omission"] = np.zeros(
-        (n_trials, len(x["metadata"]["possible_choices"]))
+    x.update(
+        _choice_probabilities(x["rts"], x["choices"], x["metadata"]["possible_choices"])
     )
-    x["omission_p"] = np.zeros((n_trials, 1))
-    x["nogo_p"] = np.zeros((n_trials, 1))
-    x["go_p"] = np.zeros((n_trials, 1))
-
-    # Calculate choice probabilities by trial
-    # TODO: #79 vectorize this
-    for k in range(n_trials):
-        out_len = x["rts"][:, k, :].shape[0]
-        out_len_no_omission = x["rts"][:, k, :][
-            x["rts"][:, k, :] != OMISSION_SENTINEL
-        ].shape[0]
-
-        for n, choice in enumerate(x["metadata"]["possible_choices"]):
-            x["choice_p"][k, n] = (x["choices"][:, k, :] == choice).sum() / out_len
-            if out_len_no_omission > 0:
-                x["choice_p_no_omission"][k, n] = (
-                    x["choices"][:, k, :][x["rts"][:, k, :] != OMISSION_SENTINEL]
-                    == choice
-                ).sum() / out_len_no_omission
-            else:
-                # All trials were omissions, so choice probability is undefined.
-                # We use OMISSION_SENTINEL to signal this to downstream code.
-                x["choice_p_no_omission"][k, n] = OMISSION_SENTINEL
-
-        # Omission Probability (deadline)
-        x["omission_p"][k, 0] = (x["rts"][:, k, :] == OMISSION_SENTINEL).sum() / out_len
-
-        # Nogo Probability
-        # NOTE: If deadline is set in simulator --> this is the nogo probability
-        # + the omission probability
-        x["nogo_p"][k, 0] = (
-            # AF-TODO: This should rather have a designated no-go choice
-            # instead of `max`
-            (x["choices"][:, k, :] != max(x["metadata"]["possible_choices"]))
-            | (x["rts"][:, k, :] == OMISSION_SENTINEL)
-        ).sum() / out_len
-        x["go_p"][k, 0] = 1 - x["nogo_p"][k, 0]
 
     # Output compatibility
     if n_trials == 1:
@@ -874,6 +839,50 @@ def simulator(
     x["binned_256"] = np.expand_dims(
         bin_simulator_output(x, nbins=256, max_t=-1, freq_cnt=True), axis=0
     )
+    return x
+
+
+def _choice_probabilities(
+    rts: np.ndarray, choices: np.ndarray, possible_choices
+) -> dict[str, np.ndarray]:
+    """Per-trial choice, omission and go/no-go probabilities.
+
+    ``rts`` and ``choices`` have shape ``(n_samples, n_trials, 1)``, as returned by
+    the simulators. Each output has ``n_trials`` rows: ``choice_p`` and
+    ``choice_p_no_omission`` one column per entry of ``possible_choices``,
+    ``omission_p``, ``nogo_p`` and ``go_p`` a single column. Probabilities are
+    integer counts divided by integer totals, so they are exact float64 ratios.
+    """
+    n_samples = rts.shape[0]
+    possible_choices = np.asarray(possible_choices)
+
+    omitted = rts == OMISSION_SENTINEL  # (n_samples, n_trials, 1)
+    # Broadcasts against the trailing axis: (n_samples, n_trials, n_choices)
+    hits = choices == possible_choices
+    n_no_omission = (~omitted).sum(axis=0)  # (n_trials, 1)
+
+    x = {}
+    x["choice_p"] = hits.sum(axis=0) / n_samples
+    # A trial where every response is an omission has undefined choice
+    # probabilities; OMISSION_SENTINEL signals this to downstream code.
+    x["choice_p_no_omission"] = np.where(
+        n_no_omission > 0,
+        (hits & ~omitted).sum(axis=0) / np.maximum(n_no_omission, 1),
+        OMISSION_SENTINEL,
+    )
+
+    # Omission Probability (deadline)
+    x["omission_p"] = omitted.sum(axis=0) / n_samples
+
+    # Nogo Probability
+    # NOTE: If deadline is set in simulator --> this is the nogo probability
+    # + the omission probability
+    # AF-TODO: This should rather have a designated no-go choice
+    # instead of `max`
+    x["nogo_p"] = ((choices != possible_choices.max()) | omitted).sum(
+        axis=0
+    ) / n_samples
+    x["go_p"] = 1 - x["nogo_p"]
     return x
 
 
