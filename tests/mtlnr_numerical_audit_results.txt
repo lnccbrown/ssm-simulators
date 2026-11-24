@@ -1,0 +1,60 @@
+A. Table 3 quantities: 10 seeds x 400k trials/cell x 66 cells
+id                           mean    MC sd  analytic   sim-ana   paper ana-paper
+sdt_sd_new_low             0.7073   0.0005    0.7073    0.0001   0.707    0.0003
+sdt_sd_weak_low            1.0542   0.0009    1.0542    0.0000   1.055   -0.0008
+sdt_sd_strong_low          0.9450   0.0006    0.9450    0.0000   0.942    0.0030
+sdt_sd_new_high            0.7012   0.0005    0.7011    0.0001   0.700    0.0011
+sdt_sd_weak_high           0.9093   0.0007    0.9088    0.0004   0.908    0.0008
+sdt_sd_strong_high         0.8884   0.0009    0.8884    0.0001   0.890   -0.0016
+crit_new_high_medium      -0.6439   0.0001   -0.6440    0.0001  -0.647    0.0030
+crit_new_medium_low       -0.1723   0.0001   -0.1722   -0.0000  -0.172   -0.0002
+crit_old_high_medium       0.5524   0.0001    0.5524    0.0001   0.550    0.0024
+sdt_sd_new_high analytic with rho cap 0.999: 0.6983 (cap 0.995: 0.7011)
+
+B. Figure 7 label probabilities (labels winner+2*conf; 0=new,1=old)
+neg_corr: rho=-0.9
+  closed form : [0.163479 0.187959 0.141597 0.224536 0.077597 0.204831]
+  |cf - quad| max: 1.94e-16
+  simulated   : [0.163962 0.18763  0.141604 0.224462 0.077304 0.205038]
+  z (sim vs cf): [ 1.85 -1.19  0.03 -0.25 -1.55  0.72]  max|z|=1.85
+  P(old)=0.6173  P(high conf)=0.2824  P(low conf)=0.3514
+independent: rho=0.0
+  closed form : [0.19766  0.256515 0.117687 0.27522  0.025039 0.127878]
+  |cf - quad| max: 1.11e-16
+  simulated   : [0.197642 0.256624 0.117916 0.275364 0.024765 0.127688]
+  z (sim vs cf): [-0.06  0.35  1.01  0.45 -2.48 -0.81]  max|z|=2.48
+  P(old)=0.6596  P(high conf)=0.1529  P(low conf)=0.4542
+pos_corr: rho=0.9
+  closed form : [9.626643e-02 6.844395e-01 3.653587e-04 2.187658e-01 2.898924e-10
+ 1.629072e-04]
+  |cf - quad| max: 5.19e-17
+  simulated   : [9.606050e-02 6.847475e-01 3.360000e-04 2.186940e-01 0.000000e+00
+ 1.620000e-04]
+  z (sim vs cf): [-0.99  0.94 -2.17 -0.25 -0.02 -0.1 ]  max|z|=2.17
+  P(old)=0.9034  P(high conf)=0.0002  P(low conf)=0.7807
+
+C. Quadrature reference accuracy and RT quantiles (pos_corr = hardest)
+  neg_corr quad epsabs=1e-08: max|quad - closed form| = 2.65e-14
+  neg_corr quad epsabs=1e-12: max|quad - closed form| = 1.94e-16
+  neg_corr label 0: n=326667, sim q10/50/90=[0.3341 0.4019 0.4827], F_ref(q)-p=[ 0.00072  0.00137 -0.00023], max|z|=1.57
+  neg_corr label 1: n=375852, sim q10/50/90=[0.3319 0.3994 0.4803], F_ref(q)-p=[-0.00014  0.00185  0.00067], max|z|=2.26
+  neg_corr label 2: n=283951, sim q10/50/90=[0.2455 0.3023 0.3689], F_ref(q)-p=[-0.0004   0.00033 -0.00041], max|z|=0.73
+  neg_corr label 3: n=448450, sim q10/50/90=[0.243  0.2988 0.3658], F_ref(q)-p=[0.0001  0.00126 0.00036], max|z|=1.68
+  neg_corr label 4: n=155454, sim q10/50/90=[0.1404 0.2027 0.2565], F_ref(q)-p=[-0.0011  -0.00041 -0.00139], max|z|=1.83
+  neg_corr label 5: n=409626, sim q10/50/90=[0.1256 0.1928 0.2512], F_ref(q)-p=[-0.00014 -0.00022 -0.00038], max|z|=0.80
+  independent quad epsabs=1e-08: max|quad - closed form| = 1.11e-16
+  independent quad epsabs=1e-12: max|quad - closed form| = 1.11e-16
+  independent label 0: n=396780, sim q10/50/90=[0.2426 0.4032 0.67  ], F_ref(q)-p=[-6.7e-04 -9.6e-04  1.0e-05], max|z|=1.41
+  independent label 1: n=513074, sim q10/50/90=[0.2404 0.3988 0.6625], F_ref(q)-p=[ 2.4e-04 -3.2e-04 -6.0e-05], max|z|=0.57
+  independent label 2: n=235512, sim q10/50/90=[0.1834 0.3069 0.5125], F_ref(q)-p=[-0.00045  0.00022  0.00027], max|z|=0.72
+  independent label 3: n=549262, sim q10/50/90=[0.1799 0.3007 0.5026], F_ref(q)-p=[ 0.00024 -0.00037 -0.00021], max|z|=0.60
+  independent label 4: n=49873, sim q10/50/90=[0.1257 0.2157 0.3618], F_ref(q)-p=[-0.00301  0.00165 -0.00062], max|z|=2.24
+  independent label 5: n=255499, sim q10/50/90=[0.1187 0.206  0.3505], F_ref(q)-p=[-4.5e-04  4.5e-04  7.0e-05], max|z|=0.77
+  pos_corr quad epsabs=1e-08: max|quad - closed form| = 5.18e-17
+  pos_corr quad epsabs=1e-12: max|quad - closed form| = 5.19e-17
+  pos_corr label 0: n=192458, sim q10/50/90=[0.216  0.4298 0.8553], F_ref(q)-p=[0.00148 0.00176 0.00028], max|z|=2.16
+  pos_corr label 1: n=1369510, sim q10/50/90=[0.1975 0.3951 0.7908], F_ref(q)-p=[-0.00054 -0.0007   0.00014], max|z|=2.11
+  pos_corr label 2: 720 samples, quantiles skipped
+  pos_corr label 3: n=436981, sim q10/50/90=[0.1643 0.3276 0.6547], F_ref(q)-p=[ 0.00015 -0.00036  0.00035], max|z|=0.78
+  pos_corr label 4: 0 samples, quantiles skipped
+  pos_corr label 5: 331 samples, quantiles skipped
