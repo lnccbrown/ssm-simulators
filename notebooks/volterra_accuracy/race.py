@@ -169,10 +169,17 @@ class RaceAccumulator:
         distance = self._boundary_starts[stage] - mean
         lower = max(0.0, distance - 12.0 * spread) / width
         upper = max(0.0, distance + 12.0 * spread) / width
-        # Density is localized around eta; the CDF also includes all smaller
-        # positive distances. Map their separate intervals onto [0, 1].
+        # The density is localized within 12 of eta. The crossing probability
+        # from distance z needs its own stop: for negative eta it keeps an
+        # exp(2*eta*z) term near the boundary however small the density is.
+        # It is at most min(2*Phi(max(eta, 0) - z), exp(2*min(eta, 0)*z)), by
+        # reflection and by the probability of ever crossing, so beyond
+        # passage_stop it is below 6e-32. Map the two intervals onto [0, 1].
+        density_stop = np.maximum(0.0, eta + 12.0)
+        with np.errstate(divide="ignore"):
+            passage_stop = np.minimum(np.maximum(eta, 0.0) + 12.0, 36.0 / np.maximum(-eta, 0.0))
         starts = np.stack((np.maximum(lower, eta - 12.0), lower))
-        stops = np.minimum(upper, np.maximum(0.0, eta + 12.0))
+        stops = np.minimum(upper, np.stack((density_stop, passage_stop)))
         spans = np.maximum(stops - starts, 0.0)
         variance = self.sigma[previous]**2 * duration
         drift_distance = (self.mu[previous] - self.boundary_slopes[previous]) * duration

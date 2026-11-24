@@ -13,6 +13,8 @@ from scipy.stats import invgauss, levy
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "notebooks"))
 
+from volterra_accuracy.paper_method_prototypes import CenteredAccumulator  # noqa: E402
+from volterra_accuracy.race import RaceAccumulator  # noqa: E402
 from volterra_accuracy.race_single_stage import big_F  # noqa: E402
 
 
@@ -61,3 +63,36 @@ def test_big_F_is_continuous_across_the_old_tail_switch():
     cdf = big_F(t, v, 1.0, d, 0.0, 10.0, 0.0)
     assert 0 <= cdf[1] - cdf[0] < 1e-8
     np.testing.assert_allclose(cdf, hit_cdf(t, v, 1.0, d), rtol=0, atol=1e-12)
+
+
+def constant_accumulator(cls, breaks, v, sigma, d, order=80):
+    """One unchanged process cut at ``breaks``: the cuts must not change its law."""
+    k = len(breaks) - 1
+    return cls(breaks, [v] * k, [sigma] * k, [0.0] * k, d, quadrature_order=order)
+
+
+@pytest.mark.parametrize("cls", [RaceAccumulator, CenteredAccumulator])
+@pytest.mark.parametrize("breaks", [[0, 0.01, 13], [0, 0.01, 0.5, 13]])
+def test_stage_cdf_keeps_earlier_crossings_under_strong_negative_drift(cls, breaks):
+    # eta = v*sqrt(elapsed)/sigma passes -11 and -12 inside the last stage
+    # (t near 7.6 and 9). The shared density/CDF cutoff lost crossing mass from
+    # there on, down to a CDF of 0.204 instead of 0.449 at t = 13 (#384).
+    # The three-stage variant propagates through each backend's node grid.
+    t = np.r_[0.01, 2.0, 8.86, 9.0, 13.0, np.linspace(7.0, 10.5, 141)]
+    cdf = constant_accumulator(cls, breaks, -4.0, 1.0, 0.1).marginal(t)[1]
+    # 1e-8: the adaptive integral runs at 1e-10 absolute / 1e-8 relative, and
+    # Laguerre propagation at order 80 is good to about 1e-9 here.
+    np.testing.assert_allclose(cdf, hit_cdf(t, -4.0, 1.0, 0.1), rtol=0, atol=1e-8)
+    assert np.diff(cdf[5:]).min() >= -1e-12
+
+
+@pytest.mark.parametrize("v", [0.67, 0.0, -0.18, -2.5])
+def test_second_stage_cdf_is_accurate_and_continuous_at_the_node(v):
+    # Two stages use the exact incoming density, so only the within-stage
+    # integral is under test.
+    acc = constant_accumulator(RaceAccumulator, [0, 0.3, 2], v, 0.8, 1.35, order=20)
+    t = np.r_[np.linspace(0.01, 2, 300), 0.3 - 1e-9, 0.3 + 1e-9]
+    cdf = acc.marginal(t)[1]
+    np.testing.assert_allclose(cdf, hit_cdf(t, v, 0.8, 1.35), rtol=0, atol=1e-9)
+    assert np.diff(cdf[:300]).min() >= -1e-12
+    assert 0 <= cdf[-1] - cdf[-2] < 1e-8
