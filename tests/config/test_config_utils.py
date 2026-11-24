@@ -3,14 +3,12 @@
 This module tests the nested config utilities used throughout the codebase.
 """
 
-import warnings
-
 import pytest
 
 from ssms.config.config_utils import (
+    get_kde_displace_t,
     get_nested_config,
     has_nested_structure,
-    resolve_kde_displace_t,
 )
 
 
@@ -104,38 +102,21 @@ class TestGetNestedConfig:
         assert value == "default"
 
 
-class TestResolveKdeDisplaceT:
-    """Test the resolve_kde_displace_t function."""
+class TestGetKdeDisplaceT:
+    """Test the get_kde_displace_t function."""
 
     @pytest.mark.parametrize(
-        ("estimator", "expected"),
+        ("config", "expected"),
         [
             ({}, False),
-            ({"kde_displace_t": False}, False),
-            ({"kde_displace_t": True}, True),
-            ({"displace_t": True}, True),
-            ({"kde_displace_t": True, "displace_t": True}, True),
-            ({"kde_displace_t": False, "displace_t": False}, False),
+            ({"estimator": {"kde_displace_t": False}}, False),
+            ({"estimator": {"kde_displace_t": True}}, True),
+            ({"estimator": {"displace_t": True}}, True),
+            # The alias set on top of the default config's kde_displace_t=False.
+            ({"estimator": {"kde_displace_t": False, "displace_t": True}}, True),
+            ({"estimator": {"kde_displace_t": True, "displace_t": False}}, True),
         ],
     )
-    def test_documented_key_and_alias(self, estimator, expected):
-        """Either key alone, or both in agreement, resolve without a warning."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            assert resolve_kde_displace_t({"estimator": estimator}) is expected
-
-    def test_missing_estimator_section(self):
-        """A config without an estimator section does not displace."""
-        assert resolve_kde_displace_t({}) is False
-
-    @pytest.mark.parametrize(
-        "estimator",
-        [
-            {"kde_displace_t": False, "displace_t": True},
-            {"kde_displace_t": True, "displace_t": False},
-        ],
-    )
-    def test_disagreement_warns_and_displaces(self, estimator):
-        """Keys that disagree warn, and the True value wins."""
-        with pytest.warns(UserWarning, match="alias of 'kde_displace_t'"):
-            assert resolve_kde_displace_t({"estimator": estimator}) is True
+    def test_either_key_turns_displacement_on(self, config, expected):
+        """The shipped key and its alias are both read; one true value is enough."""
+        assert get_kde_displace_t(config) is expected

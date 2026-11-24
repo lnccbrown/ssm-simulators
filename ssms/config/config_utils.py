@@ -15,7 +15,6 @@ Nested structure (REQUIRED):
 Note: Only nested configs are supported. Flat configs are no longer accepted.
 """
 
-import warnings
 from typing import Any
 
 
@@ -51,45 +50,23 @@ def get_nested_config(config: dict, section: str, key: str, default: Any = None)
     return default
 
 
-def resolve_kde_displace_t(generator_config: dict) -> bool:
-    """Resolve whether the KDE is built on displaced response times.
+def get_kde_displace_t(generator_config: dict) -> bool:
+    """Read whether the KDE is built on displaced response times.
 
-    Reads ``estimator.kde_displace_t`` (the key the default config ships) and
-    accepts ``estimator.displace_t`` as an alias. Because the default config
-    holds ``kde_displace_t=False``, a config that sets only the alias to True
-    holds both keys with different values. That case cannot be told apart from
-    an explicit conflict, so a disagreement warns and resolves to True.
+    ``estimator.kde_displace_t`` is the key the default config ships, and
+    ``estimator.displace_t`` is accepted as an alias. Displacement is on if
+    either key is true.
 
     Args:
-        generator_config: Generator configuration dictionary (nested structure)
+        generator_config: Generator configuration dictionary
 
     Returns:
         True if either key is set to a true value, else False
-
-    Examples:
-        >>> resolve_kde_displace_t({"estimator": {"kde_displace_t": True}})
-        True
-
-        >>> resolve_kde_displace_t({"estimator": {"displace_t": True}})
-        True
-
-        >>> resolve_kde_displace_t({"estimator": {}})
-        False
     """
-    estimator_config = generator_config.get("estimator") or {}
-    values = {
-        key: bool(estimator_config[key])
+    return any(
+        get_nested_config(generator_config, "estimator", key)
         for key in ("kde_displace_t", "displace_t")
-        if key in estimator_config
-    }
-    if len(set(values.values())) > 1:
-        warnings.warn(
-            f"generator_config['estimator'] sets {values}. "
-            "'displace_t' is an alias of 'kde_displace_t': using True. "
-            "Set both keys to the same value to silence this warning.",
-            stacklevel=2,
-        )
-    return any(values.values())
+    )
 
 
 def has_nested_structure(config: dict) -> bool:

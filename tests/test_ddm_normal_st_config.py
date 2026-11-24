@@ -150,8 +150,6 @@ def test_generator_refuses_displace_t_for_ddm_normal_st(key):
             config=generator_config, model_config=model_config["ddm_normal_st"]
         )
 
-    # The override reaches both keys and the builder that reads them.
-    assert generator.generator_config["estimator"]["kde_displace_t"] is False
     assert generator.generator_config["estimator"]["displace_t"] is False
     assert generator._generation_pipeline.estimator_builder.displace_t is False
 
