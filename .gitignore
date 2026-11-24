@@ -159,6 +159,9 @@ dmypy.json
 
 explorations/
 
+# Generated notebook results
+/notebooks/volterra_accuracy/results/
+
 # Generated per-checkout by HSSMSpine's cross-editor sync
 # (scripts/sync_agent_config.py materializes these from .claude/).
 .cursor/
