@@ -44,9 +44,19 @@ def test_kde_builder_initialization_default():
     assert builder.displace_t is False
 
 
-def test_kde_builder_initialization_with_displace_t():
-    """Test builder extracts displace_t from config."""
-    config = {"estimator": {"displace_t": True}, "simulator": {"n_samples": 1000}}
+@pytest.mark.parametrize(
+    "estimator_config",
+    [
+        {"kde_displace_t": True},
+        {"displace_t": True},
+        # The alias set on top of the default config's kde_displace_t=False.
+        {"kde_displace_t": False, "displace_t": True},
+        {"kde_displace_t": True, "displace_t": False},
+    ],
+)
+def test_kde_builder_initialization_with_displace_t(estimator_config):
+    """Test builder reads displace_t from the shipped key or its alias."""
+    config = {"estimator": estimator_config, "simulator": {"n_samples": 1000}}
     builder = KDEEstimatorBuilder(config)
 
     assert builder.displace_t is True
