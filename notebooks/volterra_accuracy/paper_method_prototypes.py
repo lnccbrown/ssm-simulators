@@ -162,6 +162,33 @@ class AnalyticFirstVolterraAccumulator(VolterraAccumulator):
     analytic_first_stage = True
 
 
+def first_passage_times(gap, relative_drift, sigma, rng):
+    """Draw the times at which a boundary ``gap`` above is first reached.
+
+    ``inf`` marks a path that never reaches it. This is the inverse-Gaussian
+    transformation of Michael, Schucany & Haas (1976) with mean
+    ``gap/|relative_drift|`` and shape ``(gap/sigma)**2``, rearranged so that
+    nothing divides by the drift or subtracts nearly equal terms. With
+    ``nu = Z**2``, ``k = |relative_drift|*gap/sigma**2`` and
+    ``root = nu + 2k + sqrt(nu*(nu + 4k))``, its smaller root is
+    ``2*(gap/sigma)**2/root``, taken with probability ``root/(root + 2k)``; the
+    larger one is ``sigma**2*root/(2*relative_drift**2)``. At zero drift this is
+    the Levy draw ``(gap/(sigma*Z))**2``, so a drift of 1e-17 behaves like zero
+    instead of cancelling catastrophically as ``rng.wald`` does for a huge mean.
+    """
+    k = abs(relative_drift) * gap / sigma**2
+    nu = rng.standard_normal(gap.size) ** 2
+    root = nu + 2 * k + np.sqrt(nu * (nu + 4 * k))
+    larger = rng.random(gap.size) * (root + 2 * k) < 2 * k
+    with np.errstate(divide="ignore", over="ignore"):
+        tau = 2 * (gap / sigma) ** 2 / root
+        tau[larger] = sigma**2 * root[larger] / (2 * relative_drift**2)
+    if relative_drift < 0:
+        # Moving away from the boundary: it is reached with probability exp(-2k).
+        tau[rng.random(gap.size) >= np.exp(-2 * k)] = np.inf
+    return tau
+
+
 def sample_runner(acc, n, rng):
     """Stage-exact FPT sampling in ideal arithmetic, with rejection survivors.
 
@@ -181,13 +208,7 @@ def sample_runner(acc, n, rng):
         gap = acc._boundary_starts[stage] - x
         sigma = acc.sigma[stage]
         relative_drift = acc.mu[stage] - acc.boundary_slopes[stage]
-        if relative_drift == 0:
-            tau = (gap / (sigma * rng.standard_normal(active.size))) ** 2
-        else:
-            tau = rng.wald(gap / abs(relative_drift), (gap / sigma) ** 2)
-            if relative_drift < 0:
-                hit_probability = np.exp(2 * relative_drift * gap / sigma**2)
-                tau[rng.random(active.size) >= hit_probability] = np.inf
+        tau = first_passage_times(gap, relative_drift, sigma, rng)
         crossed = tau <= duration
         hits[active[crossed]] = acc.breaks[stage] + tau[crossed]
         active = active[~crossed]

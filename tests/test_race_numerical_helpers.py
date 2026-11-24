@@ -13,7 +13,11 @@ from scipy.stats import invgauss, levy
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "notebooks"))
 
-from volterra_accuracy.paper_method_prototypes import CenteredAccumulator  # noqa: E402
+from volterra_accuracy.paper_method_prototypes import (  # noqa: E402
+    CenteredAccumulator,
+    first_passage_times,
+    sample_runner,
+)
 from volterra_accuracy.race import RaceAccumulator  # noqa: E402
 from volterra_accuracy.race_single_stage import big_F  # noqa: E402
 
@@ -96,3 +100,79 @@ def test_second_stage_cdf_is_accurate_and_continuous_at_the_node(v):
     np.testing.assert_allclose(cdf, hit_cdf(t, v, 0.8, 1.35), rtol=0, atol=1e-9)
     assert np.diff(cdf[:300]).min() >= -1e-12
     assert 0 <= cdf[-1] - cdf[-2] < 1e-8
+
+
+def cdf_distance(sample, cdf, end_mass):
+    """sup |empirical CDF - cdf| over all times; ``inf`` entries are 'not reached'.
+
+    ``end_mass`` is the CDF's limit where the finite samples stop: the
+    probability of ever reaching the boundary, or the CDF at a censoring time.
+    """
+    x = np.sort(sample[np.isfinite(sample)])
+    steps = np.arange(x.size + 1) / sample.size
+    exact = cdf(x)
+    return max(
+        np.abs(steps[1:] - exact).max(),
+        np.abs(steps[:-1] - exact).max(),
+        abs(steps[-1] - end_mass),
+    )
+
+
+def dkw_bound(n, alpha=1e-6):
+    """Distance a correct sampler exceeds with probability at most ``alpha``."""
+    return np.sqrt(np.log(2 / alpha) / (2 * n))
+
+
+# (relative drift, sigma, gap): ordinary drifts of both signs, zero, drifts too
+# small for rng.wald (a rounding residue among them), a strong drift, a drift
+# away from the boundary that mostly never arrives, and a tiny gap.
+FIRST_PASSAGE_CASES = [
+    (0.67, 0.8, 1.35),
+    (-0.18, 0.8, 1.35),
+    (0.0, 0.8, 1.35),
+    (1e-12, 0.8, 1.35),
+    (-1e-12, 0.8, 1.35),
+    (0.3 - 0.1 - 0.2, 0.8, 1.35),
+    (1e-300, 0.8, 1.35),
+    (5.0, 0.5, 2.0),
+    (-1.0, 1.0, 1.0),
+    (0.67, 0.8, 1e-3),
+]
+
+
+@pytest.mark.parametrize("v, sigma, d", FIRST_PASSAGE_CASES)
+def test_first_passage_times_follow_the_exact_law(v, sigma, d):
+    n = 200_000
+    tau = first_passage_times(np.full(n, d), v, sigma, np.random.default_rng(386))
+    assert (tau > 0).all()  # also rejects nan
+    # A drift below 1e-9 changes the law by far less than the bound resolves,
+    # so those cases are held to the driftless law.
+    law = 0.0 if abs(v) < 1e-9 else v
+    ever_reached = np.exp(min(2 * law * d / sigma**2, 0.0))
+    distance = cdf_distance(tau, lambda t: hit_cdf(t, law, sigma, d), ever_reached)
+    assert distance < dkw_bound(n)
+
+
+def test_sample_runner_survives_a_rounding_residue_drift():
+    # 0.3 - 0.1 - 0.2 is -2.8e-17, not 0; rng.wald turned that into 58% hits
+    # at time zero (#386). The hit fraction must be the driftless one.
+    d, sigma, horizon, n = 1.35, 0.8, 0.55, 20_000
+    acc = RaceAccumulator([0.0, horizon], [0.3 - 0.1 - 0.2], [sigma], [0.0], d)
+    hits, _ = sample_runner(acc, n, np.random.default_rng(3))
+    p = hit_cdf(horizon, 0.0, sigma, d)
+    assert (hits > 0).all()
+    assert abs(np.isfinite(hits).mean() - p) < 5 * np.sqrt(p * (1 - p) / n)
+
+
+@pytest.mark.parametrize("v", [0.67, 0.0, -0.18])
+def test_sample_runner_is_unchanged_by_artificial_stage_cuts(v):
+    # Each cut redraws the survivors' positions and restarts the clock; with
+    # identical parameters in every stage the law must stay the single-stage one.
+    n, deadline = 200_000, 2.0
+    breaks = [0, 0.02, 0.57, 0.95, 1.42, deadline]
+    acc = constant_accumulator(RaceAccumulator, breaks, v, 0.8, 1.35)
+    hits, _ = sample_runner(acc, n, np.random.default_rng(368))
+    distance = cdf_distance(
+        hits, lambda t: hit_cdf(t, v, 0.8, 1.35), hit_cdf(deadline, v, 0.8, 1.35)
+    )
+    assert distance < dkw_bound(n)
