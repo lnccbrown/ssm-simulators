@@ -5,16 +5,21 @@ checked without executing a notebook.
 """
 
 import sys
+from functools import cache
 from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy.integrate import quad
+from scipy.special import log_ndtr, ndtr
 from scipy.stats import invgauss, levy
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "notebooks"))
 
 from volterra_accuracy.paper_method_prototypes import (  # noqa: E402
+    AnalyticFirstVolterraAccumulator,
     CenteredAccumulator,
+    VolterraAccumulator,
     first_passage_times,
     sample_runner,
 )
@@ -176,3 +181,135 @@ def test_sample_runner_is_unchanged_by_artificial_stage_cuts(v):
         hits, lambda t: hit_cdf(t, v, 0.8, 1.35), hit_cdf(deadline, v, 0.8, 1.35)
     )
     assert distance < dkw_bound(n)
+
+
+# Two stages whose boundary, seen in cumulative-variance time, changes slope at
+# the node. Only then is the Volterra history integral nonzero; the notebook's
+# exact cases all keep (mu - slope)/sigma**2 constant and never exercise it (#387).
+TWO_STAGE_CASES = {
+    "drift": dict(
+        breaks=[0, 0.4, 1.2],
+        mu=[0.5, 2.0],
+        sigma=[1.0, 1.0],
+        boundary_slopes=[0.0, 0.0],
+        boundary0=1.0,
+    ),
+    "drift, noise and slope": dict(
+        breaks=[0, 0.4, 1.2],
+        mu=[0.5, 1.4],
+        sigma=[1.0, 0.7],
+        boundary_slopes=[0.0, -0.3],
+        boundary0=1.0,
+    ),
+}
+STAGE_TWO_TIMES = np.array([0.4001, 0.41, 0.6, 1.0, 1.2])
+VOLTERRA_BACKENDS = [VolterraAccumulator, AnalyticFirstVolterraAccumulator]
+
+
+def stage_density(s, v, sigma, g):
+    """First-passage density a time ``s`` after starting a gap ``g`` below."""
+    return (
+        g
+        / (sigma * np.sqrt(2 * np.pi * s**3))
+        * np.exp(-((g - v * s) ** 2) / (2 * sigma**2 * s))
+    )
+
+
+def stage_cdf(s, v, sigma, g):
+    """Reflection formula for the same passage; fast enough to integrate over."""
+    r = sigma * np.sqrt(s)
+    return ndtr((v * s - g) / r) + np.exp(
+        2 * v * g / sigma**2 + log_ndtr((-v * s - g) / r)
+    )
+
+
+@cache
+def two_stage_reference(name):
+    """(density, cdf) at STAGE_TWO_TIMES without any Volterra machinery.
+
+    Integrate the density of the gap left by paths that survived stage one
+    (method of images) against the stage-two passage density and CDF from that
+    gap, with SciPy's adaptive quad. Its error estimates stay below 1e-13.
+    """
+    spec = TWO_STAGE_CASES[name]
+    duration, d = spec["breaks"][1], spec["boundary0"]
+    v1, v2 = np.subtract(spec["mu"], spec["boundary_slopes"])
+    s1, s2 = spec["sigma"]
+    variance = s1**2 * duration
+
+    def survivors(g):
+        gaussian = np.exp(-((g - d + v1 * duration) ** 2) / (2 * variance))
+        return (
+            gaussian / np.sqrt(2 * np.pi * variance) * -np.expm1(-2 * d * g / variance)
+        )
+
+    far = d - v1 * duration + 12 * np.sqrt(variance)
+
+    def integral(kernel, s):
+        # The stage-two kernels are confined to gaps within ``near`` of zero.
+        near = min(10 * s2 * np.sqrt(s) + abs(v2) * s, far)
+        return sum(
+            quad(
+                lambda g: survivors(g) * kernel(s, v2, s2, g),
+                *limits,
+                epsabs=1e-14,
+                epsrel=1e-13,
+                limit=400,
+            )[0]
+            for limits in ((0, near), (near, far))
+        )
+
+    elapsed = STAGE_TWO_TIMES - duration
+    density = np.array([integral(stage_density, s) for s in elapsed])
+    passage = np.array([integral(stage_cdf, s) for s in elapsed])
+    return density, stage_cdf(duration, v1, s1, d) + passage
+
+
+@pytest.mark.parametrize("name", TWO_STAGE_CASES)
+def test_two_stage_cases_have_a_history_term(name):
+    spec = TWO_STAGE_CASES[name]
+    slopes = np.subtract(spec["boundary_slopes"], spec["mu"]) / np.square(spec["sigma"])
+    assert abs(slopes[1] - slopes[0]) > 1
+    # Continuing the stage-one law past the node, which is what a vanishing
+    # history term would amount to, misses the reference by a wide margin.
+    unchanged = stage_cdf(
+        STAGE_TWO_TIMES, -slopes[0], spec["sigma"][0], spec["boundary0"]
+    )
+    assert abs(unchanged - two_stage_reference(name)[1]).max() > 0.2
+
+
+@pytest.mark.parametrize("cls", VOLTERRA_BACKENDS)
+@pytest.mark.parametrize("name", TWO_STAGE_CASES)
+def test_volterra_converges_to_the_two_stage_reference(cls, name):
+    errors = []
+    for order in (10, 20, 40, 80):
+        density, cdf = cls(**TWO_STAGE_CASES[name], quadrature_order=order).marginal(
+            STAGE_TWO_TIMES
+        )
+        reference = two_stage_reference(name)
+        errors.append(
+            max(abs(density - reference[0]).max(), abs(cdf - reference[1]).max())
+        )
+    assert errors[0] > errors[1] > errors[2]
+    # 1e-9 is ten times the history integral's absolute tolerance; the observed
+    # error at order 80 is near 1e-14.
+    assert errors[3] < 1e-9
+
+
+@pytest.mark.parametrize("cls", VOLTERRA_BACKENDS)
+@pytest.mark.parametrize("name", TWO_STAGE_CASES)
+def test_volterra_at_the_stage_node(cls, name):
+    spec = TWO_STAGE_CASES[name]
+    node, (s1, s2) = spec["breaks"][1], spec["sigma"]
+    v1 = spec["mu"][0] - spec["boundary_slopes"][0]
+    density, cdf = cls(**spec, quadrature_order=80).marginal(
+        np.array([node, node + 1e-9])
+    )
+    # The CDF is continuous and starts stage two with the stage-one mass.
+    np.testing.assert_allclose(
+        cdf[0], stage_cdf(node, v1, s1, spec["boundary0"]), rtol=0, atol=1e-12
+    )
+    assert 0 <= cdf[1] - cdf[0] < 1e-8
+    # The density is continuous in variance time, so in clock time it steps by
+    # the ratio of the variances; the cusp after the node costs about 3e-5 here.
+    np.testing.assert_allclose(density[1] / density[0], (s2 / s1) ** 2, rtol=1e-3)
