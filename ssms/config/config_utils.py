@@ -50,25 +50,6 @@ def get_nested_config(config: dict, section: str, key: str, default: Any = None)
     return default
 
 
-def get_kde_displace_t(generator_config: dict) -> bool:
-    """Read whether the KDE is built on displaced response times.
-
-    ``estimator.kde_displace_t`` is the key the default config ships, and
-    ``estimator.displace_t`` is accepted as an alias. Displacement is on if
-    either key is true.
-
-    Args:
-        generator_config: Generator configuration dictionary
-
-    Returns:
-        True if either key is set to a true value, else False
-    """
-    return any(
-        get_nested_config(generator_config, "estimator", key)
-        for key in ("kde_displace_t", "displace_t")
-    )
-
-
 def has_nested_structure(config: dict) -> bool:
     """Check if config uses the required nested structure.
 

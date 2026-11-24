@@ -58,9 +58,12 @@ class KDEEstimatorBuilder:
         self.generator_config = generator_config
 
         # Extract and cache the displace_t parameter from nested config
-        from ssms.config.config_utils import get_kde_displace_t
+        from ssms.config.config_utils import get_nested_config
 
-        self.displace_t = get_kde_displace_t(generator_config)
+        self.displace_t = any(
+            get_nested_config(generator_config, "estimator", key)
+            for key in ("kde_displace_t", "displace_t")
+        )
 
     def build(
         self, theta: dict[str, Any], simulations: dict[str, Any] | None = None

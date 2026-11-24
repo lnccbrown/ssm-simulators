@@ -26,7 +26,7 @@ import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from ssms.config import KDE_NO_DISPLACE_T
-from ssms.config.config_utils import get_kde_displace_t
+from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
 from ssms.dataset_generators.protocols import (
     DataGenerationPipelineProtocol,
 )
@@ -278,9 +278,9 @@ class TrainingDataGenerator:
 
         # Handle config-specific setup only if we have generator_config dict
         if isinstance(config, dict):
-            # Settle displace_t once and record it under both key names, so the
-            # estimator builder reads the value the generator settled on.
-            displace_t = get_kde_displace_t(self.generator_config)
+            # Ask the KDE builder how it reads displace_t, then record the
+            # settled value under both key names for the builder the pipeline makes.
+            displace_t = KDEEstimatorBuilder(self.generator_config).displace_t
             if (
                 displace_t
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T

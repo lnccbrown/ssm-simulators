@@ -3,10 +3,7 @@
 This module tests the nested config utilities used throughout the codebase.
 """
 
-import pytest
-
 from ssms.config.config_utils import (
-    get_kde_displace_t,
     get_nested_config,
     has_nested_structure,
 )
@@ -100,23 +97,3 @@ class TestGetNestedConfig:
 
         value = get_nested_config(config, "pipeline", "key", default="default")
         assert value == "default"
-
-
-class TestGetKdeDisplaceT:
-    """Test the get_kde_displace_t function."""
-
-    @pytest.mark.parametrize(
-        ("config", "expected"),
-        [
-            ({}, False),
-            ({"estimator": {"kde_displace_t": False}}, False),
-            ({"estimator": {"kde_displace_t": True}}, True),
-            ({"estimator": {"displace_t": True}}, True),
-            # The alias set on top of the default config's kde_displace_t=False.
-            ({"estimator": {"kde_displace_t": False, "displace_t": True}}, True),
-            ({"estimator": {"kde_displace_t": True, "displace_t": False}}, True),
-        ],
-    )
-    def test_either_key_turns_displacement_on(self, config, expected):
-        """The shipped key and its alias are both read; one true value is enough."""
-        assert get_kde_displace_t(config) is expected
