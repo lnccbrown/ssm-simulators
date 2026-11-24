@@ -1,0 +1,6 @@
+paper: slope low 2.02, high 1.84; fitted p(DK) low ~0.335, high ~0.425, increase ~0.08
+A=0.5 sv_c=0.7: slope low=1.937 high=2.070 | p(DK) low=0.223 high=0.353 increase=0.130
+A=0.5 sv_c=1.4: slope low=1.503 high=1.622 | p(DK) low=0.164 high=0.267 increase=0.104
+A=1.0 sv_c=1.0: slope low=1.809 high=1.938 | p(DK) low=0.204 high=0.327 increase=0.123
+A=2.0 sv_c=0.7: slope low=2.023 high=2.111 | p(DK) low=0.236 high=0.364 increase=0.129
+A=2.0 sv_c=1.4: slope low=1.668 high=1.781 | p(DK) low=0.184 high=0.298 increase=0.114

@@ -1,0 +1,12 @@
+0.5 low speed 0.912 0.895 1.009 omit<2.5:
+0.5 low accuracy 1.074 1.122 1.241 omit<2.5:
+0.5 high speed 0.712 0.719 0.801 omit<2.5:
+0.5 high accuracy 0.837 0.843 0.941 omit<2.5:
+1.0 low speed 0.980 0.958 1.086 omit<2.5:
+1.0 low accuracy 1.138 1.185 1.313 omit<2.5:
+1.0 high speed 0.775 0.778 0.875 omit<2.5:
+1.0 high accuracy 0.896 0.899 1.011 omit<2.5:
+2.0 low speed 1.104 1.076 1.233 omit<2.5:
+2.0 low accuracy 1.255 1.299 1.450 omit<2.5:
+2.0 high speed 0.893 0.888 1.018 omit<2.5:
+2.0 high accuracy 1.006 1.003 1.145 omit<2.5:
