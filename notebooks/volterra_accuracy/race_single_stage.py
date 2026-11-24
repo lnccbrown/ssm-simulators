@@ -7,9 +7,10 @@ has one such process for every response alternative.
 
 from __future__ import annotations
 
-from math import erfc, log, pi, sqrt
+from math import erfc, pi, sqrt
 
 import numpy as np
+from scipy.special import log_ndtr
 
 
 _SQRT_2 = sqrt(2.0)
@@ -20,17 +21,6 @@ def _normal_cdf(x):
     x = np.asarray(x, dtype=float)
     # erfc retains useful precision in the negative tail, unlike 1 + erf(x).
     return 0.5 * np.vectorize(erfc, otypes=[float])(-x / _SQRT_2)
-
-
-def _log_normal_cdf(x):
-    """Stable log Phi(x), including the far negative tail."""
-    x = np.asarray(x, dtype=float)
-    result = np.empty_like(x)
-    tail = x < -8.0
-    # First correction to Mills' ratio; sufficient for the quadrature tail.
-    result[tail] = -0.5 * x[tail] ** 2 - np.log(-x[tail]) - 0.5 * log(2.0 * pi) - 1.0 / x[tail] ** 2
-    result[~tail] = np.log(_normal_cdf(x[~tail]))
-    return result
 
 
 def _validate_parameters(sigma: float, a: float, x0, T: float) -> None:
@@ -80,9 +70,7 @@ def big_F(t, mu: float, sigma: float, a: float, b: float, T: float, x0):
     )
     log_second_term = (
         2.0 * relative_drift * distance / sigma**2
-        + _log_normal_cdf(
-            (-distance - relative_drift * elapsed) / (sigma * root_elapsed)
-        )
+        + log_ndtr((-distance - relative_drift * elapsed) / (sigma * root_elapsed))
     )
     value = first_term + np.exp(np.minimum(log_second_term, 0.0))
     # Floating-point round-off can otherwise produce values just outside [0, 1].
