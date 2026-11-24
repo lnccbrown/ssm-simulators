@@ -1,3 +1,4 @@
+import inspect
 import random
 import uuid
 
@@ -8,6 +9,8 @@ import cssm
 import ssms
 from ssms.config import (
     drift_registry,
+    get_boundary_registry,
+    get_drift_registry,
     model_config,
     register_drift,
     register_model_config,
@@ -908,3 +911,49 @@ class TestAddDriftSimulator:
     def test_simulator_drift_argument_raises_without_drift_function(self):
         with pytest.raises(ValueError, match="takes no drift function"):
             ssms.Simulator("ornstein", drift="constant")
+
+
+# `constant` is the placeholder boundary of the models whose simulator has no
+# boundary (LBA, LNR, softmax, poisson_race, racing_diffusion_3): `a` is not read.
+_PLACEHOLDER_PARAMS = {("constant", "a")}
+
+
+@pytest.mark.parametrize("model", sorted(model_config))
+def test_builtin_model_declares_its_boundary_and_drift_params(model):
+    """A boundary or drift parameter is read from theta under its registered name.
+
+    One that the model does not list under that exact name never reaches the
+    function, which then runs on its own default without a message.
+    """
+    config = model_config[model]
+    for kind, registry in (
+        ("boundary", get_boundary_registry()),
+        ("drift", get_drift_registry()),
+    ):
+        name = config.get(f"{kind}_name")
+        if name is None:
+            continue
+        info = registry.get(name)
+        accepted = inspect.signature(info["fun"]).parameters
+        undeclared = [
+            param
+            for param in info["params"]
+            if param in accepted
+            and param not in config["params"]
+            and (name, param) not in _PLACEHOLDER_PARAMS
+        ]
+        assert not undeclared, f"{kind} '{name}' reads {undeclared}"
+
+
+def test_tradeoff_conflict_gamma_params_all_change_the_simulation():
+    """Its alphaGamma and scaleGamma were declared in lower case and never read."""
+    model = "tradeoff_conflict_gamma_no_bias"
+    config = model_config[model]
+    theta = dict(zip(config["params"], config["default_params"]))
+
+    def rts(theta):
+        return ssms.Simulator(model).simulate(theta, 200, random_state=3)["rts"]
+
+    for param in config["params"]:
+        changed = rts({**theta, param: theta[param] + 0.25})
+        assert not np.array_equal(changed, rts(theta)), param
