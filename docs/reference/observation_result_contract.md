@@ -50,6 +50,11 @@ config **before simulation**: `get_model_registry().get("circular_diffusion")`
 no discrete choice labels, not that the model produces no response. Legacy
 model configs need not declare an observation schema.
 
+The circular simulator's raw `observations` always remain sample-first. At the
+HSSM boundary, the circular sampler returns `(n_trials, n_replicas, 2)`, or
+`(n_trials, 2)` for one replica. For example, with two trials and three replicas,
+raw `observations[r, t]` corresponds to the HSSM-facing pair at `[t, r]`.
+
 ## Version 1 schema entries
 
 `observation_schema` is a non-empty tuple of mappings. Its order defines the final

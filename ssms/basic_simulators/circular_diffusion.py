@@ -82,13 +82,15 @@ def _draw_exits(theta, sigma, n_replicas, random_state):
 
 
 def sample_circular_diffusion(theta, random_state, n_replicas):
-    """Sample uncensored unit-noise RT/angle pairs, replicas contiguous per theta row.
+    """Sample uncensored unit-noise RT/angle pairs grouped by theta row.
 
     theta is one [vx, vy, a, t] vector or a matrix with one vector per trial.
-    random_state is an integer, NumPy Generator, or None. Returns a float array
-    of shape (n_trials * n_replicas, 2); radians are always in [-pi, pi).
+    random_state is an integer, NumPy Generator, or None. Returns an array of shape
+    (n_trials, n_replicas, 2), or (n_trials, 2) for one replica. The trial axis
+    is kept even for one trial. Angles are in radians on [-pi, pi).
     """
-    return _draw_exits(theta, 1.0, n_replicas, random_state).reshape(-1, 2)
+    pairs = _draw_exits(theta, 1.0, n_replicas, random_state)
+    return pairs[:, 0, :] if n_replicas == 1 else pairs
 
 
 def circular_diffusion(

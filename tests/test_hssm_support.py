@@ -369,6 +369,35 @@ class TestSsmsSimWrapper:
         result = hssm_sim_wrapper(simulator_fun, [1], "ddm", 1, 42)
         np.testing.assert_array_equal(result, [-999.0, -1])
 
+    def test_empty_choices_do_not_identify_a_circular_response(self):
+        def simulator_fun(**kwargs):
+            return {
+                "observations": np.array([[[np.nan, np.nan]]]),
+                "metadata": {
+                    "possible_choices": [],
+                    "observation_schema_version": 1,
+                    "observation_schema": (
+                        {
+                            "name": "rt",
+                            "kind": "continuous",
+                            "lower": 0,
+                            "lower_inclusive": False,
+                        },
+                        {
+                            "name": "response",
+                            "kind": "continuous",
+                            "lower": 0,
+                            "upper": 1,
+                        },
+                    ),
+                },
+                "rts": np.array([[[-999.0]]]),
+                "choices": np.array([[[-999.0]]]),
+            }
+
+        result = hssm_sim_wrapper(simulator_fun, [1], "confidence", 1, 42)
+        np.testing.assert_array_equal(result, [-999.0, -999.0])
+
 
 class TestBuildDecoratedSimulator:
     """Tests for _build_decorated_simulator function."""

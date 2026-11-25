@@ -235,6 +235,20 @@ def decorate_atomic_simulator(
     return decorator
 
 
+def _has_rt_and_circular_response(metadata):
+    """Whether the producer declares the version-1 RT/angle observation layout."""
+    match metadata:
+        case {
+            "observation_schema_version": 1,
+            "observation_schema": (
+                {"name": "rt", "kind": "continuous"},
+                {"kind": "circular"},
+            ),
+        }:
+            return True
+    return False
+
+
 def hssm_sim_wrapper(simulator_fun, theta, model, n_replicas, random_state, **kwargs):
     """Wrap a ssms simulator function to match HSSM's expected interface.
 
@@ -260,9 +274,10 @@ def hssm_sim_wrapper(simulator_fun, theta, model, n_replicas, random_state, **kw
 
     Returns
     -------
-    array-like
-        Array of shape (n_trials, 2) containing reaction times and choices
-        stacked column-wise
+    np.ndarray
+        For a declared RT/angle result, returns (trial, replica, coordinate),
+        or (trial, coordinate) for one replica. Legacy RT/choice results retain
+        their (replica, trial, coordinate) order and squeeze singleton axes.
     """
     out = simulator_fun(
         theta=theta,
@@ -271,12 +286,9 @@ def hssm_sim_wrapper(simulator_fun, theta, model, n_replicas, random_state, **kw
         random_state=random_state,
         **kwargs,
     )
-    choices = out.get("metadata", {}).get("possible_choices")
-    if "observations" in out and choices is not None and len(choices) == 0:
-        # Keep categorical models' legacy shape and omission codes below.
-        # For continuous responses HSSM expects replicas contiguous per trial.
-        obs = out["observations"]
-        return obs.swapaxes(0, 1).reshape(-1, obs.shape[-1])
+    if "observations" in out and _has_rt_and_circular_response(out.get("metadata")):
+        pairs = out["observations"].swapaxes(0, 1)
+        return pairs[:, 0, :] if n_replicas == 1 else pairs
     return np.stack([out["rts"], out["choices"]], axis=-1).squeeze()
 
 
@@ -358,6 +370,9 @@ def get_simulator_fun_internal(simulator_fun: Callable | str):
         model_name=simulator_fun_str,
         choices=choices,
     )
+    if _has_rt_and_circular_response(config):
+        # rng_fn must not swap these pairs a second time as legacy RT/choice output.
+        setattr(simulator_fun_internal, "_ssms_replica_first", False)
     return simulator_fun_internal
 
 

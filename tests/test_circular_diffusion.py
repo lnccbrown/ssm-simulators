@@ -16,7 +16,7 @@ from ssms.basic_simulators.simulator import (
     simulator,
 )
 from ssms.config import get_model_registry
-from ssms.hssm_support import get_simulator_fun_internal
+from ssms.hssm_support import _get_seed, get_simulator_fun_internal, rng_fn
 from ssms.support_utils.kde_class import LogKDE
 
 
@@ -24,7 +24,7 @@ def test_time_and_angle_laws_and_trial_order():
     """Check scaled time's Laplace transform and angular moments, not specific draws."""
     rows = [[0, 0, 0.1, 0], [3, -3, 3, 2], [-1.3, 0.6, 0.9, 0.12]]
     n = 16000
-    draws = sample_circular_diffusion(rows, 227, n).reshape(len(rows), n, 2)
+    draws = sample_circular_diffusion(rows, 227, n)
     for (vx, vy, a, t), (rt, angle) in zip(rows, draws.transpose(0, 2, 1), strict=True):
         dt = (rt - t) / a**2
         assert (dt > 0).all()
@@ -71,7 +71,7 @@ def test_observation_schema_is_discoverable_before_sampling():
     assert schema[1]["upper"] == np.pi
 
 
-def test_registry_preserves_coordinates_and_replica_order():
+def test_registry_preserves_coordinates_and_skips_categorical_summaries():
     rows = [[1.0, 0.5, 1.0, 0.25], [-1.0, 0.5, 2.0, 1.0]]
     theta = dict(zip(["vx", "vy", "a", "t"], np.transpose(rows), strict=True))
     opts = {"n_samples": 12, "random_state": 357}
@@ -91,12 +91,34 @@ def test_registry_preserves_coordinates_and_replica_order():
             categorical_only(out)
     alt = Simulator(model="circular_diffusion").simulate(theta=theta, **opts)
     np.testing.assert_array_equal(alt["observations"], native)
-    expected = native.swapaxes(0, 1).reshape(-1, 2)
-    atomic = get_simulator_fun_internal("circular_diffusion")
-    np.testing.assert_array_equal(
-        atomic(theta=rows, random_state=357, n_replicas=12), expected
+
+
+@pytest.mark.parametrize(
+    ("trials", "replicas"), [(1, 1), (1, 3), (2, 1), (2, 2), (2, 3)]
+)
+def test_circular_sampler_layouts(trials, replicas):
+    """Only the HSSM interface drops the singleton replica axis, never the trial axis."""
+    theta = np.array([[1.0, 0.5, 1.0, 0.25], [-1.0, 0.5, 1.0, 0.75]])[:trials]
+    seed = _get_seed(np.random.default_rng(357))
+    out = simulator(
+        theta=theta, model="circular_diffusion", n_samples=replicas, random_state=seed
     )
-    np.testing.assert_array_equal(sample_circular_diffusion(rows, 357, 12), expected)
+    native = validate_observation_result(out)["observations"]
+    assert native.shape == (replicas, trials, 2)
+    expected = native[0] if replicas == 1 else native.swapaxes(0, 1)
+    named = get_simulator_fun_internal("circular_diffusion")
+    np.testing.assert_array_equal(
+        named(theta=theta, random_state=seed, n_replicas=replicas), expected
+    )
+    np.testing.assert_array_equal(
+        sample_circular_diffusion(theta, seed, replicas), expected
+    )
+    if trials > 1:
+        # The HSSM RNG must not transpose already-trial-first structured observations.
+        actual = rng_fn(
+            list(theta.T), trials * replicas, np.random.default_rng(357), named, 2
+        )
+        np.testing.assert_array_equal(actual, expected)
 
 
 def test_generator_advances_and_omissions_are_explicit():
@@ -115,6 +137,11 @@ def test_generator_advances_and_omissions_are_explicit():
     assert np.isnan(out["observations"]).all() and out["omission_mask"].all()
     assert (out["rts"] == -999).all() and (out["choices"] == -999).all()
     assert (out["omission_p"] == 1).all()
+    named = get_simulator_fun_internal("circular_diffusion_deadline")
+    np.testing.assert_array_equal(
+        named(theta=[*row, 0.1], random_state=1, n_replicas=8),
+        out["observations"].swapaxes(0, 1),
+    )
 
 
 def test_no_noise_and_invalid_parameters():
