@@ -10,8 +10,6 @@ from typing import Any
 
 import numpy as np
 
-from .simulator import OMISSION_SENTINEL
-
 OBSERVATION_SCHEMA_VERSION = 1
 
 _REQUIRED_RESULT_KEYS = frozenset({"observations", "omission_mask", "metadata"})
@@ -57,6 +55,9 @@ def normalize_simulator_result(
     metadata are shallow-copied. Use :func:`validate_observation_result` directly for
     native results or schemas wider than two fields.
     """
+    # Keep schema declarations importable while simulator configs are registered.
+    from .simulator import OMISSION_SENTINEL
+
     if not isinstance(result, Mapping):
         raise TypeError("legacy simulator result must be a mapping")
 

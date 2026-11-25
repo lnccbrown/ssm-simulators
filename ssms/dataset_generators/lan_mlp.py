@@ -241,6 +241,10 @@ class TrainingDataGenerator:
                 self.model_config = deepcopy(model_config)
                 self._check_deadline_mismatch()
 
+            if self.model_config.get("nchoices") == 0:
+                raise ValueError(
+                    "The built-in LAN pipeline requires categorical responses."
+                )
             generation_pipeline = None  # Will auto-create later
         else:
             # Config is a pipeline object
