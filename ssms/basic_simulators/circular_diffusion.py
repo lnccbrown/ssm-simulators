@@ -16,7 +16,20 @@ endpoint correction or angle binning are needed.
 import numpy as np
 from scipy.special import i0e, i1e, jn_zeros
 
+from .observation_results import OBSERVATION_SCHEMA_VERSION
+
 _J0_SQUARED = jn_zeros(0, 128) ** 2
+
+
+def circular_diffusion_observation_metadata() -> dict:
+    """Describe the ordered RT and angle (radians); each caller owns its mappings."""
+    return {
+        "observation_schema_version": OBSERVATION_SCHEMA_VERSION,
+        "observation_schema": (
+            {"name": "rt", "kind": "continuous", "lower": 0, "lower_inclusive": False},
+            {"name": "response", "kind": "circular", "lower": -np.pi, "upper": np.pi},
+        ),
+    }
 
 
 def _draw_exits(theta, sigma, n_replicas, random_state):
@@ -101,20 +114,6 @@ def circular_diffusion(
             "max_t": max_t,
             "n_samples": n_samples,
             "n_trials": len(theta),
-            "observation_schema_version": 1,
-            "observation_schema": (
-                {
-                    "name": "rt",
-                    "kind": "continuous",
-                    "lower": 0,
-                    "lower_inclusive": False,
-                },
-                {
-                    "name": "response",
-                    "kind": "circular",
-                    "lower": -np.pi,
-                    "upper": np.pi,
-                },
-            ),
+            **circular_diffusion_observation_metadata(),
         },
     }

@@ -1,7 +1,10 @@
 """Centered planar diffusion with fixed drift and a circular absorbing boundary."""
 
 from ssms.basic_simulators import boundary_functions as bf
-from ssms.basic_simulators.circular_diffusion import circular_diffusion
+from ssms.basic_simulators.circular_diffusion import (
+    circular_diffusion,
+    circular_diffusion_observation_metadata,
+)
 
 
 def get_circular_diffusion_config() -> dict:
@@ -16,6 +19,7 @@ def get_circular_diffusion_config() -> dict:
         "boundary": bf.constant,
         "nchoices": 0,
         "choices": [],
+        **circular_diffusion_observation_metadata(),
         "n_particles": 1,
         "tags": ["python_simulator"],
         "simulator": circular_diffusion,

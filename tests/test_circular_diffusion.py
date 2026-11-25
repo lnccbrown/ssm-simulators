@@ -4,13 +4,18 @@ import numpy as np
 import pytest
 from scipy.special import i0e, i1e
 
-from ssms.basic_simulators import Simulator, validate_observation_result
+from ssms.basic_simulators import (
+    OBSERVATION_SCHEMA_VERSION,
+    Simulator,
+    validate_observation_result,
+)
 from ssms.basic_simulators.circular_diffusion import sample_circular_diffusion
 from ssms.basic_simulators.simulator import (
     bin_simulator_output,
     bin_simulator_output_pointwise,
     simulator,
 )
+from ssms.config import get_model_registry
 from ssms.hssm_support import get_simulator_fun_internal
 from ssms.support_utils.kde_class import LogKDE
 
@@ -35,6 +40,35 @@ def test_time_and_angle_laws_and_trial_order():
             (dt, 0.5 if k == 0 else i1e(k) / (k * i0e(k))),
         ):
             assert abs(stat.mean() - expected) < 5 * stat.std() / np.sqrt(n)
+
+
+def test_observation_schema_is_discoverable_before_sampling():
+    registry = get_model_registry()
+    config = registry.get("circular_diffusion")
+    schema = config["observation_schema"]
+    assert config["observation_schema_version"] == OBSERVATION_SCHEMA_VERSION
+    assert schema == (
+        {"name": "rt", "kind": "continuous", "lower": 0, "lower_inclusive": False},
+        {"name": "response", "kind": "circular", "lower": -np.pi, "upper": np.pi},
+    )
+
+    opts = {"theta": [0, 0, 1, 0.2], "n_samples": 2, "random_state": 23}
+    results = (
+        simulator(model="circular_diffusion", **opts),
+        Simulator(model="circular_diffusion").simulate(**opts),
+    )
+    for result in results:
+        meta = validate_observation_result(result)["metadata"]
+        assert (
+            meta["observation_schema_version"] == config["observation_schema_version"]
+        )
+        assert meta["observation_schema"] == schema
+
+    # A caller can edit its result without redefining the model or another result.
+    results[0]["metadata"]["observation_schema"][1]["upper"] = 0
+    assert results[1]["metadata"]["observation_schema"] == schema
+    assert registry.get("circular_diffusion")["observation_schema"] == schema
+    assert schema[1]["upper"] == np.pi
 
 
 def test_registry_preserves_coordinates_and_replica_order():
