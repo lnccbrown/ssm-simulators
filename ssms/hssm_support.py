@@ -321,6 +321,8 @@ def _build_decorated_simulator(
         model=model_name,
     )
     result: Callable[..., Any] = decorated_simulator(sim_wrapper)
+    # Direct calls retain ssms's legacy (replica, trial, RT/choice) layout.
+    setattr(result, "_ssms_replica_first", True)
     return result
 
 
@@ -447,9 +449,9 @@ def rng_fn(
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray]
-        An array of shape (..., obs_dim_int) containing generated (rt, response) pairs and
-        the p_outlier values if applicable.
+    np.ndarray
+        Simulated observations. With trial-specific parameters and multiple
+        replicas, the trailing axes are (trial, replica, observation).
     """
 
     is_all_args_scalar, theta, max_shape, new_data_size = _prepare_theta_and_shape(
@@ -480,6 +482,14 @@ def rng_fn(
     )
 
     if not is_all_args_scalar:
+        # Only named ssms wrappers emit replica-first 3-D pairs. Atomic custom
+        # simulators already supply rows in the order of the requested shape.
+        if (
+            n_replicas > 1
+            and sims_out.ndim == 3
+            and getattr(simulator_fun, "_ssms_replica_first", False) is True
+        ):
+            sims_out = sims_out.swapaxes(0, 1)
         shape_spec = _reshape_sims_out(max_shape, n_replicas, obs_dim_int)
         sims_out = sims_out.reshape(shape_spec)
 
