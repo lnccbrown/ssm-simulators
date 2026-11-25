@@ -435,6 +435,9 @@ def bin_simulator_output_pointwise(
     if out is None:
         raise ValueError("out is not supplied")
 
+    possible_choices = out["metadata"].get("possible_choices")
+    if possible_choices is not None and len(possible_choices) == 0:
+        raise ValueError("Pointwise choice bins require categorical responses.")
     out_copy = deepcopy(out)
 
     # Generate bins

@@ -6,8 +6,13 @@ from scipy.special import i0e, i1e
 
 from ssms.basic_simulators import Simulator, validate_observation_result
 from ssms.basic_simulators.circular_diffusion import sample_circular_diffusion
-from ssms.basic_simulators.simulator import bin_simulator_output, simulator
+from ssms.basic_simulators.simulator import (
+    bin_simulator_output,
+    bin_simulator_output_pointwise,
+    simulator,
+)
 from ssms.hssm_support import get_simulator_fun_internal
+from ssms.support_utils.kde_class import LogKDE
 
 
 def test_time_and_angle_laws_and_trial_order():
@@ -43,8 +48,13 @@ def test_registry_preserves_coordinates_and_replica_order():
     np.testing.assert_array_equal(native[..., 1], out["choices"][..., 0])
     assert not np.issubdtype(out["choices"].dtype, np.integer)
     assert "choice_p" not in out and "binned_128" not in out
-    with pytest.raises(ValueError, match="categorical responses"):
-        bin_simulator_output(out)
+    for categorical_only in (
+        bin_simulator_output,
+        bin_simulator_output_pointwise,
+        LogKDE,
+    ):
+        with pytest.raises(ValueError, match="categorical responses"):
+            categorical_only(out)
     alt = Simulator(model="circular_diffusion").simulate(theta=theta, **opts)
     np.testing.assert_array_equal(alt["observations"], native)
     expected = native.swapaxes(0, 1).reshape(-1, 2)

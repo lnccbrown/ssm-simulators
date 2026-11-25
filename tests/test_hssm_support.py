@@ -357,6 +357,18 @@ class TestSsmsSimWrapper:
         expected = np.array([1.5, 1])
         np.testing.assert_array_equal(result, expected)
 
+    def test_native_categorical_results_preserve_legacy_omissions(self):
+        def simulator_fun(**kwargs):
+            return {
+                "observations": np.array([[[np.nan, np.nan]]]),
+                "metadata": {"possible_choices": [-1, 1]},
+                "rts": np.array([[[-999.0]]]),
+                "choices": np.array([[[-1]]]),
+            }
+
+        result = hssm_sim_wrapper(simulator_fun, [1], "ddm", 1, 42)
+        np.testing.assert_array_equal(result, [-999.0, -1])
+
 
 class TestBuildDecoratedSimulator:
     """Tests for _build_decorated_simulator function."""

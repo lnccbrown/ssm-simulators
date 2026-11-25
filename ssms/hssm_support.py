@@ -271,9 +271,10 @@ def hssm_sim_wrapper(simulator_fun, theta, model, n_replicas, random_state, **kw
         random_state=random_state,
         **kwargs,
     )
-    if "observations" in out:
-        # Native results retain (replica, trial, coordinate) axes. HSSM expects
-        # replicas to be contiguous within each trial, even for singleton axes.
+    choices = out.get("metadata", {}).get("possible_choices")
+    if "observations" in out and choices is not None and len(choices) == 0:
+        # Keep categorical models' legacy shape and omission codes below.
+        # For continuous responses HSSM expects replicas contiguous per trial.
         obs = out["observations"]
         return obs.swapaxes(0, 1).reshape(-1, obs.shape[-1])
     return np.stack([out["rts"], out["choices"]], axis=-1).squeeze()
