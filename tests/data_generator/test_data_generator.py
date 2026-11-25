@@ -105,6 +105,10 @@ def test_TrainingDataGenerator(model_name, model_conf):
     generator_config = deepcopy(gen_config)
     generator_config["model"] = model_name
 
+    if model_conf["nchoices"] == 0:
+        with pytest.raises(ValueError, match="requires categorical responses"):
+            TrainingDataGenerator(config=generator_config, model_config=model_conf)
+        return
     my_dataset_generator = TrainingDataGenerator(
         config=generator_config, model_config=model_conf
     )

@@ -498,6 +498,8 @@ def bin_simulator_output(
 
     if out is None:
         raise ValueError("out is not supplied")
+    if not len(out["metadata"]["possible_choices"]):
+        raise ValueError("Choice histograms require categorical responses.")
 
     if max_t == -1:
         max_t = out["metadata"]["max_t"]
@@ -853,6 +855,8 @@ def simulator(
 
     x["metadata"]["model"] = model
 
+    if not len(x["metadata"]["possible_choices"]):
+        return x  # No categorical response channels to histogram.
     x["binned_128"] = np.expand_dims(
         bin_simulator_output(x, nbins=128, max_t=-1, freq_cnt=True), axis=0
     )
@@ -877,6 +881,8 @@ def _choice_probabilities(
     possible_choices = np.asarray(possible_choices)
 
     omitted = rts == OMISSION_SENTINEL  # (n_samples, n_trials, 1)
+    if not possible_choices.size:
+        return {"omission_p": omitted.mean(axis=0)}
     # Broadcasts against the trailing axis: (n_samples, n_trials, n_choices)
     hits = choices == possible_choices
     n_no_omission = (~omitted).sum(axis=0)  # (n_trials, 1)

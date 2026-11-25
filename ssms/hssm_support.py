@@ -271,6 +271,11 @@ def hssm_sim_wrapper(simulator_fun, theta, model, n_replicas, random_state, **kw
         random_state=random_state,
         **kwargs,
     )
+    if "observations" in out:
+        # Native results retain (replica, trial, coordinate) axes. HSSM expects
+        # replicas to be contiguous within each trial, even for singleton axes.
+        obs = out["observations"]
+        return obs.swapaxes(0, 1).reshape(-1, obs.shape[-1])
     return np.stack([out["rts"], out["choices"]], axis=-1).squeeze()
 
 
