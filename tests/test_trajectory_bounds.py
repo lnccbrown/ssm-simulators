@@ -74,39 +74,39 @@ NO_HIT_OVERRIDES = {
 DIRECT_KERNELS = {
     "full_ddm_hddm_base": (
         "ddm_models",
-        dict(v=0.0, a=2.0, z=0.5, t=0.0, sz=0.0, sv=0.0, st=0.0),
+        {"v": 0.0, "a": 2.0, "z": 0.5, "t": 0.0, "sz": 0.0, "sv": 0.0, "st": 0.0},
     ),
-    "ddm_sdv": ("ddm_models", dict(v=0.0, a=1.0, z=0.5, t=0.0, sv=0.0)),
-    "ddm_flexbound_flat": ("ddm_models", dict(v=0.0, a=1.0, z=0.5, t=0.0)),
+    "ddm_sdv": ("ddm_models", {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.0, "sv": 0.0}),
+    "ddm_flexbound_flat": ("ddm_models", {"v": 0.0, "a": 1.0, "z": 0.5, "t": 0.0}),
     "ddm_flexbound_mic2_ornstein_multinoise": (
         "sequential_models",
-        dict(
-            vh=0.0,
-            vl1=0.0,
-            vl2=0.0,
-            a=1.0,
-            zh=0.5,
-            zl1=0.5,
-            zl2=0.5,
-            d=0.5,
-            g=0.0,
-            t=0.0,
-        ),
+        {
+            "vh": 0.0,
+            "vl1": 0.0,
+            "vl2": 0.0,
+            "a": 1.0,
+            "zh": 0.5,
+            "zl1": 0.5,
+            "zl2": 0.5,
+            "d": 0.5,
+            "g": 0.0,
+            "t": 0.0,
+        },
     ),
     "ddm_flexbound_mic2_unnormalized_ornstein_multinoise": (
         "sequential_models",
-        dict(
-            vh=0.0,
-            vl1=0.0,
-            vl2=0.0,
-            a=1.0,
-            zh=0.5,
-            zl1=0.5,
-            zl2=0.5,
-            d=0.5,
-            g=0.0,
-            t=0.0,
-        ),
+        {
+            "vh": 0.0,
+            "vl1": 0.0,
+            "vl2": 0.0,
+            "a": 1.0,
+            "zh": 0.5,
+            "zl1": 0.5,
+            "zl2": 0.5,
+            "d": 0.5,
+            "g": 0.0,
+            "t": 0.0,
+        },
     ),
 }
 
@@ -177,6 +177,7 @@ def _run_child(spec, timeout=300, child=_CHILD):
             text=True,
             timeout=timeout,
             env=env,
+            check=False,  # the return code is asserted below, with stderr
         )
     except subprocess.TimeoutExpired:  # heap corruption can deadlock malloc
         pytest.fail(f"simulator hung (likely heap corruption): {spec}")
@@ -202,43 +203,52 @@ def _check_no_hit_case(case, valid_choices=None):
         return
     # The trajectory spans the time grid and a walker that runs out the clock
     # reaches its last row (writes past that row are what aborted the child).
-    assert case["traj_rows"] == int(round(max_t / delta_t)) + 1, case
+    assert case["traj_rows"] == round(max_t / delta_t) + 1, case
     assert case["traj_last_row_recorded"], case
 
 
 @pytest.mark.parametrize("delta_t", [0.01, 0.005, 0.002, 0.001])
 def test_lca_issue_115_reproducer(delta_t):
     """The reproducer from issue #115: noisy LCA with a growing boundary."""
-    theta = dict(
-        v0=0.0, v1=0.0, v2=0.0, v3=0.0, a=3.0, z=0.0, g=1.0, b=1.0, t=0.0, theta=-0.1
-    )
-    spec = dict(
-        model="lca_no_bias_angle_4",
-        theta=theta,
-        grid=[(20.0, delta_t)],
-        n_samples=5,
-        repeats=40,
-        no_noise=False,
-    )
+    theta = {
+        "v0": 0.0,
+        "v1": 0.0,
+        "v2": 0.0,
+        "v3": 0.0,
+        "a": 3.0,
+        "z": 0.0,
+        "g": 1.0,
+        "b": 1.0,
+        "t": 0.0,
+        "theta": -0.1,
+    }
+    spec = {
+        "model": "lca_no_bias_angle_4",
+        "theta": theta,
+        "grid": [(20.0, delta_t)],
+        "n_samples": 5,
+        "repeats": 40,
+        "no_noise": False,
+    }
     summary = _run_child(spec)
     (case,) = summary
     assert all(0.0 <= rt <= 20.0 + 2 * delta_t for rt in case["rts"]), case
     assert set(case["choices"]) <= set(model_config["lca_no_bias_angle_4"]["choices"])
-    assert case["traj_rows"] == int(round(20.0 / delta_t)) + 1
+    assert case["traj_rows"] == round(20.0 / delta_t) + 1
 
 
 @pytest.mark.parametrize("delta_t", [0.01, 0.005, 0.002, 0.001])
 @pytest.mark.parametrize("max_t", [20.0, 5.0])
 def test_lca_no_hit(max_t, delta_t):
     """Sequential LCA, whose untyped double clock overran at 0.01 and 0.005."""
-    spec = dict(
-        model="lca_4",
-        theta=_no_hit_theta("lca_4", {}),
-        grid=[(max_t, delta_t)],
-        n_samples=3,
-        repeats=3,
-        no_noise=True,
-    )
+    spec = {
+        "model": "lca_4",
+        "theta": _no_hit_theta("lca_4", {}),
+        "grid": [(max_t, delta_t)],
+        "n_samples": 3,
+        "repeats": 3,
+        "no_noise": True,
+    }
     summary = _run_child(spec)
     for case in summary:
         _check_no_hit_case(case, model_config["lca_4"]["choices"])
@@ -258,14 +268,14 @@ def _no_hit_theta(model, overrides):
 @pytest.mark.parametrize("model", sorted(NO_HIT_OVERRIDES))
 def test_no_hit_walker_stays_in_bounds(model):
     """One model per Euler-loop kernel, at the float32-overrun (max_t, delta_t)."""
-    spec = dict(
-        model=model,
-        theta=_no_hit_theta(model, NO_HIT_OVERRIDES[model]),
-        grid=FLOAT32_OVERRUN_GRID,
-        n_samples=3,
-        repeats=3,
-        no_noise=True,
-    )
+    spec = {
+        "model": model,
+        "theta": _no_hit_theta(model, NO_HIT_OVERRIDES[model]),
+        "grid": FLOAT32_OVERRUN_GRID,
+        "n_samples": 3,
+        "repeats": 3,
+        "no_noise": True,
+    }
     summary = _run_child(spec)
     for case in summary:
         _check_no_hit_case(case, model_config[model]["choices"])
@@ -275,14 +285,14 @@ def test_no_hit_walker_stays_in_bounds(model):
 def test_no_hit_unregistered_kernels(kernel):
     """Kernels without a model config get the same no-hit check."""
     module, theta = DIRECT_KERNELS[kernel]
-    spec = dict(
-        kernel=kernel,
-        module=module,
-        theta=theta,
-        grid=FLOAT32_OVERRUN_GRID,
-        n_samples=3,
-        repeats=3,
-    )
+    spec = {
+        "kernel": kernel,
+        "module": module,
+        "theta": theta,
+        "grid": FLOAT32_OVERRUN_GRID,
+        "n_samples": 3,
+        "repeats": 3,
+    }
     summary = _run_child(spec)
     for case in summary:
         _check_no_hit_case(case)
@@ -294,14 +304,14 @@ def test_no_hit_small_delta_t(model):
 
     tradeoff_no_bias records no trajectory, but its per-step bias trace overran.
     """
-    spec = dict(
-        model=model,
-        theta=_no_hit_theta(model, NO_HIT_OVERRIDES[model]),
-        grid=[(20.0, 1e-4)],
-        n_samples=2,
-        repeats=1,
-        no_noise=True,
-    )
+    spec = {
+        "model": model,
+        "theta": _no_hit_theta(model, NO_HIT_OVERRIDES[model]),
+        "grid": [(20.0, 1e-4)],
+        "n_samples": 2,
+        "repeats": 1,
+        "no_noise": True,
+    }
     summary = _run_child(spec)
     for case in summary:
         _check_no_hit_case(case, model_config[model]["choices"])
