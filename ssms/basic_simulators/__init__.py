@@ -9,6 +9,10 @@ from .observation_results import (
     normalize_simulator_result,
     validate_observation_result,
 )
+from .observation_metadata import (
+    get_observation_metadata,
+    validate_observation_metadata,
+)
 from .simulator import OMISSION_SENTINEL
 from .simulator_class import Simulator
 
@@ -18,8 +22,10 @@ __all__ = [
     "Simulator",
     "boundary_functions",
     "drift_functions",
+    "get_observation_metadata",
     "modular_parameter_simulator_adapter",
     "normalize_simulator_result",
     "simulator",
+    "validate_observation_metadata",
     "validate_observation_result",
 ]
