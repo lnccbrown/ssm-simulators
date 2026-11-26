@@ -318,7 +318,7 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='race_model',
-        possible_choices=[-1, 1],
+        possible_choices=list(np.arange(0, n_particles, 1)),
         n_samples=n_samples,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
@@ -328,9 +328,6 @@ def race_model(np.ndarray[float, ndim = 2] v,  # np.array expected, one column o
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-
-        # Update possible_choices for full (n_particles-specific)
-        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
@@ -467,7 +464,7 @@ def _race_model_sequential(
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='race_model',
-        possible_choices=[-1, 1],
+        possible_choices=list(np.arange(0, n_particles, 1)),
         n_samples=n_samples,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
@@ -477,9 +474,6 @@ def _race_model_sequential(
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-
-        # Update possible_choices for full (n_particles-specific)
-        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 't': t, 'deadline': deadline, 's': s}
@@ -719,7 +713,7 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='lca',
-        possible_choices=[-1, 1],
+        possible_choices=list(np.arange(0, n_particles, 1)),
         n_samples=n_samples,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
@@ -729,9 +723,6 @@ def lca(np.ndarray[float, ndim = 2] v, # drift parameters (np.array expect: one 
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-
-        # Update possible_choices for full (n_particles-specific)
-        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': n_threads}
         params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
@@ -881,7 +872,7 @@ def _lca_sequential(
     # Build minimal metadata first
     minimal_meta = build_minimal_metadata(
         simulator_name='lca',
-        possible_choices=[-1, 1],
+        possible_choices=list(np.arange(0, n_particles, 1)),
         n_samples=n_samples,
         n_trials=n_trials,
         boundary_fun_name=boundary_fun.__name__
@@ -891,9 +882,6 @@ def _lca_sequential(
         # Build v_dict and z_dict dynamically
         v_dict = build_param_dict_from_2d_array(v, 'v', n_particles)
         z_dict = build_param_dict_from_2d_array(z, 'z', n_particles)
-
-        # Update possible_choices for full (n_particles-specific)
-        minimal_meta['possible_choices'] = list(np.arange(0, n_particles, 1))
 
         sim_config = {'delta_t': delta_t, 'max_t': max_t, 'n_threads': 1}
         params = {'v': v, 'z': z, 'g': g, 'b': b, 't': t, 'deadline': deadline, 's': s}
