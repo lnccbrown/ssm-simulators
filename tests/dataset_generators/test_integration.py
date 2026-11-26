@@ -375,3 +375,18 @@ def test_pyddm_pattern_actually_works(ddm_configs):
     lan_data = training_data_dict["lan_data"]
     assert lan_data.shape[0] > 0
     assert np.all(np.isfinite(lan_data[:, -1]))
+
+
+@pytest.mark.parametrize("key", ["kde_displace_t", "displace_t"])
+def test_generator_honors_displace_t_key(ddm_configs, key):
+    """Either key, set on the default config, reaches the estimator the generator builds."""
+    gen_config, model_conf = ddm_configs
+    assert gen_config["estimator"]["kde_displace_t"] is False  # the shipped default
+    gen_config["estimator"][key] = True
+
+    pipeline = TrainingDataGenerator(gen_config, model_conf)._generation_pipeline
+    theta = pipeline._param_sampler.sample(n_samples=1, rng=np.random.default_rng(0))
+    simulations = pipeline._run_simulations(theta, 0)
+    estimator = pipeline.estimator_builder.build(theta, simulations)
+
+    assert estimator.displace_t is True

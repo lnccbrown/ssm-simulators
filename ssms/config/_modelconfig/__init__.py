@@ -2,6 +2,7 @@
 
 from .addm import get_addm_config
 from .angle import get_angle_config, get_angle_extended_config
+from .circular_diffusion import get_circular_diffusion_config
 from .conflict import (
     get_conflict_ds_angle_config,
     get_conflict_ds_config,
@@ -244,6 +245,7 @@ def get_model_config():
         "ddm_mic2_multinoise_angle_no_bias": get_ddm_mic2_multinoise_angle_no_bias_config(),
         "ddm_mic2_multinoise_weibull_no_bias": get_ddm_mic2_multinoise_weibull_no_bias_config(),
         "addm": get_addm_config(),
+        "circular_diffusion": get_circular_diffusion_config(),
         "full_ddm": get_full_ddm_config(),
         "full_ddm_rv": get_full_ddm_rv_config(),
         "full_ddm_lan": get_full_ddm_lan_config(),
@@ -373,6 +375,7 @@ __all__ = [
     "get_ddm_mic2_multinoise_weibull_no_bias_config",
     "get_poisson_race_config",
     "get_addm_config",
+    "get_circular_diffusion_config",
     "get_inv_temp_softmax_2_config",
     "get_inv_temp_softmax_3_config",
     "get_inv_temp_softmax_4_config",
