@@ -1,9 +1,9 @@
-"""`angle_extended` is `angle` with a wider drift box and nothing else.
+"""`angle_extended` is `angle` under a second name.
 
-That relationship is the thing worth testing. A structural check that the
-config is well-formed would pass just as happily if someone edited one of the
-two configs and not the other, and the two silently diverging is the failure
-mode a bounds-only variant actually has.
+Up to 0.16.0 `angle` had `v` in (-3, 3) and `angle_extended` had (-6, 6).
+`angle` now has the wide box. `angle_extended` stays a registry key because
+HSSM 0.5.0 and the pipeline config that trained the network look the model up
+by that name, so the two configs must not drift apart.
 """
 
 import numpy as np
@@ -21,36 +21,27 @@ def configs():
     return cfg[BASE], cfg[EXT]
 
 
-class TestItIsAngleExceptForTheDriftBox:
-    def test_only_the_bounds_differ(self, configs):
+class TestItIsAngleUnderASecondName:
+    def test_only_the_name_differs(self, configs):
         base, ext = configs
-        # `name` differs by construction; `param_bounds_dict` is derived from
-        # `param_bounds` by `_normalize_param_bounds`, so it differs with it.
-        expected = {"name", "param_bounds", "param_bounds_dict"}
         differing = {
             k for k in set(base) | set(ext) if repr(base.get(k)) != repr(ext.get(k))
         }
-        assert differing == expected, (
-            f"angle_extended diverged from angle in {differing - expected} "
-            "-- the two configs are meant to stay trivially diffable"
-        )
+        assert differing == {"name"}
 
-    def test_only_v_moved_and_only_outward(self, configs):
-        base, ext = configs
-        for i, name in enumerate(base["params"]):
-            lo_b, hi_b = base["param_bounds"][0][i], base["param_bounds"][1][i]
-            lo_e, hi_e = ext["param_bounds"][0][i], ext["param_bounds"][1][i]
-            if name == "v":
-                assert (lo_e, hi_e) == (-6.0, 6.0)
-                assert lo_e < lo_b and hi_e > hi_b, "the point is a WIDER box"
-            else:
-                assert (lo_e, hi_e) == (lo_b, hi_b), f"{name} should not have moved"
+    def test_angle_has_the_wide_drift_box(self, configs):
+        base, _ = configs
+        assert dict(zip(base["params"], zip(*base["param_bounds"]))) == {
+            "v": (-6.0, 6.0),
+            "a": (0.3, 3.0),
+            "z": (0.1, 0.9),
+            "t": (1e-3, 2.0),
+            "theta": (-0.1, 1.3),
+        }
 
     def test_the_name_field_and_the_registry_key_agree(self, configs):
-        # Bounds-only variants start life as a copy of the base config; the
-        # copy must still identify itself by its own registry key.
-        _, ext = configs
-        assert ext["name"] == EXT
+        base, ext = configs
+        assert (base["name"], ext["name"]) == (BASE, EXT)
 
 
 class TestTheConfigIsWellFormed:
