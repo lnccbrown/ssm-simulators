@@ -135,14 +135,14 @@ def _check_parallel_case(case, shape, valid_choices):
 def _model_spec(model, grid, overrides=None, n_samples=4, repeats=2):
     if overrides is None:
         overrides = NO_HIT_OVERRIDES.get(model, {})
-    return dict(
-        model=model,
-        theta=_no_hit_theta(model, overrides),
-        grid=grid,
-        n_samples=n_samples,
-        repeats=repeats,
-        no_noise=True,
-    )
+    return {
+        "model": model,
+        "theta": _no_hit_theta(model, overrides),
+        "grid": grid,
+        "n_samples": n_samples,
+        "repeats": repeats,
+        "no_noise": True,
+    }
 
 
 # Models whose parallel path copies a precomputed boundary (and drift) array.
@@ -161,8 +161,8 @@ BOUNDARY_COPY_MODELS = [
 # Same copy, in kernels without a registered model config (z off-centre, so the
 # no-noise walker has a sign and a valid choice).
 BOUNDARY_COPY_KERNELS = {
-    "ddm_sdv": ("ddm_models", dict(v=0.0, a=1.0, z=0.6, t=0.0, sv=0.0)),
-    "ddm_flexbound_flat": ("ddm_models", dict(v=0.0, a=1.0, z=0.6, t=0.0)),
+    "ddm_sdv": ("ddm_models", {"v": 0.0, "a": 1.0, "z": 0.6, "t": 0.0, "sv": 0.0}),
+    "ddm_flexbound_flat": ("ddm_models", {"v": 0.0, "a": 1.0, "z": 0.6, "t": 0.0}),
 }
 
 
@@ -179,14 +179,14 @@ def test_parallel_boundary_copy_extra_grid_point(model):
 def test_parallel_boundary_copy_unregistered_kernels(kernel):
     module, theta = BOUNDARY_COPY_KERNELS[kernel]
     n_samples = 4
-    spec = dict(
-        kernel=kernel,
-        module=module,
-        theta=theta,
-        grid=[EXTRA_GRID_POINT],
-        n_samples=n_samples,
-        repeats=2,
-    )
+    spec = {
+        "kernel": kernel,
+        "module": module,
+        "theta": theta,
+        "grid": [EXTRA_GRID_POINT],
+        "n_samples": n_samples,
+        "repeats": 2,
+    }
     for case in _run_parallel(spec):
         _check_parallel_case(case, [n_samples, 1, 1], [-1, 1])
 
