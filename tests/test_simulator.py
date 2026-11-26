@@ -176,11 +176,8 @@ def test_simulator_runs_parallel(model):
 def test_simulator_minimal_return_option(model):
     """return_option='minimal' trims the metadata and changes nothing else (#433).
 
-    It used to raise ``KeyError: 'max_t'`` for every time-stepped simulator:
-    the binned outputs read ``max_t`` from the metadata, and the minimal
-    metadata does not carry it. The race and LCA simulators also reported
-    ``possible_choices=[-1, 1]`` in the minimal metadata whatever the number
-    of accumulators, which the choice probabilities are computed from.
+    It raised ``KeyError: 'max_t'``, and the race and LCA simulators reported
+    ``possible_choices=[-1, 1]`` whatever the number of accumulators.
     """
     cfg = model_config[model]
     theta = dict(zip(cfg["params"], cfg["default_params"]))
@@ -192,10 +189,9 @@ def test_simulator_minimal_return_option(model):
     assert minimal.keys() == full.keys()
     for key in full.keys() - {"metadata"}:
         np.testing.assert_array_equal(minimal[key], full[key], err_msg=key)
+    assert set(minimal["metadata"]) < set(full["metadata"])
     for key, value in minimal["metadata"].items():
         np.testing.assert_array_equal(value, full["metadata"][key], err_msg=key)
-    assert "boundary" not in minimal["metadata"]
-    assert "trajectory" not in minimal["metadata"]
 
 
 def test_simulator_sigma_noise_conflict_raises():

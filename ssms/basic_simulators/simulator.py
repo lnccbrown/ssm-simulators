@@ -860,8 +860,9 @@ def simulator(
 
     if not len(x["metadata"]["possible_choices"]):
         return x  # No categorical response channels to histogram.
-    # Minimal metadata has no "max_t" entry, so fall back to the argument.
-    bin_max_t = x["metadata"].get("max_t", max_t)
+    # Minimal metadata has no "max_t" entry: use the argument, rounded to
+    # float32 like the value the simulators report in the full metadata.
+    bin_max_t = x["metadata"].get("max_t", float(np.float32(max_t)))
     x["binned_128"] = np.expand_dims(
         bin_simulator_output(x, nbins=128, max_t=bin_max_t, freq_cnt=True), axis=0
     )
