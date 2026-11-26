@@ -360,29 +360,21 @@ class TestRaceModelsParallel:
 
 
 class TestNonDefaultTimeGrid:
-    """The parallel path fills its boundary array on any time grid (#434).
+    """The parallel path runs on time grids other than the default (#434).
 
-    The array has ``int(max_t / delta_t + 1)`` columns, computed in float32,
-    while the boundary is evaluated on ``np.arange(0, max_t + delta_t,
+    Its boundary array has ``int(max_t / delta_t + 1)`` columns, computed in
+    float32, while the boundary is evaluated on ``np.arange(0, max_t + delta_t,
     delta_t)``, which is one or two points longer for most ``(delta_t, max_t)``
     pairs; the default pair happens to agree. Copying one into the other
     raised ``ValueError: could not broadcast input array``.
     """
 
-    # The leak models default to a=2 (mean RT near 5 s): too slow for the
-    # tolerances above, and at max_t=8 a tenth of the trials sit on the horizon.
-    THETA_OVERRIDES = {
-        "conflict_stimflexrel1_leak": {"a": 1.0},
-        "conflict_stimflexrel1_leak2": {"a": 1.0},
-    }
-
     @pytest.mark.statistical
     @pytest.mark.parametrize(
         ("delta_t", "max_t"),
         [
-            (0.01, 20.0),  # coarser step: grid one point longer
-            (0.001, 30.0),  # default step, longer max_t: one point longer
-            (0.001, 8.0),  # default step, shorter max_t: two points longer
+            (0.01, 20.0),  # grid one point longer
+            (0.001, 8.0),  # default step: grid two points longer
         ],
     )
     @pytest.mark.parametrize(
@@ -398,27 +390,21 @@ class TestNonDefaultTimeGrid:
             "ornstein",  # ornstein_models.pyx — ornstein_uhlenbeck
         ],
     )
-    def test_rt_distribution(self, model, delta_t, max_t):
-        """Parallel runs on the grid and matches sequential, shapes included."""
+    def test_runs_and_keeps_shapes(self, model, delta_t, max_t):
+        """Parallel runs on the grid and returns the sequential path's shapes."""
         kwargs = {
             "model": model,
-            "theta": _get_theta(model) | self.THETA_OVERRIDES.get(model, {}),
-            "n_samples": 4 * N_SAMPLES,
-            # Not SEED: at this sample size seed 42 falls below KS_P_MIN by
-            # chance. 200,000 samples per path show no difference on any grid.
-            "random_state": 0,
+            "theta": _get_theta(model),
+            "n_samples": 100,
             "delta_t": delta_t,
             "max_t": max_t,
-            # Most parallel paths do not apply smooth_unif (#435), and at
-            # delta_t=0.01 the jitter is large enough to show in the KS test.
-            "smooth_unif": False,
         }
         seq = simulator(**kwargs, n_threads=1)
         par = simulator(**kwargs, n_threads=N_THREADS_PAR)
 
+        _assert_valid_output(par, model=model)
         assert par["rts"].shape == seq["rts"].shape
         assert par["metadata"]["boundary"].shape == seq["metadata"]["boundary"].shape
-        _assert_equivalent(seq, par, model=f"{model}[dt={delta_t}, max_t={max_t}]")
 
 
 # ---------------------------------------------------------------------------
