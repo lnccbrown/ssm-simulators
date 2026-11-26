@@ -1,0 +1,16 @@
+# Keep meson-python sdists (built from git-tracked files via `meson dist`)
+# close to the old MANIFEST.in contents.
+.claude/ export-ignore
+.github/ export-ignore
+.pre-commit-config.yaml export-ignore
+.lychee.toml export-ignore
+.lycheeignore export-ignore
+CLAUDE.md export-ignore
+benchmarks/ export-ignore
+docs/ export-ignore
+examples/ export-ignore
+experimental/ export-ignore
+graveyard/ export-ignore
+notebooks/ export-ignore
+mkdocs.yml export-ignore
+scripts/ export-ignore

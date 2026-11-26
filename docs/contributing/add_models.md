@@ -95,10 +95,11 @@ START: What do you want to contribute?
    uv sync --all-groups
    ```
 
-4. **(Level 3 only) Build Cython extensions**:
-   ```bash
-   python setup.py build_ext --inplace
-   ```
+4. **(Level 3 only) Build Cython extensions**: nothing extra to run. `uv sync`
+   installs the package in editable mode with meson-python, and any changed
+   `.pyx` is recompiled automatically the next time `cssm` is imported.
+   To build without GSL or OpenMP, pass a build option, e.g.
+   `uv sync --all-groups --reinstall-package ssm-simulators -C setup-args=-Dgsl=disabled`.
 
 5. **Verify your setup**:
    ```bash
@@ -899,24 +900,21 @@ def shifted_wald(
 
 ### Step 3: Register and Export Cython Module
 
-**Register in `setup.py`**: Add your new `.pyx` module to the appropriate list in
-`setup.py`. Non-parallel modules go in `CYTHON_MODULES`; if your module uses OpenMP
+**Register in `meson.build`**: Add your new `.pyx` module to the appropriate list in
+`meson.build`. Non-parallel modules go in `cython_modules`; if your module uses OpenMP
 (i.e., it includes `_rng_wrappers.pxi` and calls `prange`), add it to
-`OPENMP_MODULES` instead:
+`openmp_modules` instead:
 
-```python
-# In setup.py -- choose ONE of the two lists:
+```meson
+# In meson.build -- choose ONE of the two lists:
 
 # For non-parallel modules:
-CYTHON_MODULES = [
-    # ... existing entries ...
-    "shifted_wald_models",
-]
+cython_modules = ['_utils', 'lba_models', 'shifted_wald_models']
 
 # For parallel (OpenMP-capable) modules:
-OPENMP_MODULES = [
-    # ... existing entries ...
-    "shifted_wald_models",
+openmp_modules = [
+  # ... existing entries ...
+  'shifted_wald_models',
 ]
 ```
 
@@ -959,8 +957,8 @@ def get_shifted_wald_config():
 ### Step 5: Build and Test
 
 ```bash
-# Build Cython extension
-python setup.py build_ext --inplace
+# No manual build step: the editable install recompiles changed .pyx on import.
+# After editing meson.build the next import reconfigures automatically.
 
 # Run tests (should be identical to Python version)
 pytest tests/test_shifted_wald.py -v
@@ -1064,8 +1062,8 @@ as `ddm_models.pyx`, which demonstrates the full pattern:
        # Use rng_gaussian_f32(&rng_states[tid]), etc.
    ```
 
-5. **Register your module in `setup.py`**: Parallel-capable modules go in
-   `OPENMP_MODULES` (not `CYTHON_MODULES`). See the next step for details.
+5. **Register your module in `meson.build`**: Parallel-capable modules go in
+   `openmp_modules` (not `cython_modules`). See the next step for details.
 
 ## 6. Testing Your Contribution
 

@@ -1,0 +1,4 @@
+option('gsl', type: 'feature', value: 'auto',
+  description: 'Link GSL (defines HAVE_GSL, builds cssm._c_rng). Replaces SSMS_FORCE_GSL.')
+option('openmp', type: 'feature', value: 'auto',
+  description: 'Build parallel simulators with OpenMP (defines HAVE_OPENMP). Replaces SSMS_FORCE_OPENMP.')
