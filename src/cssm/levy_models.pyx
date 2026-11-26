@@ -234,7 +234,7 @@ def levy_flexbound(np.ndarray[float, ndim = 1] v,
         for k in range(n_trials):
             boundary_params_tmp = {key: boundary_params[key][k] for key in boundary_params.keys()}
             compute_boundary(boundary, t_s, boundary_fun, boundary_params_tmp)
-            boundaries_all_np[k, :] = boundary
+            boundaries_all_np[k, :] = boundary[:num_steps]
             deadlines_tmp_all_np[k] = compute_deadline_tmp(max_t, deadline_view[k], t_view[k])
             # Same self-similarity scaling as in the sequential path above.
             delta_t_alpha_all_np[k] = s_view[k] * pow(delta_t, 1.0 / alpha_view[k])

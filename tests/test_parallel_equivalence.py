@@ -355,6 +355,59 @@ class TestRaceModelsParallel:
 
 
 # ---------------------------------------------------------------------------
+# Time grids other than the default (delta_t=0.001, max_t=20)
+# ---------------------------------------------------------------------------
+
+
+class TestNonDefaultTimeGrid:
+    """The parallel path runs on time grids other than the default (#434).
+
+    Its boundary array has ``int(max_t / delta_t + 1)`` columns, computed in
+    float32, while the boundary is evaluated on ``np.arange(0, max_t + delta_t,
+    delta_t)``, which is one or two points longer for most ``(delta_t, max_t)``
+    pairs; the default pair happens to agree. Copying one into the other
+    raised ``ValueError: could not broadcast input array``.
+    """
+
+    @pytest.mark.statistical
+    @pytest.mark.parametrize(
+        ("delta_t", "max_t"),
+        [
+            (0.01, 20.0),  # grid one point longer
+            (0.001, 8.0),  # default step: grid two points longer
+        ],
+    )
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "ddm",  # ddm_models.pyx — ddm_flexbound
+            "gamma_drift",  # ddm_models.pyx — ddm_flex
+            "conflict_stimflexrel1_leak",  # ddm_models.pyx — ddm_flex_leak
+            "conflict_stimflexrel1_leak2",  # ddm_models.pyx — ddm_flex_leak2
+            "full_ddm_rv",  # ddm_models.pyx — full_ddm_rv
+            "full_ddm",  # ddm_models.pyx — full_ddm
+            "levy",  # levy_models.pyx — levy_flexbound
+            "ornstein",  # ornstein_models.pyx — ornstein_uhlenbeck
+        ],
+    )
+    def test_runs_and_keeps_shapes(self, model, delta_t, max_t):
+        """Parallel runs on the grid and returns the sequential path's shapes."""
+        kwargs = {
+            "model": model,
+            "theta": _get_theta(model),
+            "n_samples": 100,
+            "delta_t": delta_t,
+            "max_t": max_t,
+        }
+        seq = simulator(**kwargs, n_threads=1)
+        par = simulator(**kwargs, n_threads=N_THREADS_PAR)
+
+        _assert_valid_output(par, model=model)
+        assert par["rts"].shape == seq["rts"].shape
+        assert par["metadata"]["boundary"].shape == seq["metadata"]["boundary"].shape
+
+
+# ---------------------------------------------------------------------------
 # n_threads parameter sweep
 # ---------------------------------------------------------------------------
 
