@@ -166,7 +166,7 @@ class TestTrainingDataGeneratorDataGeneration:
         gen_config["training"]["n_samples_per_param"] = 100
         gen_config["simulator"]["max_t"] = 20.0
         # Relaxed filters to ensure tests pass reliably
-        gen_config["simulator"]["filters"] = {
+        gen_config["pipeline"]["simulation_filters"] = {
             "mode": 17,
             "choice_cnt": 0,
             "mean_rt": 100,
@@ -348,7 +348,7 @@ class TestTrainingDataGeneratorPipelineIntegration:
         gen_config["training"]["n_samples_per_param"] = 50
         gen_config["simulator"]["max_t"] = 20.0
         # Use filters validated by diagnostic test (100% success rate)
-        gen_config["simulator"]["filters"] = {
+        gen_config["pipeline"]["simulation_filters"] = {
             "mode": 20,
             "choice_cnt": 0,
             "mean_rt": 100,

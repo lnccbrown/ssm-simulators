@@ -31,6 +31,8 @@ def _make_gen_config(
             "n_parameter_sets": n_parameter_sets,
             "n_subruns": n_subruns,
             "n_cpus": 1,  # Avoid psutil issues in sandboxed tests
+            # Shape-only test with a handful of samples per parameter set
+            "simulation_filters": {},
         },
         "training": {
             "n_samples_per_param": n_training_samples_by_parameter_set,

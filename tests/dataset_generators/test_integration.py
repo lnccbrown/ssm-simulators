@@ -36,7 +36,7 @@ def ddm_configs():
     gen_config["training"]["n_samples_per_param"] = 100
 
     # Relax simulation filters to avoid rejections
-    gen_config["simulator"]["filters"] = {
+    gen_config["pipeline"]["simulation_filters"] = {
         "mode": 100,
         "choice_cnt": 0,
         "mean_rt": 100,
