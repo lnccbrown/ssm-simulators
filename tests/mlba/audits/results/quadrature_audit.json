@@ -1,0 +1,66 @@
+{
+  "max_abs_err_n100_vs_n1600": 0.0003706331113890182,
+  "counts_n100": [
+    348,
+    1914,
+    1938,
+    1242
+  ],
+  "max_abs_err_n200_vs_n1600": 1.046757641676166e-08,
+  "counts_n200": [
+    348,
+    1914,
+    1938,
+    1242
+  ],
+  "max_abs_err_n400_vs_n1600": 7.787104294720848e-12,
+  "counts_n400": [
+    348,
+    1914,
+    1938,
+    1242
+  ],
+  "counts_n1600": [
+    348,
+    1914,
+    1938,
+    1242
+  ],
+  "max_defective_mass_1_minus_sum": 0.0017660186907155762,
+  "smallest_mean_drift_on_grid": {
+    "drift": -0.7819954456573903,
+    "set": "C1",
+    "params": [
+      5.0,
+      0.8,
+      0.1,
+      5.0
+    ]
+  },
+  "max_abs_err_n400_vs_scipy_quad": 4.3287595730134854e-13,
+  "n_quad_checks": 401,
+  "n_exact_ties_margin_lt_1e-9": 96,
+  "smallest_nontie_effect_margin": 2.892688828709522e-05,
+  "smallest_regularity_margin": 1.804531545696042e-05,
+  "smallest_nontie_usher_rank_gap": 5.1202676864536834e-05,
+  "usher_three_way_ties": 48,
+  "usher_three_way_tie_params_unique_m": [
+    1.0
+  ],
+  "usher_three_way_ties_lambda1_eq_lambda2": true,
+  "usher_compromise_second_if_ties_counted": [
+    1242,
+    1938,
+    64.08668730650155
+  ],
+  "usher_compromise_second_if_ties_not_compromise": [
+    1194,
+    1938,
+    61.60990712074303
+  ],
+  "usher_ties_excluded_from_both": [
+    1194,
+    1890,
+    63.17460317460318
+  ]
+}
