@@ -135,14 +135,15 @@ def test_non_positive_rt_exposure_falls_but_never_reaches_zero():
     assert _frac_nonpositive(dict(BOX_CORNER, st=0.05)) < 1e-4
 
 
-def test_generator_refuses_displace_t_for_ddm_normal_st():
+@pytest.mark.parametrize("key", ["kde_displace_t", "displace_t"])
+def test_generator_refuses_displace_t_for_ddm_normal_st(key):
     """An unbounded ndt kernel has no support edge to displace by, as for ddm_st."""
     assert "ddm_normal_st" in KDE_NO_DISPLACE_T
 
     generator_config = get_default_generator_config("lan")
     generator_config["model"] = "ddm_normal_st"
     generator_config["pipeline"]["n_cpus"] = 1
-    generator_config["estimator"]["displace_t"] = True
+    generator_config["estimator"][key] = True
 
     with pytest.warns(UserWarning, match="displace_t is True"):
         generator = TrainingDataGenerator(
@@ -150,6 +151,7 @@ def test_generator_refuses_displace_t_for_ddm_normal_st():
         )
 
     assert generator.generator_config["estimator"]["displace_t"] is False
+    assert generator._generation_pipeline.estimator_builder.displace_t is False
 
 
 def test_logkde_keeps_both_choice_groups_at_the_box_corner():

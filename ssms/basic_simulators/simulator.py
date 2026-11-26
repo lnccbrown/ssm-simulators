@@ -277,8 +277,28 @@ def _preprocess_theta_deadline(
 
     Returns:
         tuple[int, dict]: The number of trials and the preprocessed theta in dictionary format
+
+    Raises:
+        ValueError: If a theta dictionary has a key that is neither a parameter of
+            the model, of its boundary or drift function, nor a noise key ('s',
+            'sd'). Such a key would be ignored, and the simulator would fall back to
+            that parameter's default.
     """
-    if not isinstance(theta, dict):
+    if isinstance(theta, dict):
+        known = {
+            *config["params"],
+            *config.get("boundary_params", []),
+            *config.get("drift_params", []),
+            "s",
+            "sd",
+        }
+        unknown = sorted(set(theta) - known)
+        if unknown:
+            raise ValueError(
+                f"theta has keys {unknown} that are not parameters of model "
+                f"'{config['name']}'. Its parameters are {config['params']}."
+            )
+    else:
         theta = _theta_array_to_dict(theta, config["params"])
 
     n_trials = theta[config["params"][0]].shape[0]
@@ -415,6 +435,9 @@ def bin_simulator_output_pointwise(
     if out is None:
         raise ValueError("out is not supplied")
 
+    possible_choices = out["metadata"].get("possible_choices")
+    if possible_choices is not None and len(possible_choices) == 0:
+        raise ValueError("Pointwise choice bins require categorical responses.")
     out_copy = deepcopy(out)
 
     # Generate bins
@@ -478,6 +501,8 @@ def bin_simulator_output(
 
     if out is None:
         raise ValueError("out is not supplied")
+    if not len(out["metadata"]["possible_choices"]):
+        raise ValueError("Choice histograms require categorical responses.")
 
     if max_t == -1:
         max_t = out["metadata"]["max_t"]
@@ -833,6 +858,8 @@ def simulator(
 
     x["metadata"]["model"] = model
 
+    if not len(x["metadata"]["possible_choices"]):
+        return x  # No categorical response channels to histogram.
     # Minimal metadata has no "max_t" entry, so fall back to the argument.
     bin_max_t = x["metadata"].get("max_t", max_t)
     x["binned_128"] = np.expand_dims(
@@ -859,6 +886,8 @@ def _choice_probabilities(
     possible_choices = np.asarray(possible_choices)
 
     omitted = rts == OMISSION_SENTINEL  # (n_samples, n_trials, 1)
+    if not possible_choices.size:
+        return {"omission_p": omitted.mean(axis=0)}
     # Broadcasts against the trailing axis: (n_samples, n_trials, n_choices)
     hits = choices == possible_choices
     n_no_omission = (~omitted).sum(axis=0)  # (n_trials, 1)

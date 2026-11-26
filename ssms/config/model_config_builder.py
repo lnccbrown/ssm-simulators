@@ -596,7 +596,7 @@ class ModelConfigBuilder:
         --------
         >>> config = ModelConfigBuilder.from_model(
         ...     "ddm",
-        ...     params=["v", "a", "z", "t", "shape", "scale", "c"],
+        ...     params=["v", "a", "z", "t", "k", "scale", "c"],
         ...     param_bounds=[
         ...         [-3.0, 0.3, 0.1, 1e-3, 2.0, 0.01, -3.0],
         ...         [3.0, 3.0, 0.9, 2.0, 10.0, 1.0, 3.0],

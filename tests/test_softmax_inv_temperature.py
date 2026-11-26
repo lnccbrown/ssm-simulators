@@ -113,12 +113,22 @@ def test_label_count_mismatch_raises_before_sampling(logits, choices):
     sample.assert_not_called()
 
 
-def test_stray_q_keys_in_theta_are_ignored():
-    out = simulator(
-        theta={"beta": 1.0, "logit1": 0.0, "q0": 5.0},
-        model="softmax_inv_temperature_2",
-        n_samples=10,
-        random_state=1,
-    )
+def test_stray_q_keys_in_theta_raise():
+    """A stray ``q0`` is named and rejected before it can reach the wrapper.
 
-    assert set(np.unique(out["choices"])) <= {-1, 1}
+    The wrapper fixes ``q0`` at 0, so a forwarded ``q0`` once raised a
+    duplicate-keyword ``TypeError``.
+    """
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"\['q0'\] that are not parameters of model "
+            r"'softmax_inv_temperature_2'\. Its parameters are \['beta', 'logit1'\]"
+        ),
+    ):
+        simulator(
+            theta={"beta": 1.0, "logit1": 0.0, "q0": 5.0},
+            model="softmax_inv_temperature_2",
+            n_samples=10,
+            random_state=1,
+        )

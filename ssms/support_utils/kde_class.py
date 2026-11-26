@@ -127,6 +127,10 @@ class LogKDE:
                 values, or names a model whose response times start below t.
         """
         self.simulator_info = simulator_data["metadata"]
+        if not len(self.simulator_info["possible_choices"]):
+            raise ValueError(
+                "Choice-conditional LogKDE requires categorical responses."
+            )
         self.displace_t: bool = displace_t
 
         if self.displace_t:

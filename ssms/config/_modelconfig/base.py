@@ -42,7 +42,7 @@ drift_config = {
     },
     "gamma_drift": {
         "fun": df.gamma_drift,
-        "params": ["v", "shape", "scale", "c"],
+        "params": ["v", "k", "scale", "c"],
     },
     "conflict_ds_drift": {
         "fun": df.conflict_ds_drift,

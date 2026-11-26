@@ -26,6 +26,7 @@ import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from ssms.config import KDE_NO_DISPLACE_T
+from ssms.dataset_generators.estimator_builders import KDEEstimatorBuilder
 from ssms.dataset_generators.protocols import (
     DataGenerationPipelineProtocol,
 )
@@ -240,6 +241,10 @@ class TrainingDataGenerator:
                 self.model_config = deepcopy(model_config)
                 self._check_deadline_mismatch()
 
+            if self.model_config.get("nchoices") == 0:
+                raise ValueError(
+                    "The built-in LAN pipeline requires categorical responses."
+                )
             generation_pipeline = None  # Will auto-create later
         else:
             # Config is a pipeline object
@@ -277,14 +282,11 @@ class TrainingDataGenerator:
 
         # Handle config-specific setup only if we have generator_config dict
         if isinstance(config, dict):
-            # Ensure estimator section exists and set default displace_t
-            if "estimator" not in self.generator_config:
-                self.generator_config["estimator"] = {}
-            if "displace_t" not in self.generator_config["estimator"]:
-                self.generator_config["estimator"]["displace_t"] = False
-
+            # Ask the KDE builder how it reads displace_t, then record the
+            # settled value under both key names for the builder the pipeline makes.
+            displace_t = KDEEstimatorBuilder(self.generator_config).displace_t
             if (
-                self.generator_config["estimator"]["displace_t"]
+                displace_t
                 and self.model_config["name"].split("_deadline")[0] in KDE_NO_DISPLACE_T
             ):
                 warnings.warn(
@@ -292,7 +294,10 @@ class TrainingDataGenerator:
                     " Overriding setting to False",
                     stacklevel=2,
                 )
-                self.generator_config["estimator"]["displace_t"] = False
+                displace_t = False
+            self.generator_config.setdefault("estimator", {}).update(
+                kde_displace_t=displace_t, displace_t=displace_t
+            )
 
             # self._build_simulator()
 

@@ -314,6 +314,38 @@ class TestDecorateAtomicSimulator:
         assert mock_simulator.model_name == "test_model"
 
 
+@pytest.mark.parametrize("n_replicas", [1, 2, 3])
+def test_rng_fn_keeps_named_ddm_replicas_with_their_trial(n_replicas):
+    # With noise and RT smoothing off, each trial repeats its own (RT, choice).
+    theta = np.array([[-2.0, 1.0, 0.5, 0.2], [2.0, 1.0, 0.5, 0.7]])
+    sim = get_simulator_fun_internal("ddm")
+    opts = {"no_noise": True, "smooth_unif": False}
+    one = sim(theta=theta, n_replicas=1, random_state=42, **opts)
+    np.testing.assert_array_equal(one[:, 1], [-1, 1])
+
+    expected = one
+    if n_replicas > 1:
+        expected = np.repeat(one[:, None, :], n_replicas, axis=1)
+        # Direct ssms-adapter callers still see the historical replica-first result.
+        direct = sim(theta=theta, n_replicas=n_replicas, random_state=42, **opts)
+        np.testing.assert_array_equal(direct, expected.swapaxes(0, 1))
+    actual = rng_fn(
+        list(theta.T), 2 * n_replicas, np.random.default_rng(42), sim, 2, **opts
+    )
+    np.testing.assert_array_equal(actual, expected)
+
+
+def test_rng_fn_leaves_custom_trial_major_simulator_alone():
+    expected = np.arange(12).reshape(2, 3, 2)
+
+    @decorate_atomic_simulator("custom")
+    def simulate(theta, n_replicas, random_state):
+        return expected
+
+    actual = rng_fn([np.array([1, 2])], 6, np.random.default_rng(42), simulate, 2)
+    np.testing.assert_array_equal(actual, expected)
+
+
 class TestSsmsSimWrapper:
     """Tests for hssm_sim_wrapper function."""
 
@@ -356,6 +388,47 @@ class TestSsmsSimWrapper:
 
         expected = np.array([1.5, 1])
         np.testing.assert_array_equal(result, expected)
+
+    def test_native_categorical_results_preserve_legacy_omissions(self):
+        def simulator_fun(**kwargs):
+            return {
+                "observations": np.array([[[np.nan, np.nan]]]),
+                "metadata": {"possible_choices": [-1, 1]},
+                "rts": np.array([[[-999.0]]]),
+                "choices": np.array([[[-1]]]),
+            }
+
+        result = hssm_sim_wrapper(simulator_fun, [1], "ddm", 1, 42)
+        np.testing.assert_array_equal(result, [-999.0, -1])
+
+    def test_empty_choices_do_not_identify_a_circular_response(self):
+        def simulator_fun(**kwargs):
+            return {
+                "observations": np.array([[[np.nan, np.nan]]]),
+                "metadata": {
+                    "possible_choices": [],
+                    "observation_schema_version": 1,
+                    "observation_schema": (
+                        {
+                            "name": "rt",
+                            "kind": "continuous",
+                            "lower": 0,
+                            "lower_inclusive": False,
+                        },
+                        {
+                            "name": "response",
+                            "kind": "continuous",
+                            "lower": 0,
+                            "upper": 1,
+                        },
+                    ),
+                },
+                "rts": np.array([[[-999.0]]]),
+                "choices": np.array([[[-999.0]]]),
+            }
+
+        result = hssm_sim_wrapper(simulator_fun, [1], "confidence", 1, 42)
+        np.testing.assert_array_equal(result, [-999.0, -999.0])
 
 
 class TestBuildDecoratedSimulator:
