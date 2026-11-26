@@ -31,6 +31,7 @@ from cssm._utils import (
     compute_smooth_unif,
     enforce_deadline,
     compute_deadline_tmp,
+    compute_num_steps,
     build_full_metadata,
     build_minimal_metadata,
     build_return_dict,
@@ -111,7 +112,7 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
     t_s = setup['t_s']
     cdef int num_draws = setup['num_draws']
     cdef float delta_t_sqrt = setup['delta_t_sqrt']
-    cdef int num_steps = int((max_t / delta_t) + 1)
+    cdef int num_steps = compute_num_steps(max_t, delta_t)
     cdef float c_max_t = max_t
 
     # Param views
@@ -173,14 +174,14 @@ def ornstein_uhlenbeck(np.ndarray[float, ndim = 1] v, # drift parameter
                         traj_view[0, 0] = y
 
                 # Random walker
-                while y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
+                while ix < num_steps and y >= (-1) * boundary_view[ix] and y <= boundary_view[ix] and t_particle <= deadline_tmp:
                     y += ((v_view[k] - (g_view[k] * y)) * delta_t) + sqrt_st * gaussian_values[m]
                     t_particle += delta_t
                     ix += 1
                     m += 1
 
                     if n == 0:
-                        if k == 0:
+                        if k == 0 and ix < num_steps:
                             traj_view[ix, 0] = y
 
                     if m == num_draws:

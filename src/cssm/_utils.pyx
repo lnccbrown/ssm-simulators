@@ -595,6 +595,24 @@ cpdef float csum(float[:] x):
 #         'delta_t_sqrt': sqrt(delta_t)
 #     }
 
+cpdef int compute_num_steps(float max_t, float delta_t):
+    """Number of points on the simulation time grid ``0, delta_t, ..., max_t``.
+
+    This is the single definition of the step count shared by the simulators:
+    trajectory arrays have ``num_steps`` rows, and boundary/drift arrays
+    (evaluated on ``np.arange(0, max_t + delta_t, delta_t)``) have at least
+    ``num_steps`` entries.
+
+    Euler loops must bound the step index ``ix`` by ``num_steps`` as well as by
+    time: they take at most ``num_steps`` steps (so ``ix`` ends in
+    ``[0, num_steps]``) and only index per-step arrays while ``ix < num_steps``.
+    A time-only bound is not enough, because the float32 time accumulator drifts
+    from ``ix * delta_t`` (e.g. ``t <= max_t`` still holds after
+    ``max_t / delta_t`` steps for some ``delta_t``, and lags by ~190 steps at
+    ``delta_t=1e-4``), which let the walker index past the end of the arrays.
+    """
+    return int((max_t / delta_t) + 1)
+
 cpdef dict setup_simulation(
       int n_samples,
       int n_trials,
@@ -608,7 +626,7 @@ cpdef dict setup_simulation(
     """
     set_seed(random_state)
 
-    cdef int num_draws = int((max_t / delta_t) + 1)
+    cdef int num_draws = compute_num_steps(max_t, delta_t)
 
     # Initialize NumPy RNG with same seed
     global _global_rng
