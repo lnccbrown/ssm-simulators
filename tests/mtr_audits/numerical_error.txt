@@ -1,0 +1,36 @@
+1. Reference quadrature error
+  exp1_high_cost_accuracy_lower_similarity_left_target: residual(default)=-4.44e-16 residual(tight)=0.00e+00
+    max|default-tight|=4.16e-16  max|default-grid|=7.86e-10
+  exp1_low_cost_speed_lower_similarity_left_target: residual(default)=1.78e-15 residual(tight)=0.00e+00
+    max|default-tight|=1.92e-15  max|default-grid|=8.43e-10
+
+2. Monte Carlo vs reference, n=400000 per cell (z = diff / binomial SE)
+  exp1_high_cost_accuracy_lower_similarity_left_target: p0: mc=0.5562 ref=0.5563 z=-0.08 | p1: mc=0.1351 ref=0.1353 z=-0.50 | p2: mc=0.3087 ref=0.3084 z=+0.46
+  exp1_high_cost_accuracy_lower_similarity_right_target: p0: mc=0.2690 ref=0.2696 z=-0.81 | p1: mc=0.3618 ref=0.3608 z=+1.28 | p2: mc=0.3692 ref=0.3696 z=-0.53
+  exp1_high_cost_accuracy_higher_similarity_left_target: p0: mc=0.5815 ref=0.5806 z=+1.19 | p1: mc=0.1228 ref=0.1233 z=-0.89 | p2: mc=0.2957 ref=0.2961 z=-0.65
+  exp1_high_cost_accuracy_higher_similarity_right_target: p0: mc=0.2499 ref=0.2502 z=-0.39 | p1: mc=0.3847 ref=0.3846 z=+0.18 | p2: mc=0.3654 ref=0.3652 z=+0.17
+  exp1_high_cost_speed_lower_similarity_left_target: p0: mc=0.5636 ref=0.5637 z=-0.20 | p1: mc=0.1467 ref=0.1465 z=+0.31 | p2: mc=0.2897 ref=0.2897 z=-0.03
+  exp1_high_cost_speed_lower_similarity_right_target: p0: mc=0.2936 ref=0.2934 z=+0.27 | p1: mc=0.3593 ref=0.3597 z=-0.61 | p2: mc=0.3472 ref=0.3469 z=+0.36
+  exp1_high_cost_speed_higher_similarity_left_target: p0: mc=0.5488 ref=0.5487 z=+0.02 | p1: mc=0.1578 ref=0.1571 z=+1.25 | p2: mc=0.2934 ref=0.2941 z=-1.01
+  exp1_high_cost_speed_higher_similarity_right_target: p0: mc=0.3082 ref=0.3077 z=+0.66 | p1: mc=0.3471 ref=0.3475 z=-0.48 | p2: mc=0.3447 ref=0.3448 z=-0.16
+  exp1_low_cost_accuracy_lower_similarity_left_target: p0: mc=0.6341 ref=0.6348 z=-0.92 | p1: mc=0.1823 ref=0.1817 z=+1.05 | p2: mc=0.1836 ref=0.1835 z=+0.09
+  exp1_low_cost_accuracy_lower_similarity_right_target: p0: mc=0.2779 ref=0.2789 z=-1.48 | p1: mc=0.5072 ref=0.5068 z=+0.50 | p2: mc=0.2150 ref=0.2143 z=+1.01
+  exp1_low_cost_accuracy_higher_similarity_left_target: p0: mc=0.6229 ref=0.6222 z=+0.94 | p1: mc=0.1914 ref=0.1917 z=-0.59 | p2: mc=0.1857 ref=0.1860 z=-0.57
+  exp1_low_cost_accuracy_higher_similarity_right_target: p0: mc=0.2923 ref=0.2908 z=+1.99 | p1: mc=0.4935 ref=0.4946 z=-1.45 | p2: mc=0.2143 ref=0.2146 z=-0.44
+  exp1_low_cost_speed_lower_similarity_left_target: p0: mc=0.5961 ref=0.5975 z=-1.84 | p1: mc=0.2103 ref=0.2100 z=+0.51 | p2: mc=0.1936 ref=0.1925 z=+1.76
+  exp1_low_cost_speed_lower_similarity_right_target: p0: mc=0.3188 ref=0.3187 z=+0.06 | p1: mc=0.4619 ref=0.4620 z=-0.10 | p2: mc=0.2193 ref=0.2193 z=+0.05
+  exp1_low_cost_speed_higher_similarity_left_target: p0: mc=0.5844 ref=0.5840 z=+0.47 | p1: mc=0.2190 ref=0.2188 z=+0.27 | p2: mc=0.1966 ref=0.1972 z=-0.86
+  exp1_low_cost_speed_higher_similarity_right_target: p0: mc=0.3319 ref=0.3306 z=+1.76 | p1: mc=0.4462 ref=0.4473 z=-1.46 | p2: mc=0.2219 ref=0.2220 z=-0.24
+  max|z| = 1.99 over 48 comparisons; mean z^2 = 0.75
+
+3. Response-window censoring (deadline 2.5 s incl. t0)
+  exp1_high_cost_accuracy_lower_similarity_left_target: omission mc=0.00126 ref=0.00120 z=+1.06
+  exp1_low_cost_speed_lower_similarity_left_target: omission mc=0.00420 ref=0.00412 z=+0.80
+  exp1_low_cost_accuracy_higher_similarity_right_target: omission mc=0.01158 ref=0.01154 z=+0.24
+
+4. Truncated-normal sampler mean (n=1e6), closed form mean = v + sv*phi(v/sv)/Phi(v/sv)
+  v=0.0: mean=0.79846 exact=0.79788 z=+0.95 min=8.61e-07
+  v=0.5: mean=1.00930 exact=1.00916 z=+0.20 min=1.17e-06
+  v=1.0: mean=1.28728 exact=1.28760 z=-0.40 min=3.32e-06
+  v=3.0: mean=3.00375 exact=3.00444 z=-0.69 min=2.21e-04
+  v=6.0: mean=5.99881 exact=6.00000 z=-1.19 min=6.08e-01

@@ -112,6 +112,7 @@ from .mic2.multinoise import (
     get_ddm_mic2_multinoise_no_bias_config,
     get_ddm_mic2_multinoise_weibull_no_bias_config,
 )
+from .mtr import get_mtr_config
 from .ornstein import (
     get_ornstein_angle_config,
     get_ornstein_config,
@@ -308,6 +309,7 @@ def get_model_config():
         "lnr3": get_lnr3_config(),
         "lnr4": get_lnr4_config(),
         "lnr2_corr": get_lnr2_corr_config(),
+        "mtr": get_mtr_config(),
         "lca_3": get_lca_3_config(),
         "lca_no_bias_3": get_lca_no_bias_3_config(),
         "lca_no_z_3": get_lca_no_z_3_config(),
@@ -386,6 +388,7 @@ __all__ = [
     "get_lnr3_config",
     "get_lnr4_config",
     "get_lnr2_corr_config",
+    "get_mtr_config",
 ]
 
 # Validate
