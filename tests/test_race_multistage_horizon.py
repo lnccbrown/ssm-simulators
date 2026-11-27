@@ -12,9 +12,9 @@ reproducer from the issue uses ``delta_t=0.1`` and is checked to ``1e-6``.
 
 import numpy as np
 import pytest
+from cssm.race_multistage_models import _simulate_race_multistage
 
 import cssm
-from cssm.race_multistage_models import _simulate_race_multistage
 
 OMISSION = -999.0
 NO_HIT = 10.0
