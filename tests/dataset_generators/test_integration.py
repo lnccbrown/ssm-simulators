@@ -251,8 +251,8 @@ def test_separate_response_channels_with_injection(ddm_configs):
     """Test that separate_response_channels mode works with pipeline injection."""
     gen_config, model_conf = ddm_configs
 
-    # Enable separate response channels
-    gen_config["separate_response_channels"] = True
+    # Enable separate response channels (the strategy reads the training section)
+    gen_config["training"]["separate_response_channels"] = True
 
     # Create generator with custom strategy
     from ssms.dataset_generators.pipelines import SimulationPipeline
@@ -274,6 +274,14 @@ def test_separate_response_channels_with_injection(ddm_configs):
 
     assert "lan_data" in data
     assert "lan_labels" in data
+
+    # lan_data is [theta | RT | one-hot choices]; every row, uniform draws
+    # included, has exactly one hot choice column
+    nchoices = model_conf["nchoices"]
+    assert data["lan_data"].shape[1] == len(model_conf["params"]) + 1 + nchoices
+    one_hot_cols = data["lan_data"][:, -nchoices:]
+    assert np.all((one_hot_cols == 0) | (one_hot_cols == 1))
+    np.testing.assert_array_equal(one_hot_cols.sum(axis=1), 1)
 
 
 def test_end_to_end_with_custom_components(ddm_configs):
