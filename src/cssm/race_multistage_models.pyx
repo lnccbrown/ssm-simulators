@@ -39,6 +39,9 @@ from cssm._utils import (
 )
 
 cdef double OMISSION = -999.0
+# A step ending this close (relative to dt) before the horizon is extended to
+# it, so accumulated rounding error cannot leave a sliver step behind.
+cdef double HORIZON_SNAP = 1e-9
 DEF MAX_ACCUMULATORS = 32
 
 
@@ -51,6 +54,7 @@ cdef struct SimulationConfig:
 cdef struct TrialResult:
     double rt
     int choice
+    bint exhausted
 
 
 # The generator is shared with the aDDM engine; see _xoshiro_rng.pxi for the
@@ -114,7 +118,7 @@ cdef void _run_race_trial(
         Xoshiro256State rng
         BoxMullerState bm
         double particle[MAX_ACCUMULATORS]
-        double t_particle, dt_current, sqrt_dt, boundary, next_node
+        double t_particle, t_next, dt_current, sqrt_dt, boundary, next_node
         double drift_increment, diffusion_increment
         int stage[MAX_ACCUMULATORS]
         int i, step, winner, n_accumulators
@@ -125,6 +129,7 @@ cdef void _run_race_trial(
     t_particle = 0.0
     result.rt = -1.0
     result.choice = 0
+    result.exhausted = False
     n_accumulators = mu.shape[1]
     for i in range(n_accumulators):
         particle[i] = x0[row, i]
@@ -147,7 +152,10 @@ cdef void _run_race_trial(
             x_final_out[i] = particle[i]
         return
 
-    for step in range(config.max_steps):
+    # Run on elapsed time: a step cut short at a stage node must not cost the
+    # path part of its horizon. The step budget is only a safety guard.
+    step = 0
+    while t_particle < config.horizon:
         # A node reached by the preceding propagation begins its new stage
         # before this iteration can draw additional noise.
         stage_changed = False
@@ -174,18 +182,23 @@ cdef void _run_race_trial(
                 result.choice = winner
                 break
 
-        dt_current = config.horizon - t_particle
-        if dt_current <= 0.0:
+        if step >= config.max_steps:
+            result.exhausted = True
             break
-        dt_current = min(dt_current, config.dt)
+
+        t_next = t_particle + min(config.horizon - t_particle, config.dt)
+        if config.horizon - t_next <= HORIZON_SNAP * config.dt:
+            t_next = config.horizon
 
         # Do not propagate through a stage node with the preceding stage's
-        # dynamics. The earliest pending node controls this Euler step.
+        # dynamics. The earliest pending node controls this Euler step, which
+        # ends exactly on it so that the node is reached at the next iteration.
         for i in range(n_accumulators):
             if stage[i] + 1 < n_stages[row, i]:
                 next_node = nodes[row, i, stage[i] + 1]
-                if next_node < t_particle + dt_current:
-                    dt_current = next_node - t_particle
+                if next_node < t_next:
+                    t_next = next_node
+        dt_current = t_next - t_particle
         sqrt_dt = sqrt(dt_current)
 
         for i in range(n_accumulators):
@@ -194,7 +207,8 @@ cdef void _run_race_trial(
                 sigma[row, i, stage[i]] * sqrt_dt * box_muller_next(&rng, &bm)
             )
             particle[i] += drift_increment + diffusion_increment
-        t_particle += dt_current
+        t_particle = t_next
+        step += 1
 
         winner = -1
         for i in range(n_accumulators):
@@ -289,12 +303,17 @@ def _simulate_race_multistage(
     double horizon,
     uint64_t[::1] seeds,
     int n_threads=1,
+    max_steps=None,
 ):
-    """Low-level batch kernel used by :func:`race_multistage` and tests."""
+    """Low-level batch kernel used by :func:`race_multistage` and tests.
+
+    ``max_steps`` overrides the safety guard on Euler steps per trial; by
+    default it is the nominal grid plus one split step per stage node.
+    Exhausting it before the horizon raises ``RuntimeError``.
+    """
     cdef:
         int n_rows = mu.shape[0]
         int n_accumulators = mu.shape[1]
-        int max_steps = int(np.ceil(horizon / dt)) if horizon > 0.0 else 0
         int row
         SimulationConfig config
         TrialResult *trial_results
@@ -318,6 +337,10 @@ def _simulate_race_multistage(
         x_final[:] = np.asarray(x0)
         return rt, choice, x_final
 
+    if max_steps is None:
+        max_steps = (
+            int(np.ceil(horizon / dt)) + n_accumulators * (mu.shape[2] - 1) + 1
+        )
     config.dt = dt
     config.horizon = horizon
     config.max_steps = max_steps
@@ -331,6 +354,11 @@ def _simulate_race_multistage(
                 config, seeds[row], &trial_results[row], &final_view[row, 0],
             )
         for row in range(n_rows):
+            if trial_results[row].exhausted:
+                raise RuntimeError(
+                    f"race_multistage used its {max_steps}-step budget before "
+                    f"reaching the horizon {horizon} in row {row}"
+                )
             rt_view[row] = trial_results[row].rt
             choice_view[row] = trial_results[row].choice
     finally:
