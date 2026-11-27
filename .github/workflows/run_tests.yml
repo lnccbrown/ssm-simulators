@@ -93,8 +93,12 @@ jobs:
           print('_c_rng module: OK')
           "
 
-      - name: Run parallel equivalence tests
-        run: uv run pytest tests/test_parallel_equivalence.py --run-statistical --no-cov -v
+      - name: Run parallel equivalence and racing diffusion stopping tests
+        run: >-
+          uv run pytest
+          tests/test_parallel_equivalence.py
+          tests/test_racing_diffusion_stopping.py
+          --run-statistical --no-cov -v
 
       # n_threads>1 regressions for #115 (they skip without GSL + OpenMP, so they
       # only run for real here)
